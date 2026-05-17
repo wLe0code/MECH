@@ -1,0 +1,364 @@
+"""Servidor de control de MECH — FastAPI + WebSocket.
+
+Funciones:
+- Sirve el frontend (panel de control y página de proyector).
+- Expone REST para acciones (subir archivos, encender/apagar, etc).
+- Expone un WebSocket /ws para estado en vivo + comandos.
+- Corre el bucle de voz como tarea en background (controlable desde el panel).
+
+Arranque:
+    python -m backend.server
+o
+    uvicorn backend.server:app --host 0.0.0.0 --port 8000
+
+Endpoints REST:
+    GET  /                              → panel de control
+    GET  /projector                     → página de proyector (Pi → Chromium)
+    POST /api/voice/text                → envía un comando de texto
+    POST /api/voice/loop/{on|off}       → arranca/detiene el bucle de voz
+    POST /api/projector/{id}/upload     → sube imagen/video (multipart)
+    POST /api/projector/{id}/{on|off}   → enciende/apaga proyector
+    POST /api/arduino/raw               → envía comando crudo al Arduino
+    POST /api/arduino/move              → MOVE:vx:vy:w
+    POST /api/arduino/head              → HEAD:pan:tilt
+    POST /api/arduino/arm               → ARM:L/R:angle
+    POST /api/arduino/mode/{mode}       → MODE:...
+    POST /api/emergency/stop            → PARO DE EMERGENCIA
+    GET  /api/state                     → estado completo (JSON)
+
+WebSocket /ws:
+    Server → Client:  {type: "state"|"log"|"transcript"|"ai_response"
+                        |"projector"|"image"|"arduino", ...}
+    Client → Server:  {type: "ping"} (servidor responde pong)
+"""
+
+from __future__ import annotations
+
+import asyncio
+import threading
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Literal
+
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+import config
+import stt
+from mech_app import get_app
+
+# -- Paths -------------------------------------------------------------------
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = BASE_DIR / "frontend"
+UPLOADS_DIR = config.IMAGE_OUTPUT_DIR.parent / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+# -- Voice loop --------------------------------------------------------------
+
+
+def _voice_loop_worker():
+    """Bucle de voz: escucha → transcribe → procesa. Lo corremos en un
+    hilo aparte porque sd.rec/whisper son bloqueantes."""
+    app_state = get_app()
+    app_state.log("Bucle de voz iniciado", "ok")
+    app_state.arduino.set_mode("IDLE")
+    while app_state.state["voice_loop_active"]:
+        try:
+            app_state.arduino.set_mode("LISTEN")
+            app_state.state["voice_listening"] = True
+            app_state.emit("state", state=app_state.state)
+
+            text = stt.listen_once(max_seconds=20.0)
+
+            app_state.state["voice_listening"] = False
+            app_state.emit("state", state=app_state.state)
+
+            if text is None or not text.strip():
+                continue
+            app_state.handle_text_command(text)
+        except Exception as e:
+            app_state.log(f"Error en bucle de voz: {e}", "err")
+    app_state.arduino.set_mode("IDLE")
+    app_state.log("Bucle de voz detenido", "info")
+
+
+_voice_thread: threading.Thread | None = None
+
+
+def start_voice_loop():
+    global _voice_thread
+    app_state = get_app()
+    if app_state.state["voice_loop_active"]:
+        return
+    app_state.state["voice_loop_active"] = True
+    _voice_thread = threading.Thread(target=_voice_loop_worker, daemon=True)
+    _voice_thread.start()
+    app_state.emit("state", state=app_state.state)
+
+
+def stop_voice_loop():
+    app_state = get_app()
+    app_state.state["voice_loop_active"] = False
+    app_state.emit("state", state=app_state.state)
+
+
+# -- FastAPI lifespan --------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    config.assert_required()
+    mech = get_app()
+    mech.bind_loop(asyncio.get_running_loop())
+    mech.log("Servidor MECH iniciado", "ok")
+    yield
+    stop_voice_loop()
+    mech.close()
+
+
+app = FastAPI(title="MECH Control", lifespan=lifespan)
+
+# -- Static --------------------------------------------------------------------
+
+# Imágenes generadas por NanoBanana (la página de proyector las consume).
+app.mount("/generated", StaticFiles(directory=str(config.IMAGE_OUTPUT_DIR)), name="generated")
+# Archivos subidos desde el panel (stand projectors).
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+# Frontend.
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+
+# -- Páginas -----------------------------------------------------------------
+
+
+@app.get("/")
+async def root():
+    index = FRONTEND_DIR / "index.html"
+    if not index.exists():
+        return JSONResponse(
+            {"error": "frontend/index.html no existe — clona el repo completo"},
+            status_code=500,
+        )
+    return FileResponse(index)
+
+
+@app.get("/projector")
+async def projector_page():
+    page = FRONTEND_DIR / "projector.html"
+    if not page.exists():
+        raise HTTPException(404, "Proyector no encontrado")
+    return FileResponse(page)
+
+
+@app.get("/manifest.json")
+async def manifest():
+    f = FRONTEND_DIR / "manifest.json"
+    if f.exists():
+        return FileResponse(f, media_type="application/manifest+json")
+    raise HTTPException(404)
+
+
+@app.get("/sw.js")
+async def service_worker():
+    """Servir el SW desde la raíz para que su scope cubra toda la app."""
+    f = FRONTEND_DIR / "sw.js"
+    if f.exists():
+        return FileResponse(
+            f,
+            media_type="application/javascript",
+            headers={"Service-Worker-Allowed": "/"},
+        )
+    raise HTTPException(404)
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    f = FRONTEND_DIR / "icon.svg"
+    if f.exists():
+        return FileResponse(f, media_type="image/svg+xml")
+    raise HTTPException(404)
+
+
+# -- REST API ----------------------------------------------------------------
+
+
+class TextCommand(BaseModel):
+    text: str
+
+
+@app.post("/api/voice/text")
+async def voice_text(cmd: TextCommand):
+    # Procesar en un hilo aparte para no bloquear el event loop con TTS.
+    threading.Thread(
+        target=get_app().handle_text_command, args=(cmd.text,), daemon=True
+    ).start()
+    return {"ok": True}
+
+
+@app.post("/api/voice/loop/on")
+async def voice_on():
+    start_voice_loop()
+    return {"ok": True}
+
+
+@app.post("/api/voice/loop/off")
+async def voice_off():
+    stop_voice_loop()
+    return {"ok": True}
+
+
+@app.post("/api/projector/{pid}/upload")
+async def projector_upload(pid: str, file: UploadFile = File(...)):
+    if pid not in ("s1", "s2", "imm"):
+        raise HTTPException(400, "Proyector inválido")
+    safe_name = Path(file.filename or "upload.bin").name
+    dest = UPLOADS_DIR / f"{pid}_{safe_name}"
+    with dest.open("wb") as f:
+        while chunk := await file.read(1 << 20):  # 1 MB chunks
+            f.write(chunk)
+    url = f"/uploads/{dest.name}"
+    mech = get_app()
+    mech.state["projectors"][pid]["file"] = url
+    mech.emit("projector", id=pid, on=mech.state["projectors"][pid]["on"], file=url)
+    mech.log(f"Archivo cargado en {pid}: {dest.name}", "ok")
+    return {"ok": True, "url": url}
+
+
+@app.post("/api/projector/{pid}/on")
+async def projector_on(pid: str):
+    get_app().set_projector(pid, True)
+    return {"ok": True}
+
+
+@app.post("/api/projector/{pid}/off")
+async def projector_off(pid: str):
+    get_app().set_projector(pid, False)
+    return {"ok": True}
+
+
+class RawCommand(BaseModel):
+    cmd: str
+
+
+@app.post("/api/arduino/raw")
+async def arduino_raw(c: RawCommand):
+    get_app().arduino.send(c.cmd)
+    return {"ok": True}
+
+
+class MoveCmd(BaseModel):
+    vx: int = 0
+    vy: int = 0
+    w: int = 0
+
+
+@app.post("/api/arduino/move")
+async def arduino_move(m: MoveCmd):
+    get_app().arduino.move(m.vx, m.vy, m.w)
+    return {"ok": True}
+
+
+class HeadCmd(BaseModel):
+    pan: int = 90
+    tilt: int = 90
+
+
+@app.post("/api/arduino/head")
+async def arduino_head(h: HeadCmd):
+    get_app().arduino.head(h.pan, h.tilt)
+    return {"ok": True}
+
+
+class ArmCmd(BaseModel):
+    side: Literal["L", "R"]
+    angle: int = 90
+
+
+@app.post("/api/arduino/arm")
+async def arduino_arm(a: ArmCmd):
+    get_app().arduino.arm(a.side, a.angle)
+    return {"ok": True}
+
+
+@app.post("/api/arduino/mode/{mode}")
+async def arduino_mode(mode: str):
+    mode = mode.upper()
+    if mode not in ("AUTO", "IDLE", "LISTEN", "SPEAK", "STOP"):
+        raise HTTPException(400, "Modo inválido")
+    get_app().arduino.set_mode(mode)
+    return {"ok": True}
+
+
+@app.post("/api/emergency/stop")
+async def emergency_stop():
+    stop_voice_loop()
+    get_app().emergency_stop()
+    return {"ok": True}
+
+
+@app.get("/api/state")
+async def api_state():
+    return get_app().state
+
+
+# -- WebSocket ---------------------------------------------------------------
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(ws: WebSocket):
+    await ws.accept()
+    mech = get_app()
+    queue: asyncio.Queue[dict] = asyncio.Queue()
+
+    async def cb(message: dict) -> None:
+        await queue.put(message)
+
+    mech.subscribe(cb)
+
+    # Estado inicial
+    await ws.send_json({"type": "state", "state": mech.state})
+
+    sender_task = asyncio.create_task(_ws_sender(ws, queue))
+    try:
+        while True:
+            data = await ws.receive_json()
+            if data.get("type") == "ping":
+                await ws.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        pass
+    finally:
+        mech.unsubscribe(cb)
+        sender_task.cancel()
+
+
+async def _ws_sender(ws: WebSocket, queue: asyncio.Queue):
+    try:
+        while True:
+            message = await queue.get()
+            await ws.send_json(message)
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        return
+    except Exception:
+        return
+
+
+# -- Entry point -------------------------------------------------------------
+
+
+def main():
+    import uvicorn
+    uvicorn.run(
+        "backend.server:app",
+        host="0.0.0.0",
+        port=8000,
+        log_level="info",
+        reload=False,
+    )
+
+
+if __name__ == "__main__":
+    main()

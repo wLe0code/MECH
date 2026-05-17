@@ -1,0 +1,28 @@
+{
+  "name": "MECH Control System",
+  "short_name": "MECH",
+  "description": "Panel de control del robot MECH (WRO 2026 — Robots and Culture).",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e0e12",
+  "theme_color": "#0e0e12",
+  "lang": "es",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Paro de emergencia",
+      "url": "/?emergency=1",
+      "description": "Detiene motores, voz y proyectores."
+    }
+  ]
+}
