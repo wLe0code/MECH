@@ -1,5 +1,5 @@
 # MECH
-Proyecto de WRO 2026 (Robots and Culture) enfocado en inmersiones y experiencias involucrando ingeniería y firmware.
+Proyecto de WRO 2026 (Robots and Culture) enfocado en inmersiones y experiencias involucrando ingeniería y firmware. Encargados de la construcción de ART (A Real Immersion). Somos Multisensory Engineering Cyberphysical Humanized, somos MECH.
 
 ## Estructura del proyecto
 
@@ -19,7 +19,7 @@ backend/                  Python — corre en Raspberry Pi 5
   requirements.txt
   .env.example
 
-frontend/                 Panel de control web (servido por backend/server.py)
+frontend/                 Panel de control web para supervisión con caracter de emergencia (servido por backend/server.py)
   index.html              Panel principal
   app.js                  Lógica (WebSocket + REST)
   styles.css
@@ -28,7 +28,7 @@ frontend/                 Panel de control web (servido por backend/server.py)
   sw.js                   Service worker
   icon.svg
 
-arduino/
+arduino/                  Control de sistemas móviles: movilidad terrestre y de servomotores (brazos y cabeza)
   mech_controller/
     mech_controller.ino   Firmware: motores omni, servos, HC-SR04
 
