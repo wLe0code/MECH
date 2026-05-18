@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MECH · Control System</title>
+<meta name="theme-color" content="#0e0e12">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ───── HEADER ───── -->
+  <div class="header">
+    <div class="logo"><div class="logo-dot"></div>MECH · CONTROL SYSTEM</div>
+    <div class="status-bar">
+      <div class="status-item"><div id="dot-fw"  class="dot-off"></div>FIRMWARE</div>
+      <div class="status-item"><div id="dot-mic" class="dot-off"></div>VOZ</div>
+      <div class="status-item"><div id="dot-ard" class="dot-off"></div>ARDUINO</div>
+      <div class="status-item" id="ws-badge-wrap">
+        <span class="ws-badge ws-disconnected"><i class="ti ti-wifi-off"></i>Conectando…</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:#666" id="clock">--:--:--</div>
+    </div>
+    <button class="emergency-btn" id="emergency-btn" title="Detiene motores, voz y proyectores. Atajo: barra espaciadora">
+      <i class="ti ti-alert-octagon"></i>PARO DE EMERGENCIA
+    </button>
+  </div>
+
+  <div class="main">
+
+    <!-- ───── SIDEBAR ───── -->
+    <div class="sidebar">
+      <div class="sidebar-label">Sistema</div>
+      <div class="nav-item active" data-view="voice"     onclick="UI.showView('voice', this)"><i class="ti ti-microphone"></i>Voz / Comandos</div>
+      <div class="nav-item"        data-view="stand"     onclick="UI.showView('stand', this)"><i class="ti ti-device-projector"></i>Proyección Stand</div>
+      <div class="nav-item"        data-view="immersive" onclick="UI.showView('immersive', this)"><i class="ti ti-360"></i>Espacio Inmersivo</div>
+      <div class="sidebar-label">Hardware</div>
+      <div class="nav-item"        data-view="firmware"  onclick="UI.showView('firmware', this)"><i class="ti ti-cpu"></i>Firmware</div>
+      <div class="nav-item"        data-view="sensors"   onclick="UI.showView('sensors', this)"><i class="ti ti-radar"></i>Sensores</div>
+      <div class="nav-item"        data-view="arduino"   onclick="UI.showView('arduino', this)"><i class="ti ti-brand-arduino"></i>Arduino <span class="nav-badge-yellow">CTRL</span></div>
+    </div>
+
+    <!-- ───── CONTENT ───── -->
+    <div class="content">
+
+      <!-- VOICE VIEW -->
+      <div class="view visible" id="view-voice">
+        <div class="voice-hero">
+          <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:2px">
+            COMANDO DE VOZ — BUCLE LOCAL EN LA RASPBERRY PI
+          </div>
+
+          <div class="voice-btn" id="voice-btn" onclick="API.toggleVoiceLoop()">
+            <i class="ti ti-microphone" id="mic-icon"></i>
+          </div>
+          <div class="voice-status" id="voice-status">Bucle de voz apagado</div>
+
+          <div class="wave-bars" id="wave-bars">
+            <div class="wave-bar" style="height:8px"></div>
+            <div class="wave-bar" style="height:14px"></div>
+            <div class="wave-bar" style="height:20px"></div>
+            <div class="wave-bar" style="height:10px"></div>
+            <div class="wave-bar" style="height:18px"></div>
+            <div class="wave-bar" style="height:8px"></div>
+            <div class="wave-bar" style="height:24px"></div>
+            <div class="wave-bar" style="height:12px"></div>
+            <div class="wave-bar" style="height:16px"></div>
+            <div class="wave-bar" style="height:8px"></div>
+          </div>
+
+          <div class="transcript-box" id="transcript">
+            <span class="transcript-placeholder">Lo que dice el usuario aparecerá aquí…</span>
+          </div>
+
+          <div class="ai-response" id="ai-resp">
+            <div class="ai-label">MECH responde</div>
+            <span style="color:var(--text-muted)">Esperando comando…</span>
+          </div>
+
+          <div class="text-input-row">
+            <input class="text-input" id="text-cmd" type="text"
+                   placeholder="O escribe un comando aquí y presiona Enter…"
+                   onkeydown="if(event.key==='Enter') API.sendTextCommand()">
+            <button class="btn btn-purple" onclick="API.sendTextCommand()">
+              <i class="ti ti-send"></i>Enviar
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase">
+            Comandos rápidos — Obras culturales
+          </div>
+          <div class="cmd-grid">
+            <div class="cmd-chip" onclick="API.testCmd('Cuéntame sobre Romeo y Julieta')"><i class="ti ti-heart"></i>Romeo y Julieta</div>
+            <div class="cmd-chip" onclick="API.testCmd('Cuéntame la historia de Shrek')"><i class="ti ti-mood-smile"></i>Shrek</div>
+            <div class="cmd-chip" onclick="API.testCmd('Cuéntame La Odisea de Homero')"><i class="ti ti-anchor"></i>La Odisea</div>
+            <div class="cmd-chip" onclick="API.testCmd('Cuéntame sobre Don Quijote')"><i class="ti ti-sword"></i>Don Quijote</div>
+            <div class="cmd-chip" onclick="API.testCmd('¿Qué eres y cómo funcionas?')"><i class="ti ti-info-circle"></i>Sobre MECH</div>
+            <div class="cmd-chip" onclick="API.testCmd('Saluda al público')"><i class="ti ti-hand-stop"></i>Saludar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAND VIEW -->
+      <div class="view" id="view-stand">
+        <div class="view-title"><i class="ti ti-device-projector" style="color:var(--red)"></i>Proyección de Stand</div>
+        <div class="section-sub">Imágenes y videos para los proyectores del stand.</div>
+        <div class="stand-grid">
+
+          <div class="proj-box">
+            <div class="proj-box-label"><i class="ti ti-device-projector"></i>Proyector 1 — Stand A</div>
+            <div class="screen-frame" id="s1-screen"><div class="screen-off-label">SIN SEÑAL</div></div>
+            <div class="upload-zone">
+              <input type="file" accept="image/*,video/*" onchange="API.uploadFile('s1', this)">
+              <i class="ti ti-upload"></i>
+              <p>Subir imagen o video</p>
+              <div class="hint">PNG · JPG · MP4 · máx 100 MB</div>
+            </div>
+            <div class="proj-controls">
+              <button class="btn btn-green" onclick="API.projectorOn('s1')"><i class="ti ti-player-play"></i>Encender</button>
+              <button class="btn"           onclick="API.projectorOff('s1')"><i class="ti ti-x"></i>Apagar</button>
+            </div>
+          </div>
+
+          <div class="proj-box">
+            <div class="proj-box-label"><i class="ti ti-device-projector"></i>Proyector 2 — Stand B</div>
+            <div class="screen-frame" id="s2-screen"><div class="screen-off-label">SIN SEÑAL</div></div>
+            <div class="upload-zone">
+              <input type="file" accept="image/*,video/*" onchange="API.uploadFile('s2', this)">
+              <i class="ti ti-upload"></i>
+              <p>Subir imagen o video</p>
+              <div class="hint">PNG · JPG · MP4 · máx 100 MB</div>
+            </div>
+            <div class="proj-controls">
+              <button class="btn btn-green" onclick="API.projectorOn('s2')"><i class="ti ti-player-play"></i>Encender</button>
+              <button class="btn"           onclick="API.projectorOff('s2')"><i class="ti ti-x"></i>Apagar</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- IMMERSIVE VIEW -->
+      <div class="view" id="view-immersive">
+        <div class="view-title"><i class="ti ti-360" style="color:var(--purple-mid)"></i>Espacio Inmersivo</div>
+        <div class="section-sub">
+          Vista previa del contenido inmersivo. En operación real, las imágenes generadas por
+          NanoBanana durante una narración aparecen aquí en vivo.
+        </div>
+        <div class="immersive-demo" id="imm-demo">
+          <canvas id="imm-canvas"></canvas>
+          <div class="immersive-overlay" id="imm-overlay">
+            <h2>ESPACIO INMERSIVO</h2>
+            <p>Esperando contenido…</p>
+          </div>
+        </div>
+        <div class="upload-zone">
+          <input type="file" accept="image/*,video/*" onchange="API.uploadFile('imm', this)">
+          <i class="ti ti-360"></i>
+          <p>Subir imagen o video inmersivo</p>
+          <div class="hint">MP4 · JPG · PNG · WEBP</div>
+        </div>
+        <div class="proj-controls">
+          <button class="btn btn-purple" onclick="API.projectorOn('imm')"><i class="ti ti-player-play"></i>Activar</button>
+          <button class="btn btn-red"    onclick="API.projectorOff('imm')"><i class="ti ti-player-stop"></i>Detener</button>
+        </div>
+      </div>
+
+      <!-- FIRMWARE VIEW -->
+      <div class="view" id="view-firmware">
+        <div class="view-title"><i class="ti ti-cpu" style="color:var(--amber)"></i>Firmware</div>
+        <div class="fw-card">
+          <div class="fw-row"><span class="fw-key">Servidor</span><span class="fw-val" id="fw-server" style="color:#F09595">● DEMO (sin servidor)</span></div>
+          <div class="fw-row"><span class="fw-key">Versión</span><span class="fw-val">MECH frontend v1.0</span></div>
+          <div class="fw-row"><span class="fw-key">Modelo Claude</span><span class="fw-val" id="fw-model">claude-opus-4-7</span></div>
+          <div class="fw-row"><span class="fw-key">Bucle de voz</span><span class="fw-val" id="fw-voice">DETENIDO</span></div>
+          <div class="fw-row"><span class="fw-key">Arduino</span><span class="fw-val" id="fw-arduino">—</span></div>
+          <div class="fw-row"><span class="fw-key">Modo robot</span><span class="fw-val" id="fw-mode">IDLE</span></div>
+        </div>
+        <div class="warning-box">
+          <div style="font-size:11px;font-family:var(--font-mono);color:#F09595;margin-bottom:8px">
+            ⚠ El PARO DE EMERGENCIA es global
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6">
+            Detiene motores (<code>MODE:STOP</code>), corta el audio de TTS en curso,
+            apaga la proyección y termina el bucle de voz. Puedes activarlo con el
+            botón rojo del header o con la <strong>barra espaciadora</strong>.
+          </div>
+        </div>
+      </div>
+
+      <!-- SENSORS VIEW -->
+      <div class="view" id="view-sensors">
+        <div class="view-title"><i class="ti ti-radar" style="color:var(--teal)"></i>Sensores</div>
+        <div class="fw-card">
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-microphone"></i>Micrófono (Pi)</span><span class="sensor-val val-off" id="sen-mic">INACTIVO</span></div>
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-volume"></i>Parlante / TTS</span><span class="sensor-val val-ok">ELEVENLABS</span></div>
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-device-projector"></i>Proyector 1</span><span class="sensor-val val-off" id="sen-s1">APAGADO</span></div>
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-device-projector"></i>Proyector 2</span><span class="sensor-val val-off" id="sen-s2">APAGADO</span></div>
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-360"></i>Proj. Inmersivo</span><span class="sensor-val val-off" id="sen-imm">APAGADO</span></div>
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-brand-arduino"></i>Arduino (Serial)</span><span class="sensor-val val-off" id="sen-ard">DESCONECTADO</span></div>
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-radar-2"></i>HC-SR04</span><span class="sensor-val val-off" id="sen-us">SIN DATOS</span></div>
+          <div class="sensor-item" style="border:none"><span class="sensor-name"><i class="ti ti-wifi"></i>WebSocket</span><span class="sensor-val val-off" id="sen-ws">DESCONECTADO</span></div>
+        </div>
+      </div>
+
+      <!-- ARDUINO VIEW -->
+      <div class="view" id="view-arduino">
+        <div class="view-title"><i class="ti ti-brand-arduino" style="color:var(--amber)"></i>Control directo de Arduino</div>
+        <div class="section-sub">
+          Botones que envían comandos directamente al Arduino vía serial.
+          Coincide con el protocolo de <code>mech_controller.ino</code>.
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">MODO DEL ROBOT</div>
+          <div class="arduino-cmd-grid">
+            <button class="arduino-btn" onclick="API.arduinoMode('IDLE')">🛏 IDLE</button>
+            <button class="arduino-btn" onclick="API.arduinoMode('LISTEN')">👂 LISTEN</button>
+            <button class="arduino-btn" onclick="API.arduinoMode('SPEAK')">🗣 SPEAK</button>
+            <button class="arduino-btn" onclick="API.arduinoMode('AUTO')">🤖 AUTO</button>
+            <button class="arduino-btn danger" onclick="API.arduinoMode('STOP')">■ STOP</button>
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">MOVIMIENTO (ruedas omnidireccionales)</div>
+          <div class="arduino-cmd-grid">
+            <div></div>
+            <button class="arduino-btn"  onpointerdown="API.move(60,0,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↑ AVANZAR</button>
+            <div></div>
+            <button class="arduino-btn"  onpointerdown="API.move(0,-60,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">← LATERAL</button>
+            <button class="arduino-btn danger" onclick="API.move(0,0,0)">■ ALTO</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,60,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">→ LATERAL</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,-60)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟲ GIRO IZQ</button>
+            <button class="arduino-btn"  onpointerdown="API.move(-60,0,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↓ ATRÁS</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,60)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟳ GIRO DER</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+            Mantén presionado el botón para mover. Soltar = detiene.
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">CABEZA</div>
+          <div class="slider-row">
+            <label>PAN</label>
+            <input type="range" min="0" max="180" value="90" id="head-pan" oninput="API.headLive()">
+            <span class="val" id="head-pan-val">90°</span>
+          </div>
+          <div class="slider-row">
+            <label>TILT</label>
+            <input type="range" min="0" max="180" value="90" id="head-tilt" oninput="API.headLive()">
+            <span class="val" id="head-tilt-val">90°</span>
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">BRAZOS</div>
+          <div class="slider-row">
+            <label>IZQ</label>
+            <input type="range" min="0" max="180" value="90" id="arm-l" oninput="API.armLive('L')">
+            <span class="val" id="arm-l-val">90°</span>
+          </div>
+          <div class="slider-row">
+            <label>DER</label>
+            <input type="range" min="0" max="180" value="90" id="arm-r" oninput="API.armLive('R')">
+            <span class="val" id="arm-r-val">90°</span>
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">COMANDO CRUDO (debug)</div>
+          <div class="text-input-row">
+            <input class="text-input" id="raw-cmd" type="text" placeholder="Ej: HEAD:90:90 o MOVE:50:0:0">
+            <button class="btn btn-purple" onclick="API.sendRaw()"><i class="ti ti-send"></i>Enviar</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <!-- ───── RIGHT PANEL ───── -->
+    <div class="right-panel">
+      <div class="panel-section">
+        <div class="panel-title">Conversación</div>
+        <div class="chat-list" id="chat-list">
+          <div class="chat-bubble chat-mech">Hola, soy MECH. Pregúntame sobre obras culturales o sobre mí mismo.</div>
+        </div>
+      </div>
+      <div class="panel-section">
+        <div class="panel-title">Atajos</div>
+        <div class="cmd-entry"><div class="cmd-trigger">Barra espaciadora</div><div class="cmd-desc">PARO DE EMERGENCIA</div></div>
+        <div class="cmd-entry"><div class="cmd-trigger">V</div><div class="cmd-desc">Activar / desactivar bucle de voz</div></div>
+        <div class="cmd-entry"><div class="cmd-trigger">1 / 2 / 3</div><div class="cmd-desc">Vistas Voz / Stand / Inmersivo</div></div>
+        <div class="cmd-entry"><div class="cmd-trigger">Esc / F11</div><div class="cmd-desc">Salir del modo kiosko</div></div>
+      </div>
+      <div class="panel-section grow">
+        <div class="panel-title">Log del sistema</div>
+        <div class="log-list" id="log-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script src="app.js"></script>
+</body>
+</html>
