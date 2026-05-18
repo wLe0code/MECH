@@ -1,0 +1,19 @@
+# Secretos
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Imágenes generadas (efímeras)
+backend/generated_images/
+
+# Modelos descargados por faster-whisper
+.cache/
+
+# IDE
+.vscode/
+.idea/

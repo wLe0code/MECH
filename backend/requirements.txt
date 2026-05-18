@@ -1,0 +1,32 @@
+# Claude API
+anthropic>=0.92.0
+
+# Audio I/O y VAD
+sounddevice>=0.4.7
+soundfile>=0.12.1
+numpy>=1.26.0
+webrtcvad>=2.0.10
+
+# STT local (offline, sin API)
+faster-whisper>=1.0.3
+
+# TTS por API (voz natural)
+elevenlabs>=1.8.0
+
+# Generación de imágenes (NanoBanana = Gemini 2.5 Flash Image)
+google-genai>=0.3.0
+
+# Comunicación con Arduino
+pyserial>=3.5
+
+# Proyección de imágenes (overlay fullscreen)
+pillow>=10.4.0
+
+# Variables de entorno
+python-dotenv>=1.0.1
+
+# Servidor de control (frontend + WebSocket)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+
