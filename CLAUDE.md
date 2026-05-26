@@ -1,0 +1,304 @@
+# CLAUDE.md — contexto para futuras sesiones de Claude Code
+
+Este archivo es tu primer punto de referencia al abrir una sesión nueva en este repo. Léelo COMPLETO antes de hacer cualquier cambio o sugerencia. Está escrito para ti (Claude), no para el usuario.
+
+---
+
+## Qué es MECH
+
+Robot interactivo para la **WRO 2026 — Robots and Culture**. Misión: en un stand de exhibición, narrar obras culturales (Romeo y Julieta, Shrek, La Odisea, Don Quijote, etc.) con **voz + proyección inmersiva + movimiento físico**, reaccionando a usuarios que se acercan y le hablan.
+
+El usuario es un estudiante (no programador profesional). Comunica en **español**. Las explicaciones siempre en español, paso a paso, asumiendo poco conocimiento previo. No asumas familiaridad con git, terminal, Python, etc. salvo evidencia contraria.
+
+---
+
+## Arquitectura — qué hace cada pieza
+
+Esquema mental basado en los diagramas originales del usuario (capas física + flujo de software + flujo de interacción):
+
+### Capas físicas del robot
+
+| Capa | Componentes |
+|---|---|
+| **Superior** | Motor de cabeza (servos pan/tilt), proyectores HDMI |
+| **Central** | Raspberry Pi 5 (8GB), fuente de poder, micrófono USB, parlante, **cámara Pi v3** (pendiente) |
+| **Mecánica** | Arduino del kit Robo Robo (no UNO pelado), ruedas omnidireccionales, motores DC, HC-SR04 |
+
+### Flujo del software (de arriba a abajo)
+
+```
+Usuario habla
+   │
+   ▼ audio
+[STT local] faster-whisper en la Pi          ← backend/stt.py
+   │ texto
+   ▼
+[LLM] Claude Opus 4.7 (UN solo request)      ← backend/llm.py
+   │ devuelve Plan estructurado (Pydantic):
+   │   { mode, title, segments[{narration, image_prompt, gesture}] }
+   ▼
+[Orquestador] mech_app.execute_plan()         ← backend/mech_app.py
+   │ por cada segmento:
+   ├─→ Gemini 2.5 Flash Image (NanoBanana)    ← backend/image_gen.py
+   ├─→ Arduino (servos + ruedas)              ← backend/arduino_link.py
+   └─→ ElevenLabs TTS                         ← backend/tts.py
+```
+
+### Flujo de interacción usuario
+
+```
+Usuario → Selección por voz → [Stand info] o
+                              [Espacio inmersivo] (con Función + Movimiento + Q&A)
+                                                          ↓
+                                                       Bot MECH
+                                                          ↓
+                                              Supervisión firmware (panel web)
+```
+
+### Por qué structured outputs y NO tool use
+
+Para narrar Romeo y Julieta en 5 escenas, tool use serían ~10 round trips a Claude (5x imagen + 5x texto). Structured outputs es UN solo round trip que devuelve el guión completo. Más rápido, más barato, más predecible. Si más adelante se necesita reactividad (Claude decide el flujo en vivo), se puede migrar — pero **no lo cambies sin que el usuario lo pida explícitamente**.
+
+---
+
+## Decisiones de hardware ya tomadas
+
+No las cuestiones a menos que el usuario las cuestione primero:
+
+| Componente | Decisión | Por qué |
+|---|---|---|
+| Cómputo principal | Raspberry Pi 5 **8 GB** | Holgura para Whisper + Chromium + CV |
+| Storage | microSD 64 GB | Suficiente |
+| Microcontrolador | **Arduino del kit Robo Robo** (no UNO ni Mega pelados) | Trae driver de motores y headers de servo integrados; ahorra L298Ns externos |
+| Motores | DC con ruedas omnidireccionales (mecanum) | Movimiento en cualquier dirección |
+| Servos | 4 (cabeza pan, cabeza tilt, brazo L, brazo R) | Cabeza + brazos para gestos |
+| Obstáculos | **HC-SR04 + Pi Camera v3** ambos | HC-SR04 para evasión rápida; Cámara para detección de usuarios |
+| Audio in | Micrófono USB | |
+| Audio out | Parlante USB o jack 3.5mm | |
+| Visualización | Proyector HDMI desde la Pi + Chromium kiosko a `/projector` | |
+
+### Pin mapping del Robo Robo
+
+Los pines del Robo Robo NO coinciden 1:1 con los que tiene hardcodeados [`arduino/mech_controller/mech_controller.ino`](arduino/mech_controller/mech_controller.ino) (escrito para un Mega genérico con L298Ns). El usuario debe **buscar el datasheet del Robo Robo** y actualizar las constantes `PIN_M_*` y `PIN_SERVO_*`. **NO** reescribas la lógica del .ino — solo los números de pin. Si el usuario te pregunta por esto, ayúdalo a encontrar el datasheet o a hacer un sketch de prueba pin-por-pin (`Serial.println` cuando muevas algo).
+
+---
+
+## Stack de APIs externas
+
+| Servicio | Para qué | Archivo | Variable .env |
+|---|---|---|---|
+| **Anthropic Claude API** (Opus 4.7) | Cerebro — devuelve plan estructurado | `backend/llm.py` | `ANTHROPIC_API_KEY` |
+| **ElevenLabs** | TTS en español (multilingual_v2) | `backend/tts.py` | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` |
+| **Google Gemini** | NanoBanana = `gemini-2.5-flash-image` | `backend/image_gen.py` | `GOOGLE_API_KEY` |
+
+**Claude no llama directamente a ElevenLabs ni a Gemini.** El usuario tuvo esta confusión. Si vuelve a preguntar, recuérdale: Claude devuelve un Plan JSON; Python ejecuta el plan llamando cada API en orden.
+
+**STT NO usa API.** Es `faster-whisper` corriendo local en la Pi (modelo `base` o `small`). Cero costo, sin red. Configurable en `WHISPER_MODEL`.
+
+---
+
+## Mapa de archivos
+
+```
+backend/
+  server.py           ← ENTRY POINT principal. FastAPI + WebSocket.
+  main.py             ← Modo standalone sin servidor (testing puro).
+                        NO correr junto con server.py.
+  mech_app.py         ← Singleton de estado + event bus.
+                        Aquí vive emergency_stop() y execute_plan().
+  llm.py              ← Cliente Claude. System prompt + schema Pydantic del Plan.
+  stt.py              ← faster-whisper local + VAD (webrtcvad).
+  tts.py              ← ElevenLabs streaming.
+  image_gen.py        ← Gemini / NanoBanana.
+  arduino_link.py     ← Serial al Arduino. Protocolo de texto líneas \n.
+  gestures.py         ← Traduce gestos abstractos ("excited", "wave"...)
+                        a comandos del Arduino.
+  projector.py        ← Visor tkinter ALTERNATIVO (solo para main.py standalone).
+                        En operación normal se usa el visor browser-based.
+  config.py           ← Lee .env.
+  requirements.txt
+  .env.example
+
+frontend/
+  index.html          ← Panel de control web.
+  app.js              ← Lógica + WebSocket. Detecta file:// para modo demo.
+  styles.css
+  projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
+  manifest.json       ← PWA instalable.
+  sw.js               ← Service worker.
+  icon.svg
+
+arduino/mech_controller/
+  mech_controller.ino ← Firmware. Modos: AUTO/IDLE/LISTEN/SPEAK/STOP.
+                        Comandos: MODE, HEAD, ARM, MOVE (omnidireccional), STOP.
+
+windows/              ← Control desde laptop Windows
+  MECH Control.bat    ← Doble click → Edge --app, ventana sin barras.
+  MECH Kiosko.bat     ← Pantalla completa kiosko.
+  MECH Proyector.bat  ← Página de proyector en kiosko.
+  config.txt          ← URL del servidor (el usuario edita la IP de la Pi aquí).
+  README.md
+
+docs/
+  GUIA.md             ← Hardware y montaje en la Pi.
+  FRONTEND.md         ← Servidor, panel, control desde Windows.
+
+Demos/                ← Versión standalone solo HTML+JS+CSS para probar
+                        la UI sin backend (file://).
+```
+
+---
+
+## Reglas de operación (modos mutuamente excluyentes)
+
+Dos formas de correr el backend, **nunca a la vez** (pelearían por Arduino + micrófono):
+
+1. **`python -m backend.server`** → modo normal. Sirve frontend + WS + bucle de voz (controlable desde el panel).
+2. **`python -m backend.main`** → modo headless de testing. Solo voz + STT + Claude + TTS. Sin web.
+
+Para producción, **siempre server.py**.
+
+---
+
+## Comandos comunes
+
+Quick-reference. Asume que estás en la raíz del repo.
+
+```bash
+# Setup en la Pi (una sola vez)
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt
+cp backend/.env.example backend/.env       # rellenar API keys
+
+# Operación normal (backend + panel + WS, todo en uno)
+python -m backend.server
+
+# Visor de proyección en la misma Pi (Chromium kiosko)
+chromium --kiosk http://localhost:8000/projector
+# En Bookworm el binario también está como chromium-browser; ambos funcionan.
+
+# Testing headless (sin web, sin panel — solo voz → Claude → TTS)
+python -m backend.main
+
+# Subir firmware al Arduino (desde Arduino IDE o arduino-cli)
+arduino-cli compile --fqbn arduino:avr:uno arduino/mech_controller
+arduino-cli upload  --fqbn arduino:avr:uno -p <PUERTO> arduino/mech_controller
+# PUERTO en Linux suele ser /dev/ttyUSB0 o /dev/ttyACM0; en Windows COM3, COM4...
+```
+
+### Versión de Python
+
+Desarrollado y probado con **Python 3.11** (el que trae Raspberry Pi OS Bookworm por defecto). `requirements.txt` no fija versión mínima — si surgen incompatibilidades de paquetes, sospechar primero de versión de intérprete.
+
+### Tests y lint
+
+Este repo **no tiene suite de tests ni linter configurado**. La validación es manual extremo-a-extremo: voz → STT → Plan de Claude → imagen → proyección → comandos Arduino. No inventes `pytest`/`ruff`/`black` — si crees que hace falta uno, propónselo al usuario antes de añadirlo.
+
+---
+
+## Convenciones de código
+
+### Idiomas
+
+- **Strings al usuario (UI, voz, logs)** → siempre español neutro.
+- **`image_prompt` para NanoBanana** → siempre inglés (Gemini rinde mejor).
+- **Comentarios y nombres de variables** → español está bien, ya lo usa el repo.
+- **Commits** → español también, sigue el estilo existente.
+
+### Logs
+
+`mech_app.log(message, level)` con niveles `ok | info | warn | err`. Se difunde por WebSocket al panel. Úsalo en vez de `print()` cuando sea desde un módulo que toca eventos del robot.
+
+### Gestos disponibles
+
+Definidos en `backend/gestures.py` y referenciados en el system prompt de `llm.py`:
+`neutral`, `excited`, `thoughtful`, `wave`, `point`, `arms_open`.
+Si añades uno nuevo, **modifica ambos archivos** y el `Literal[...]` del schema en `llm.py`.
+
+### Protocolo Arduino (líneas terminadas en `\n` a 115200 baud)
+
+```
+MODE:{AUTO|IDLE|LISTEN|SPEAK|STOP}
+HEAD:<pan>:<tilt>          # 0-180 cada uno
+ARM:{L|R}:<angle>          # 0-180
+MOVE:<vx>:<vy>:<w>         # -100..100 cada uno
+STOP
+```
+
+Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir contexto al usuario.
+
+---
+
+## Estado actual del proyecto (actualiza esto cuando avances)
+
+### ✅ Implementado y funcional
+
+- Backend completo (server.py, mech_app.py, llm, stt, tts, image_gen, arduino_link, gestures).
+- Firmware Arduino base (sin pin mapping del Robo Robo todavía).
+- Frontend completo (panel + projector + PWA).
+- Launchers Windows.
+- Documentación (GUIA.md, FRONTEND.md, windows/README.md).
+
+### 🚧 Pendiente
+
+- **Pin mapping del Robo Robo** en `mech_controller.ino` — el usuario debe obtener el datasheet de su kit y actualizar las constantes `PIN_*`.
+- **Módulo de visión** (`backend/vision.py`) — Pi Camera v3 + MediaPipe Face Detection para:
+  - Detectar presencia de usuario → activar LISTEN automáticamente.
+  - Seguimiento de cara con la cabeza del robot (servo pan/tilt sigue la posición de la cara).
+  - Posiblemente: detección de gestos (alzar mano, señalar) → MediaPipe Pose.
+- **Integración visión ↔ mech_app**: callback `on_user_detected` que dispara el bucle de voz sin necesidad de toque manual.
+
+### Próximo trabajo previsto
+
+El usuario va a continuar la conversación sobre la **cámara**. Antes de proponer código:
+
+1. Pregunta si ya tiene la Pi Camera Module 3 físicamente.
+2. Pregunta si la conectó por CSI y la habilitó (`raspi-config` → Camera).
+3. Pregunta si `libcamera-hello` muestra preview funcional.
+
+Si las 3 son sí, podemos escribir `vision.py`. El plan:
+- Usar `picamera2` (incluido en Raspberry Pi OS).
+- `mediapipe` para Face Detection (light, ~150 MB RAM).
+- Correr en hilo aparte a 10 fps.
+- Publicar eventos `user_detected`, `user_lost`, `face_position(x, y)` al event bus de `mech_app`.
+- `mech_app` reacciona: cuando hay usuario, activa bucle de voz + envía `HEAD:pan:tilt` al Arduino para seguir la cara.
+
+---
+
+## Gotchas frecuentes
+
+1. **OneDrive sync** puede impedir `git worktree move` y otros renombrados. Si una operación de archivo falla con "Permission denied" en Windows, sospechar de OneDrive.
+2. **Whisper descarga el modelo en la primera ejecución** (~150 MB para `base`). Tarda ~30s sin red feedback. No es un freeze.
+3. **El Arduino se resetea cuando se abre el puerto serial.** El `arduino_link.connect()` espera 2s después de abrir. No reducir ese sleep.
+4. **`temperature`/`top_p`/`top_k`/`budget_tokens` no van con Claude Opus 4.7.** Devuelven 400. El código actual ya está alineado (usa `thinking: {type: "adaptive"}`).
+5. **Modelo Claude**: siempre `claude-opus-4-7` (alias correcto; no añadir sufijo de fecha).
+6. **Arduino Robo Robo**: es Arduino-compatible (ATmega328P). El miedo a "incompatibilidad" del usuario es infundado — solo necesita pin mapping diferente.
+7. **`python -m backend.projector`** (tkinter) y el visor browser-based en `/projector` son alternativas. Para producción usar el browser.
+8. **El paquete Chromium en Raspberry Pi OS Bookworm es `chromium`**, no `chromium-browser` (aunque el binario sigue existiendo bajo ambos nombres).
+9. **La red wifi del evento puede tener client isolation** (común en colegios/eventos). Si Windows no ve la Pi por IP aunque estén en la misma red, ese es el problema. Hotspot del celular como respaldo.
+
+---
+
+## Cómo trabajar con este usuario
+
+- **Pasos pequeños y concretos.** "Pega esto, dime qué sale." No abrumes con explicación teórica.
+- **Cuando algo falla en su consola**, pídele el mensaje EXACTO antes de adivinar.
+- **No empujes Tauri / Electron / refactors grandes** salvo que pregunte. El stack actual (FastAPI + Edge --app + PWA) ya cubre lo que necesita.
+- **Confirma el alcance antes de tocar muchos archivos.** El usuario prefiere cambios chicos y revisables.
+- **Antes de instalar dependencias nuevas**, mira si ya hay algo equivalente en `requirements.txt`.
+- **Después de cualquier cambio relevante**, actualiza la sección "Estado actual" arriba.
+
+---
+
+## Recursos de referencia
+
+- Anthropic Claude API docs: https://platform.claude.com/docs
+- Gemini Image API: https://ai.google.dev/gemini-api/docs/image-generation
+- ElevenLabs Python SDK: https://github.com/elevenlabs/elevenlabs-python
+- faster-whisper: https://github.com/SYSTRAN/faster-whisper
+- picamera2: https://github.com/raspberrypi/picamera2
+- MediaPipe Face Detection: https://developers.google.com/mediapipe/solutions/vision/face_detector
+
+---
+
+**Si actualizas algo significativo en el código, actualiza también este archivo. La siguiente sesión depende de que esto refleje la realidad.**
