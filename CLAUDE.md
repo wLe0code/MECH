@@ -21,8 +21,8 @@ Esquema mental basado en los diagramas originales del usuario (capas física + f
 | Capa | Componentes |
 |---|---|
 | **Superior** | Motor de cabeza (servos pan/tilt), proyectores HDMI |
-| **Central** | Raspberry Pi 5 (8GB), fuente de poder, micrófono USB, parlante, **cámara Pi v3** (pendiente) |
-| **Mecánica** | Arduino del kit Robo Robo (no UNO pelado), ruedas omnidireccionales, motores DC, HC-SR04 |
+| **Central** | Raspberry Pi 5 (8GB), fuente de poder, parlante, **Logitech C930e** (cámara USB + mic dual con RightSound) |
+| **Mecánica** | Arduino del kit Robo Robo (no UNO pelado), ruedas omnidireccionales, motores DC |
 
 ### Flujo del software (de arriba a abajo)
 
@@ -72,10 +72,20 @@ No las cuestiones a menos que el usuario las cuestione primero:
 | Microcontrolador | **Arduino del kit Robo Robo** (no UNO ni Mega pelados) | Trae driver de motores y headers de servo integrados; ahorra L298Ns externos |
 | Motores | DC con ruedas omnidireccionales (mecanum) | Movimiento en cualquier dirección |
 | Servos | 4 (cabeza pan, cabeza tilt, brazo L, brazo R) | Cabeza + brazos para gestos |
-| Obstáculos | **HC-SR04 + Pi Camera v3** ambos | HC-SR04 para evasión rápida; Cámara para detección de usuarios |
-| Audio in | Micrófono USB | |
+| Presencia / visión | **Logitech C930e** (USB UVC, 1080p, FOV 90°) | FOV ancho detecta usuarios que se acercan por los lados; H.264 por hardware libera CPU de la Pi |
+| Audio in | **Mic dual de la C930e** (RightSound) — fallback: USB direccional pequeño (~$15) si el ambiente es muy ruidoso | Aprovecha el mic ya integrado; se decide en pruebas reales |
 | Audio out | Parlante USB o jack 3.5mm | |
 | Visualización | Proyector HDMI desde la Pi + Chromium kiosko a `/projector` | |
+
+### Sin HC-SR04 (cambio de plan)
+
+El plan original tenía HC-SR04 **+** cámara para roles distintos: HC-SR04 evasión rápida, cámara detección de usuarios. **El usuario decidió quitar el HC-SR04** y usar solo la cámara C930e para todo.
+
+**Trade-off conocido:** la cámara con MediaPipe corre a ~10 fps; no es buena para frenar antes de chocar en movimiento. Si más adelante el robot se golpea contra paredes/personas, considerar:
+- Volver a meter un HC-SR04 (es barato y se conecta a 2 pines del Arduino).
+- O añadir detección de obstáculos por visión (mucho más complejo).
+
+No empujes esto si el usuario no lo trae. Por ahora se asume operación en stand con poco movimiento autónomo.
 
 ### Pin mapping del Robo Robo
 
@@ -242,26 +252,29 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 ### 🚧 Pendiente
 
 - **Pin mapping del Robo Robo** en `mech_controller.ino` — el usuario debe obtener el datasheet de su kit y actualizar las constantes `PIN_*`.
-- **Módulo de visión** (`backend/vision.py`) — Pi Camera v3 + MediaPipe Face Detection para:
+- **Módulo de visión** (`backend/vision.py`) — Logitech C930e (USB UVC) + MediaPipe Face Detection para:
   - Detectar presencia de usuario → activar LISTEN automáticamente.
   - Seguimiento de cara con la cabeza del robot (servo pan/tilt sigue la posición de la cara).
   - Posiblemente: detección de gestos (alzar mano, señalar) → MediaPipe Pose.
 - **Integración visión ↔ mech_app**: callback `on_user_detected` que dispara el bucle de voz sin necesidad de toque manual.
+- **Selección de dispositivo de audio**: cuando se enchufe la C930e, su mic aparecerá como dispositivo USB junto al que ya estaba. Verificar en `stt.py` que se elige el correcto (puede requerir exponer `AUDIO_INPUT_DEVICE` en `.env`).
 
 ### Próximo trabajo previsto
 
-El usuario va a continuar la conversación sobre la **cámara**. Antes de proponer código:
+El usuario ya tiene la **Logitech C930e** comprada. Antes de escribir `vision.py`:
 
-1. Pregunta si ya tiene la Pi Camera Module 3 físicamente.
-2. Pregunta si la conectó por CSI y la habilitó (`raspi-config` → Camera).
-3. Pregunta si `libcamera-hello` muestra preview funcional.
+1. Pregunta si la enchufó a la Pi por USB.
+2. Pide que corra `v4l2-ctl --list-devices` para confirmar que aparece (y en qué `/dev/videoN`).
+3. Prueba rápida: `ffmpeg -f v4l2 -i /dev/video0 -frames 1 test.jpg` o `fswebcam test.jpg` para capturar un frame.
 
-Si las 3 son sí, podemos escribir `vision.py`. El plan:
-- Usar `picamera2` (incluido en Raspberry Pi OS).
+Si funciona, escribimos `vision.py` con este plan:
+- **OpenCV + V4L2** (`cv2.VideoCapture(0)`) — NO `picamera2`. La C930e es USB UVC, no CSI.
+- Reducir a 640×360 @ 10 fps antes de pasar a MediaPipe (la C930e da 1080p pero no lo necesitamos).
 - `mediapipe` para Face Detection (light, ~150 MB RAM).
-- Correr en hilo aparte a 10 fps.
+- Correr en hilo aparte para no bloquear el event loop.
 - Publicar eventos `user_detected`, `user_lost`, `face_position(x, y)` al event bus de `mech_app`.
 - `mech_app` reacciona: cuando hay usuario, activa bucle de voz + envía `HEAD:pan:tilt` al Arduino para seguir la cara.
+- Añadir a `requirements.txt`: `opencv-python-headless` y `mediapipe`.
 
 ---
 
@@ -296,7 +309,8 @@ Si las 3 son sí, podemos escribir `vision.py`. El plan:
 - Gemini Image API: https://ai.google.dev/gemini-api/docs/image-generation
 - ElevenLabs Python SDK: https://github.com/elevenlabs/elevenlabs-python
 - faster-whisper: https://github.com/SYSTRAN/faster-whisper
-- picamera2: https://github.com/raspberrypi/picamera2
+- OpenCV VideoCapture (V4L2): https://docs.opencv.org/4.x/dd/d43/tutorial_py_video_display.html
+- Logitech C930e datasheet: https://www.logitech.com/en-us/products/webcams/c930e-business-webcam.html
 - MediaPipe Face Detection: https://developers.google.com/mediapipe/solutions/vision/face_detector
 
 ---
