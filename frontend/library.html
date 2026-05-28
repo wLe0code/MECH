@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MECH · Biblioteca de Videos</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  /* Estilos específicos de la biblioteca — heredan paleta de /static/styles.css. */
+  body { background: #0e0e12; color: #e8e8ee; font-family: var(--font-sans, system-ui); }
+  .lib-wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px 80px; }
+  .lib-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+  .lib-title { font-size: 22px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .lib-title i { color: var(--purple-mid, #b478ff); }
+  .lib-back { color: #aaa; text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .lib-back:hover { color: #fff; }
+  .lib-intro { color: #aaa; font-size: 13px; line-height: 1.6; max-width: 720px; margin-bottom: 28px; }
+  .work-card {
+    background: #1a1a22; border: 1px solid #2a2a36; border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 18px;
+  }
+  .work-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+  .work-title { font-size: 17px; font-weight: 600; }
+  .work-author { font-size: 12px; color: #888; }
+  .work-synopsis { color: #b8b8c4; font-size: 13px; margin: 6px 0 14px; line-height: 1.5; }
+  .work-slug { font-family: var(--font-mono, monospace); font-size: 11px; color: #6f6f88; }
+  .progress-bar {
+    height: 6px; background: #25252f; border-radius: 4px; overflow: hidden;
+    margin: 6px 0 14px;
+  }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #6c4adf, #b478ff); transition: width 0.3s; }
+  .progress-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .seg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .seg-card {
+    background: #15151c; border: 1px solid #262630; border-radius: 10px; padding: 10px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-height: 56px;
+  }
+  .seg-card.present { border-color: #356b3f; background: #142019; }
+  .seg-card.missing { border-color: #5c2a2a; background: #1f1414; }
+  .seg-num { font-family: var(--font-mono, monospace); font-size: 13px; font-weight: 600; }
+  .seg-status { font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+  .seg-status.ok  { background: #2a5a3a; color: #b6f0c0; }
+  .seg-status.no  { background: #5a2a2a; color: #f0b6b6; }
+  .seg-actions { display: flex; gap: 4px; }
+  .btn {
+    background: #2a2a36; color: #e0e0e8; border: 1px solid #353545;
+    padding: 5px 9px; font-size: 11px; border-radius: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .btn:hover { background: #353545; }
+  .btn-primary { background: #6c4adf; border-color: #6c4adf; color: white; }
+  .btn-primary:hover { background: #7e5ce8; }
+  .btn-danger { background: transparent; border-color: #6a3232; color: #d88; }
+  .btn-danger:hover { background: #3a1717; }
+  .hidden-input { display: none; }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1a1a22; border: 1px solid #2a2a36; border-radius: 8px;
+    padding: 12px 16px; font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0; transform: translateY(8px); transition: 0.2s;
+    max-width: 360px;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.ok  { border-color: #356b3f; }
+  .toast.err { border-color: #6a3232; }
+  .empty {
+    text-align: center; padding: 60px 20px; color: #777; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div class="lib-wrap">
+  <div class="lib-header">
+    <div class="lib-title">
+      <i class="ti ti-library-photo"></i>
+      Biblioteca de videos pre-renderizados
+    </div>
+    <a class="lib-back" href="/"><i class="ti ti-arrow-left"></i> Volver al panel</a>
+  </div>
+
+  <p class="lib-intro">
+    Acá subes los videos generados externamente (Kling, Veo, Runway, etc.) para cada obra
+    cultural y cada escena. Cuando un usuario pida una de estas obras, MECH reproducirá
+    los videos en orden mientras narra. Si una obra <strong>no</strong> está completa
+    aquí, el robot cae automáticamente a generar imágenes con NanoBanana.
+    <br><br>
+    <strong>Convención de archivos:</strong> mp4 por segmento, nombrados <code>seg01.mp4</code>,
+    <code>seg02.mp4</code>, etc. dentro de la carpeta de cada obra.
+  </p>
+
+  <div id="works-container">
+    <div class="empty">Cargando biblioteca…</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  let works = [];
+
+  function toast(msg, kind = 'ok') {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + kind;
+    setTimeout(() => { t.className = 'toast ' + kind; }, 2800);
+  }
+
+  async function loadLibrary() {
+    try {
+      const res = await fetch('/api/library');
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      works = data.works || [];
+      renderWorks();
+    } catch (e) {
+      $('works-container').innerHTML =
+        `<div class="empty">Error al cargar la biblioteca: ${e.message}</div>`;
+    }
+  }
+
+  function renderWorks() {
+    const container = $('works-container');
+    if (!works.length) {
+      container.innerHTML = '<div class="empty">No hay obras configuradas en video_library.py.</div>';
+      return;
+    }
+    container.innerHTML = works.map(workCard).join('');
+  }
+
+  function workCard(w) {
+    const pct = Math.round((w.present_segments / w.segments) * 100);
+    const segs = [];
+    for (let i = 1; i <= w.segments; i++) {
+      const present = i <= w.present_segments
+        ? null  // placeholder; we don't know which exactly are present
+        : null;
+      segs.push(segmentCard(w, i));
+    }
+    return `
+      <div class="work-card" data-slug="${w.slug}">
+        <div class="work-head">
+          <div>
+            <div class="work-title">${escape(w.title)} ${w.complete ? '<span class="seg-status ok" style="margin-left:8px;vertical-align:middle">COMPLETA</span>' : ''}</div>
+            <div class="work-author">${escape(w.author)}</div>
+          </div>
+          <div class="work-slug">slug: ${escape(w.slug)}</div>
+        </div>
+        <div class="work-synopsis">${escape(w.synopsis)}</div>
+        <div class="progress-label">${w.present_segments} de ${w.segments} segmentos cargados (${pct}%)</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="seg-grid">
+          ${segs.join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function segmentCard(w, segNum) {
+    // El backend no nos dice exactamente cuáles segmentos individuales existen,
+    // solo el total. Para el render inicial asumimos los primeros N como presentes
+    // (suficiente para mostrar progreso); el HEAD individual lo hacemos al cargar.
+    const padded = String(segNum).padStart(2, '0');
+    const id = `seg-${w.slug}-${segNum}`;
+    return `
+      <div class="seg-card" id="${id}" data-slug="${w.slug}" data-seg="${segNum}">
+        <div>
+          <div class="seg-num">seg${padded}</div>
+          <div class="seg-status no" data-status>SIN VIDEO</div>
+        </div>
+        <div class="seg-actions">
+          <button class="btn btn-primary" onclick="pickFile('${w.slug}', ${segNum})">
+            <i class="ti ti-upload"></i>
+          </button>
+          <button class="btn btn-danger" onclick="delSegment('${w.slug}', ${segNum})" data-del style="display:none">
+            <i class="ti ti-trash"></i>
+          </button>
+        </div>
+        <input type="file" class="hidden-input" id="file-${w.slug}-${segNum}" accept="video/*"
+               onchange="uploadFile('${w.slug}', ${segNum}, this)">
+      </div>
+    `;
+  }
+
+  function escape(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // Comprueba si cada segmento existe individualmente (HEAD a su URL).
+  async function refreshSegmentStatuses() {
+    for (const w of works) {
+      for (let i = 1; i <= w.segments; i++) {
+        const padded = String(i).padStart(2, '0');
+        const url = `/videos/${w.slug}/seg${padded}.mp4`;
+        try {
+          const res = await fetch(url, { method: 'HEAD' });
+          markSegment(w.slug, i, res.ok);
+        } catch {
+          markSegment(w.slug, i, false);
+        }
+      }
+    }
+  }
+
+  function markSegment(slug, segNum, present) {
+    const card = document.getElementById(`seg-${slug}-${segNum}`);
+    if (!card) return;
+    const status = card.querySelector('[data-status]');
+    const delBtn = card.querySelector('[data-del]');
+    if (present) {
+      card.classList.remove('missing');
+      card.classList.add('present');
+      status.textContent = 'OK';
+      status.className = 'seg-status ok';
+      if (delBtn) delBtn.style.display = '';
+    } else {
+      card.classList.remove('present');
+      card.classList.add('missing');
+      status.textContent = 'SIN VIDEO';
+      status.className = 'seg-status no';
+      if (delBtn) delBtn.style.display = 'none';
+    }
+  }
+
+  function pickFile(slug, segNum) {
+    document.getElementById(`file-${slug}-${segNum}`).click();
+  }
+
+  async function uploadFile(slug, segNum, input) {
+    const file = input.files[0];
+    if (!file) return;
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    toast(`Subiendo ${file.name} (${sizeMB} MB)…`, 'ok');
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch(`/api/library/${slug}/${segNum}`, {
+        method: 'POST',
+        body: fd,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status}: ${text}`);
+      }
+      toast(`Subido: ${slug}/seg${String(segNum).padStart(2, '0')}.mp4`, 'ok');
+      markSegment(slug, segNum, true);
+      // Recargamos las stats globales del card.
+      await loadLibrary();
+      await refreshSegmentStatuses();
+    } catch (e) {
+      toast(`Error subiendo: ${e.message}`, 'err');
+    } finally {
+      input.value = '';
+    }
+  }
+
+  async function delSegment(slug, segNum) {
+    if (!confirm(`¿Borrar ${slug}/seg${String(segNum).padStart(2, '0')}.mp4?`)) return;
+    try {
+      const res = await fetch(`/api/library/${slug}/${segNum}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(res.statusText);
+      toast('Borrado.', 'ok');
+      markSegment(slug, segNum, false);
+      await loadLibrary();
+      await refreshSegmentStatuses();
+    } catch (e) {
+      toast(`Error: ${e.message}`, 'err');
+    }
+  }
+
+  window.pickFile = pickFile;
+  window.uploadFile = uploadFile;
+  window.delSegment = delSegment;
+
+  (async () => {
+    await loadLibrary();
+    await refreshSegmentStatuses();
+  })();
+</script>
+</body>
+</html>

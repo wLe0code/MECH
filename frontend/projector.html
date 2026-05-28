@@ -55,7 +55,8 @@ function detectVideo(url) {
 }
 
 function applyState(s) {
-  // Prioridad: imagen AI > proyector inmersivo > stand 1 > stand 2
+  // Prioridad: video AI (biblioteca) > imagen AI > proyector inmersivo > stand 1 > stand 2
+  if (s.current_video) { show(s.current_video, true); return; }
   if (s.current_image) { show(s.current_image, false); return; }
   const imm = s.projectors?.imm;
   if (imm?.on && imm.file) { show(imm.file, detectVideo(imm.file)); return; }
@@ -73,6 +74,10 @@ function connect() {
     if (msg.type === 'state') applyState(msg.state);
     else if (msg.type === 'image') {
       if (msg.url) show(msg.url, false);
+      else clear();
+    } else if (msg.type === 'video') {
+      // Video pre-renderizado de la biblioteca (Opción B).
+      if (msg.url) show(msg.url, true);
       else clear();
     } else if (msg.type === 'projector') {
       // Solicita el estado actualizado tras el cambio.

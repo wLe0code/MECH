@@ -25,6 +25,7 @@ import anthropic
 from pydantic import BaseModel, Field
 
 import config
+import video_library
 
 
 SYSTEM_PROMPT = """Eres MECH, un robot interactivo de un stand de la WRO 2026
@@ -45,8 +46,10 @@ Decides el modo según lo que pregunte el usuario:
 
 2. **immersive**: el usuario pide una obra cultural (Romeo y Julieta, Shrek,
    El Quijote, La Odisea, etc.). Cuenta la historia en 3-6 escenas. Cada
-   escena tiene una imagen (prompt en inglés, estilo cinematográfico) y una
-   narración corta (2-4 frases en español, tono dramático pero accesible).
+   escena tiene un visual (ver "Biblioteca de videos" abajo: si la obra
+   está pre-renderizada usás `video_slug`+`video_segment`; si no, usás
+   `image_prompt`) y una narración corta (2-4 frases en español, tono
+   dramático pero accesible).
 
 3. **qa**: pregunta libre sobre cualquier tema (puede ser sobre la obra que
    está contando, sobre el stand, sobre cultura general). Responde en 1
@@ -85,7 +88,17 @@ Decides el modo según lo que pregunte el usuario:
 
 
 class Segment(BaseModel):
-    """Una unidad de la performance: una pieza de narración + posible imagen + gesto."""
+    """Una unidad de la performance: narración + visual (video o imagen) + gesto.
+
+    Lógica de visual:
+      - Si `video_slug` Y `video_segment` están presentes → MECH reproduce
+        el video pre-renderizado correspondiente (Opción B).
+      - Si no, y `image_prompt` está presente → MECH genera la imagen con
+        NanoBanana en vivo (fallback para obras no pre-renderizadas y para
+        preguntas espontáneas).
+      - Si ninguno está presente → segmento sin visual nuevo (mantiene el
+        anterior).
+    """
 
     narration: str = Field(
         ...,
@@ -93,7 +106,27 @@ class Segment(BaseModel):
     )
     image_prompt: str | None = Field(
         None,
-        description="Prompt en inglés para generar la imagen de fondo. None si no hay imagen nueva.",
+        description=(
+            "Prompt en inglés para generar la imagen de fondo con NanoBanana. "
+            "None si vas a usar un video pre-renderizado (video_slug) o si no "
+            "querés cambiar el visual."
+        ),
+    )
+    video_slug: str | None = Field(
+        None,
+        description=(
+            "Slug exacto de una obra de la biblioteca de videos "
+            "pre-renderizados (ver lista en el system prompt). Si lo das, "
+            "también das video_segment y el `image_prompt` se ignora."
+        ),
+    )
+    video_segment: int | None = Field(
+        None,
+        ge=1,
+        description=(
+            "Número 1-indexed del segmento dentro de la obra (1, 2, 3, ...). "
+            "Debe estar entre 1 y el total de segmentos de esa obra."
+        ),
     )
     gesture: Literal[
         "neutral", "excited", "thoughtful", "wave", "point", "arms_open"
@@ -134,13 +167,17 @@ def plan_response(user_message: str, conversation_history: list[dict] | None = N
     messages = list(conversation_history or [])
     messages.append({"role": "user", "content": user_message})
 
+    # Componemos el system prompt con la lista dinámica de obras pre-renderizadas
+    # presentes en disco (Opción B). Si no hay videos, esa sección dice "vacía".
+    full_system_prompt = SYSTEM_PROMPT + "\n\n" + video_library.system_prompt_section()
+
     response = client.messages.parse(
         model=config.CLAUDE_MODEL,
         max_tokens=4096,
         system=[
             {
                 "type": "text",
-                "text": SYSTEM_PROMPT,
+                "text": full_system_prompt,
                 "cache_control": {"type": "ephemeral"},
             }
         ],

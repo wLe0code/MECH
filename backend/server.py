@@ -47,6 +47,7 @@ from pydantic import BaseModel
 
 import config
 import stt
+import video_library
 from mech_app import get_app
 
 # -- Paths -------------------------------------------------------------------
@@ -127,6 +128,8 @@ app = FastAPI(title="MECH Control", lifespan=lifespan)
 app.mount("/generated", StaticFiles(directory=str(config.IMAGE_OUTPUT_DIR)), name="generated")
 # Archivos subidos desde el panel (stand projectors).
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+# Biblioteca de videos pre-renderizados (Opción B).
+app.mount("/videos", StaticFiles(directory=str(config.VIDEO_LIBRARY_DIR)), name="videos")
 # Frontend.
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
@@ -151,6 +154,15 @@ async def projector_page():
     page = FRONTEND_DIR / "projector.html"
     if not page.exists():
         raise HTTPException(404, "Proyector no encontrado")
+    return FileResponse(page)
+
+
+@app.get("/library")
+async def library_page():
+    """UI sencilla para subir/borrar videos pre-renderizados por obra."""
+    page = FRONTEND_DIR / "library.html"
+    if not page.exists():
+        raise HTTPException(404, "Página de biblioteca no encontrada")
     return FileResponse(page)
 
 
@@ -303,6 +315,53 @@ async def emergency_stop():
 @app.get("/api/state")
 async def api_state():
     return get_app().state
+
+
+# -- Biblioteca de videos pre-renderizados (Opción B) ------------------------
+
+
+@app.get("/api/library")
+async def library_list():
+    """Devuelve todas las obras del catálogo con su estado de disponibilidad."""
+    return {"works": video_library.available_works()}
+
+
+@app.post("/api/library/{slug}/{segment}")
+async def library_upload(slug: str, segment: int, file: UploadFile = File(...)):
+    """Sube un video para una obra+segmento. Sobrescribe si ya existía."""
+    meta = video_library.WORKS.get(slug)
+    if meta is None:
+        raise HTTPException(404, f"Obra desconocida: {slug}")
+    if not (1 <= segment <= meta["segments"]):
+        raise HTTPException(
+            400,
+            f"Segmento {segment} fuera de rango (1-{meta['segments']}) para {slug}",
+        )
+    dest = video_library.segment_path(slug, segment)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with dest.open("wb") as f:
+        while chunk := await file.read(1 << 20):  # 1 MB
+            f.write(chunk)
+    size_mb = dest.stat().st_size / (1024 * 1024)
+    get_app().log(
+        f"Video subido: {slug}/{video_library.segment_filename(segment)} "
+        f"({size_mb:.1f} MB)",
+        "ok",
+    )
+    return {"ok": True, "url": video_library.segment_url(slug, segment)}
+
+
+@app.delete("/api/library/{slug}/{segment}")
+async def library_delete(slug: str, segment: int):
+    """Elimina un video específico de la biblioteca."""
+    dest = video_library.segment_path(slug, segment)
+    if dest.exists():
+        dest.unlink()
+        get_app().log(
+            f"Video eliminado: {slug}/{video_library.segment_filename(segment)}",
+            "info",
+        )
+    return {"ok": True}
 
 
 # -- WebSocket ---------------------------------------------------------------

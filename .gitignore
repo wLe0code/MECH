@@ -11,6 +11,11 @@ venv/
 # Imágenes generadas (efímeras)
 backend/generated_images/
 
+# Biblioteca de videos pre-renderizados (archivos grandes, no van a git).
+# Solo el README permanece versionado.
+backend/video_library/*/
+!backend/video_library/README.md
+
 # Modelos descargados por faster-whisper
 .cache/
 
