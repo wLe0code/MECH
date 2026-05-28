@@ -34,12 +34,22 @@ Usuario habla
    │ texto
    ▼
 [LLM] Claude Opus 4.7 (UN solo request)      ← backend/llm.py
+   │ system prompt incluye lista DINÁMICA de
+   │ obras con video pre-renderizado disponible.
    │ devuelve Plan estructurado (Pydantic):
-   │   { mode, title, segments[{narration, image_prompt, gesture}] }
+   │   { mode, title,
+   │     segments[{narration,
+   │               image_prompt?,
+   │               video_slug?, video_segment?,
+   │               gesture}] }
    ▼
 [Orquestador] mech_app.execute_plan()         ← backend/mech_app.py
-   │ por cada segmento:
-   ├─→ Gemini 2.5 Flash Image (NanoBanana)    ← backend/image_gen.py
+   │ por cada segmento decide visual:
+   │   1) video_slug+video_segment presentes Y archivo existe
+   │      → reproduce video de biblioteca   ← backend/video_library.py
+   │   2) image_prompt presente
+   │      → genera con Gemini Image          ← backend/image_gen.py
+   │   3) ninguno → mantiene visual anterior
    ├─→ Arduino (servos + ruedas)              ← backend/arduino_link.py
    └─→ ElevenLabs TTS                         ← backend/tts.py
 ```
@@ -58,6 +68,22 @@ Usuario → Selección por voz → [Stand info] o
 ### Por qué structured outputs y NO tool use
 
 Para narrar Romeo y Julieta en 5 escenas, tool use serían ~10 round trips a Claude (5x imagen + 5x texto). Structured outputs es UN solo round trip que devuelve el guión completo. Más rápido, más barato, más predecible. Si más adelante se necesita reactividad (Claude decide el flujo en vivo), se puede migrar — pero **no lo cambies sin que el usuario lo pida explícitamente**.
+
+### Por qué video pre-renderizado y NO generación en vivo (Opción B)
+
+El usuario quiere video real, no solo imagen. Pero generar video en vivo (Kling, Veo 3, Runway) tarda **30 s – 2 min** por clip y cuesta dólares por historia. Eso rompe el formato de stand interactivo (el usuario se aburre y se va).
+
+**Estrategia adoptada (Opción B):**
+- Los videos de obras conocidas (Romeo, Shrek, Odisea, Quijote, ...) se generan **una sola vez** antes del evento, en otra máquina, con el modelo de video que prefiera el equipo.
+- Se guardan como `.mp4` en `backend/video_library/<slug>/seg{NN:02d}.mp4`.
+- MECH los reproduce en bucle mientras narra (la narración dura ~20–30 s, el video 5–15 s → loop natural).
+- Si el usuario pide una obra **no** pre-renderizada, el robot cae automáticamente al flujo viejo de NanoBanana (imagen generada en vivo). Esto preserva improvisación.
+
+**Manifest** de obras: [`backend/video_library.py`](backend/video_library.py). El system prompt de Claude se compone **dinámicamente** al arranque del servidor — solo aparecen las obras con TODOS sus segmentos físicamente presentes en disco. Si falta un segmento, esa obra no se ofrece a Claude y se usa el fallback.
+
+**UI de subida:** `http://<pi>:8000/library` (`frontend/library.html`) — un card por obra, botón por segmento, drag-and-drop de mp4. Endpoints REST: `POST /api/library/{slug}/{seg}` y `DELETE` análogo.
+
+**No vuelvas a proponer generación de video en vivo** salvo que el usuario lo pida explícitamente.
 
 ---
 
@@ -99,7 +125,7 @@ Los pines del Robo Robo NO coinciden 1:1 con los que tiene hardcodeados [`arduin
 |---|---|---|---|
 | **Anthropic Claude API** (Opus 4.7) | Cerebro — devuelve plan estructurado | `backend/llm.py` | `ANTHROPIC_API_KEY` |
 | **ElevenLabs** | TTS en español (multilingual_v2) | `backend/tts.py` | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` |
-| **Google Gemini** | NanoBanana = `gemini-2.5-flash-image` | `backend/image_gen.py` | `GOOGLE_API_KEY` |
+| **Google Gemini** | NanoBanana = `gemini-2.5-flash-image` — **solo fallback** cuando la obra no está en la biblioteca de videos | `backend/image_gen.py` | `GOOGLE_API_KEY` |
 
 **Claude no llama directamente a ElevenLabs ni a Gemini.** El usuario tuvo esta confusión. Si vuelve a preguntar, recuérdale: Claude devuelve un Plan JSON; Python ejecuta el plan llamando cada API en orden.
 
@@ -114,12 +140,21 @@ backend/
   server.py           ← ENTRY POINT principal. FastAPI + WebSocket.
   main.py             ← Modo standalone sin servidor (testing puro).
                         NO correr junto con server.py.
+                        NO proyecta videos de biblioteca (solo imágenes).
   mech_app.py         ← Singleton de estado + event bus.
                         Aquí vive emergency_stop() y execute_plan().
+                        _render_segment_visual() decide video vs imagen.
   llm.py              ← Cliente Claude. System prompt + schema Pydantic del Plan.
+                        Inyecta dinámicamente la lista de obras disponibles
+                        desde video_library.
   stt.py              ← faster-whisper local + VAD (webrtcvad).
   tts.py              ← ElevenLabs streaming.
-  image_gen.py        ← Gemini / NanoBanana.
+  image_gen.py        ← Gemini / NanoBanana. Fallback de visual cuando
+                        no hay video pre-renderizado.
+  video_library.py    ← Manifest de obras + helpers para resolver paths/URLs
+                        y componer la sección dinámica del system prompt.
+  video_library/      ← Carpeta con los .mp4 (gitignored). Estructura:
+                        <slug>/seg01.mp4, seg02.mp4, ...
   arduino_link.py     ← Serial al Arduino. Protocolo de texto líneas \n.
   gestures.py         ← Traduce gestos abstractos ("excited", "wave"...)
                         a comandos del Arduino.
@@ -132,8 +167,12 @@ backend/
 frontend/
   index.html          ← Panel de control web.
   app.js              ← Lógica + WebSocket. Detecta file:// para modo demo.
+                        Maneja eventos image y video.
   styles.css
   projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
+                        Maneja eventos image y video, con loop en video.
+  library.html        ← UI sencilla en /library para subir videos
+                        pre-renderizados (Opción B).
   manifest.json       ← PWA instalable.
   sw.js               ← Service worker.
   icon.svg
@@ -219,6 +258,19 @@ Este repo **no tiene suite de tests ni linter configurado**. La validación es m
 
 `mech_app.log(message, level)` con niveles `ok | info | warn | err`. Se difunde por WebSocket al panel. Úsalo en vez de `print()` cuando sea desde un módulo que toca eventos del robot.
 
+### Schema del Plan de Claude
+
+```python
+Segment:
+  narration: str
+  image_prompt: str | None      # fallback (NanoBanana)
+  video_slug: str | None        # biblioteca pre-renderizada
+  video_segment: int | None     # 1-indexed
+  gesture: Literal[...]
+```
+
+Prioridad de visual: `video_slug + video_segment` (si el archivo existe) > `image_prompt` > nada. Si Claude pide un video que no está en disco se loguea warning y se intenta el `image_prompt` del mismo segmento si lo trae.
+
 ### Gestos disponibles
 
 Definidos en `backend/gestures.py` y referenciados en el system prompt de `llm.py`:
@@ -248,9 +300,13 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 - Frontend completo (panel + projector + PWA).
 - Launchers Windows.
 - Documentación (GUIA.md, FRONTEND.md, windows/README.md).
+- **Biblioteca de videos pre-renderizados (Opción B)** — manifest, schema, dispatch
+  en execute_plan, fallback a NanoBanana, UI `/library` para subir mp4s,
+  endpoints REST `GET/POST/DELETE /api/library/...`.
 
 ### 🚧 Pendiente
 
+- **Generar los videos pre-renderizados** para cada obra (Kling/Veo/Runway en otra máquina) y subirlos vía `/library`. Hasta que estén, MECH cae a NanoBanana para esas obras automáticamente.
 - **Pin mapping del Robo Robo** en `mech_controller.ino` — el usuario debe obtener el datasheet de su kit y actualizar las constantes `PIN_*`.
 - **Módulo de visión** (`backend/vision.py`) — Logitech C930e (USB UVC) + MediaPipe Face Detection para:
   - Detectar presencia de usuario → activar LISTEN automáticamente.
@@ -289,6 +345,8 @@ Si funciona, escribimos `vision.py` con este plan:
 7. **`python -m backend.projector`** (tkinter) y el visor browser-based en `/projector` son alternativas. Para producción usar el browser.
 8. **El paquete Chromium en Raspberry Pi OS Bookworm es `chromium`**, no `chromium-browser` (aunque el binario sigue existiendo bajo ambos nombres).
 9. **La red wifi del evento puede tener client isolation** (común en colegios/eventos). Si Windows no ve la Pi por IP aunque estén en la misma red, ese es el problema. Hotspot del celular como respaldo.
+10. **Modo standalone (`python -m backend.main`) NO muestra videos pre-renderizados.** El visor tkinter solo sabe de imágenes. Para ver videos hace falta `python -m backend.server` + `/projector` en navegador. `main.py` loguea el slug/segmento del video y sigue con la narración/gesto.
+11. **Slug del video_library debe coincidir con el subdirectorio.** Si añades una obra al manifest pero la carpeta se llama distinto, `available_works()` la reporta como incompleta y no aparece a Claude.
 
 ---
 

@@ -28,6 +28,7 @@ import gestures
 import image_gen
 import llm
 import tts
+import video_library
 from arduino_link import ArduinoLink, get_link
 
 EventCallback = Callable[[dict], Awaitable[None]]
@@ -50,6 +51,7 @@ class MechApp:
                 "imm": {"on": False, "file": None},
             },
             "current_image": None,  # URL relativa de imagen en el proyector AI
+            "current_video": None,  # URL relativa de video pre-renderizado (Opción B)
             "arduino_connected": self.arduino._ser is not None
             and self.arduino._ser.is_open,
             "last_transcript": "",
@@ -121,7 +123,9 @@ class MechApp:
         self.state["voice_loop_active"] = False
         # Proyección
         self.state["current_image"] = None
+        self.state["current_video"] = None
         self.emit("image", url=None)
+        self.emit("video", url=None)
         for pid in ("s1", "s2", "imm"):
             self.state["projectors"][pid]["on"] = False
         self.emit("state", state=self.state)
@@ -142,7 +146,47 @@ class MechApp:
         # URL relativa servida por el server estático.
         url = f"/generated/{image_path.name}"
         self.state["current_image"] = url
+        self.state["current_video"] = None
         self.emit("image", url=url)
+
+    def show_library_video(self, slug: str, segment: int) -> None:
+        """Llamado desde execute_plan cuando un segmento referencia un video
+        pre-renderizado (Opción B)."""
+        url = video_library.segment_url(slug, segment)
+        self.state["current_video"] = url
+        self.state["current_image"] = None
+        self.emit("video", url=url)
+
+    def _render_segment_visual(self, seg: "llm.Segment", plan_title: str, idx: int) -> None:
+        """Decide qué visual mostrar para un segmento del plan.
+
+        Prioridad:
+          1. Video pre-renderizado (video_slug + video_segment), si existe en disco.
+          2. Imagen generada con NanoBanana (image_prompt).
+          3. Nada (mantiene el visual anterior).
+        """
+        # Video de biblioteca
+        if seg.video_slug and seg.video_segment:
+            if video_library.segment_exists(seg.video_slug, seg.video_segment):
+                self.show_library_video(seg.video_slug, seg.video_segment)
+                return
+            # Si Claude pidió un video que no existe, avisamos y caemos a imagen.
+            self.log(
+                f"Video no encontrado: {seg.video_slug}/"
+                f"{video_library.segment_filename(seg.video_segment)}. "
+                "Cayendo a NanoBanana.",
+                "warn",
+            )
+        # Fallback / flujo original
+        if seg.image_prompt:
+            try:
+                img = image_gen.generate_image(
+                    seg.image_prompt,
+                    filename=f"{plan_title.replace(' ', '_')}_{idx}.png",
+                )
+                self.show_ai_image(img)
+            except Exception as e:
+                self.log(f"Imagen falló: {e}", "err")
 
     def execute_plan(self, plan: "llm.Plan") -> None:
         """Ejecuta el plan de Claude (varios segmentos)."""
@@ -152,16 +196,15 @@ class MechApp:
                 # Aborted (emergency stop o stop_voice)
                 self.log("Plan abortado", "warn")
                 return
-            self.log(f"Segmento {i}/{len(plan.segments)} — {seg.gesture}", "info")
-            if seg.image_prompt:
-                try:
-                    img = image_gen.generate_image(
-                        seg.image_prompt,
-                        filename=f"{plan.title.replace(' ', '_')}_{i}.png",
-                    )
-                    self.show_ai_image(img)
-                except Exception as e:
-                    self.log(f"Imagen falló: {e}", "err")
+            visual_kind = (
+                "video" if (seg.video_slug and seg.video_segment) else
+                ("imagen" if seg.image_prompt else "sin visual")
+            )
+            self.log(
+                f"Segmento {i}/{len(plan.segments)} — {seg.gesture} — {visual_kind}",
+                "info",
+            )
+            self._render_segment_visual(seg, plan.title, i)
             gestures.perform(self.arduino, seg.gesture)
             self.state["last_ai_response"] = seg.narration
             self.emit("ai_response", text=seg.narration, segment=i, total=len(plan.segments))

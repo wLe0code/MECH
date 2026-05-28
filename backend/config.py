@@ -45,6 +45,12 @@ PROJECTOR_DISPLAY = os.environ.get("PROJECTOR_DISPLAY", ":0")
 IMAGE_OUTPUT_DIR = Path(os.environ.get("IMAGE_OUTPUT_DIR", BASE_DIR / "generated_images"))
 IMAGE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# Biblioteca de videos pre-renderizados (Opción B).
+# Cada obra vive en un subdirectorio (slug) con archivos seg01.mp4, seg02.mp4, ...
+# Ver backend/video_library.py para el manifest y backend/video_library/README.md.
+VIDEO_LIBRARY_DIR = Path(os.environ.get("VIDEO_LIBRARY_DIR", BASE_DIR / "video_library"))
+VIDEO_LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def assert_required() -> None:
     """Falla rápido si falta alguna API key crítica."""

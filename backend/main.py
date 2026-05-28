@@ -34,19 +34,35 @@ import llm
 import projector
 import stt
 import tts
+import video_library
 from arduino_link import get_link
 from llm import Plan
 
 
 def execute_plan(plan: Plan) -> None:
-    """Recorre los segmentos del plan y los ejecuta."""
+    """Recorre los segmentos del plan y los ejecuta.
+
+    Nota sobre videos en modo standalone:
+      El visor tkinter (`projector.py`) solo sabe mostrar imágenes. Si un
+      segmento referencia un video pre-renderizado, lo logueamos y seguimos
+      con narración + gesto, pero el visual no cambia. Para ver videos hay
+      que usar el servidor (``python -m backend.server``) + el visor en
+      navegador (``/projector``).
+    """
     link = get_link()
     link.set_mode("SPEAK")
 
     for i, seg in enumerate(plan.segments, 1):
         print(f"[Main] Segmento {i}/{len(plan.segments)}: {seg.gesture}")
 
-        if seg.image_prompt:
+        # Video pre-renderizado: en standalone no lo proyectamos pero avisamos.
+        if seg.video_slug and seg.video_segment:
+            print(
+                f"[Main] (segmento de video {seg.video_slug}/"
+                f"{video_library.segment_filename(seg.video_segment)} "
+                "— omitido en modo standalone; usa server.py para verlo)"
+            )
+        elif seg.image_prompt:
             try:
                 img_path = image_gen.generate_image(
                     seg.image_prompt,

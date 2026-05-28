@@ -128,6 +128,7 @@
       case 'ai_response': showAIResponse(msg.text, msg.segment, msg.total); break;
       case 'projector':   applyProjector(msg.id, msg.on, msg.file); break;
       case 'image':       applyAIImage(msg.url); break;
+      case 'video':       applyAIVideo(msg.url); break;
       case 'pong':        break;
     }
   }
@@ -162,8 +163,9 @@
       if (p) applyProjector(id, p.on, p.file);
     }
 
-    // Imagen AI
-    if (s.current_image) applyAIImage(s.current_image);
+    // Visual AI: video de biblioteca tiene prioridad sobre imagen generada.
+    if (s.current_video) applyAIVideo(s.current_video);
+    else if (s.current_image) applyAIImage(s.current_image);
 
     // Transcript / respuesta
     if (s.last_transcript) showTranscript(s.last_transcript);
@@ -226,6 +228,24 @@
     img.src = fullUrl;
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px';
     demo.appendChild(img);
+  }
+
+  function applyAIVideo(url) {
+    // Video pre-renderizado de la biblioteca (Opción B). Preview en el
+    // cuadro inmersivo del panel, en loop y muteado para no chocar con TTS.
+    if (!url) return;
+    const fullUrl = url.startsWith('http') ? url : HTTP_BASE + url;
+    const demo = $('imm-demo');
+    cancelAnimationFrame(state.immAnim);
+    demo.innerHTML = '';
+    const vid = document.createElement('video');
+    vid.src = fullUrl;
+    vid.autoplay = true;
+    vid.loop = true;
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px';
+    demo.appendChild(vid);
   }
 
   // ─── Animación de waveform ────────────────────────────────────────
