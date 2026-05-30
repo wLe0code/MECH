@@ -24,8 +24,14 @@ El visor del proyector se lanza por separado:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
+
+# Permite ejecutar `python -m backend.main` (y también `cd backend && python main.py`)
+# sin definir PYTHONPATH: añade la carpeta backend/ al path para que los imports
+# planos (import config, etc.) se resuelvan siempre.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 import gestures

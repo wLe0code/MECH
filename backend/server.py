@@ -45,6 +45,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+# Permite ejecutar `python -m backend.server` sin definir PYTHONPATH: añade la
+# carpeta backend/ al path para que los imports planos (import config, etc.) se
+# resuelvan siempre.
+import os
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import config
 import stt
 import video_library
