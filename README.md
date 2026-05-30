@@ -11,10 +11,12 @@ backend/                  Python — corre en Raspberry Pi 5
   stt.py                  Speech-to-Text local (faster-whisper)
   llm.py                  Claude API (Opus 4.7) — devuelve plan estructurado
   tts.py                  ElevenLabs (voz)
-  image_gen.py            NanoBanana / Gemini 2.5 Flash Image
+  image_gen.py            NanoBanana / Gemini 2.5 Flash Image (fallback de visual)
   arduino_link.py         Serial al Arduino
   gestures.py             Mapea gestos abstractos → comandos del Arduino
   projector.py            Visor tkinter alternativo (modo standalone)
+  video_library.py        Manifest de videos pre-renderizados (Opción B)
+  video_library/          Los .mp4 por obra (gitignored): <slug>/seg01.mp4...
   config.py               Lee .env
   requirements.txt
   .env.example
@@ -24,13 +26,14 @@ frontend/                 Panel de control web para supervisión con caracter de
   app.js                  Lógica (WebSocket + REST)
   styles.css
   projector.html          Página fullscreen para el proyector
+  library.html            UI para subir videos pre-renderizados (/library)
   manifest.json           PWA — instalable como app
   sw.js                   Service worker
   icon.svg
 
 arduino/                  Control de sistemas móviles: movilidad terrestre y de servomotores (brazos y cabeza)
   mech_controller/
-    mech_controller.ino   Firmware: motores omni, servos, HC-SR04
+    mech_controller.ino   Firmware: motores omni, servos
 
 windows/                  Operación desde Windows
   MECH Control.bat        Doble click → abre panel en Edge --app

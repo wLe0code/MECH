@@ -32,84 +32,82 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 └──────────────────────────────────────────────────────────────────┘
                             │
                             ▼ USB serial
-                       ┌─────────────────┐
-                       │ ARDUINO         │
-                       │  - HC-SR04      │  ◄── evita obstáculos
-                       │  - servos       │  ◄── cabeza + brazos
-                       │  - 4 motores DC │  ◄── ruedas omni
-                       └─────────────────┘
+                       ┌──────────────────────┐
+                       │ ARDUINO (Robo Robo)  │
+                       │  - servos            │  ◄── cabeza + brazos
+                       │  - 4 motores DC      │  ◄── ruedas omni
+                       └──────────────────────┘
+
+   La cámara Logitech C930e va por USB directo a la Pi (no al Arduino):
+   detecta al usuario y aporta el micrófono dual.
 ```
 
 **División de responsabilidades:**
 
 | Componente | Hace |
 |---|---|
-| Raspberry Pi 5 | Audio, IA (Claude/Gemini/ElevenLabs), orquestación |
-| Arduino | Control de motores y servos, evasión de obstáculos en tiempo real |
-| Proyector(es) | Muestra imágenes generadas por NanoBanana |
-| Micrófono USB | Entrada de voz del usuario |
-| Parlante USB / Bluetooth | Salida de voz del robot |
+| Raspberry Pi 5 (8 GB) | Audio, visión, IA (Claude/Gemini/ElevenLabs), orquestación |
+| Arduino (kit Robo Robo) | Control de motores y servos en tiempo real |
+| Cámara Logitech C930e (USB) | Detección de usuario + micrófono dual (entrada de voz) |
+| Proyector(es) | Muestra videos pre-renderizados (biblioteca) o imágenes de NanoBanana |
+| Parlante USB / jack 3.5mm | Salida de voz del robot |
 
-**Por qué dividirlo así:** el Arduino es ideal para control en tiempo real (ms) de motores y sensores; la Pi 5 maneja la parte "inteligente" donde Python + APIs es más práctico. Se hablan por USB serial — un solo cable.
+**Por qué dividirlo así:** el Arduino es ideal para control en tiempo real (ms) de motores y servos; la Pi 5 maneja la parte "inteligente" (audio, visión, APIs) donde Python es más práctico. Se hablan por USB serial — un solo cable.
+
+> **Nota sobre obstáculos:** el plan original tenía un sensor ultrasónico HC-SR04 para evasión. **Se eliminó** — ahora solo se usa la cámara C930e para detectar usuarios. En operación de stand (poco movimiento autónomo) no hace falta evasión rápida. Si más adelante el robot choca, se puede volver a añadir un HC-SR04 (2 pines del Arduino).
 
 ## 1. Hardware
 
 ### Lista de componentes
 
-- **Raspberry Pi 5 (4 GB)** + microSD 64 GB clase 10+
-- **Arduino** del kit "robo robo" (UNO o Mega) — Mega recomendado por número de pines
-- **Driver de motores** L298N o similar (2 unidades si usas 4 motores)
+- **Raspberry Pi 5 (8 GB)** + microSD 64 GB clase 10+
+- **Arduino del kit "Robo Robo"** — trae driver de motores y headers de servo integrados (no necesitas L298N externos)
 - **4 motores DC** con ruedas omnidireccionales (mecanum)
 - **4 servos** (SG90 o MG996R): cabeza pan, cabeza tilt, brazo izq, brazo der
-- **1 sensor ultrasónico HC-SR04** — ver sección 1.2
-- **Micrófono USB** (cualquiera con buen ruido de fondo; el ReSpeaker es excelente pero opcional)
+- **Cámara Logitech C930e** (USB UVC, 1080p, FOV 90°, mic dual) — visión + micrófono
 - **Parlante** USB o conectado al jack 3.5mm de la Pi
 - **1 o 2 proyectores** (HDMI desde la Pi)
 - **Fuente de poder** independiente para los motores (NO los alimentes desde la Pi)
-- Cables jumper, protoboard, capacitores de 100µF en las líneas de motores
+- Cables jumper, capacitores de 100µF en las líneas de motores
 
-### 1.2 Cámara vs sensor ultrasónico — recomendación
+### 1.2 Visión y audio — la cámara Logitech C930e
 
-**Recomendación: empieza con HC-SR04 solo, y opcionalmente añade cámara después.**
+El robot usa **una sola cámara USB, la Logitech C930e**, para dos cosas:
 
-Razones:
-- **Para evasión de obstáculos**, el HC-SR04 es muchísimo más simple y confiable. Latencia <30ms, sin procesamiento, sin librerías. La Pi 5 con 4GB no tiene mucho margen para correr Whisper + CV simultáneamente.
-- **La cámara aporta valor** si quieres detectar al usuario (presencia, posición, gestos). Pero para una primera versión funcional, no es necesario: el robot puede asumir que el usuario está al frente cuando empiece a hablar (el VAD detecta esto).
-- **Si quieres reconocimiento facial o seguir al usuario con la mirada**, ahí sí necesitas cámara (un módulo Pi Camera v3, no USB — la latencia es menor).
+- **Detección de usuario:** su FOV de 90° detecta a gente que se acerca por los lados. Con OpenCV + MediaPipe (módulo `vision.py`, pendiente) el robot sabrá cuándo hay alguien al frente para activar el modo de escucha y seguirlo con la cabeza.
+- **Micrófono:** la C930e trae mic dual con RightSound, así que aporta también la entrada de voz. Si el ambiente del evento resulta muy ruidoso, el plan B es un micrófono USB direccional pequeño — se decide en pruebas reales.
 
-**Plan sugerido:**
-1. **Fase 1 (esta guía):** HC-SR04 + voz. Funciona completo.
-2. **Fase 2 (opcional):** añade Pi Camera v3 + MediaPipe para detectar al usuario y girar la cabeza hacia él. No requiere cambios en este código, solo un nuevo módulo `vision.py`.
+> **Sin sensor ultrasónico:** el plan original combinaba HC-SR04 (evasión rápida) + cámara (detección de usuario). Se **eliminó el HC-SR04**; la cámara cubre todo. Trade-off conocido: la cámara + MediaPipe corre a ~10 fps, suficiente para detectar presencia pero no para frenar antes de chocar en movimiento. En un stand con poco movimiento autónomo no es problema. Si hace falta, un HC-SR04 se reconecta en 2 pines del Arduino.
 
-Si tienes que elegir uno solo y de verdad uno solo: **HC-SR04**.
+**Conexión:** la C930e va por **USB directo a la Pi**, no al Arduino. Para verificar que la Pi la ve:
+```bash
+v4l2-ctl --list-devices          # debe aparecer como /dev/videoN
+ffmpeg -f v4l2 -i /dev/video0 -frames 1 test.jpg   # captura un frame de prueba
+```
 
 ### 1.3 Cableado básico
 
 ```
-HC-SR04:
-  VCC  → 5V
-  GND  → GND
-  TRIG → Arduino pin 7
-  ECHO → Arduino pin 8 (con divisor de tensión 5V→3.3V si tu Arduino es de 3.3V)
-
 Servos (señal):
-  Cabeza Pan   → pin 9
-  Cabeza Tilt  → pin 10
-  Brazo Izq    → pin 11
-  Brazo Der    → pin 12
-  Alimenta los servos con 5V externos, NO desde el Arduino. GND común.
+  Cabeza Pan   → header de servo del Robo Robo
+  Cabeza Tilt  → header de servo del Robo Robo
+  Brazo Izq    → header de servo del Robo Robo
+  Brazo Der    → header de servo del Robo Robo
+  El Robo Robo ya trae alimentación para servos. GND común.
 
-Motores (L298N):
-  Cada L298N maneja 2 motores. Necesitas 2 drivers para 4 motores.
-  Conecta IN1/IN2/ENA (PWM) según constantes en mech_controller.ino.
-  Alimenta los motores con una fuente independiente (7–12V según motor).
-  GND común con el Arduino.
+Motores DC:
+  El kit Robo Robo trae el driver de motores integrado — NO necesitas L298N
+  externos. Conecta los 4 motores a las salidas de motor del Robo Robo.
+  Alimenta los motores con la fuente del kit (no desde la Pi).
 
-Arduino ↔ Raspberry Pi:
-  USB. Aparece en la Pi como /dev/ttyACM0 (UNO) o /dev/ttyUSB0 (clones).
+Cámara C930e ↔ Raspberry Pi:
+  USB directo a la Pi (no al Arduino). Aparece como /dev/videoN.
+
+Arduino (Robo Robo) ↔ Raspberry Pi:
+  USB. Aparece en la Pi como /dev/ttyACM0 o /dev/ttyUSB0.
 ```
 
-Ajusta los pines en `arduino/mech_controller/mech_controller.ino` (sección "CONFIGURACIÓN DE PINES").
+> ⚠️ **Pin mapping del Robo Robo:** los pines del kit Robo Robo **no coinciden** con los que trae hardcodeados `mech_controller.ino` (escrito para un Arduino genérico). Debes buscar el datasheet de tu Robo Robo y actualizar las constantes `PIN_M_*` y `PIN_SERVO_*` del .ino. **No reescribas la lógica del firmware** — solo los números de pin.
 
 ## 2. Cuentas y API keys
 
@@ -215,11 +213,11 @@ curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.
 
 # Compila y sube
 cd arduino/mech_controller
-~/bin/arduino-cli compile --fqbn arduino:avr:mega .
-~/bin/arduino-cli upload  --fqbn arduino:avr:mega --port /dev/ttyACM0 .
+~/bin/arduino-cli compile --fqbn arduino:avr:uno .
+~/bin/arduino-cli upload  --fqbn arduino:avr:uno --port /dev/ttyACM0 .
 ```
 
-Cambia `mega` por `uno` si usas Arduino UNO. Si usas UNO, vas a tener que reasignar pines IN1/IN2 en el .ino — el UNO no tiene 22-29.
+El kit **Robo Robo** es Arduino-compatible (ATmega328P, igual que un UNO), por eso el `fqbn` es `arduino:avr:uno`. Recuerda actualizar primero los pines `PIN_*` del .ino al mapeo de tu Robo Robo (ver §1.3).
 
 ### Opción B — desde tu computadora con Arduino IDE
 
@@ -298,6 +296,21 @@ chromium-browser --kiosk http://localhost:8000/projector
 ```
 
 El panel da control sobre voz, proyectores, Arduino, y un botón de **PARO DE EMERGENCIA** siempre visible (también con barra espaciadora).
+
+### Biblioteca de videos pre-renderizados (Opción B)
+
+Para las obras conocidas (Romeo y Julieta, Shrek, La Odisea, Don Quijote...) MECH
+reproduce **videos generados antes del evento** en vez de imágenes en vivo. Se generan
+una sola vez en otra máquina (Kling/Veo/Runway) y se suben a MECH desde:
+
+```
+http://<IP-de-la-pi>:8000/library
+```
+
+Un card por obra, un botón por segmento, arrastra el `.mp4`. Mientras una obra **no**
+tenga todos sus segmentos subidos, MECH cae automáticamente a generar imágenes con
+NanoBanana para esa obra (no se rompe nada). Detalles y convención de archivos en
+[`backend/video_library/README.md`](../backend/video_library/README.md).
 
 ### Modo standalone — sin frontend
 
@@ -390,6 +403,6 @@ Usuario: *"Cuéntame sobre Romeo y Julieta."*
 - **Wake word** ("Hey MECH"): usa `openwakeword` o `Porcupine` para que el robot no transcriba todo lo que oye, solo después de la palabra clave.
 - **Streaming TTS verdadero**: empieza a reproducir mientras ElevenLabs sigue generando (ya hay infraestructura).
 - **Paralelizar imagen + narración**: mientras narra el segmento N, genera la imagen del N+1.
-- **Cámara Pi v3 + MediaPipe**: detectar al usuario y girar la cabeza hacia él durante LISTEN.
+- **Visión con la C930e + MediaPipe** (`vision.py`, pendiente): detectar al usuario por USB UVC (OpenCV + V4L2, no picamera2) y girar la cabeza hacia él durante LISTEN. Activaría el bucle de voz automáticamente cuando alguien se acerca.
 - **Memoria entre días**: persistir conversaciones en SQLite para que el robot reconozca visitantes recurrentes (con su consentimiento).
 - **Skills de Claude API**: meter el contenido cultural (obras completas, contexto histórico) como Skills en vez del system prompt — escala mejor a más obras.

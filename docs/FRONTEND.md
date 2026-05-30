@@ -126,9 +126,13 @@ Resumen ultra rápido:
 |---|---|
 | **Voz / Comandos** | Activar el bucle de voz (botón rojo), enviar comandos por texto, ver transcripción y respuestas de MECH en vivo. Botones rápidos para Romeo y Julieta, Shrek, La Odisea, etc. |
 | **Proyección Stand** | Sube imágenes/videos a los proyectores 1 y 2 del stand. Encender/apagar cada uno independientemente. |
-| **Espacio Inmersivo** | Vista previa del contenido inmersivo. Las imágenes generadas por NanoBanana durante una narración aparecen aquí en vivo. |
+| **Espacio Inmersivo** | Vista previa del contenido inmersivo. Durante una narración aparecen aquí en vivo los **videos pre-renderizados** de la biblioteca (si la obra está completa) o, en su defecto, las imágenes generadas por NanoBanana. |
 | **Firmware** | Estado del servidor, modelo de Claude, estado del Arduino, modo actual del robot. |
-| **Sensores** | Resumen del estado de mic, parlante, proyectores, Arduino, WebSocket. |
+| **Sensores** | Resumen del estado de mic, parlante, proyectores, Arduino, cámara, WebSocket. |
+
+Además, en `/library` (página aparte, **Biblioteca de videos**) subes los `.mp4`
+pre-renderizados de cada obra. Ver [`GUIA.md`](GUIA.md) §6 y
+[`backend/video_library/README.md`](../backend/video_library/README.md).
 | **Arduino** | Control directo: modos (IDLE/LISTEN/SPEAK/AUTO/STOP), movimiento omnidireccional con botones pulsables, sliders para cabeza/brazos, comando crudo para debug. |
 
 ## PARO DE EMERGENCIA
@@ -160,6 +164,9 @@ El backend implementa esto en `MechApp.emergency_stop()`. Llega vía `POST /api/
 | `POST /api/arduino/mode/{MODE}` | — | AUTO / IDLE / LISTEN / SPEAK / STOP |
 | `POST /api/emergency/stop` | — | PARO DE EMERGENCIA |
 | `GET  /api/state` | — | Estado completo (JSON) |
+| `GET  /api/library` | — | Lista de obras y cuántos segmentos están subidos |
+| `POST /api/library/{slug}/{segment}` | multipart `file` | Sube el `.mp4` de un segmento |
+| `DELETE /api/library/{slug}/{segment}` | — | Borra el `.mp4` de un segmento |
 
 ## Protocolo WebSocket
 
@@ -173,7 +180,8 @@ Conecta a `ws://<pi>:8000/ws`. Recibirás un primer mensaje con el estado comple
 {"type": "transcript",  "text": "Cuéntame Romeo y Julieta"}  // STT detectó voz
 {"type": "ai_response", "text": "...", "segment": 1, "total": 5}  // respuesta de Claude
 {"type": "projector",   "id": "s1", "on": true, "file": "/uploads/..."}
-{"type": "image",       "url": "/generated/Romeo_1.png"}     // imagen AI nueva
+{"type": "image",       "url": "/generated/Romeo_1.png"}     // imagen AI nueva (fallback)
+{"type": "video",       "url": "/videos/romeo_julieta/seg01.mp4"}  // video pre-renderizado (biblioteca)
 ```
 
 **Cliente → Server:**

@@ -4,12 +4,16 @@
  * Roles del Arduino:
  *   - Mover el robot (ruedas omnidireccionales).
  *   - Mover cabeza (pan/tilt) y brazos (servos).
- *   - Modo autónomo con evasión de obstáculos vía HC-SR04.
  *   - Escuchar comandos por Serial desde la Raspberry Pi 5.
+ *
+ * NOTA: el robot NO lleva sensor de obstáculos (el HC-SR04 se eliminó del
+ * diseño; la presencia de usuarios se detecta con la cámara C930e desde la Pi).
+ * Por eso el modo AUTO no conduce solo — solo hace micro-movimientos de cabeza.
+ * El movimiento de ruedas llega siempre por comandos MOVE explícitos.
  *
  * Protocolo de Serial (115200 baud, líneas terminadas en '\n'):
  *
- *   MODE:AUTO           → patrullaje autónomo (evita obstáculos)
+ *   MODE:AUTO           → "vivo" en reposo (mira alrededor, sin conducir)
  *   MODE:IDLE           → pose neutral, micro-movimientos de cabeza
  *   MODE:LISTEN         → quieto, mirando al frente
  *   MODE:SPEAK          → gestos sutiles durante el habla (head bob)
@@ -33,10 +37,6 @@
 // CONFIGURACIÓN DE PINES — ajusta según tu cableado
 // ============================================================
 
-// HC-SR04 (sensor ultrasónico de obstáculos)
-const uint8_t PIN_US_TRIG = 7;
-const uint8_t PIN_US_ECHO = 8;
-
 // Servos
 const uint8_t PIN_SERVO_HEAD_PAN  = 9;   // izquierda/derecha
 const uint8_t PIN_SERVO_HEAD_TILT = 10;  // arriba/abajo
@@ -57,11 +57,7 @@ const uint8_t PIN_M_BR_PWM = 4,  PIN_M_BR_IN1 = 28, PIN_M_BR_IN2 = 29;
 // PARÁMETROS DE COMPORTAMIENTO
 // ============================================================
 
-const unsigned long OBSTACLE_THRESHOLD_CM = 25;   // distancia para evitar
-const unsigned long ULTRA_TIMEOUT_US      = 25000; // ~4m máximo
-const uint8_t AUTO_FORWARD_SPEED          = 110;  // PWM 0–255
-const uint8_t AUTO_TURN_SPEED             = 130;
-const unsigned long AUTO_TURN_MS          = 600;  // duración de giro al detectar
+// (Sin parámetros de evasión: el robot no conduce de forma autónoma.)
 
 // ============================================================
 // ESTADO
@@ -135,40 +131,24 @@ void driveOmni(int vx, int vy, int w) {
   setMotor(PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2, br * scale / 100);
 }
 
-long readDistanceCm() {
-  digitalWrite(PIN_US_TRIG, LOW);
-  delayMicroseconds(2);
-  digitalWrite(PIN_US_TRIG, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_US_TRIG, LOW);
-  long duration = pulseIn(PIN_US_ECHO, HIGH, ULTRA_TIMEOUT_US);
-  if (duration == 0) return 9999;  // sin eco = libre o muy lejos
-  return duration / 58;  // µs a cm
-}
-
 // ============================================================
 // COMPORTAMIENTOS DE MODO
 // ============================================================
 
 void tickAuto() {
-  static unsigned long turnUntil = 0;
+  // Sin sensor de obstáculos, AUTO no conduce a ciegas (chocaría).
+  // Solo mira lentamente de lado a lado para parecer "vivo" en el stand.
+  // El movimiento de ruedas se hace siempre con comandos MOVE explícitos.
+  static unsigned long nextMove = 0;
+  static int pan = 90;
+  static int dir = 1;
   unsigned long now = millis();
-
-  if (now < turnUntil) {
-    // Gira en sitio.
-    driveOmni(0, 0, 80);
-    return;
-  }
-
-  long d = readDistanceCm();
-  if (d < (long)OBSTACLE_THRESHOLD_CM) {
-    Serial.print("OBSTACLE:");
-    Serial.println(d);
-    stopAllMotors();
-    turnUntil = now + AUTO_TURN_MS;
-  } else {
-    // Avanza despacio.
-    driveOmni(40, 0, 0);
+  if (now > nextMove) {
+    pan += dir * 15;
+    if (pan >= 120) { pan = 120; dir = -1; }
+    else if (pan <= 60) { pan = 60; dir = 1; }
+    servoHeadPan.write(pan);
+    nextMove = now + 700;
   }
 }
 
@@ -283,9 +263,6 @@ void readSerial() {
 
 void setup() {
   Serial.begin(115200);
-
-  pinMode(PIN_US_TRIG, OUTPUT);
-  pinMode(PIN_US_ECHO, INPUT);
 
   uint8_t motorPins[] = {
     PIN_M_FL_IN1, PIN_M_FL_IN2,
