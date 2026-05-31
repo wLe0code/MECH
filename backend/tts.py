@@ -11,6 +11,9 @@ Reproducimos con sounddevice para no depender de aplay/ffplay externos.
 from __future__ import annotations
 
 import io
+import os
+import subprocess
+import tempfile
 import threading
 from typing import Callable, Iterator
 
@@ -43,6 +46,35 @@ def _stream_to_audio(byte_stream: Iterator[bytes]) -> tuple[np.ndarray, int]:
     return data, samplerate
 
 
+def _play_audio(audio: np.ndarray, samplerate: int) -> None:
+    """Reproduce el audio por el parlante del sistema.
+
+    Usa pw-play / paplay (PipeWire / PulseAudio) para que salga por el sink
+    por defecto —incluido un parlante Bluetooth—, porque sounddevice apunta
+    directo al hardware ALSA (que en la Pi 5 suele ser el HDMI, no la JBL).
+    Si ningún reproductor del sistema está disponible, cae a sounddevice.
+    """
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
+        sf.write(tmp_path, audio, samplerate)
+        for player in (["pw-play", tmp_path], ["paplay", tmp_path]):
+            try:
+                subprocess.run(player, check=True)
+                return
+            except FileNotFoundError:
+                continue  # ese reproductor no está instalado; probar el siguiente
+            except subprocess.CalledProcessError:
+                continue
+        # Último recurso: sounddevice (irá al dispositivo por defecto de PortAudio).
+        sd.play(audio, samplerate)
+        sd.wait()
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
 def speak(
     text: str,
     on_start: Callable[[], None] | None = None,
@@ -73,8 +105,7 @@ def speak(
         audio, sr = _stream_to_audio(stream)
         if on_start:
             on_start()
-        sd.play(audio, sr)
-        sd.wait()
+        _play_audio(audio, sr)
         if on_end:
             on_end()
 

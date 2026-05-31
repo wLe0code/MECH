@@ -29,6 +29,14 @@ import config
 FRAME_DURATION_MS = 30
 FRAME_BYTES = int(config.AUDIO_SAMPLE_RATE * FRAME_DURATION_MS / 1000) * 2  # int16
 
+# Contexto que se le pasa a Whisper para "prepararlo": mejora mucho el
+# reconocimiento del nombre inventado "MECH" y de los títulos de obras
+# (nombres propios que de otro modo se transcriben mal).
+INITIAL_PROMPT = (
+    "Conversación en español con un robot llamado MECH sobre obras culturales "
+    "como Romeo y Julieta, Shrek, La Odisea y Don Quijote."
+)
+
 _model: WhisperModel | None = None
 
 
@@ -125,6 +133,7 @@ def transcribe(audio: np.ndarray) -> str:
         language=config.WHISPER_LANGUAGE,
         beam_size=1,  # más rápido; suficiente para frases cortas
         vad_filter=False,  # ya pre-filtramos con webrtcvad
+        initial_prompt=INITIAL_PROMPT,  # ayuda a reconocer "MECH" y títulos de obras
     )
     return " ".join(seg.text.strip() for seg in segments).strip()
 
