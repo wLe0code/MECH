@@ -46,6 +46,24 @@ def _stream_to_audio(byte_stream: Iterator[bytes]) -> tuple[np.ndarray, int]:
     return data, samplerate
 
 
+# Segundos de silencio que se añaden al inicio del audio. Los parlantes
+# Bluetooth tardan en "despertar" y se comen el principio del sonido; este
+# silencio inicial evita que se pierdan las primeras palabras.
+LEAD_SILENCE_SEC = 0.7
+
+
+def _pad_lead_silence(audio: np.ndarray, samplerate: int) -> np.ndarray:
+    """Antepone un breve silencio al audio (para el arranque del Bluetooth)."""
+    pad = int(samplerate * LEAD_SILENCE_SEC)
+    if pad <= 0:
+        return audio
+    if audio.ndim == 1:
+        silence = np.zeros(pad, dtype=audio.dtype)
+    else:
+        silence = np.zeros((pad, audio.shape[1]), dtype=audio.dtype)
+    return np.concatenate([silence, audio], axis=0)
+
+
 def _play_audio(audio: np.ndarray, samplerate: int) -> None:
     """Reproduce el audio por el parlante del sistema.
 
@@ -54,6 +72,7 @@ def _play_audio(audio: np.ndarray, samplerate: int) -> None:
     directo al hardware ALSA (que en la Pi 5 suele ser el HDMI, no la JBL).
     Si ningún reproductor del sistema está disponible, cae a sounddevice.
     """
+    audio = _pad_lead_silence(audio, samplerate)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
