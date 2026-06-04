@@ -33,7 +33,7 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
                             │
                             ▼ USB serial
                        ┌──────────────────────┐
-                       │ ARDUINO (Elegoo Uno) │
+                       │ ARDUINO (Uno R3)     │
                        │  - servos            │  ◄── cabeza + brazos
                        │  - 4 motores DC      │  ◄── ruedas omni
                        └──────────────────────┘
@@ -47,7 +47,7 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 | Componente | Hace |
 |---|---|
 | Raspberry Pi 5 (8 GB) | Audio, visión, IA (Claude/Gemini/ElevenLabs), orquestación |
-| Arduino Elegoo Uno + 2× L298N | Control de motores (4 ruedas) y 2 servos de brazos en tiempo real |
+| Arduino Uno + 2× L298N | Control de motores (4 ruedas) y 2 servos de brazos en tiempo real |
 | Cámara Logitech C930e (USB) | Detección de usuario (**solo video**) |
 | Micrófono Steren MIC-9010 (receptor USB) | Entrada de voz (inalámbrico) |
 | Proyector(es) | Muestra videos pre-renderizados (biblioteca) o imágenes de NanoBanana |
@@ -62,7 +62,7 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 ### Lista de componentes
 
 - **Raspberry Pi 5 (8 GB)** + microSD 64 GB clase 10+
-- **Elegoo Uno R3** (Arduino Uno) — el cerebro de movimiento, por USB a la Pi
+- **Arduino Uno R3** — el cerebro de movimiento, por USB a la Pi
 - **2× driver de motores L298N** — para las 4 ruedas DC (cada L298N maneja 2 motores)
 - **Fuente de 5–6V para los servos** (protoboard / módulo de alimentación) con buena corriente para los 2 MG996R
 - **4 motores DC** con ruedas omnidireccionales (mecanum)
@@ -89,7 +89,7 @@ ffmpeg -f v4l2 -i /dev/video0 -frames 1 test.jpg   # captura un frame de prueba
 
 ### 1.3 Cableado básico
 
-El microcontrolador es un **Elegoo Uno R3**. Los pines ya están en
+El microcontrolador es un **Arduino Uno R3**. Los pines ya están en
 `mech_controller.ino` — esto es solo para cablear:
 
 ```
@@ -111,7 +111,7 @@ Motores DC (4×, con 2× driver L298N):
 
 Cámara C930e ↔ Raspberry Pi:   USB directo a la Pi (solo video). /dev/videoN
 Mic Steren MIC-9010 ↔ Pi:       receptor USB a la Pi.
-Elegoo Uno ↔ Raspberry Pi:      USB. Aparece como /dev/ttyACM0 o /dev/ttyUSB0.
+Arduino Uno ↔ Raspberry Pi:      USB. Aparece como /dev/ttyACM0 o /dev/ttyUSB0.
 ```
 
 > ⚠️ **Tierra común obligatoria:** todos los GND unidos (Uno, los 2 L298N, la
@@ -241,7 +241,7 @@ cd arduino/mech_controller
 ~/bin/arduino-cli upload  --fqbn arduino:avr:uno --port /dev/ttyACM0 .
 ```
 
-El **Elegoo Uno R3** es un Arduino Uno (ATmega328P), por eso el `fqbn` es `arduino:avr:uno`. Los pines del .ino ya están mapeados para el Uno (ver §1.3); solo cablea según esa tabla.
+El **Arduino Uno R3** usa el ATmega328P, por eso el `fqbn` es `arduino:avr:uno`. Los pines del .ino ya están mapeados para el Uno (ver §1.3); solo cablea según esa tabla.
 
 ### Opción B — desde tu computadora con Arduino IDE
 

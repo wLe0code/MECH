@@ -1,5 +1,5 @@
 /*
- * MECH — Firmware del Arduino (Elegoo Uno R3)
+ * MECH — Firmware del Arduino Uno R3
  *
  * Roles del Arduino:
  *   - Mover el robot: 4 motores DC (ruedas mecanum) vía 2x driver L298N.
@@ -34,7 +34,7 @@
 #include <Servo.h>
 
 // ============================================================
-// CONFIGURACION DE PINES — Elegoo Uno R3
+// CONFIGURACION DE PINES — Arduino Uno R3
 // ============================================================
 
 // Servos de los brazos (MG996R). La libreria Servo usa el Timer1, que en el
