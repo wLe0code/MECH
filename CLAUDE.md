@@ -21,7 +21,7 @@ Esquema mental basado en los diagramas originales del usuario (capas física + f
 | Capa | Componentes |
 |---|---|
 | **Superior** | Motor de cabeza (servos pan/tilt), proyectores HDMI |
-| **Central** | Raspberry Pi 5 (8GB), fuente de poder, parlante, **Logitech C930e** (cámara USB + mic dual con RightSound) |
+| **Central** | Raspberry Pi 5 (8GB), fuente de poder, parlante, **Logitech C930e** (cámara USB — solo video), **receptor del mic inalámbrico Steren MIC-9010** (USB) |
 | **Mecánica** | Arduino del kit Robo Robo (no UNO pelado), ruedas omnidireccionales, motores DC |
 
 ### Flujo del software (de arriba a abajo)
@@ -98,8 +98,8 @@ No las cuestiones a menos que el usuario las cuestione primero:
 | Microcontrolador | **Arduino del kit Robo Robo** (no UNO ni Mega pelados) | Trae driver de motores y headers de servo integrados; ahorra L298Ns externos |
 | Motores | DC con ruedas omnidireccionales (mecanum) | Movimiento en cualquier dirección |
 | Servos | 4 (cabeza pan, cabeza tilt, brazo L, brazo R) | Cabeza + brazos para gestos |
-| Presencia / visión | **Logitech C930e** (USB UVC, 1080p, FOV 90°) | FOV ancho detecta usuarios que se acercan por los lados; H.264 por hardware libera CPU de la Pi |
-| Audio in | **Mic dual de la C930e** (RightSound) — fallback: USB direccional pequeño (~$15) si el ambiente es muy ruidoso | Aprovecha el mic ya integrado; se decide en pruebas reales |
+| Presencia / visión | **Logitech C930e** (USB UVC, 1080p, FOV 90°) — **solo video** | FOV ancho detecta usuarios que se acercan por los lados; H.264 por hardware libera CPU de la Pi. **El mic de la C930e ya NO se usa.** |
+| Audio in | **Steren MIC-9010** — micrófono inalámbrico de solapa con receptor USB | Inalámbrico (~20–35m de alcance), batería recargable. El receptor se enchufa por USB a la Pi y aparece como dispositivo de captura. Se selecciona con `AUDIO_INPUT_DEVICE` en `.env` (ej. `Steren`). |
 | Audio out | Parlante USB o jack 3.5mm | |
 | Visualización | Proyector HDMI desde la Pi + Chromium kiosko a `/projector` | |
 
@@ -313,7 +313,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   - Seguimiento de cara con la cabeza del robot (servo pan/tilt sigue la posición de la cara).
   - Posiblemente: detección de gestos (alzar mano, señalar) → MediaPipe Pose.
 - **Integración visión ↔ mech_app**: callback `on_user_detected` que dispara el bucle de voz sin necesidad de toque manual.
-- **Selección de dispositivo de audio**: cuando se enchufe la C930e, su mic aparecerá como dispositivo USB junto al que ya estaba. Verificar en `stt.py` que se elige el correcto (puede requerir exponer `AUDIO_INPUT_DEVICE` en `.env`).
+- **Selección de dispositivo de audio**: ✅ resuelto. `stt.py` usa `config.AUDIO_INPUT_DEVICE` (de `.env`) para elegir el mic. El mic del proyecto es el **Steren MIC-9010** (receptor USB); la C930e queda solo para video. Si hay varios dispositivos de captura, poner en `.env` `AUDIO_INPUT_DEVICE=Steren` (o el índice que muestre `sounddevice`).
 
 ### Próximo trabajo previsto
 

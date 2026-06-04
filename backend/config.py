@@ -47,6 +47,13 @@ WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "es")
 AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "16000"))
 VAD_AGGRESSIVENESS = int(os.environ.get("VAD_AGGRESSIVENESS", "2"))
 VAD_SILENCE_TIMEOUT = float(os.environ.get("VAD_SILENCE_TIMEOUT", "1.2"))
+# Micrófono de entrada. Vacío = dispositivo por defecto del sistema.
+# Se puede poner el índice (número) o parte del nombre del dispositivo.
+# El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda
+# solo para video. Lista los dispositivos con:
+#   python -c "import sounddevice as sd; print(sd.query_devices())"
+# y pon aquí "Steren", "MIC-9010" o el número que corresponda.
+AUDIO_INPUT_DEVICE = os.environ.get("AUDIO_INPUT_DEVICE", "")
 
 # Proyección
 PROJECTOR_DISPLAY = os.environ.get("PROJECTOR_DISPLAY", ":0")

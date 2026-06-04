@@ -40,6 +40,21 @@ INITIAL_PROMPT = (
 _model: WhisperModel | None = None
 
 
+def _resolve_input_device() -> int | str | None:
+    """Dispositivo de micrófono configurado (índice o nombre), o None=default.
+
+    El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda
+    solo para video. Se configura con AUDIO_INPUT_DEVICE en .env.
+    """
+    dev = config.AUDIO_INPUT_DEVICE.strip()
+    if not dev:
+        return None
+    try:
+        return int(dev)  # índice numérico
+    except ValueError:
+        return dev  # nombre (sounddevice acepta coincidencia parcial)
+
+
 def get_model() -> WhisperModel:
     """Carga perezosa del modelo Whisper. En Pi 5 usa CPU + int8."""
     global _model
@@ -93,6 +108,7 @@ def record_until_silence(max_seconds: float = 15.0) -> np.ndarray | None:
         blocksize=FRAME_BYTES // 2,  # frames de int16
         dtype="int16",
         channels=1,
+        device=_resolve_input_device(),  # Steren MIC-9010 si está configurado
         callback=callback,
     ):
         for frame in _frame_generator(audio_q):

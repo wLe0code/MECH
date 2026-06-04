@@ -38,8 +38,8 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
                        │  - 4 motores DC      │  ◄── ruedas omni
                        └──────────────────────┘
 
-   La cámara Logitech C930e va por USB directo a la Pi (no al Arduino):
-   detecta al usuario y aporta el micrófono dual.
+   La cámara Logitech C930e va por USB directo a la Pi (solo video):
+   detecta al usuario. El micrófono es el receptor USB del Steren MIC-9010.
 ```
 
 **División de responsabilidades:**
@@ -48,7 +48,8 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 |---|---|
 | Raspberry Pi 5 (8 GB) | Audio, visión, IA (Claude/Gemini/ElevenLabs), orquestación |
 | Arduino (kit Robo Robo) | Control de motores y servos en tiempo real |
-| Cámara Logitech C930e (USB) | Detección de usuario + micrófono dual (entrada de voz) |
+| Cámara Logitech C930e (USB) | Detección de usuario (**solo video**) |
+| Micrófono Steren MIC-9010 (receptor USB) | Entrada de voz (inalámbrico) |
 | Proyector(es) | Muestra videos pre-renderizados (biblioteca) o imágenes de NanoBanana |
 | Parlante USB / jack 3.5mm | Salida de voz del robot |
 
@@ -64,18 +65,17 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 - **Arduino del kit "Robo Robo"** — trae driver de motores y headers de servo integrados (no necesitas L298N externos)
 - **4 motores DC** con ruedas omnidireccionales (mecanum)
 - **4 servos** (SG90 o MG996R): cabeza pan, cabeza tilt, brazo izq, brazo der
-- **Cámara Logitech C930e** (USB UVC, 1080p, FOV 90°, mic dual) — visión + micrófono
-- **Parlante** USB o conectado al jack 3.5mm de la Pi
+- **Cámara Logitech C930e** (USB UVC, 1080p, FOV 90°) — **solo video** (detección de usuario)
+- **Micrófono inalámbrico Steren MIC-9010** (de solapa, receptor USB) — entrada de voz
+- **Parlante** (la Pi 5 no tiene jack 3.5mm: usa parlante USB, Bluetooth, o un dongle USB→3.5mm)
 - **1 o 2 proyectores** (HDMI desde la Pi)
 - **Fuente de poder** independiente para los motores (NO los alimentes desde la Pi)
 - Cables jumper, capacitores de 100µF en las líneas de motores
 
-### 1.2 Visión y audio — la cámara Logitech C930e
+### 1.2 Visión y audio — cámara C930e (video) + mic inalámbrico Steren
 
-El robot usa **una sola cámara USB, la Logitech C930e**, para dos cosas:
-
-- **Detección de usuario:** su FOV de 90° detecta a gente que se acerca por los lados. Con OpenCV + MediaPipe (módulo `vision.py`, pendiente) el robot sabrá cuándo hay alguien al frente para activar el modo de escucha y seguirlo con la cabeza.
-- **Micrófono:** la C930e trae mic dual con RightSound, así que aporta también la entrada de voz. Si el ambiente del evento resulta muy ruidoso, el plan B es un micrófono USB direccional pequeño — se decide en pruebas reales.
+- **Visión (Logitech C930e):** la cámara USB se usa **solo para video**. Su FOV de 90° detecta a gente que se acerca por los lados. Con OpenCV + MediaPipe (módulo `vision.py`, pendiente) el robot sabrá cuándo hay alguien al frente para activar el modo de escucha y seguirlo. **El micrófono de la C930e ya no se usa.**
+- **Micrófono (Steren MIC-9010):** un micrófono **inalámbrico de solapa** con receptor recargable. El receptor se enchufa por **USB a la Pi** y aparece como dispositivo de captura. Es inalámbrico (~20–35 m), así que el visitante u operador puede hablar sin cable. En el código se elige con `AUDIO_INPUT_DEVICE` en `.env` (ver §3.3).
 
 > **Sin sensor ultrasónico:** el plan original combinaba HC-SR04 (evasión rápida) + cámara (detección de usuario). Se **eliminó el HC-SR04**; la cámara cubre todo. Trade-off conocido: la cámara + MediaPipe corre a ~10 fps, suficiente para detectar presencia pero no para frenar antes de chocar en movimiento. En un stand con poco movimiento autónomo no es problema. Si hace falta, un HC-SR04 se reconecta en 2 pines del Arduino.
 
@@ -169,7 +169,19 @@ arecord -d 3 -f cd test.wav
 aplay test.wav
 ```
 
-Si el micrófono USB no es el default, edita `~/.asoundrc` o usa `pavucontrol` (`sudo apt install pavucontrol`) para fijarlo.
+**Elegir el micrófono Steren MIC-9010.** Al conectar su receptor USB aparecerá
+como un dispositivo de captura más (junto al de la C930e, que ya no usamos para
+audio). Lista los dispositivos que ve el código y pon el Steren en `.env`:
+```bash
+# Muestra todos los dispositivos con su índice y nombre:
+python -c "import sounddevice as sd; print(sd.query_devices())"
+```
+Luego en `backend/.env`:
+```
+AUDIO_INPUT_DEVICE=Steren     # parte del nombre, o el índice (ej. 3)
+```
+`stt.py` usará ese micrófono. Si lo dejas vacío, usa el dispositivo por defecto
+del sistema (que podría ser el de la C930e — por eso conviene fijarlo).
 
 ### 3.4 Clonar e instalar el backend
 
