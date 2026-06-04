@@ -1,63 +1,57 @@
 /*
- * MECH — Firmware del Arduino (kit "robo robo")
+ * MECH — Firmware del Arduino (Elegoo Uno R3)
  *
  * Roles del Arduino:
- *   - Mover el robot (ruedas omnidireccionales).
- *   - Mover cabeza (pan/tilt) y brazos (servos).
+ *   - Mover el robot: 4 motores DC (ruedas mecanum) vía 2x driver L298N.
+ *   - Mover 2 brazos (servos MG996R).
  *   - Escuchar comandos por Serial desde la Raspberry Pi 5.
  *
- * NOTA: el robot NO lleva sensor de obstáculos (el HC-SR04 se eliminó del
- * diseño; la presencia de usuarios se detecta con la cámara C930e desde la Pi).
- * Por eso el modo AUTO no conduce solo — solo hace micro-movimientos de cabeza.
- * El movimiento de ruedas llega siempre por comandos MOVE explícitos.
+ * NOTA: este robot NO tiene cabeza movil ni sensor de obstaculos. El comando
+ * HEAD se reconoce pero NO hace nada (no hay servos de cabeza). El movimiento
+ * de ruedas llega siempre por comandos MOVE explicitos desde la Pi. Los brazos
+ * se mueven solo por comandos ARM (gestos que decide la Pi).
  *
- * Protocolo de Serial (115200 baud, líneas terminadas en '\n'):
+ * ALIMENTACION (importante, no quemar nada):
+ *   - Logica del Arduino: por el cable USB de la Pi.
+ *   - Motores: bateria -> entrada VMS/+12V de los L298N (NO desde la Pi/Arduino).
+ *   - Servos MG996R: 5-6V externos desde la protoboard (NO desde el Arduino),
+ *     con GND comun. El Arduino solo entrega la senal a los pines de servo.
+ *   - TODOS los GND van unidos (Arduino, L298N, bateria, fuente de servos).
  *
- *   MODE:AUTO           → "vivo" en reposo (mira alrededor, sin conducir)
- *   MODE:IDLE           → pose neutral, micro-movimientos de cabeza
- *   MODE:LISTEN         → quieto, mirando al frente
- *   MODE:SPEAK          → gestos sutiles durante el habla (head bob)
- *   MODE:STOP           → todo detenido
+ * Protocolo de Serial (115200 baud, lineas terminadas en '\n'):
  *
- *   HEAD:<pan>:<tilt>   → ángulos de cabeza, 0–180 cada uno
- *   ARM:L:<angle>       → brazo izquierdo, 0–180
- *   ARM:R:<angle>       → brazo derecho, 0–180
- *   MOVE:<vx>:<vy>:<w>  → velocidad omnidireccional, cada valor -100..100
- *                         vx = adelante(+)/atrás(-)
- *                         vy = derecha(+)/izquierda(-)
- *                         w  = rotación horaria(+)/antihoraria(-)
- *   STOP                → atajo para MOVE:0:0:0
- *
- * Cambia las constantes PIN_* abajo según el cableado real del kit.
+ *   MODE:{AUTO|IDLE|LISTEN|SPEAK|STOP}   estado del robot
+ *   ARM:L:<angle>       brazo izquierdo, 0-180
+ *   ARM:R:<angle>       brazo derecho, 0-180
+ *   HEAD:<pan>:<tilt>   IGNORADO (sin cabeza fisica); responde ACK
+ *   MOVE:<vx>:<vy>:<w>  velocidad mecanum, cada valor -100..100
+ *                       vx = adelante(+)/atras(-)
+ *                       vy = derecha(+)/izquierda(-)
+ *                       w  = rotacion horaria(+)/antihoraria(-)
+ *   STOP                atajo para MOVE:0:0:0
  */
 
 #include <Servo.h>
 
 // ============================================================
-// CONFIGURACIÓN DE PINES — ajusta según tu cableado
+// CONFIGURACION DE PINES — Elegoo Uno R3
 // ============================================================
 
-// Servos
-const uint8_t PIN_SERVO_HEAD_PAN  = 9;   // izquierda/derecha
-const uint8_t PIN_SERVO_HEAD_TILT = 10;  // arriba/abajo
-const uint8_t PIN_SERVO_ARM_L     = 11;
-const uint8_t PIN_SERVO_ARM_R     = 12;
+// Servos de los brazos (MG996R). La libreria Servo usa el Timer1, que en el
+// Uno controla los pines 9 y 10: por eso los servos van en 9/10 y los PWM de
+// motores en 3/5/6/11 (asi no chocan).
+const uint8_t PIN_SERVO_ARM_L = 9;
+const uint8_t PIN_SERVO_ARM_R = 10;
 
-// Motores DC con driver tipo L298N o similar.
-// Cada motor: 1 pin PWM (velocidad) + 2 pins de dirección (IN1/IN2).
-// FL = Front-Left, FR = Front-Right, BL = Back-Left, BR = Back-Right.
-const uint8_t PIN_M_FL_PWM = 3,  PIN_M_FL_IN1 = 22, PIN_M_FL_IN2 = 23;
-const uint8_t PIN_M_FR_PWM = 5,  PIN_M_FR_IN1 = 24, PIN_M_FR_IN2 = 25;
-const uint8_t PIN_M_BL_PWM = 6,  PIN_M_BL_IN1 = 26, PIN_M_BL_IN2 = 27;
-const uint8_t PIN_M_BR_PWM = 4,  PIN_M_BR_IN1 = 28, PIN_M_BR_IN2 = 29;
-// Si usas un Arduino UNO (no Mega), reasigna IN1/IN2 a pines digitales
-// libres (p.ej. 2, 13, A0, A1, A2, A3, A4, A5).
-
-// ============================================================
-// PARÁMETROS DE COMPORTAMIENTO
-// ============================================================
-
-// (Sin parámetros de evasión: el robot no conduce de forma autónoma.)
+// Motores DC con 2x driver L298N. Cada motor: 1 pin PWM (ENA/ENB = velocidad)
+// + 2 pines de direccion (IN1/IN2). FL/FR/BL/BR = posicion de cada rueda.
+const uint8_t PIN_M_FL_PWM = 3,  PIN_M_FL_IN1 = 2,  PIN_M_FL_IN2 = 4;
+const uint8_t PIN_M_FR_PWM = 5,  PIN_M_FR_IN1 = 7,  PIN_M_FR_IN2 = 8;
+const uint8_t PIN_M_BL_PWM = 6,  PIN_M_BL_IN1 = 12, PIN_M_BL_IN2 = 13;
+const uint8_t PIN_M_BR_PWM = 11, PIN_M_BR_IN1 = A0, PIN_M_BR_IN2 = A1;
+// Cableado sugerido: L298N #1 mueve FL (Motor A) y FR (Motor B); L298N #2 mueve
+// BL (Motor A) y BR (Motor B). ENA/ENB de cada driver -> el pin PWM que toca.
+// Si una rueda gira al reves, intercambia sus dos cables o sus pines IN1/IN2.
 
 // ============================================================
 // ESTADO
@@ -66,8 +60,7 @@ const uint8_t PIN_M_BR_PWM = 4,  PIN_M_BR_IN1 = 28, PIN_M_BR_IN2 = 29;
 enum Mode { MODE_AUTO, MODE_IDLE, MODE_LISTEN, MODE_SPEAK, MODE_STOPPED };
 Mode currentMode = MODE_IDLE;
 
-Servo servoHeadPan, servoHeadTilt, servoArmL, servoArmR;
-unsigned long lastTick = 0;
+Servo servoArmL, servoArmR;
 
 String serialBuffer;
 
@@ -106,80 +99,28 @@ void stopAllMotors() {
   setMotor(PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2, 0);
 }
 
-// Cinemática de ruedas mecanum/omnidireccionales.
-// Entradas: vx (adelante), vy (lateral), w (rotación), cada uno en [-100,100].
+// Cinematica de ruedas mecanum/omnidireccionales.
+// Entradas: vx (adelante), vy (lateral), w (rotacion), cada uno en [-100,100].
 void driveOmni(int vx, int vy, int w) {
   long fl = (long)vx + vy + w;
   long fr = (long)vx - vy - w;
   long bl = (long)vx - vy + w;
   long br = (long)vx + vy - w;
 
-  // Escala al rango PWM [-255, 255].
+  // Normaliza si la suma excede 100 (puede pasar al mezclar componentes).
   long maxMag = max(max(abs(fl), abs(fr)), max(abs(bl), abs(br)));
-  long scale = 255;
   if (maxMag > 100) {
-    // Normaliza si la suma excede 100 (puede pasar al mezclar componentes).
     fl = fl * 100 / maxMag;
     fr = fr * 100 / maxMag;
     bl = bl * 100 / maxMag;
     br = br * 100 / maxMag;
   }
 
-  setMotor(PIN_M_FL_PWM, PIN_M_FL_IN1, PIN_M_FL_IN2, fl * scale / 100);
-  setMotor(PIN_M_FR_PWM, PIN_M_FR_IN1, PIN_M_FR_IN2, fr * scale / 100);
-  setMotor(PIN_M_BL_PWM, PIN_M_BL_IN1, PIN_M_BL_IN2, bl * scale / 100);
-  setMotor(PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2, br * scale / 100);
-}
-
-// ============================================================
-// COMPORTAMIENTOS DE MODO
-// ============================================================
-
-void tickAuto() {
-  // Sin sensor de obstáculos, AUTO no conduce a ciegas (chocaría).
-  // Solo mira lentamente de lado a lado para parecer "vivo" en el stand.
-  // El movimiento de ruedas se hace siempre con comandos MOVE explícitos.
-  static unsigned long nextMove = 0;
-  static int pan = 90;
-  static int dir = 1;
-  unsigned long now = millis();
-  if (now > nextMove) {
-    pan += dir * 15;
-    if (pan >= 120) { pan = 120; dir = -1; }
-    else if (pan <= 60) { pan = 60; dir = 1; }
-    servoHeadPan.write(pan);
-    nextMove = now + 700;
-  }
-}
-
-void tickIdle() {
-  // Micro-movimientos de cabeza para parecer "vivo".
-  static unsigned long nextMove = 0;
-  static int pan = 90;
-  unsigned long now = millis();
-  if (now > nextMove) {
-    pan = 80 + random(0, 20);
-    servoHeadPan.write(pan);
-    nextMove = now + 1500 + random(0, 1500);
-  }
-}
-
-void tickListen() {
-  // Quieto, cabeza al frente, brazos relajados.
-  servoHeadPan.write(90);
-  servoHeadTilt.write(90);
-}
-
-void tickSpeak() {
-  // Pequeño "bob" de cabeza mientras habla.
-  static unsigned long nextBob = 0;
-  static bool down = false;
-  unsigned long now = millis();
-  if (now > nextBob) {
-    servoHeadTilt.write(down ? 85 : 95);
-    down = !down;
-    nextBob = now + 350;
-  }
+  // Escala [-100,100] -> PWM [-255,255].
+  setMotor(PIN_M_FL_PWM, PIN_M_FL_IN1, PIN_M_FL_IN2, fl * 255 / 100);
+  setMotor(PIN_M_FR_PWM, PIN_M_FR_IN1, PIN_M_FR_IN2, fr * 255 / 100);
+  setMotor(PIN_M_BL_PWM, PIN_M_BL_IN1, PIN_M_BL_IN2, bl * 255 / 100);
+  setMotor(PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2, br * 255 / 100);
 }
 
 // ============================================================
@@ -207,12 +148,7 @@ void handleCommand(const String& cmd) {
     return;
   }
   if (cmd.startsWith("HEAD:")) {
-    int p1 = cmd.indexOf(':', 5);
-    if (p1 < 0) { Serial.println("ERR:BAD_HEAD"); return; }
-    int pan  = cmd.substring(5, p1).toInt();
-    int tilt = cmd.substring(p1 + 1).toInt();
-    servoHeadPan.write(clamp(pan, 0, 180));
-    servoHeadTilt.write(clamp(tilt, 0, 180));
+    // Sin cabeza fisica: se ignora, pero confirmamos para no romper la Pi.
     Serial.println("ACK:HEAD");
     return;
   }
@@ -265,20 +201,15 @@ void setup() {
   Serial.begin(115200);
 
   uint8_t motorPins[] = {
-    PIN_M_FL_IN1, PIN_M_FL_IN2,
-    PIN_M_FR_IN1, PIN_M_FR_IN2,
-    PIN_M_BL_IN1, PIN_M_BL_IN2,
-    PIN_M_BR_IN1, PIN_M_BR_IN2,
+    PIN_M_FL_PWM, PIN_M_FL_IN1, PIN_M_FL_IN2,
+    PIN_M_FR_PWM, PIN_M_FR_IN1, PIN_M_FR_IN2,
+    PIN_M_BL_PWM, PIN_M_BL_IN1, PIN_M_BL_IN2,
+    PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2,
   };
   for (uint8_t p : motorPins) pinMode(p, OUTPUT);
 
-  servoHeadPan.attach(PIN_SERVO_HEAD_PAN);
-  servoHeadTilt.attach(PIN_SERVO_HEAD_TILT);
   servoArmL.attach(PIN_SERVO_ARM_L);
   servoArmR.attach(PIN_SERVO_ARM_R);
-
-  servoHeadPan.write(90);
-  servoHeadTilt.write(90);
   servoArmL.write(90);
   servoArmR.write(90);
 
@@ -287,17 +218,7 @@ void setup() {
 }
 
 void loop() {
+  // Sin comportamientos autonomos: el robot solo reacciona a comandos de la Pi.
+  // (Las ruedas por MOVE, los brazos por ARM.)
   readSerial();
-
-  unsigned long now = millis();
-  if (now - lastTick >= 50) {
-    lastTick = now;
-    switch (currentMode) {
-      case MODE_AUTO:    tickAuto();   break;
-      case MODE_IDLE:    tickIdle();   break;
-      case MODE_LISTEN:  tickListen(); break;
-      case MODE_SPEAK:   tickSpeak();  break;
-      case MODE_STOPPED: /* nada */    break;
-    }
-  }
 }

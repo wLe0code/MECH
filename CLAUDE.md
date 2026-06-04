@@ -22,7 +22,7 @@ Esquema mental basado en los diagramas originales del usuario (capas física + f
 |---|---|
 | **Superior** | Motor de cabeza (servos pan/tilt), proyectores HDMI |
 | **Central** | Raspberry Pi 5 (8GB), fuente de poder, parlante, **Logitech C930e** (cámara USB — solo video), **receptor del mic inalámbrico Steren MIC-9010** (USB) |
-| **Mecánica** | Arduino del kit Robo Robo (no UNO pelado), ruedas omnidireccionales, motores DC |
+| **Mecánica** | **Elegoo Uno R3** + 2× driver L298N, 4 motores DC con ruedas omnidireccionales (mecanum), 2 servos MG996R (brazos) |
 
 ### Flujo del software (de arriba a abajo)
 
@@ -95,9 +95,9 @@ No las cuestiones a menos que el usuario las cuestione primero:
 |---|---|---|
 | Cómputo principal | Raspberry Pi 5 **8 GB** | Holgura para Whisper + Chromium + CV |
 | Storage | microSD 64 GB | Suficiente |
-| Microcontrolador | **Arduino del kit Robo Robo** (no UNO ni Mega pelados) | Trae driver de motores y headers de servo integrados; ahorra L298Ns externos |
+| Microcontrolador | **Elegoo Uno R3** (Arduino Uno, ATmega328P) + **2× L298N** | El RoboKit RS de Roborobo se descartó (no acepta control en vivo de la Pi; corre programas Rogic cerrados). El Elegoo se controla por USB serial — es la arquitectura que el proyecto espera (`arduino_link.py` + `mech_controller.ino`). |
 | Motores | DC con ruedas omnidireccionales (mecanum) | Movimiento en cualquier dirección |
-| Servos | 4 (cabeza pan, cabeza tilt, brazo L, brazo R) | Cabeza + brazos para gestos |
+| Servos | **2 MG996R** (brazo L, brazo R) | Solo brazos para gestos. La cabeza se descartó (la expresividad direccional la dan las ruedas). Los servos se alimentan con 5–6V externos desde la protoboard (NO desde el Arduino), GND común. |
 | Presencia / visión | **Logitech C930e** (USB UVC, 1080p, FOV 90°) — **solo video** | FOV ancho detecta usuarios que se acercan por los lados; H.264 por hardware libera CPU de la Pi. **El mic de la C930e ya NO se usa.** |
 | Audio in | **Steren MIC-9010** — micrófono inalámbrico de solapa con receptor USB | Inalámbrico (~20–35m de alcance), batería recargable. El receptor se enchufa por USB a la Pi y aparece como dispositivo de captura. Se selecciona con `AUDIO_INPUT_DEVICE` en `.env` (ej. `Steren`). |
 | Audio out | Parlante USB o jack 3.5mm | |
@@ -113,9 +113,15 @@ El plan original tenía HC-SR04 **+** cámara para roles distintos: HC-SR04 evas
 
 No empujes esto si el usuario no lo trae. Por ahora se asume operación en stand con poco movimiento autónomo.
 
-### Pin mapping del Robo Robo
+### Pin mapping del Elegoo Uno (firmware actual)
 
-Los pines del Robo Robo NO coinciden 1:1 con los que tiene hardcodeados [`arduino/mech_controller/mech_controller.ino`](arduino/mech_controller/mech_controller.ino) (escrito para un Mega genérico con L298Ns). El usuario debe **buscar el datasheet del Robo Robo** y actualizar las constantes `PIN_M_*` y `PIN_SERVO_*`. **NO** reescribas la lógica del .ino — solo los números de pin. Si el usuario te pregunta por esto, ayúdalo a encontrar el datasheet o a hacer un sketch de prueba pin-por-pin (`Serial.println` cuando muevas algo).
+El firmware [`arduino/mech_controller/mech_controller.ino`](arduino/mech_controller/mech_controller.ino) ya está mapeado para el **Elegoo Uno R3**:
+
+- **Servos (brazos):** ARM_L = pin **9**, ARM_R = pin **10** (la librería Servo usa el Timer1 = pines 9/10).
+- **Motores (4× DC vía 2× L298N):** PWM/ENA en **3, 5, 6, 11**; direcciones IN1/IN2 en **2, 4, 7, 8, 12, 13, A0, A1**. (No se usan 9/10 para PWM porque los ocupa el Servo.)
+- **Sin cabeza:** el comando `HEAD` se reconoce pero es un no-op (no rompe el lado de la Pi; los gestos siguen con los brazos).
+
+Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard), GND común. Si una rueda gira al revés, intercambia sus 2 cables o sus pines IN1/IN2.
 
 ---
 
@@ -296,7 +302,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 ### ✅ Implementado y funcional
 
 - Backend completo (server.py, mech_app.py, llm, stt, tts, image_gen, arduino_link, gestures).
-- Firmware Arduino base (sin pin mapping del Robo Robo todavía).
+- Firmware Arduino completo para **Elegoo Uno** (4 motores DC vía 2× L298N + 2 servos de brazos; pines ya mapeados).
 - Frontend completo (panel + projector + PWA).
 - Launchers Windows.
 - Documentación (GUIA.md, FRONTEND.md, windows/README.md).
@@ -307,7 +313,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 ### 🚧 Pendiente
 
 - **Generar los videos pre-renderizados** para cada obra (Kling/Veo/Runway en otra máquina) y subirlos vía `/library`. Hasta que estén, MECH cae a NanoBanana para esas obras automáticamente.
-- **Pin mapping del Robo Robo** en `mech_controller.ino` — el usuario debe obtener el datasheet de su kit y actualizar las constantes `PIN_*`.
+- **Cablear y probar el Elegoo Uno** — firmware ya mapeado (`mech_controller.ino`, fqbn `arduino:avr:uno`). Falta: conseguir 2× L298N, cablear motores + servos (servos con 5–6V de protoboard), flashear y probar por serial.
 - **Módulo de visión** (`backend/vision.py`) — Logitech C930e (USB UVC) + MediaPipe Face Detection para:
   - Detectar presencia de usuario → activar LISTEN automáticamente.
   - Seguimiento de cara con la cabeza del robot (servo pan/tilt sigue la posición de la cara).
@@ -341,7 +347,7 @@ Si funciona, escribimos `vision.py` con este plan:
 3. **El Arduino se resetea cuando se abre el puerto serial.** El `arduino_link.connect()` espera 2s después de abrir. No reducir ese sleep.
 4. **`temperature`/`top_p`/`top_k`/`budget_tokens` no van con Claude Opus 4.7.** Devuelven 400. El código actual ya está alineado (usa `thinking: {type: "adaptive"}`).
 5. **Modelo Claude**: siempre `claude-opus-4-7` (alias correcto; no añadir sufijo de fecha).
-6. **Arduino Robo Robo**: es Arduino-compatible (ATmega328P). El miedo a "incompatibilidad" del usuario es infundado — solo necesita pin mapping diferente.
+6. **Microcontrolador = Elegoo Uno R3** (Arduino Uno, ATmega328P). El RoboKit RS de Roborobo se descartó: no acepta control en vivo desde la Pi (corre programas Rogic cerrados, sin recibir serial). El Elegoo se controla por USB con `arduino_link.py`. Subir firmware con `arduino:avr:uno`.
 7. **`python -m backend.projector`** (tkinter) y el visor browser-based en `/projector` son alternativas. Para producción usar el browser.
 8. **El paquete Chromium en Raspberry Pi OS Bookworm es `chromium`**, no `chromium-browser` (aunque el binario sigue existiendo bajo ambos nombres).
 9. **La red wifi del evento puede tener client isolation** (común en colegios/eventos). Si Windows no ve la Pi por IP aunque estén en la misma red, ese es el problema. Hotspot del celular como respaldo.

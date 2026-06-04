@@ -33,7 +33,7 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
                             │
                             ▼ USB serial
                        ┌──────────────────────┐
-                       │ ARDUINO (Robo Robo)  │
+                       │ ARDUINO (Elegoo Uno) │
                        │  - servos            │  ◄── cabeza + brazos
                        │  - 4 motores DC      │  ◄── ruedas omni
                        └──────────────────────┘
@@ -47,7 +47,7 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 | Componente | Hace |
 |---|---|
 | Raspberry Pi 5 (8 GB) | Audio, visión, IA (Claude/Gemini/ElevenLabs), orquestación |
-| Arduino (kit Robo Robo) | Control de motores y servos en tiempo real |
+| Arduino Elegoo Uno + 2× L298N | Control de motores (4 ruedas) y 2 servos de brazos en tiempo real |
 | Cámara Logitech C930e (USB) | Detección de usuario (**solo video**) |
 | Micrófono Steren MIC-9010 (receptor USB) | Entrada de voz (inalámbrico) |
 | Proyector(es) | Muestra videos pre-renderizados (biblioteca) o imágenes de NanoBanana |
@@ -62,7 +62,9 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 ### Lista de componentes
 
 - **Raspberry Pi 5 (8 GB)** + microSD 64 GB clase 10+
-- **Arduino del kit "Robo Robo"** — trae driver de motores y headers de servo integrados (no necesitas L298N externos)
+- **Elegoo Uno R3** (Arduino Uno) — el cerebro de movimiento, por USB a la Pi
+- **2× driver de motores L298N** — para las 4 ruedas DC (cada L298N maneja 2 motores)
+- **Fuente de 5–6V para los servos** (protoboard / módulo de alimentación) con buena corriente para los 2 MG996R
 - **4 motores DC** con ruedas omnidireccionales (mecanum)
 - **4 servos** (SG90 o MG996R): cabeza pan, cabeza tilt, brazo izq, brazo der
 - **Cámara Logitech C930e** (USB UVC, 1080p, FOV 90°) — **solo video** (detección de usuario)
@@ -87,27 +89,37 @@ ffmpeg -f v4l2 -i /dev/video0 -frames 1 test.jpg   # captura un frame de prueba
 
 ### 1.3 Cableado básico
 
+El microcontrolador es un **Elegoo Uno R3**. Los pines ya están en
+`mech_controller.ino` — esto es solo para cablear:
+
 ```
-Servos (señal):
-  Cabeza Pan   → header de servo del Robo Robo
-  Cabeza Tilt  → header de servo del Robo Robo
-  Brazo Izq    → header de servo del Robo Robo
-  Brazo Der    → header de servo del Robo Robo
-  El Robo Robo ya trae alimentación para servos. GND común.
+Servos de brazos (MG996R):
+  Brazo Izq  señal → pin 9 del Uno
+  Brazo Der  señal → pin 10 del Uno
+  Alimentación de los servos: 5–6V desde la PROTOBOARD (fuente externa),
+  NO desde el Arduino. GND de los servos unido al GND del Uno (común).
 
-Motores DC:
-  El kit Robo Robo trae el driver de motores integrado — NO necesitas L298N
-  externos. Conecta los 4 motores a las salidas de motor del Robo Robo.
-  Alimenta los motores con la fuente del kit (no desde la Pi).
+Motores DC (4×, con 2× driver L298N):
+  Cada L298N maneja 2 motores. Necesitas 2 drivers para las 4 ruedas.
+  Por cada motor: ENA/ENB (PWM) + IN1 + IN2.
+    FL: PWM→3,  IN1→2,  IN2→4
+    FR: PWM→5,  IN1→7,  IN2→8
+    BL: PWM→6,  IN1→12, IN2→13
+    BR: PWM→11, IN1→A0, IN2→A1
+  Potencia de motores: batería → entrada VMS/+12V de los L298N (NO desde la Pi).
+  GND de la batería unido al GND del Uno (común).
 
-Cámara C930e ↔ Raspberry Pi:
-  USB directo a la Pi (no al Arduino). Aparece como /dev/videoN.
-
-Arduino (Robo Robo) ↔ Raspberry Pi:
-  USB. Aparece en la Pi como /dev/ttyACM0 o /dev/ttyUSB0.
+Cámara C930e ↔ Raspberry Pi:   USB directo a la Pi (solo video). /dev/videoN
+Mic Steren MIC-9010 ↔ Pi:       receptor USB a la Pi.
+Elegoo Uno ↔ Raspberry Pi:      USB. Aparece como /dev/ttyACM0 o /dev/ttyUSB0.
 ```
 
-> ⚠️ **Pin mapping del Robo Robo:** los pines del kit Robo Robo **no coinciden** con los que trae hardcodeados `mech_controller.ino` (escrito para un Arduino genérico). Debes buscar el datasheet de tu Robo Robo y actualizar las constantes `PIN_M_*` y `PIN_SERVO_*` del .ino. **No reescribas la lógica del firmware** — solo los números de pin.
+> ⚠️ **Tierra común obligatoria:** todos los GND unidos (Uno, los 2 L298N, la
+> batería de motores y la fuente de 5–6V de los servos). Sin esto, las señales
+> no tienen referencia y nada funciona bien.
+>
+> 💡 Si una rueda gira al revés, intercambia sus 2 cables de motor (o sus pines
+> IN1/IN2). Los servos NO necesitan driver — el Uno les da la señal directo.
 
 ## 2. Cuentas y API keys
 
@@ -229,7 +241,7 @@ cd arduino/mech_controller
 ~/bin/arduino-cli upload  --fqbn arduino:avr:uno --port /dev/ttyACM0 .
 ```
 
-El kit **Robo Robo** es Arduino-compatible (ATmega328P, igual que un UNO), por eso el `fqbn` es `arduino:avr:uno`. Recuerda actualizar primero los pines `PIN_*` del .ino al mapeo de tu Robo Robo (ver §1.3).
+El **Elegoo Uno R3** es un Arduino Uno (ATmega328P), por eso el `fqbn` es `arduino:avr:uno`. Los pines del .ino ya están mapeados para el Uno (ver §1.3); solo cablea según esa tabla.
 
 ### Opción B — desde tu computadora con Arduino IDE
 

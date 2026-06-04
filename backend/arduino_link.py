@@ -6,13 +6,14 @@ mantener el código simple.
 
 Comandos soportados (los implementa el firmware mech_controller.ino):
 
-    MODE:AUTO            Patrullaje autónomo con evasión de obstáculos.
-    MODE:IDLE            Pose neutra, micro-movimientos de cabeza.
-    MODE:LISTEN          Pose de "escuchando" (cabeza al frente, quieto).
-    MODE:SPEAK           Gesticula brazos y cabeza al ritmo del habla.
+    MODE:AUTO            Estado "vivo" en reposo (no conduce solo).
+    MODE:IDLE            Pose neutra.
+    MODE:LISTEN          Quieto, escuchando (motores detenidos).
+    MODE:SPEAK           Hablando (los gestos de brazos los dispara la Pi).
     MODE:STOP            Detiene todo (ruedas, servos congelados).
 
-    HEAD:<pan>:<tilt>    Pan y tilt en grados (0–180).
+    HEAD:<pan>:<tilt>    Ignorado por el firmware actual (el robot no tiene
+                         cabeza física); se mantiene por compatibilidad.
     ARM:L:<angle>        Brazo izquierdo (0–180).
     ARM:R:<angle>        Brazo derecho (0–180).
     MOVE:<vx>:<vy>:<w>   Velocidad omnidireccional. vx,vy,w en [-100, 100].
