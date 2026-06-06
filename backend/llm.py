@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 import config
 import video_library
+import voices
 
 
 SYSTEM_PROMPT = """Eres MECH, un robot interactivo de un stand de la WRO 2026
@@ -131,6 +132,15 @@ class Segment(BaseModel):
     gesture: Literal[
         "neutral", "excited", "thoughtful", "wave", "point", "arms_open"
     ] = Field("neutral", description="Gesto físico durante la narración.")
+    voice: str | None = Field(
+        None,
+        description=(
+            "Slug del personaje cuya voz usar para este segmento (ver "
+            "lista de voces en el system prompt). None o 'narrator' = voz "
+            "por defecto de MECH. Si el slug no existe en el catálogo, se "
+            "cae a la voz por defecto sin romper."
+        ),
+    )
 
 
 class Plan(BaseModel):
@@ -169,7 +179,12 @@ def plan_response(user_message: str, conversation_history: list[dict] | None = N
 
     # Componemos el system prompt con la lista dinámica de obras pre-renderizadas
     # presentes en disco (Opción B). Si no hay videos, esa sección dice "vacía".
+    # También añadimos el catálogo de voces activas (multi-personaje, vacío si
+    # solo hay narrator).
     full_system_prompt = SYSTEM_PROMPT + "\n\n" + video_library.system_prompt_section()
+    voices_section = voices.system_prompt_section()
+    if voices_section:
+        full_system_prompt += "\n\n" + voices_section
 
     response = client.messages.parse(
         model=config.CLAUDE_MODEL,

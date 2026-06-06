@@ -54,6 +54,10 @@ VAD_SILENCE_TIMEOUT = float(os.environ.get("VAD_SILENCE_TIMEOUT", "1.2"))
 #   python -c "import sounddevice as sd; print(sd.query_devices())"
 # y pon aquí "Steren", "MIC-9010" o el número que corresponda.
 AUDIO_INPUT_DEVICE = os.environ.get("AUDIO_INPUT_DEVICE", "")
+# Segundos de silencio antepuestos a cada respuesta TTS. Compensa el
+# arranque lento de parlantes Bluetooth (que se comen la primera palabra).
+# Súbelo si el parlante sigue cortando el inicio.
+AUDIO_LEAD_SILENCE = float(os.environ.get("AUDIO_LEAD_SILENCE", "1.0"))
 
 # Proyección
 PROJECTOR_DISPLAY = os.environ.get("PROJECTOR_DISPLAY", ":0")

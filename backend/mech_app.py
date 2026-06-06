@@ -29,6 +29,7 @@ import image_gen
 import llm
 import tts
 import video_library
+import voices
 from arduino_link import ArduinoLink, get_link
 
 EventCallback = Callable[[dict], Awaitable[None]]
@@ -207,8 +208,15 @@ class MechApp:
             self._render_segment_visual(seg, plan.title, i)
             gestures.perform(self.arduino, seg.gesture)
             self.state["last_ai_response"] = seg.narration
-            self.emit("ai_response", text=seg.narration, segment=i, total=len(plan.segments))
-            tts.speak(seg.narration, blocking=True)
+            voice_id = voices.resolve(seg.voice)
+            self.emit(
+                "ai_response",
+                text=seg.narration,
+                segment=i,
+                total=len(plan.segments),
+                voice=seg.voice or "narrator",
+            )
+            tts.speak(seg.narration, blocking=True, voice_id=voice_id)
         self.arduino.set_mode("IDLE")
 
     def handle_text_command(self, text: str) -> None:

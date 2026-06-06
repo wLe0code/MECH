@@ -49,7 +49,9 @@ def _stream_to_audio(byte_stream: Iterator[bytes]) -> tuple[np.ndarray, int]:
 # Segundos de silencio que se añaden al inicio del audio. Los parlantes
 # Bluetooth tardan en "despertar" y se comen el principio del sonido; este
 # silencio inicial evita que se pierdan las primeras palabras.
-LEAD_SILENCE_SEC = 0.7
+# Configurable con AUDIO_LEAD_SILENCE en .env: súbelo (1.2, 1.5) si el
+# parlante Bluetooth sigue comiéndose la primera palabra.
+LEAD_SILENCE_SEC = config.AUDIO_LEAD_SILENCE
 
 
 def _pad_lead_silence(audio: np.ndarray, samplerate: int) -> np.ndarray:
@@ -99,6 +101,7 @@ def speak(
     on_start: Callable[[], None] | None = None,
     on_end: Callable[[], None] | None = None,
     blocking: bool = True,
+    voice_id: str | None = None,
 ) -> None:
     """Sintetiza `text` y lo reproduce por el parlante por defecto.
 
@@ -109,14 +112,18 @@ def speak(
         on_end: Callback al terminar la reproducción.
         blocking: Si True, bloquea hasta terminar. Si False, devuelve
             inmediatamente y reproduce en un hilo.
+        voice_id: Voice ID de ElevenLabs a usar SOLO para esta llamada
+            (multi-personaje, ver backend/voices.py). Si es None o vacío,
+            usa `config.ELEVENLABS_VOICE_ID` por defecto.
     """
     if not text.strip():
         return
+    chosen_voice = voice_id or config.ELEVENLABS_VOICE_ID
 
     def _run():
         client = get_client()
         stream = client.text_to_speech.convert(
-            voice_id=config.ELEVENLABS_VOICE_ID,
+            voice_id=chosen_voice,
             model_id=config.ELEVENLABS_MODEL_ID,
             text=text,
             output_format="mp3_44100_128",

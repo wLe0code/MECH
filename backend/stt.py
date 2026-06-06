@@ -26,16 +26,25 @@ import config
 
 
 # webrtcvad solo acepta frames de 10, 20 o 30 ms a 8/16/32/48 kHz.
+# `config.AUDIO_SAMPLE_RATE` es la tasa de CAPTURA del micrófono (la que el
+# hardware soporta; el Steren WXMH/MIC-9010 pide 48000). webrtcvad acepta
+# 8/16/32/48 kHz, así que la usamos tal cual para el VAD en vivo.
 FRAME_DURATION_MS = 30
 FRAME_BYTES = int(config.AUDIO_SAMPLE_RATE * FRAME_DURATION_MS / 1000) * 2  # int16
 
-# Contexto que se le pasa a Whisper para "prepararlo": mejora mucho el
-# reconocimiento del nombre inventado "MECH" y de los títulos de obras
-# (nombres propios que de otro modo se transcriben mal).
-INITIAL_PROMPT = (
-    "Conversación en español con un robot llamado MECH sobre obras culturales "
-    "como Romeo y Julieta, Shrek, La Odisea y Don Quijote."
-)
+# Tasa que faster-whisper espera SIEMPRE cuando se le pasa un array de numpy.
+# Whisper NO resamplea arrays: si le das audio a otra tasa lo interpreta mal
+# (a 48 kHz lo "oye" 3x más rápido y agudo → transcribe basura y alucina).
+# Por eso capturamos a AUDIO_SAMPLE_RATE y resampleamos a esto antes de
+# transcribir. Si ambas son iguales (16000), el resample es un no-op.
+WHISPER_SAMPLE_RATE = 16000
+
+# Contexto mínimo que se le pasa a Whisper para reconocer el nombre "MECH".
+# IMPORTANTE: NO listar aquí los títulos de las obras. Si el audio entra con
+# ruido o cortado, Whisper tiende a "alucinar" y devolver justo lo que aparece
+# en este prompt; si listáramos las obras, respondería esas obras sin que el
+# usuario las haya pedido.
+INITIAL_PROMPT = "Conversación en español con un robot llamado MECH."
 
 _model: WhisperModel | None = None
 
@@ -53,6 +62,33 @@ def _resolve_input_device() -> int | str | None:
         return int(dev)  # índice numérico
     except ValueError:
         return dev  # nombre (sounddevice acepta coincidencia parcial)
+
+
+def _resample(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
+    """Resamplea audio mono float32 de `src_rate` a `dst_rate`.
+
+    Sin dependencias extra (no usamos scipy). Para factores enteros
+    (ej. 48000 -> 16000 = 3x) hace decimación con un filtro de caja simple
+    que evita aliasing lo suficiente para reconocimiento de voz. Para
+    factores no enteros cae a interpolación lineal.
+    """
+    if src_rate == dst_rate or audio.size == 0:
+        return audio
+    # Caso entero (el habitual: 48000/16000 = 3, 32000/16000 = 2).
+    if src_rate % dst_rate == 0:
+        factor = src_rate // dst_rate
+        n = (len(audio) // factor) * factor
+        if n == 0:
+            return audio[:0]
+        # Promedio de cada bloque de `factor` muestras = filtro anti-alias + decimación.
+        return audio[:n].reshape(-1, factor).mean(axis=1).astype(np.float32)
+    # Fallback general: interpolación lineal.
+    dst_len = int(round(len(audio) * dst_rate / src_rate))
+    if dst_len <= 0:
+        return audio[:0]
+    x_old = np.linspace(0.0, 1.0, num=len(audio), endpoint=False)
+    x_new = np.linspace(0.0, 1.0, num=dst_len, endpoint=False)
+    return np.interp(x_new, x_old, audio).astype(np.float32)
 
 
 def get_model() -> WhisperModel:
@@ -138,7 +174,10 @@ def record_until_silence(max_seconds: float = 15.0) -> np.ndarray | None:
 
     pcm_bytes = b"".join(voiced_frames)
     audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
-    return audio_int16.astype(np.float32) / 32768.0
+    audio_f32 = audio_int16.astype(np.float32) / 32768.0
+    # Bajamos de la tasa de captura (ej. 48000) a la que Whisper exige (16000).
+    # Sin esto, Whisper malinterpreta el audio y transcribe basura.
+    return _resample(audio_f32, config.AUDIO_SAMPLE_RATE, WHISPER_SAMPLE_RATE)
 
 
 def transcribe(audio: np.ndarray) -> str:
@@ -149,7 +188,11 @@ def transcribe(audio: np.ndarray) -> str:
         language=config.WHISPER_LANGUAGE,
         beam_size=1,  # más rápido; suficiente para frases cortas
         vad_filter=False,  # ya pre-filtramos con webrtcvad
-        initial_prompt=INITIAL_PROMPT,  # ayuda a reconocer "MECH" y títulos de obras
+        initial_prompt=INITIAL_PROMPT,  # ayuda a reconocer el nombre "MECH"
+        # Defensas contra alucinaciones cuando el audio entra con ruido:
+        condition_on_previous_text=False,  # no arrastrar contexto entre turnos
+        no_speech_threshold=0.6,  # descarta tramos sin habla clara
+        log_prob_threshold=-1.0,  # descarta transcripciones de baja confianza
     )
     return " ".join(seg.text.strip() for seg in segments).strip()
 
