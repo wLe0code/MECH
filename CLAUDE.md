@@ -304,8 +304,21 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 - Backend completo (server.py, mech_app.py, llm, stt, tts, image_gen, arduino_link, gestures).
 - Firmware Arduino completo para **Arduino Uno** (4 motores DC vía 2× L298N + 2 servos de brazos; pines ya mapeados).
 - Frontend completo (panel + projector + PWA).
+  - **Banner de fase de voz** siempre visible: off → waiting ("PUEDES HABLAR",
+    señal para decirle al juez que hable) → listening → transcribing → thinking
+    → speaking. Lo alimenta `mech_app.set_voice_phase()` vía el callback
+    `on_phase` de `stt.listen_once()`. Estado en `state["voice_phase"]`.
+  - **Vista Ajustes** (sidebar del panel): tunea en vivo VAD, timeout de
+    silencio, silencio inicial del parlante y espera máxima (`POST /api/config`,
+    sin reiniciar); guarda en `.env` micrófono, sample rate, modelo Whisper y
+    voice_id (requieren reiniciar). Prueba de TTS (`POST /api/tts/test`) y
+    lista de micrófonos (`GET /api/audio/devices`).
+- **Voces dinámicas por personaje** (`backend/voices.py`): catálogo con
+  `voice_id` por personaje, campo `voice` en el `Segment`, `tts.speak()` acepta
+  `voice_id`. Rellenar los `voice_id` en `voices.py` para activarlas (ej. voz
+  del Hidalgo para Don Quijote). Fallback a la voz default si está vacío.
 - Launchers Windows.
-- Documentación (GUIA.md, FRONTEND.md, windows/README.md).
+- Documentación (GUIA.md, FRONTEND.md, PRUEBAS_HARDWARE.md, windows/README.md).
 - **Biblioteca de videos pre-renderizados (Opción B)** — manifest, schema, dispatch
   en execute_plan, fallback a NanoBanana, UI `/library` para subir mp4s,
   endpoints REST `GET/POST/DELETE /api/library/...`.
@@ -353,6 +366,8 @@ Si funciona, escribimos `vision.py` con este plan:
 9. **La red wifi del evento puede tener client isolation** (común en colegios/eventos). Si Windows no ve la Pi por IP aunque estén en la misma red, ese es el problema. Hotspot del celular como respaldo.
 10. **Modo standalone (`python -m backend.main`) NO muestra videos pre-renderizados.** El visor tkinter solo sabe de imágenes. Para ver videos hace falta `python -m backend.server` + `/projector` en navegador. `main.py` loguea el slug/segmento del video y sigue con la narración/gesto.
 11. **Slug del video_library debe coincidir con el subdirectorio.** Si añades una obra al manifest pero la carpeta se llama distinto, `available_works()` la reporta como incompleta y no aparece a Claude.
+12. **Sample rate del micrófono ≠ el que usa Whisper.** Muchos mics USB baratos (Steren MIC-9010 / "WXMH mini") NO abren a 16000 Hz y dan `Invalid sample rate [PaErrorCode -9997]`. Por eso `AUDIO_SAMPLE_RATE=48000` (captura). **faster-whisper exige arrays a 16000 Hz y NO resamplea solo**: `stt.py` captura a 48000 (para VAD) y **resamplea a 16000** (`WHISPER_SAMPLE_RATE`) antes de transcribir. Si se pasa audio a otra tasa, Whisper lo "oye" 3× más rápido, transcribe basura y **alucina** el contenido del `initial_prompt`. Por eso ese prompt ya NO lista títulos de obras.
+13. **El `.env` del panel.** La vista Ajustes escribe `backend/.env` con `config.update_env_file()`. Solo las claves en `_LIVE_KEYS` (server.py) se aplican sin reiniciar (VAD, silencios, idioma); las demás (mic, sample rate, modelo, voice_id) necesitan reiniciar el server.
 
 ---
 

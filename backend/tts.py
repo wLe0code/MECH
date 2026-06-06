@@ -49,14 +49,13 @@ def _stream_to_audio(byte_stream: Iterator[bytes]) -> tuple[np.ndarray, int]:
 # Segundos de silencio que se añaden al inicio del audio. Los parlantes
 # Bluetooth tardan en "despertar" y se comen el principio del sonido; este
 # silencio inicial evita que se pierdan las primeras palabras.
-# Configurable con AUDIO_LEAD_SILENCE en .env: súbelo (1.2, 1.5) si el
-# parlante Bluetooth sigue comiéndose la primera palabra.
-LEAD_SILENCE_SEC = config.AUDIO_LEAD_SILENCE
+# Se lee de config.AUDIO_LEAD_SILENCE EN VIVO (no se cachea) para que la
+# vista Ajustes del panel pueda subirlo (1.2, 1.5) sin reiniciar.
 
 
 def _pad_lead_silence(audio: np.ndarray, samplerate: int) -> np.ndarray:
     """Antepone un breve silencio al audio (para el arranque del Bluetooth)."""
-    pad = int(samplerate * LEAD_SILENCE_SEC)
+    pad = int(samplerate * config.AUDIO_LEAD_SILENCE)
     if pad <= 0:
         return audio
     if audio.ndim == 1:

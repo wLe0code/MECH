@@ -133,22 +133,52 @@
     }
   }
 
+  // Mapa de fases del ciclo de voz → texto + estilo del banner grande.
+  const PHASES = {
+    off:          { cls: 'phase-off',     text: 'Bucle de voz apagado',     hint: 'Pulsa el micrófono o la tecla V para empezar' },
+    waiting:      { cls: 'phase-waiting', text: '🎤 PUEDES HABLAR',          hint: 'Dile al juez/usuario que hable AHORA' },
+    listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
+    transcribing: { cls: 'phase-work',    text: 'Transcribiendo…',           hint: 'Convirtiendo la voz a texto' },
+    thinking:     { cls: 'phase-work',    text: 'MECH está pensando…',        hint: 'Generando la respuesta con Claude' },
+    speaking:     { cls: 'phase-speak',   text: '🔊 MECH está hablando…',     hint: 'Reproduciendo la narración' },
+  };
+
+  function updateVoicePhase(phase) {
+    const p = PHASES[phase] || PHASES.off;
+    const banner = $('voice-phase-banner');
+    banner.className = 'voice-phase-banner ' + p.cls;
+    $('vpb-text').textContent = p.text;
+    $('vpb-hint').textContent = p.hint;
+
+    // Texto del hero de la vista Voz.
+    $('voice-status').textContent = p.text;
+
+    // Punto del header + sensor del micrófono.
+    const micActive = phase === 'waiting' || phase === 'listening';
+    $('dot-mic').className = micActive ? 'dot-active' : (state.voiceLoopActive ? 'dot-ok' : 'dot-off');
+    const micLabel = { waiting: 'PUEDES HABLAR', listening: 'GRABANDO', transcribing: 'PROCESANDO',
+                       thinking: 'PENSANDO', speaking: 'HABLANDO', off: 'INACTIVO' }[phase] || 'INACTIVO';
+    setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
+  }
+
   function applyState(s) {
     state.backend = s;
     // Bucle de voz
     state.voiceLoopActive = !!s.voice_loop_active;
-    $('voice-status').textContent = s.voice_listening
-      ? '● Escuchando…'
-      : (state.voiceLoopActive ? 'Bucle activo, esperando voz' : 'Bucle de voz apagado');
-    $('voice-btn').classList.toggle('listening', !!s.voice_listening);
-    $('dot-mic').className = s.voice_listening ? 'dot-active' : (state.voiceLoopActive ? 'dot-ok' : 'dot-off');
-    setSensor('sen-mic', s.voice_listening ? 'ESCUCHANDO' : (state.voiceLoopActive ? 'EN ESPERA' : 'INACTIVO'),
-              s.voice_listening ? 'val-active' : (state.voiceLoopActive ? 'val-ok' : 'val-off'));
+    // Fase detallada: off|waiting|listening|transcribing|thinking|speaking.
+    // Si el backend es viejo y no la manda, la derivamos de los bools.
+    const phase = s.voice_phase || (
+      s.voice_listening ? 'listening' : (state.voiceLoopActive ? 'waiting' : 'off')
+    );
+    updateVoicePhase(phase);
+
+    $('voice-btn').classList.toggle('listening', phase === 'waiting' || phase === 'listening');
     $('fw-voice').textContent = state.voiceLoopActive ? 'ACTIVO' : 'DETENIDO';
-    if (s.voice_listening) startWaveAnim(); else stopWaveAnim();
+    if (phase === 'waiting' || phase === 'listening') startWaveAnim(); else stopWaveAnim();
 
     // Modo / firmware
     $('fw-mode').textContent = s.current_mode || 'IDLE';
+    if (s.claude_model) $('fw-model').textContent = s.claude_model;
     $('dot-fw').className = 'dot-ok';
 
     // Arduino
@@ -371,7 +401,78 @@
       log('▶ PARO DE EMERGENCIA disparado desde el panel', 'err');
       await fetchJSON('/api/emergency/stop');
     },
+
+    // ─── Ajustes ────────────────────────────────────────────────────
+    async ttsTest() {
+      const text = $('tts-test-text').value.trim() || 'Prueba de sonido.';
+      log('Probando voz (TTS)…', 'info');
+      await fetchJSON('/api/tts/test', { json: { text } });
+    },
+
+    async loadSettings() {
+      const cfg = await fetchJSON('/api/config', { method: 'GET' });
+      if (!cfg) return;
+      const L = cfg.live || {}, R = cfg.restart || {};
+      // En vivo
+      setSlider('set-vad', 'vad', L.VAD_AGGRESSIVENESS);
+      setSlider('set-silence', 'silence', L.VAD_SILENCE_TIMEOUT);
+      setSlider('set-lead', 'lead', L.AUDIO_LEAD_SILENCE);
+      setSlider('set-listen', 'listen', L.AUDIO_LISTEN_MAX_SECONDS);
+      // Reinicio
+      if ($('set-rate'))    $('set-rate').value = String(R.AUDIO_SAMPLE_RATE ?? 48000);
+      if ($('set-whisper')) $('set-whisper').value = R.WHISPER_MODEL || 'base';
+      if ($('set-voiceid')) $('set-voiceid').value = R.ELEVENLABS_VOICE_ID || '';
+      await this.refreshDevices(R.AUDIO_INPUT_DEVICE);
+    },
+
+    async refreshDevices(current) {
+      const data = await fetchJSON('/api/audio/devices', { method: 'GET' });
+      const sel = $('set-device');
+      if (!data || !sel) return;
+      const cur = current !== undefined ? current : (data.current || '');
+      sel.innerHTML = '<option value="">(por defecto del sistema)</option>';
+      data.devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.name;
+        opt.textContent = `[${d.index}] ${d.name} (${d.channels} in)`;
+        sel.appendChild(opt);
+      });
+      sel.value = cur;
+    },
+
+    async saveLiveSettings() {
+      const updates = {
+        VAD_AGGRESSIVENESS: String(parseInt($('set-vad').value)),
+        VAD_SILENCE_TIMEOUT: $('set-silence').value,
+        AUDIO_LEAD_SILENCE: $('set-lead').value,
+        AUDIO_LISTEN_MAX_SECONDS: $('set-listen').value,
+      };
+      const res = await fetchJSON('/api/config', { json: { updates } });
+      if (res && res.ok) log(`Ajustes aplicados en vivo: ${res.applied.join(', ')}`, 'ok');
+    },
+
+    async saveRestartSettings() {
+      const updates = {
+        AUDIO_INPUT_DEVICE: $('set-device').value,
+        AUDIO_SAMPLE_RATE: $('set-rate').value,
+        WHISPER_MODEL: $('set-whisper').value,
+        ELEVENLABS_VOICE_ID: $('set-voiceid').value.trim(),
+      };
+      const res = await fetchJSON('/api/config', { json: { updates } });
+      if (res && res.ok) {
+        log('Guardado en .env. Reinicia el servidor para aplicar.', 'warn');
+      }
+    },
   };
+
+  // Helpers de sliders de ajustes (texto con unidad).
+  const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s' };
+  function setSlider(inputId, key, value) {
+    const el = $(inputId);
+    if (!el || value === undefined || value === null) return;
+    el.value = value;
+    $(inputId + '-val').textContent = value + (SETTING_UNITS[key] || '');
+  }
 
   // ─── Navegación ───────────────────────────────────────────────────
   const UI = {
@@ -384,7 +485,14 @@
         const nav = document.querySelector(`[data-view="${name}"]`);
         if (nav) nav.classList.add('active');
       }
-    }
+      // Al abrir Ajustes, traemos los valores actuales del backend.
+      if (name === 'settings') API.loadSettings();
+    },
+
+    // Actualiza la etiqueta de un slider de ajustes con su unidad.
+    settingLabel(inputId, key) {
+      $(inputId + '-val').textContent = $(inputId).value + (SETTING_UNITS[key] || '');
+    },
   };
 
   // ─── Atajos de teclado ────────────────────────────────────────────

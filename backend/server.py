@@ -54,6 +54,7 @@ _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 import stt
+import tts
 import video_library
 from mech_app import get_app
 
@@ -76,20 +77,24 @@ def _voice_loop_worker():
     while app_state.state["voice_loop_active"]:
         try:
             app_state.arduino.set_mode("LISTEN")
-            app_state.state["voice_listening"] = True
-            app_state.emit("state", state=app_state.state)
 
-            text = stt.listen_once(max_seconds=20.0)
-
-            app_state.state["voice_listening"] = False
-            app_state.emit("state", state=app_state.state)
+            # El callback emite las fases del micrófono al panel en vivo:
+            # waiting (puede hablar) → listening (grabando) → transcribing.
+            text = stt.listen_once(
+                max_seconds=config.LISTEN_MAX_SECONDS,
+                on_phase=app_state.set_voice_phase,
+            )
 
             if text is None or not text.strip():
+                # No se detectó voz; volvemos a esperar en la próxima vuelta.
+                app_state.set_voice_phase("waiting")
                 continue
+            # handle_text_command pone thinking → speaking y al final waiting.
             app_state.handle_text_command(text)
         except Exception as e:
             app_state.log(f"Error en bucle de voz: {e}", "err")
     app_state.arduino.set_mode("IDLE")
+    app_state.set_voice_phase("off")
     app_state.log("Bucle de voz detenido", "info")
 
 
@@ -322,6 +327,128 @@ async def emergency_stop():
 @app.get("/api/state")
 async def api_state():
     return get_app().state
+
+
+# -- Configuración en vivo (vista Ajustes del panel) -------------------------
+
+# Claves que se pueden aplicar SIN reiniciar (se leen en cada turno).
+_LIVE_KEYS = {
+    "VAD_AGGRESSIVENESS": int,
+    "VAD_SILENCE_TIMEOUT": float,
+    "AUDIO_LEAD_SILENCE": float,
+    "AUDIO_LISTEN_MAX_SECONDS": float,  # se guarda en config.LISTEN_MAX_SECONDS
+    "WHISPER_LANGUAGE": str,
+}
+# Claves que solo tienen efecto tras reiniciar el servidor.
+_RESTART_KEYS = {
+    "AUDIO_INPUT_DEVICE",
+    "AUDIO_SAMPLE_RATE",
+    "WHISPER_MODEL",
+    "CLAUDE_MODEL",
+    "ELEVENLABS_VOICE_ID",
+}
+
+
+@app.get("/api/config")
+async def get_config():
+    """Valores actuales de configuración para la vista Ajustes.
+
+    No devuelve las API keys (seguridad): solo parámetros operativos.
+    """
+    return {
+        "live": {
+            "VAD_AGGRESSIVENESS": config.VAD_AGGRESSIVENESS,
+            "VAD_SILENCE_TIMEOUT": config.VAD_SILENCE_TIMEOUT,
+            "AUDIO_LEAD_SILENCE": config.AUDIO_LEAD_SILENCE,
+            "AUDIO_LISTEN_MAX_SECONDS": config.LISTEN_MAX_SECONDS,
+            "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
+        },
+        "restart": {
+            "AUDIO_INPUT_DEVICE": config.AUDIO_INPUT_DEVICE,
+            "AUDIO_SAMPLE_RATE": config.AUDIO_SAMPLE_RATE,
+            "WHISPER_MODEL": config.WHISPER_MODEL,
+            "CLAUDE_MODEL": config.CLAUDE_MODEL,
+            "ELEVENLABS_VOICE_ID": config.ELEVENLABS_VOICE_ID,
+        },
+    }
+
+
+class ConfigUpdate(BaseModel):
+    updates: dict[str, str]
+
+
+@app.post("/api/config")
+async def set_config(c: ConfigUpdate):
+    """Persiste cambios en backend/.env y aplica en vivo los que se pueda.
+
+    Devuelve qué claves se aplicaron al instante y cuáles necesitan
+    reiniciar el servidor para tener efecto.
+    """
+    if not c.updates:
+        return {"ok": True, "applied": [], "restart_needed": []}
+
+    # 1) Persistir al archivo .env (sobrevive reinicios).
+    try:
+        config.update_env_file(c.updates)
+    except Exception as e:
+        raise HTTPException(500, f"No se pudo escribir .env: {e}")
+
+    # 2) Aplicar en caliente las claves seguras.
+    applied: list[str] = []
+    restart_needed: list[str] = []
+    for key, raw in c.updates.items():
+        if key in _LIVE_KEYS:
+            try:
+                value = _LIVE_KEYS[key](raw)
+            except (ValueError, TypeError):
+                raise HTTPException(400, f"Valor inválido para {key}: {raw!r}")
+            if key == "AUDIO_LISTEN_MAX_SECONDS":
+                config.LISTEN_MAX_SECONDS = value
+            else:
+                setattr(config, key, value)
+            applied.append(key)
+        else:
+            restart_needed.append(key)
+
+    mech = get_app()
+    if applied:
+        mech.log(f"Ajustes aplicados en vivo: {', '.join(applied)}", "ok")
+    if restart_needed:
+        mech.log(
+            f"Ajustes guardados (requieren reiniciar): {', '.join(restart_needed)}",
+            "warn",
+        )
+    return {"ok": True, "applied": applied, "restart_needed": restart_needed}
+
+
+@app.get("/api/audio/devices")
+async def audio_devices():
+    """Lista los micrófonos disponibles para elegir AUDIO_INPUT_DEVICE."""
+    try:
+        import sounddevice as sd
+        devices = sd.query_devices()
+    except Exception as e:
+        raise HTTPException(500, f"No se pudo consultar audio: {e}")
+    inputs = [
+        {"index": i, "name": d["name"], "channels": d["max_input_channels"]}
+        for i, d in enumerate(devices)
+        if d["max_input_channels"] > 0
+    ]
+    return {"devices": inputs, "current": config.AUDIO_INPUT_DEVICE}
+
+
+class TTSTest(BaseModel):
+    text: str = "Hola, soy MECH. Esta es una prueba de sonido."
+
+
+@app.post("/api/tts/test")
+async def tts_test(t: TTSTest):
+    """Reproduce una frase con ElevenLabs para verificar TTS + parlante,
+    sin pasar por Claude. Útil para probar el audio de salida."""
+    threading.Thread(
+        target=tts.speak, args=(t.text,), kwargs={"blocking": True}, daemon=True
+    ).start()
+    return {"ok": True}
 
 
 # -- Biblioteca de videos pre-renderizados (Opción B) ------------------------

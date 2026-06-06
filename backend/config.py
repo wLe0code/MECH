@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR / ".env"
 
 # Claude
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -44,9 +45,12 @@ WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base")
 WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "es")
 
 # Audio
-AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "16000"))
+AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "48000"))
 VAD_AGGRESSIVENESS = int(os.environ.get("VAD_AGGRESSIVENESS", "2"))
 VAD_SILENCE_TIMEOUT = float(os.environ.get("VAD_SILENCE_TIMEOUT", "1.2"))
+# Segundos máximos que el micrófono espera por voz en cada turno. Súbelo si
+# el juez/usuario tarda en empezar a hablar.
+LISTEN_MAX_SECONDS = float(os.environ.get("AUDIO_LISTEN_MAX_SECONDS", "20"))
 # Micrófono de entrada. Vacío = dispositivo por defecto del sistema.
 # Se puede poner el índice (número) o parte del nombre del dispositivo.
 # El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda
@@ -85,3 +89,39 @@ def assert_required() -> None:
             f"Faltan variables de entorno: {', '.join(missing)}. "
             "Copia backend/.env.example a backend/.env y rellénalas."
         )
+
+
+def update_env_file(updates: dict[str, str]) -> None:
+    """Reescribe backend/.env aplicando `updates` (clave -> valor).
+
+    - Conserva comentarios y líneas no tocadas.
+    - Si una clave ya existe, reemplaza su valor; si no, la añade al final.
+    - Usado por el panel web (vista Ajustes) para persistir cambios sin
+      tener que editar el archivo a mano por SSH.
+
+    OJO: la mayoría de las constantes de este módulo se leen UNA vez al
+    importar. Escribir el .env no las cambia en caliente — para eso el
+    endpoint también hace setattr() sobre las que sí son seguras en vivo.
+    Las demás (API keys, modelo, sample rate, dispositivo) requieren
+    reiniciar el servidor.
+    """
+    lines: list[str] = []
+    if ENV_PATH.exists():
+        lines = ENV_PATH.read_text(encoding="utf-8").splitlines()
+
+    remaining = dict(updates)
+    out: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            if key in remaining:
+                out.append(f"{key}={remaining.pop(key)}")
+                continue
+        out.append(line)
+
+    # Claves nuevas que no existían en el archivo.
+    for key, value in remaining.items():
+        out.append(f"{key}={value}")
+
+    ENV_PATH.write_text("\n".join(out) + "\n", encoding="utf-8")

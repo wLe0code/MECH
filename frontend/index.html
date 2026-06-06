@@ -29,6 +29,13 @@
     </button>
   </div>
 
+  <!-- ───── BANNER DE FASE DE VOZ (visible en todas las vistas) ───── -->
+  <div class="voice-phase-banner phase-off" id="voice-phase-banner">
+    <span class="vpb-pulse"></span>
+    <span class="vpb-text" id="vpb-text">Bucle de voz apagado</span>
+    <span class="vpb-hint" id="vpb-hint"></span>
+  </div>
+
   <div class="main">
 
     <!-- ───── SIDEBAR ───── -->
@@ -41,6 +48,7 @@
       <div class="nav-item"        data-view="firmware"  onclick="UI.showView('firmware', this)"><i class="ti ti-cpu"></i>Firmware</div>
       <div class="nav-item"        data-view="sensors"   onclick="UI.showView('sensors', this)"><i class="ti ti-radar"></i>Sensores</div>
       <div class="nav-item"        data-view="arduino"   onclick="UI.showView('arduino', this)"><i class="ti ti-brand-arduino"></i>Arduino <span class="nav-badge-yellow">CTRL</span></div>
+      <div class="nav-item"        data-view="settings"  onclick="UI.showView('settings', this)"><i class="ti ti-settings"></i>Ajustes</div>
     </div>
 
     <!-- ───── CONTENT ───── -->
@@ -278,6 +286,100 @@
           <div class="text-input-row">
             <input class="text-input" id="raw-cmd" type="text" placeholder="Ej: HEAD:90:90 o MOVE:50:0:0">
             <button class="btn btn-purple" onclick="API.sendRaw()"><i class="ti ti-send"></i>Enviar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS VIEW -->
+      <div class="view" id="view-settings">
+        <div class="view-title"><i class="ti ti-settings" style="color:var(--teal)"></i>Ajustes</div>
+        <div class="section-sub">
+          Ajusta el micrófono y el audio en vivo. Los cambios se guardan en
+          <code>backend/.env</code>. Los de la tarjeta verde se aplican al
+          instante; los de la amarilla necesitan reiniciar el servidor.
+        </div>
+
+        <!-- Prueba rápida de audio -->
+        <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">PRUEBA DE SONIDO (sin Claude)</div>
+          <div class="text-input-row">
+            <input class="text-input" id="tts-test-text" type="text"
+                   value="Hola, soy MECH. Esta es una prueba de sonido."
+                   placeholder="Frase para que MECH diga…">
+            <button class="btn btn-green" onclick="API.ttsTest()">
+              <i class="ti ti-volume"></i>Probar voz
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+            Verifica ElevenLabs + parlante. Si no suena, revisa API key y salida de audio.
+          </div>
+        </div>
+
+        <!-- Ajustes en vivo -->
+        <div class="fw-card settings-live">
+          <div class="fw-key" style="margin-bottom:4px;color:#5DCAA5">● SE APLICAN EN VIVO</div>
+
+          <div class="slider-row">
+            <label title="0 = permisivo (capta hasta ruido). 3 = estricto (solo voz clara).">VAD sensib.</label>
+            <input type="range" min="0" max="3" step="1" value="2" id="set-vad" oninput="UI.settingLabel('set-vad','vad')">
+            <span class="val" id="set-vad-val">2</span>
+          </div>
+          <div class="slider-row">
+            <label title="Segundos de silencio para considerar que terminó de hablar.">Silencio fin</label>
+            <input type="range" min="0.5" max="3" step="0.1" value="1.2" id="set-silence" oninput="UI.settingLabel('set-silence','silence')">
+            <span class="val" id="set-silence-val">1.2 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Silencio antes de hablar. Súbelo si el parlante Bluetooth corta la 1ª palabra.">Silencio inicio</label>
+            <input type="range" min="0" max="2.5" step="0.1" value="1.0" id="set-lead" oninput="UI.settingLabel('set-lead','lead')">
+            <span class="val" id="set-lead-val">1.0 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Cuánto espera el micrófono por voz en cada turno.">Espera máx.</label>
+            <input type="range" min="5" max="60" step="1" value="20" id="set-listen" oninput="UI.settingLabel('set-listen','listen')">
+            <span class="val" id="set-listen-val">20 s</span>
+          </div>
+          <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
+            <i class="ti ti-device-floppy"></i>Guardar y aplicar
+          </button>
+        </div>
+
+        <!-- Ajustes que requieren reinicio -->
+        <div class="fw-card settings-restart">
+          <div class="fw-key" style="margin-bottom:4px;color:var(--amber)">⟳ REQUIEREN REINICIAR EL SERVIDOR</div>
+
+          <div class="slider-row">
+            <label>Micrófono</label>
+            <select class="text-input" id="set-device" style="flex:1">
+              <option value="">(por defecto del sistema)</option>
+            </select>
+            <button class="btn" onclick="API.refreshDevices()" title="Recargar lista"><i class="ti ti-refresh"></i></button>
+          </div>
+          <div class="slider-row">
+            <label title="48000 si el mic da 'Invalid sample rate'. El backend resamplea a 16000 para Whisper.">Sample rate</label>
+            <select class="text-input" id="set-rate" style="flex:1">
+              <option value="16000">16000 Hz</option>
+              <option value="32000">32000 Hz</option>
+              <option value="48000">48000 Hz</option>
+            </select>
+          </div>
+          <div class="slider-row">
+            <label title="tiny=rápido/impreciso, base=equilibrado, small=preciso/lento.">Modelo Whisper</label>
+            <select class="text-input" id="set-whisper" style="flex:1">
+              <option value="tiny">tiny</option>
+              <option value="base">base</option>
+              <option value="small">small</option>
+            </select>
+          </div>
+          <div class="slider-row">
+            <label>Voz ElevenLabs</label>
+            <input class="text-input" id="set-voiceid" type="text" style="flex:1" placeholder="voice_id por defecto">
+          </div>
+          <button class="btn btn-amber" style="margin-top:12px" onclick="API.saveRestartSettings()">
+            <i class="ti ti-device-floppy"></i>Guardar en .env
+          </button>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+            Tras guardar, reinicia: <code>Ctrl+C</code> y <code>python -m backend.server</code>.
           </div>
         </div>
       </div>

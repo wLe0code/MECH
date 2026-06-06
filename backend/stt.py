@@ -15,7 +15,7 @@ import collections
 import queue
 import sys
 import time
-from typing import Iterator
+from typing import Callable, Iterator
 
 import numpy as np
 import sounddevice as sd
@@ -118,12 +118,30 @@ def _frame_generator(audio_queue: queue.Queue) -> Iterator[bytes]:
             buffer = buffer[FRAME_BYTES:]
 
 
-def record_until_silence(max_seconds: float = 15.0) -> np.ndarray | None:
+def record_until_silence(
+    max_seconds: float = 15.0,
+    on_phase: Callable[[str], None] | None = None,
+) -> np.ndarray | None:
     """Graba desde el micrófono hasta detectar silencio prolongado.
 
-    Devuelve un array float32 mono a AUDIO_SAMPLE_RATE Hz, o None si nunca
+    Devuelve un array float32 mono a WHISPER_SAMPLE_RATE Hz, o None si nunca
     detectó voz dentro del tiempo máximo.
+
+    Args:
+        max_seconds: tiempo máximo de espera por voz.
+        on_phase: callback opcional que recibe la fase actual del micrófono
+            para que el panel la muestre en vivo:
+              - "waiting": micrófono abierto, esperando que la persona hable
+                (esta es la señal para decirle al juez "ya puedes hablar").
+              - "listening": se detectó voz, grabando hasta que haya silencio.
     """
+    def _phase(p: str) -> None:
+        if on_phase:
+            try:
+                on_phase(p)
+            except Exception:
+                pass
+
     vad = webrtcvad.Vad(config.VAD_AGGRESSIVENESS)
     audio_q: queue.Queue = queue.Queue()
 
@@ -147,6 +165,7 @@ def record_until_silence(max_seconds: float = 15.0) -> np.ndarray | None:
         device=_resolve_input_device(),  # Steren MIC-9010 si está configurado
         callback=callback,
     ):
+        _phase("waiting")  # micrófono abierto: ya se puede hablar
         for frame in _frame_generator(audio_q):
             if time.monotonic() - start > max_seconds:
                 break
@@ -158,6 +177,7 @@ def record_until_silence(max_seconds: float = 15.0) -> np.ndarray | None:
                 num_voiced = sum(1 for _, sp in ring_buffer if sp)
                 if num_voiced > 0.5 * ring_buffer.maxlen:
                     triggered = True
+                    _phase("listening")  # grabando la voz del usuario
                     print("[STT] Detectada voz.")
                     voiced_frames.extend(f for f, _ in ring_buffer)
                     ring_buffer.clear()
@@ -197,9 +217,21 @@ def transcribe(audio: np.ndarray) -> str:
     return " ".join(seg.text.strip() for seg in segments).strip()
 
 
-def listen_once(max_seconds: float = 15.0) -> str | None:
-    """Atajo: graba hasta silencio y devuelve la transcripción."""
-    audio = record_until_silence(max_seconds=max_seconds)
+def listen_once(
+    max_seconds: float = 15.0,
+    on_phase: Callable[[str], None] | None = None,
+) -> str | None:
+    """Atajo: graba hasta silencio y devuelve la transcripción.
+
+    `on_phase` recibe "waiting"/"listening" durante la grabación y
+    "transcribing" mientras Whisper convierte el audio a texto.
+    """
+    audio = record_until_silence(max_seconds=max_seconds, on_phase=on_phase)
     if audio is None:
         return None
+    if on_phase:
+        try:
+            on_phase("transcribing")
+        except Exception:
+            pass
     return transcribe(audio)

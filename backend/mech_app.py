@@ -45,6 +45,10 @@ class MechApp:
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
             "voice_listening": False,
+            # Fase detallada del ciclo de voz para el panel. Una de:
+            # off | waiting | listening | transcribing | thinking | speaking
+            "voice_phase": "off",
+            "claude_model": config.CLAUDE_MODEL,
             "current_mode": "IDLE",
             "projectors": {
                 "s1": {"on": False, "file": None},
@@ -101,6 +105,17 @@ class MechApp:
         """Emite un log y lo imprime en stdout."""
         print(f"[{level}] {message}")
         self.emit("log", message=message, level=level, ts=time.time())
+
+    def set_voice_phase(self, phase: str) -> None:
+        """Actualiza la fase del ciclo de voz y la difunde al panel.
+
+        Fases: off | waiting | listening | transcribing | thinking | speaking.
+        `voice_listening` se mantiene en sincronía (True solo cuando el
+        micrófono está realmente abierto) para no romper indicadores viejos.
+        """
+        self.state["voice_phase"] = phase
+        self.state["voice_listening"] = phase in ("waiting", "listening")
+        self.emit("state", state=self.state)
 
     # ------------------------------------------------------------------
     # Acciones de alto nivel — los endpoints del server las invocan
@@ -192,6 +207,7 @@ class MechApp:
     def execute_plan(self, plan: "llm.Plan") -> None:
         """Ejecuta el plan de Claude (varios segmentos)."""
         self.arduino.set_mode("SPEAK")
+        self.set_voice_phase("speaking")
         for i, seg in enumerate(plan.segments, 1):
             if not self.state["voice_loop_active"]:
                 # Aborted (emergency stop o stop_voice)
@@ -227,6 +243,7 @@ class MechApp:
         self.emit("transcript", text=text)
         self.log(f"Comando: {text!r}", "info")
         try:
+            self.set_voice_phase("thinking")
             plan = llm.plan_response(text, conversation_history=self.history)
             self.log(f"Plan: {plan.mode} — {plan.title}", "ok")
             self.execute_plan(plan)
@@ -236,6 +253,12 @@ class MechApp:
         except Exception as e:
             self.log(f"Error procesando comando: {e}", "err")
             tts.speak("Disculpa, tuve un problema. ¿Puedes repetirme?", blocking=True)
+        finally:
+            # Si el bucle de voz sigue activo, el worker volverá a poner
+            # "waiting" en la próxima vuelta; si no, dejamos "off".
+            self.set_voice_phase(
+                "waiting" if self.state["voice_loop_active"] else "off"
+            )
 
     def close(self) -> None:
         try:
