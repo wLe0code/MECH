@@ -43,15 +43,16 @@
 const uint8_t PIN_SERVO_ARM_L = 9;
 const uint8_t PIN_SERVO_ARM_R = 10;
 
-// Motores DC con 2x driver L298N. Cada motor: 1 pin PWM (ENA/ENB = velocidad)
-// + 2 pines de direccion (IN1/IN2). FL/FR/BL/BR = posicion de cada rueda.
-const uint8_t PIN_M_FL_PWM = 3,  PIN_M_FL_IN1 = 2,  PIN_M_FL_IN2 = 4;
-const uint8_t PIN_M_FR_PWM = 5,  PIN_M_FR_IN1 = 7,  PIN_M_FR_IN2 = 8;
-const uint8_t PIN_M_BL_PWM = 6,  PIN_M_BL_IN1 = 12, PIN_M_BL_IN2 = 13;
-const uint8_t PIN_M_BR_PWM = 11, PIN_M_BR_IN1 = A0, PIN_M_BR_IN2 = A1;
-// Cableado sugerido: L298N #1 mueve FL (Motor A) y FR (Motor B); L298N #2 mueve
-// BL (Motor A) y BR (Motor B). ENA/ENB de cada driver -> el pin PWM que toca.
-// Si una rueda gira al reves, intercambia sus dos cables o sus pines IN1/IN2.
+// Motores DC con 2x driver L298N. Los 4 PWM van en 3/5/6/11 (los unicos PWM
+// usables; 9/10 los ocupa el Servo). Las direcciones en pines NO-PWM.
+//
+// Driver L298N #1 (motores M1=FL, M2=FR):
+const uint8_t PIN_M_FL_PWM = 3,  PIN_M_FL_IN1 = 4,  PIN_M_FL_IN2 = 2;   // M1: ENA=3, IN1=4, IN2=2
+const uint8_t PIN_M_FR_PWM = 5,  PIN_M_FR_IN1 = 7,  PIN_M_FR_IN2 = 8;   // M2: ENB=5, IN3=7, IN4=8
+// Driver L298N #2 (motores M3=BL, M4=BR):
+const uint8_t PIN_M_BL_PWM = 6,  PIN_M_BL_IN1 = 12, PIN_M_BL_IN2 = 13;  // M3: ENA=6, IN1=12, IN2=13
+const uint8_t PIN_M_BR_PWM = 11, PIN_M_BR_IN1 = A0, PIN_M_BR_IN2 = A1;  // M4: ENB=11, IN3=A0, IN4=A1
+// Si una rueda gira al reves, intercambia sus 2 cables de motor (OUT) o sus IN.
 
 // ============================================================
 // ESTADO
