@@ -89,9 +89,11 @@ WORKS: dict[str, WorkMeta] = {
     },
     "pantalones_cortos": {
         "title": "Pantalones Cortos",
-        "author": "(por confirmar)",
+        "author": "Cuento costarricense",
         "synopsis": (
-            "Relato sobre la niñez y los recuerdos de la infancia."  # TODO: ajustar
+            "Arturo Pol, un niño costarricense, recibe de regalo un diario "
+            "donde empieza a escribir sus travesuras, aventuras y "
+            "descubrimientos. Un retrato tierno y nostálgico de la infancia."
         ),
         "segments": 4,
     },
