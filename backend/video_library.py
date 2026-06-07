@@ -57,7 +57,7 @@ WORKS: dict[str, WorkMeta] = {
             "Tragedia de amor entre dos jóvenes de familias rivales en la "
             "Verona del Renacimiento."
         ),
-        "segments": 5,
+        "segments": 4,
     },
     "shrek": {
         "title": "Shrek",
@@ -66,7 +66,7 @@ WORKS: dict[str, WorkMeta] = {
             "Un ogro solitario rescata a una princesa y descubre el amor "
             "verdadero junto a un burro parlanchín."
         ),
-        "segments": 5,
+        "segments": 4,
     },
     "la_odisea": {
         "title": "La Odisea",
@@ -75,7 +75,7 @@ WORKS: dict[str, WorkMeta] = {
             "El viaje de diez años de Odiseo de regreso a Ítaca tras la "
             "Guerra de Troya, enfrentando dioses y monstruos."
         ),
-        "segments": 6,
+        "segments": 4,
     },
     "don_quijote": {
         "title": "Don Quijote de la Mancha",
@@ -84,7 +84,7 @@ WORKS: dict[str, WorkMeta] = {
             "Un hidalgo enloquecido por las novelas de caballería sale junto "
             "a Sancho Panza a buscar aventuras imposibles."
         ),
-        "segments": 5,
+        "segments": 4,
     },
 }
 
