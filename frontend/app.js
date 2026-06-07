@@ -127,8 +127,8 @@
       case 'transcript':  showTranscript(msg.text); break;
       case 'ai_response': showAIResponse(msg.text, msg.segment, msg.total); break;
       case 'projector':   applyProjector(msg.id, msg.on, msg.file); break;
-      case 'image':       applyAIImage(msg.url); break;
-      case 'video':       applyAIVideo(msg.url); break;
+      case 'image':       msg.url ? applyAIImage(msg.url) : clearImmersivePreview(); break;
+      case 'video':       msg.url ? applyAIVideo(msg.url) : clearImmersivePreview(); break;
       case 'pong':        break;
     }
   }
@@ -258,6 +258,15 @@
     img.src = fullUrl;
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px';
     demo.appendChild(img);
+  }
+
+  function clearImmersivePreview() {
+    // Limpia el preview inmersivo del panel y vuelve a la animación idle.
+    cancelAnimationFrame(state.immAnim);
+    const demo = $('imm-demo');
+    if (!demo) return;
+    demo.innerHTML = '';
+    initImmDemo();
   }
 
   function applyAIVideo(url) {

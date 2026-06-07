@@ -50,21 +50,22 @@ class WorkMeta(TypedDict):
 #   3. Sube los archivos seg01.mp4, seg02.mp4, ... según `segments`.
 #   4. Reinicia el servidor (el system prompt se recompone al arrancar).
 WORKS: dict[str, WorkMeta] = {
-    "romeo_julieta": {
-        "title": "Romeo y Julieta",
-        "author": "William Shakespeare",
+    "don_quijote": {
+        "title": "Don Quijote de la Mancha",
+        "author": "Miguel de Cervantes",
         "synopsis": (
-            "Tragedia de amor entre dos jóvenes de familias rivales en la "
-            "Verona del Renacimiento."
+            "Un hidalgo enloquecido por las novelas de caballería sale junto "
+            "a Sancho Panza a buscar aventuras imposibles."
         ),
         "segments": 4,
     },
-    "shrek": {
-        "title": "Shrek",
-        "author": "DreamWorks (basado en el libro de William Steig)",
+    "campana_1856": {
+        "title": "Campaña Nacional de 1856",
+        "author": "Historia de Costa Rica",
         "synopsis": (
-            "Un ogro solitario rescata a una princesa y descubre el amor "
-            "verdadero junto a un burro parlanchín."
+            "Costa Rica y Centroamérica se unen para expulsar al filibustero "
+            "William Walker. Gesta del héroe Juan Santamaría, que incendia el "
+            "mesón en la Batalla de Rivas."
         ),
         "segments": 4,
     },
@@ -77,12 +78,20 @@ WORKS: dict[str, WorkMeta] = {
         ),
         "segments": 4,
     },
-    "don_quijote": {
-        "title": "Don Quijote de la Mancha",
-        "author": "Miguel de Cervantes",
+    "anexion_nicoya": {
+        "title": "Anexión del Partido de Nicoya",
+        "author": "Historia de Costa Rica",
         "synopsis": (
-            "Un hidalgo enloquecido por las novelas de caballería sale junto "
-            "a Sancho Panza a buscar aventuras imposibles."
+            "El 25 de julio de 1824 el Partido de Nicoya decide por voluntad "
+            "propia anexarse a Costa Rica. 'De la patria por nuestra voluntad.'"
+        ),
+        "segments": 4,
+    },
+    "pantalones_cortos": {
+        "title": "Pantalones Cortos",
+        "author": "(por confirmar)",
+        "synopsis": (
+            "Relato sobre la niñez y los recuerdos de la infancia."  # TODO: ajustar
         ),
         "segments": 4,
     },

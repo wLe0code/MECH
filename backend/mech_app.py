@@ -165,6 +165,18 @@ class MechApp:
         self.state["current_video"] = None
         self.emit("image", url=url)
 
+    def clear_visual(self) -> None:
+        """Borra el visual actual (imagen o video) y avisa a panel/proyector.
+
+        Se llama al empezar una historia nueva: si la nueva no trae video ni
+        imagen, no queremos que quede colgado el video de la historia anterior.
+        Si la nueva SÍ trae video, el primer segmento lo pone enseguida.
+        """
+        self.state["current_image"] = None
+        self.state["current_video"] = None
+        self.emit("image", url=None)
+        self.emit("video", url=None)
+
     def show_library_video(self, slug: str, segment: int) -> None:
         """Llamado desde execute_plan cuando un segmento referencia un video
         pre-renderizado (Opción B)."""
@@ -208,6 +220,10 @@ class MechApp:
         """Ejecuta el plan de Claude (varios segmentos)."""
         self.arduino.set_mode("SPEAK")
         self.set_voice_phase("speaking")
+        # Historia nueva → limpiamos el visual anterior. Cada segmento pondrá
+        # el suyo (video o imagen); si ninguno trae, la pantalla queda limpia
+        # en vez de mostrar el video de la historia anterior.
+        self.clear_visual()
         for i, seg in enumerate(plan.segments, 1):
             if not self.state["voice_loop_active"]:
                 # Aborted (emergency stop o stop_voice)
