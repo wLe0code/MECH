@@ -15,6 +15,7 @@ import os
 import subprocess
 import tempfile
 import threading
+import time
 from typing import Callable, Iterator
 
 import numpy as np
@@ -120,6 +121,18 @@ def speak(
     chosen_voice = voice_id or config.ELEVENLABS_VOICE_ID
 
     def _run():
+        # Modo ahorro: no se llama a ElevenLabs (no gasta créditos). Se simula
+        # la duración (~15 caracteres/seg, tope 8s) para que gestos y fases
+        # mantengan un timing realista.
+        if config.TTS_DRY_RUN:
+            print(f"[TTS ahorro] {text}")
+            if on_start:
+                on_start()
+            time.sleep(min(8.0, max(1.0, len(text) / 15.0)))
+            if on_end:
+                on_end()
+            return
+
         client = get_client()
         stream = client.text_to_speech.convert(
             voice_id=chosen_voice,

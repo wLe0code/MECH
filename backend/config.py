@@ -23,6 +23,12 @@ CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-4-7")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "8mBRP99B2Ng2QwsJMFQl")
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
+# Modo ahorro: si es true, el TTS NO llama a ElevenLabs (no gasta créditos).
+# MECH "narra" en seco: loguea el texto y simula la duración para que el
+# flujo (gestos, fases, proyección) corra igual. Útil para probar sin gastar.
+TTS_DRY_RUN = os.environ.get("TTS_DRY_RUN", "false").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 
 # Gemini (NanoBanana)
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")

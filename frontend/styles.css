@@ -405,6 +405,10 @@ select:focus, input[type="text"]:focus { border-color: var(--purple-mid); }
 .btn-amber  { background: rgba(239,159,39,0.15); border-color: rgba(239,159,39,0.35); color: var(--amber); }
 .btn-amber:hover { background: rgba(239,159,39,0.25); }
 
+.switch { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; }
+.switch input { width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; }
+.switch-text { font-size: 12px; color: var(--text-muted); }
+
 /* ─── RESPONSIVE ───────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {

@@ -418,6 +418,7 @@
       setSlider('set-silence', 'silence', L.VAD_SILENCE_TIMEOUT);
       setSlider('set-lead', 'lead', L.AUDIO_LEAD_SILENCE);
       setSlider('set-listen', 'listen', L.AUDIO_LISTEN_MAX_SECONDS);
+      if ($('set-dryrun')) $('set-dryrun').checked = !!L.TTS_DRY_RUN;
       // Reinicio
       if ($('set-rate'))    $('set-rate').value = String(R.AUDIO_SAMPLE_RATE ?? 48000);
       if ($('set-whisper')) $('set-whisper').value = R.WHISPER_MODEL || 'base';
@@ -446,9 +447,13 @@
         VAD_SILENCE_TIMEOUT: $('set-silence').value,
         AUDIO_LEAD_SILENCE: $('set-lead').value,
         AUDIO_LISTEN_MAX_SECONDS: $('set-listen').value,
+        TTS_DRY_RUN: $('set-dryrun').checked ? 'true' : 'false',
       };
       const res = await fetchJSON('/api/config', { json: { updates } });
-      if (res && res.ok) log(`Ajustes aplicados en vivo: ${res.applied.join(', ')}`, 'ok');
+      if (res && res.ok) {
+        log(`Ajustes aplicados en vivo: ${res.applied.join(', ')}`, 'ok');
+        if ($('set-dryrun').checked) log('Modo ahorro ON: el TTS no gastará créditos', 'warn');
+      }
     },
 
     async saveRestartSettings() {

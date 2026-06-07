@@ -331,6 +331,10 @@ async def api_state():
 
 # -- Configuración en vivo (vista Ajustes del panel) -------------------------
 
+def _to_bool(v: str) -> bool:
+    return str(v).strip().lower() in ("1", "true", "yes", "on", "si", "sí")
+
+
 # Claves que se pueden aplicar SIN reiniciar (se leen en cada turno).
 _LIVE_KEYS = {
     "VAD_AGGRESSIVENESS": int,
@@ -338,6 +342,7 @@ _LIVE_KEYS = {
     "AUDIO_LEAD_SILENCE": float,
     "AUDIO_LISTEN_MAX_SECONDS": float,  # se guarda en config.LISTEN_MAX_SECONDS
     "WHISPER_LANGUAGE": str,
+    "TTS_DRY_RUN": _to_bool,  # modo ahorro de créditos de voz
 }
 # Claves que solo tienen efecto tras reiniciar el servidor.
 _RESTART_KEYS = {
@@ -362,6 +367,7 @@ async def get_config():
             "AUDIO_LEAD_SILENCE": config.AUDIO_LEAD_SILENCE,
             "AUDIO_LISTEN_MAX_SECONDS": config.LISTEN_MAX_SECONDS,
             "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
+            "TTS_DRY_RUN": config.TTS_DRY_RUN,
         },
         "restart": {
             "AUDIO_INPUT_DEVICE": config.AUDIO_INPUT_DEVICE,

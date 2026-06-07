@@ -339,6 +339,13 @@
             <input type="range" min="5" max="60" step="1" value="20" id="set-listen" oninput="UI.settingLabel('set-listen','listen')">
             <span class="val" id="set-listen-val">20 s</span>
           </div>
+          <div class="slider-row" style="margin-top:10px">
+            <label title="No llama a ElevenLabs: MECH narra en seco. Para probar sin gastar créditos.">Modo ahorro</label>
+            <label class="switch">
+              <input type="checkbox" id="set-dryrun">
+              <span class="switch-text">No gastar créditos de voz (TTS en seco)</span>
+            </label>
+          </div>
           <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar
           </button>
