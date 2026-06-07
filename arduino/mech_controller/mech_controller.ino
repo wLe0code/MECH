@@ -103,9 +103,12 @@ void stopAllMotors() {
 // Cinematica de ruedas mecanum/omnidireccionales.
 // Entradas: vx (adelante), vy (lateral), w (rotacion), cada uno en [-100,100].
 void driveOmni(int vx, int vy, int w) {
+  // Giro con SOLO 2 ruedas en diagonal (FL y BR), por pedido del equipo:
+  // el término de rotación (w) se aplica únicamente a FL y BR; FR y BL no rotan.
+  // (Adelante/atrás y desplazamiento lateral siguen usando las 4 ruedas.)
   long fl = (long)vx + vy + w;
-  long fr = (long)vx - vy - w;
-  long bl = (long)vx - vy + w;
+  long fr = (long)vx - vy;
+  long bl = (long)vx - vy;
   long br = (long)vx + vy - w;
 
   // Normaliza si la suma excede 100 (puede pasar al mezclar componentes).
