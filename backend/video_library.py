@@ -82,7 +82,7 @@ WORKS: dict[str, WorkMeta] = {
             "precolombinas de Costa Rica con temas universales de "
             "transformación, gestación y vida."
         ),
-        "segments": 4,
+        "segments": 1,  # un video corto REAL (no IA) que loopea durante la exposición
     },
     "malpais": {
         "title": "Música de Malpaís",
@@ -105,7 +105,7 @@ WORKS: dict[str, WorkMeta] = {
             "soles y lunas que retratan la mística rural y el campo de Costa "
             "Rica con color vibrante."
         ),
-        "segments": 4,
+        "segments": 1,  # un video corto REAL (no IA) que loopea durante la exposición
     },
 }
 

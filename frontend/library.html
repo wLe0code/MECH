@@ -206,7 +206,8 @@
             <i class="ti ti-trash"></i>
           </button>
         </div>
-        <input type="file" class="hidden-input" id="file-${w.slug}-${segNum}" accept="video/*"
+        <input type="file" class="hidden-input" id="file-${w.slug}-${segNum}"
+               accept=".mp4,.mov,.m4v,.webm,.mkv,.avi,video/*"
                onchange="uploadFile('${w.slug}', ${segNum}, this)">
       </div>
     `;
