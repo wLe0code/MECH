@@ -330,7 +330,16 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 - Documentación (GUIA.md, FRONTEND.md, PRUEBAS_HARDWARE.md, windows/README.md).
 - **Biblioteca de videos pre-renderizados (Opción B)** — manifest, schema, dispatch
   en execute_plan, fallback a NanoBanana, UI `/library` para subir mp4s,
-  endpoints REST `GET/POST/DELETE /api/library/...`.
+  endpoints REST `GET/POST/DELETE /api/library/...`. Obras actuales:
+  `don_quijote`, `campana_1856`, `jimenez_deredia`, `malpais`,
+  `isidro_con_wong` (4 segmentos c/u).
+- **Música de fondo bajo la narración** (`backend/background_audio.py`): obras
+  marcadas con `music: True` en `WORKS` (solo `malpais`) admiten un sample
+  `video_library/<slug>/music.<ext>` que suena en bucle a bajo volumen
+  (`ffplay`, `BACKGROUND_MUSIC_VOLUME`) mientras MECH narra; el TTS sale por
+  encima (lo mezcla PipeWire). Claude lo activa con el campo `Plan.background_music`
+  (slug). Se sube en `/library` (slot extra) y se sirve por `POST/DELETE
+  /api/library/{slug}/music`. Requiere `ffplay` (paquete ffmpeg) en la Pi.
 
 ### 🚧 Pendiente
 

@@ -35,11 +35,14 @@ from typing import TypedDict
 import config
 
 
-class WorkMeta(TypedDict):
+class WorkMeta(TypedDict, total=False):
     title: str
     author: str
     synopsis: str
     segments: int
+    # Opcional: True si esta exposición admite música de fondo bajo la
+    # narración (se sube un sample a video_library/<slug>/music.<ext>).
+    music: bool
 
 
 # Catálogo de obras con video pre-renderizado.
@@ -69,31 +72,38 @@ WORKS: dict[str, WorkMeta] = {
         ),
         "segments": 4,
     },
-    "la_odisea": {
-        "title": "La Odisea",
-        "author": "Homero",
+    "jimenez_deredia": {
+        "title": "Esculturas de Jiménez Deredia",
+        "author": "Jorge Jiménez Deredia (escultor costarricense)",
         "synopsis": (
-            "El viaje de diez años de Odiseo de regreso a Ítaca tras la "
-            "Guerra de Troya, enfrentando dioses y monstruos."
+            "Exposición de la obra del escultor costarricense Jorge Jiménez "
+            "Deredia, célebre por sus esferas y figuras en mármol y bronce. "
+            "Su serie 'Génesis' fusiona el simbolismo de las esferas "
+            "precolombinas de Costa Rica con temas universales de "
+            "transformación, gestación y vida."
         ),
         "segments": 4,
     },
-    "anexion_nicoya": {
-        "title": "Anexión del Partido de Nicoya",
-        "author": "Historia de Costa Rica",
+    "malpais": {
+        "title": "Música de Malpaís",
+        "author": "Malpaís (banda costarricense)",
         "synopsis": (
-            "El 25 de julio de 1824 el Partido de Nicoya decide por voluntad "
-            "propia anexarse a Costa Rica. 'De la patria por nuestra voluntad.'"
+            "Exposición sobre Malpaís, banda costarricense fundada por Fidel "
+            "Gamboa, ícono de la identidad nacional. Su música fusiona "
+            "folclor y rock, evocando los paisajes, la nostalgia y el alma de "
+            "Costa Rica."
         ),
         "segments": 4,
+        "music": True,  # admite sample de música de fondo bajo la narración
     },
-    "pantalones_cortos": {
-        "title": "Pantalones Cortos",
-        "author": "Cuento costarricense",
+    "isidro_con_wong": {
+        "title": "Cuadros de Isidro Con Wong",
+        "author": "Isidro Con Wong (pintor costarricense)",
         "synopsis": (
-            "Arturo Pol, un niño costarricense, recibe de regalo un diario "
-            "donde empieza a escribir sus travesuras, aventuras y "
-            "descubrimientos. Un retrato tierno y nostálgico de la infancia."
+            "Exposición de la pintura de Isidro Con Wong, pionero "
+            "costarricense del realismo mágico. Famoso por sus toros rojos, "
+            "soles y lunas que retratan la mística rural y el campo de Costa "
+            "Rica con color vibrante."
         ),
         "segments": 4,
     },
@@ -124,6 +134,39 @@ def segment_exists(slug: str, segment: int) -> bool:
     return segment_path(slug, segment).exists()
 
 
+# --- Música de fondo (solo obras con "music": True, ej. Malpaís) ------------
+
+# Extensiones de audio aceptadas para el sample de música de fondo.
+_MUSIC_EXTS = (".mp3", ".ogg", ".wav", ".m4a", ".aac", ".flac")
+
+
+def background_audio_path(slug: str):
+    """Ruta al sample de música de fondo de la obra, o None si no hay.
+
+    El archivo se llama music.<ext> dentro de la carpeta de la obra.
+    """
+    folder = config.VIDEO_LIBRARY_DIR / slug
+    for ext in _MUSIC_EXTS:
+        p = folder / f"music{ext}"
+        if p.exists():
+            return p
+    return None
+
+
+def background_audio_exists(slug: str) -> bool:
+    return background_audio_path(slug) is not None
+
+
+def background_audio_url(slug: str) -> str | None:
+    p = background_audio_path(slug)
+    return f"/videos/{slug}/{p.name}" if p else None
+
+
+def supports_music(slug: str) -> bool:
+    """True si la obra está marcada como que admite música de fondo."""
+    return bool(WORKS.get(slug, {}).get("music"))
+
+
 def work_is_complete(slug: str) -> bool:
     """True si TODOS los segmentos definidos están físicamente presentes."""
     meta = WORKS.get(slug)
@@ -146,6 +189,8 @@ def available_works() -> list[dict]:
             {
                 "slug": slug,
                 **meta,
+                "music": bool(meta.get("music")),
+                "music_present": background_audio_exists(slug),
                 "present_segments": present,
                 "complete": present == total,
             }
@@ -161,45 +206,64 @@ def available_works() -> list[dict]:
 def system_prompt_section() -> str:
     """Texto que se inyecta al system prompt de Claude.
 
-    Lista solo las obras que están **completas** en disco para que Claude
-    sepa cuáles puede invocar vía ``video_slug``/``video_segment``.
+    Incluye:
+      1. TODOS los temas/obras que MECH puede exponer (con sinopsis), para que
+         narre con contexto incluso los que no tienen video.
+      2. Cuáles tienen video pre-renderizado (para usar video_slug/segment).
+      3. Cuáles tienen música de fondo (para usar el campo background_music).
     """
-    complete = [w for w in available_works() if w["complete"]]
-    if not complete:
-        return (
-            "## Biblioteca de videos pre-renderizados\n\n"
-            "(Biblioteca vacía por ahora. Para cualquier obra que pida el "
-            "usuario, usa `image_prompt` como siempre. NO uses `video_slug`.)"
-        )
+    works = available_works()
+    complete = [w for w in works if w["complete"]]
+    music_works = [w for w in works if w.get("music") and w.get("music_present")]
 
     lines = [
-        "## Biblioteca de videos pre-renderizados",
+        "## Temas culturales que MECH puede exponer",
         "",
-        "Para estas obras hay videos pre-grabados en mp4 listos para "
-        "proyectar. Cuando el usuario pida una de ellas:",
-        "",
-        "- Usa `mode: immersive`.",
-        "- El `Plan` debe tener EXACTAMENTE el número de segmentos indicado "
-        "abajo (uno por video).",
-        "- En cada `Segment`, NO pongas `image_prompt`. En su lugar pon "
-        "`video_slug` (texto, exacto al de la lista) y `video_segment` "
-        "(número 1, 2, 3, ... que identifica qué video va con ese segmento).",
-        "- La narración tuya en cada segmento debe encajar con lo que muestra "
-        "el video correspondiente. Lee el sinopsis para saber el tono.",
-        "",
-        "### Obras disponibles",
+        "Estos son los temas/obras del stand. Usá su sinopsis para narrar con "
+        "precisión (sobre todo los artistas costarricenses). Modo `immersive`.",
         "",
     ]
-    for w in complete:
+    for w in works:
+        tag = " — [VIDEO disponible]" if w["complete"] else ""
+        music_tag = " — [MÚSICA de fondo]" if (w.get("music") and w.get("music_present")) else ""
         lines.append(
-            f"- **{w['title']}** — `video_slug`: `{w['slug']}` — "
-            f"{w['segments']} segmentos. _{w['synopsis']}_"
+            f"- **{w['title']}** (`{w['slug']}`){tag}{music_tag}: {w['synopsis']}"
+        )
+    lines.append("")
+
+    if complete:
+        lines += [
+            "### Obras con video pre-renderizado",
+            "",
+            "Para estas hay mp4 listos. Usá EXACTAMENTE el número de segmentos "
+            "indicado; en cada `Segment` poné `video_slug` (exacto) y "
+            "`video_segment` (1, 2, 3...), y NO pongas `image_prompt`:",
+            "",
+        ]
+        for w in complete:
+            lines.append(f"- `{w['slug']}` — {w['segments']} segmentos.")
+        lines += [
+            "",
+            "Para los temas SIN video, dejá `video_slug`/`video_segment` en "
+            "null y usá `image_prompt` (en inglés) como siempre.",
+        ]
+    else:
+        lines.append(
+            "Ninguna obra tiene video completo aún: para los visuales usá "
+            "`image_prompt` (en inglés) y dejá `video_slug` en null."
         )
 
-    lines += [
-        "",
-        "Si la obra que pide el usuario NO está en la lista de arriba, "
-        "vuelve al flujo original: deja `video_slug` y `video_segment` "
-        "vacíos (null) y usa `image_prompt` con un prompt en inglés.",
-    ]
+    if music_works:
+        lines += [
+            "",
+            "### Música de fondo",
+            "",
+            "Estas exposiciones tienen música ambiental ya subida. Al narrarlas, "
+            "poné en el `Plan` el campo `background_music` con el slug, para que "
+            "suene de fondo, suave, mientras hablás:",
+            "",
+        ]
+        for w in music_works:
+            lines.append(f"- {w['title']} → `background_music: {w['slug']}`")
+
     return "\n".join(lines)

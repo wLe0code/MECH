@@ -155,6 +155,15 @@ class Plan(BaseModel):
     mode: Literal["stand", "immersive", "qa", "movement"]
     title: str = Field(..., description="Título corto, sirve de log/depuración.")
     segments: list[Segment] = Field(..., min_length=1, max_length=8)
+    background_music: str | None = Field(
+        None,
+        description=(
+            "Slug de una exposición con música de fondo (ver system prompt). "
+            "Si lo pones, esa música suena suave durante TODA la narración. "
+            "Solo para las exposiciones que la tengan disponible; en cualquier "
+            "otro caso, déjalo en null."
+        ),
+    )
 
 
 _client: anthropic.Anthropic | None = None

@@ -157,6 +157,31 @@
         <div class="seg-grid">
           ${segs.join('')}
         </div>
+        ${w.music ? musicSlot(w) : ''}
+      </div>
+    `;
+  }
+
+  function musicSlot(w) {
+    // Slot especial de música de fondo (solo obras con music: true, ej. Malpaís).
+    const id = `music-${w.slug}`;
+    return `
+      <div style="margin-top:14px;padding-top:14px;border-top:1px dashed #2a2a36">
+        <div style="font-size:12px;color:#b8b8c4;margin-bottom:8px">
+          <i class="ti ti-music"></i> Música de fondo (suena suave bajo la voz de MECH)
+        </div>
+        <div class="seg-card ${w.music_present ? 'present' : 'missing'}" id="${id}" style="max-width:360px">
+          <div>
+            <div class="seg-num"><i class="ti ti-music"></i> music</div>
+            <div class="seg-status ${w.music_present ? 'ok' : 'no'}" data-mstatus>${w.music_present ? 'OK' : 'SIN AUDIO'}</div>
+          </div>
+          <div class="seg-actions">
+            <button class="btn btn-primary" onclick="pickMusic('${w.slug}')"><i class="ti ti-upload"></i></button>
+            <button class="btn btn-danger" onclick="delMusic('${w.slug}')" data-mdel style="${w.music_present ? '' : 'display:none'}"><i class="ti ti-trash"></i></button>
+          </div>
+          <input type="file" class="hidden-input" id="mfile-${w.slug}" accept="audio/*"
+                 onchange="uploadMusic('${w.slug}', this)">
+        </div>
       </div>
     `;
   }
@@ -275,9 +300,49 @@
     }
   }
 
+  function pickMusic(slug) {
+    document.getElementById(`mfile-${slug}`).click();
+  }
+
+  async function uploadMusic(slug, input) {
+    const file = input.files[0];
+    if (!file) return;
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    toast(`Subiendo música ${file.name} (${sizeMB} MB)…`, 'ok');
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch(`/api/library/${slug}/music`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      toast(`Música subida para ${slug}`, 'ok');
+      await loadLibrary();
+      await refreshSegmentStatuses();
+    } catch (e) {
+      toast(`Error subiendo música: ${e.message}`, 'err');
+    } finally {
+      input.value = '';
+    }
+  }
+
+  async function delMusic(slug) {
+    if (!confirm(`¿Borrar la música de fondo de ${slug}?`)) return;
+    try {
+      const res = await fetch(`/api/library/${slug}/music`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(res.statusText);
+      toast('Música borrada.', 'ok');
+      await loadLibrary();
+      await refreshSegmentStatuses();
+    } catch (e) {
+      toast(`Error: ${e.message}`, 'err');
+    }
+  }
+
   window.pickFile = pickFile;
   window.uploadFile = uploadFile;
   window.delSegment = delSegment;
+  window.pickMusic = pickMusic;
+  window.uploadMusic = uploadMusic;
+  window.delMusic = delMusic;
 
   (async () => {
     await loadLibrary();

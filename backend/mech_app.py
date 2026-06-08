@@ -27,6 +27,7 @@ import config
 import gestures
 import image_gen
 import llm
+import background_audio
 import tts
 import video_library
 import voices
@@ -151,9 +152,13 @@ class MechApp:
             self.arduino.set_mode("STOP")
         except Exception as e:
             self.log(f"Arduino no respondió al paro: {e}", "err")
-        # Audio (TTS en curso)
+        # Audio (TTS en curso + música de fondo)
         try:
             sd.stop()
+        except Exception:
+            pass
+        try:
+            background_audio.stop()
         except Exception:
             pass
         # Voz
@@ -245,32 +250,51 @@ class MechApp:
         # el suyo (video o imagen); si ninguno trae, la pantalla queda limpia
         # en vez de mostrar el video de la historia anterior.
         self.clear_visual()
-        for i, seg in enumerate(plan.segments, 1):
-            if not self.state["voice_loop_active"]:
-                # Aborted (emergency stop o stop_voice)
-                self.log("Plan abortado", "warn")
-                return
-            visual_kind = (
-                "video" if (seg.video_slug and seg.video_segment) else
-                ("imagen" if seg.image_prompt else "sin visual")
-            )
-            self.log(
-                f"Segmento {i}/{len(plan.segments)} — {seg.gesture} — {visual_kind}",
-                "info",
-            )
-            self._render_segment_visual(seg, plan.title, i)
-            gestures.perform(self.arduino, seg.gesture)
-            self.state["last_ai_response"] = seg.narration
-            voice_id = voices.resolve(seg.voice)
-            self.emit(
-                "ai_response",
-                text=seg.narration,
-                segment=i,
-                total=len(plan.segments),
-                voice=seg.voice or "narrator",
-            )
-            tts.speak(seg.narration, blocking=True, voice_id=voice_id)
-        self.arduino.set_mode("IDLE")
+        # Música de fondo (solo exposiciones que la tengan, ej. Malpaís).
+        self._start_background_music(plan)
+        try:
+            for i, seg in enumerate(plan.segments, 1):
+                if not self.state["voice_loop_active"]:
+                    # Aborted (emergency stop o stop_voice)
+                    self.log("Plan abortado", "warn")
+                    return
+                visual_kind = (
+                    "video" if (seg.video_slug and seg.video_segment) else
+                    ("imagen" if seg.image_prompt else "sin visual")
+                )
+                self.log(
+                    f"Segmento {i}/{len(plan.segments)} — {seg.gesture} — {visual_kind}",
+                    "info",
+                )
+                self._render_segment_visual(seg, plan.title, i)
+                gestures.perform(self.arduino, seg.gesture)
+                self.state["last_ai_response"] = seg.narration
+                voice_id = voices.resolve(seg.voice)
+                self.emit(
+                    "ai_response",
+                    text=seg.narration,
+                    segment=i,
+                    total=len(plan.segments),
+                    voice=seg.voice or "narrator",
+                )
+                tts.speak(seg.narration, blocking=True, voice_id=voice_id)
+        finally:
+            background_audio.stop()
+            self.arduino.set_mode("IDLE")
+
+    def _start_background_music(self, plan: "llm.Plan") -> None:
+        """Arranca la música de fondo si el plan la pide y el sample existe."""
+        slug = getattr(plan, "background_music", None)
+        if not slug:
+            return
+        path = video_library.background_audio_path(slug)
+        if path is None:
+            self.log(f"Música pedida pero sin sample en disco: {slug}", "warn")
+            return
+        if background_audio.start(path):
+            self.log(f"Música de fondo: {slug}", "ok")
+        else:
+            self.log("No se pudo iniciar la música (¿falta ffplay?)", "warn")
 
     def handle_text_command(self, text: str) -> None:
         """Procesa un comando de texto (de voz o frontend)."""

@@ -107,8 +107,9 @@ def main_loop() -> None:
     # Saludo inicial.
     saludo = (
         "Hola, soy MECH. Pregúntame sobre obras y temas culturales como Don "
-        "Quijote, La Odisea, la Campaña Nacional de 1856 o la Anexión de "
-        "Nicoya, o sobre cómo estoy construido."
+        "Quijote, la Campaña Nacional de 1856, las esculturas de Jiménez "
+        "Deredia, la música de Malpaís o los cuadros de Isidro Con Wong, o "
+        "sobre cómo estoy construido."
     )
     gestures.perform(link, "wave")
     tts.speak(saludo, blocking=True)

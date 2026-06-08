@@ -572,6 +572,47 @@ async def library_delete(slug: str, segment: int):
     return {"ok": True}
 
 
+@app.post("/api/library/{slug}/music")
+async def library_music_upload(slug: str, file: UploadFile = File(...)):
+    """Sube el sample de música de fondo de una exposición (ej. Malpaís).
+
+    Solo para obras marcadas con ``music: True``. Se guarda como
+    ``music.<ext>`` y reemplaza cualquier sample previo.
+    """
+    meta = video_library.WORKS.get(slug)
+    if meta is None:
+        raise HTTPException(404, f"Obra desconocida: {slug}")
+    if not video_library.supports_music(slug):
+        raise HTTPException(400, f"La obra {slug} no admite música de fondo")
+    ext = Path(file.filename or "music.mp3").suffix.lower() or ".mp3"
+    if ext not in video_library._MUSIC_EXTS:
+        raise HTTPException(400, f"Formato de audio no soportado: {ext}")
+    folder = config.VIDEO_LIBRARY_DIR / slug
+    folder.mkdir(parents=True, exist_ok=True)
+    # Quita cualquier sample previo (cualquier extensión).
+    for e in video_library._MUSIC_EXTS:
+        old = folder / f"music{e}"
+        if old.exists():
+            old.unlink()
+    dest = folder / f"music{ext}"
+    with dest.open("wb") as f:
+        while chunk := await file.read(1 << 20):
+            f.write(chunk)
+    size_mb = dest.stat().st_size / (1024 * 1024)
+    get_app().log(f"Música subida: {slug}/{dest.name} ({size_mb:.1f} MB)", "ok")
+    return {"ok": True, "url": video_library.background_audio_url(slug)}
+
+
+@app.delete("/api/library/{slug}/music")
+async def library_music_delete(slug: str):
+    """Elimina el sample de música de fondo de una obra."""
+    path = video_library.background_audio_path(slug)
+    if path is not None:
+        path.unlink()
+        get_app().log(f"Música eliminada: {slug}", "info")
+    return {"ok": True}
+
+
 # -- WebSocket ---------------------------------------------------------------
 
 

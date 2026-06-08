@@ -93,6 +93,9 @@ AUDIO_INPUT_DEVICE = os.environ.get("AUDIO_INPUT_DEVICE", "")
 # arranque lento de parlantes Bluetooth (que se comen la primera palabra).
 # Súbelo si el parlante sigue cortando el inicio.
 AUDIO_LEAD_SILENCE = float(os.environ.get("AUDIO_LEAD_SILENCE", "1.0"))
+# Volumen (0-100) de la música de fondo bajo la narración (solo obras con
+# música, ej. Malpaís). Bajo a propósito para que la voz quede por encima.
+BACKGROUND_MUSIC_VOLUME = int(os.environ.get("BACKGROUND_MUSIC_VOLUME", "18"))
 
 # Proyección
 PROJECTOR_DISPLAY = os.environ.get("PROJECTOR_DISPLAY", ":0")
