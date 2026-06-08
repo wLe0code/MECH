@@ -203,13 +203,22 @@ class MechApp:
         self.emit("image", url=None)
         self.emit("video", url=None)
 
-    def show_library_video(self, slug: str, segment: int) -> None:
-        """Llamado desde execute_plan cuando un segmento referencia un video
-        pre-renderizado (Opción B)."""
+    def show_library_segment(self, slug: str, segment: int) -> None:
+        """Muestra el material de un segmento de la biblioteca, que puede ser
+        un VIDEO (loop) o una IMAGEN (foto fija de una obra)."""
         url = video_library.segment_url(slug, segment)
-        self.state["current_video"] = url
-        self.state["current_image"] = None
-        self.emit("video", url=url)
+        kind = video_library.segment_kind(slug, segment)
+        if kind == "image":
+            self.state["current_image"] = url
+            self.state["current_video"] = None
+            self.emit("image", url=url)
+        else:
+            self.state["current_video"] = url
+            self.state["current_image"] = None
+            self.emit("video", url=url)
+
+    # Alias retro-compatible.
+    show_library_video = show_library_segment
 
     def _render_segment_visual(self, seg: "llm.Segment", plan_title: str, idx: int) -> None:
         """Decide qué visual mostrar para un segmento del plan.
@@ -219,10 +228,10 @@ class MechApp:
           2. Imagen generada con NanoBanana (image_prompt).
           3. Nada (mantiene el visual anterior).
         """
-        # Video de biblioteca
+        # Material de biblioteca (video o imagen)
         if seg.video_slug and seg.video_segment:
             if video_library.segment_exists(seg.video_slug, seg.video_segment):
-                self.show_library_video(seg.video_slug, seg.video_segment)
+                self.show_library_segment(seg.video_slug, seg.video_segment)
                 return
             # Si Claude pidió un video que no existe, avisamos y caemos a imagen.
             self.log(

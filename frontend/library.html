@@ -88,8 +88,10 @@
     los videos en orden mientras narra. Si una obra <strong>no</strong> está completa
     aquí, el robot cae automáticamente a generar imágenes con NanoBanana.
     <br><br>
-    <strong>Convención de archivos:</strong> mp4 por segmento, nombrados <code>seg01.mp4</code>,
-    <code>seg02.mp4</code>, etc. dentro de la carpeta de cada obra.
+    <strong>Cada slot acepta VIDEO o IMAGEN.</strong> Sube un clip
+    (<code>.mp4</code>, <code>.mov</code>…) o una foto de una obra
+    (<code>.jpg</code>, <code>.png</code>…). El robot reproduce el video en
+    bucle o muestra la imagen fija mientras narra ese segmento.
   </p>
 
   <div id="works-container">
@@ -135,13 +137,8 @@
 
   function workCard(w) {
     const pct = Math.round((w.present_segments / w.segments) * 100);
-    const segs = [];
-    for (let i = 1; i <= w.segments; i++) {
-      const present = i <= w.present_segments
-        ? null  // placeholder; we don't know which exactly are present
-        : null;
-      segs.push(segmentCard(w, i));
-    }
+    const details = w.segment_files || [];
+    const segs = details.map(d => segmentCard(w, d));
     return `
       <div class="work-card" data-slug="${w.slug}">
         <div class="work-head">
@@ -186,29 +183,32 @@
     `;
   }
 
-  function segmentCard(w, segNum) {
-    // El backend no nos dice exactamente cuáles segmentos individuales existen,
-    // solo el total. Para el render inicial asumimos los primeros N como presentes
-    // (suficiente para mostrar progreso); el HEAD individual lo hacemos al cargar.
-    const padded = String(segNum).padStart(2, '0');
-    const id = `seg-${w.slug}-${segNum}`;
+  function segmentCard(w, d) {
+    // d = { n, present, url, kind('video'|'image'|null) } desde /api/library.
+    const padded = String(d.n).padStart(2, '0');
+    const id = `seg-${w.slug}-${d.n}`;
+    const label = d.present
+      ? (d.kind === 'image'
+          ? '<i class="ti ti-photo"></i> IMAGEN'
+          : '<i class="ti ti-video"></i> VIDEO')
+      : 'SIN ARCHIVO';
     return `
-      <div class="seg-card" id="${id}" data-slug="${w.slug}" data-seg="${segNum}">
+      <div class="seg-card ${d.present ? 'present' : 'missing'}" id="${id}" data-slug="${w.slug}" data-seg="${d.n}">
         <div>
           <div class="seg-num">seg${padded}</div>
-          <div class="seg-status no" data-status>SIN VIDEO</div>
+          <div class="seg-status ${d.present ? 'ok' : 'no'}">${label}</div>
         </div>
         <div class="seg-actions">
-          <button class="btn btn-primary" onclick="pickFile('${w.slug}', ${segNum})">
+          <button class="btn btn-primary" onclick="pickFile('${w.slug}', ${d.n})">
             <i class="ti ti-upload"></i>
           </button>
-          <button class="btn btn-danger" onclick="delSegment('${w.slug}', ${segNum})" data-del style="display:none">
+          <button class="btn btn-danger" onclick="delSegment('${w.slug}', ${d.n})" style="${d.present ? '' : 'display:none'}">
             <i class="ti ti-trash"></i>
           </button>
         </div>
-        <input type="file" class="hidden-input" id="file-${w.slug}-${segNum}"
-               accept=".mp4,.mov,.m4v,.webm,.mkv,.avi,video/*"
-               onchange="uploadFile('${w.slug}', ${segNum}, this)">
+        <input type="file" class="hidden-input" id="file-${w.slug}-${d.n}"
+               accept=".mp4,.mov,.m4v,.webm,.mkv,.avi,.jpg,.jpeg,.png,.webp,.gif,video/*,image/*"
+               onchange="uploadFile('${w.slug}', ${d.n}, this)">
       </div>
     `;
   }
@@ -217,42 +217,6 @@
     return String(s ?? '').replace(/[&<>"']/g, c => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
-  }
-
-  // Comprueba si cada segmento existe individualmente (HEAD a su URL).
-  async function refreshSegmentStatuses() {
-    for (const w of works) {
-      for (let i = 1; i <= w.segments; i++) {
-        const padded = String(i).padStart(2, '0');
-        const url = `/videos/${w.slug}/seg${padded}.mp4`;
-        try {
-          const res = await fetch(url, { method: 'HEAD' });
-          markSegment(w.slug, i, res.ok);
-        } catch {
-          markSegment(w.slug, i, false);
-        }
-      }
-    }
-  }
-
-  function markSegment(slug, segNum, present) {
-    const card = document.getElementById(`seg-${slug}-${segNum}`);
-    if (!card) return;
-    const status = card.querySelector('[data-status]');
-    const delBtn = card.querySelector('[data-del]');
-    if (present) {
-      card.classList.remove('missing');
-      card.classList.add('present');
-      status.textContent = 'OK';
-      status.className = 'seg-status ok';
-      if (delBtn) delBtn.style.display = '';
-    } else {
-      card.classList.remove('present');
-      card.classList.add('missing');
-      status.textContent = 'SIN VIDEO';
-      status.className = 'seg-status no';
-      if (delBtn) delBtn.style.display = 'none';
-    }
   }
 
   function pickFile(slug, segNum) {
@@ -275,11 +239,8 @@
         const text = await res.text();
         throw new Error(`${res.status}: ${text}`);
       }
-      toast(`Subido: ${slug}/seg${String(segNum).padStart(2, '0')}.mp4`, 'ok');
-      markSegment(slug, segNum, true);
-      // Recargamos las stats globales del card.
-      await loadLibrary();
-      await refreshSegmentStatuses();
+      toast(`Subido seg${String(segNum).padStart(2, '0')} de ${slug}`, 'ok');
+      await loadLibrary();  // re-render con el estado real (presencia + tipo)
     } catch (e) {
       toast(`Error subiendo: ${e.message}`, 'err');
     } finally {
@@ -293,9 +254,7 @@
       const res = await fetch(`/api/library/${slug}/${segNum}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(res.statusText);
       toast('Borrado.', 'ok');
-      markSegment(slug, segNum, false);
       await loadLibrary();
-      await refreshSegmentStatuses();
     } catch (e) {
       toast(`Error: ${e.message}`, 'err');
     }
@@ -317,7 +276,6 @@
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
       toast(`Música subida para ${slug}`, 'ok');
       await loadLibrary();
-      await refreshSegmentStatuses();
     } catch (e) {
       toast(`Error subiendo música: ${e.message}`, 'err');
     } finally {
@@ -332,7 +290,6 @@
       if (!res.ok) throw new Error(res.statusText);
       toast('Música borrada.', 'ok');
       await loadLibrary();
-      await refreshSegmentStatuses();
     } catch (e) {
       toast(`Error: ${e.message}`, 'err');
     }
@@ -345,10 +302,7 @@
   window.uploadMusic = uploadMusic;
   window.delMusic = delMusic;
 
-  (async () => {
-    await loadLibrary();
-    await refreshSegmentStatuses();
-  })();
+  loadLibrary();
 </script>
 </body>
 </html>

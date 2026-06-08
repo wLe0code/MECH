@@ -82,7 +82,7 @@ WORKS: dict[str, WorkMeta] = {
             "precolombinas de Costa Rica con temas universales de "
             "transformación, gestación y vida."
         ),
-        "segments": 1,  # un video corto REAL (no IA) que loopea durante la exposición
+        "segments": 4,  # 3 videos reales + 1 imagen de una obra (cada slot acepta video o imagen)
     },
     "malpais": {
         "title": "Música de Malpaís",
@@ -105,7 +105,7 @@ WORKS: dict[str, WorkMeta] = {
             "soles y lunas que retratan la mística rural y el campo de Costa "
             "Rica con color vibrante."
         ),
-        "segments": 1,  # un video corto REAL (no IA) que loopea durante la exposición
+        "segments": 4,  # 3 videos reales + 1 imagen de una obra (cada slot acepta video o imagen)
     },
 }
 
@@ -115,23 +115,60 @@ WORKS: dict[str, WorkMeta] = {
 # ---------------------------------------------------------------------------
 
 
+# Un segmento puede ser un VIDEO (clip que loopea) o una IMAGEN (foto fija de
+# una obra). Se acepta cualquiera de estas extensiones; el nombre base es
+# seg01, seg02, ... y la extensión define el tipo.
+_SEG_VIDEO_EXTS = (".mp4", ".webm", ".mov", ".m4v", ".mkv")
+_SEG_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
+_SEG_EXTS = _SEG_VIDEO_EXTS + _SEG_IMAGE_EXTS
+
+
 def segment_filename(segment: int) -> str:
-    """Convención: seg01.mp4, seg02.mp4, ..."""
+    """Nombre por defecto (mp4) — solo para logs/mensajes."""
     return f"seg{segment:02d}.mp4"
 
 
+def segment_basename(segment: int) -> str:
+    """Base sin extensión: seg01, seg02, ..."""
+    return f"seg{segment:02d}"
+
+
+def segment_file(slug: str, segment: int) -> Path | None:
+    """Ruta del archivo del segmento si existe (video o imagen), o None."""
+    folder = config.VIDEO_LIBRARY_DIR / slug
+    base = segment_basename(segment)
+    for ext in _SEG_EXTS:
+        p = folder / f"{base}{ext}"
+        if p.exists():
+            return p
+    return None
+
+
 def segment_path(slug: str, segment: int) -> Path:
-    """Ruta absoluta al archivo del segmento (no verifica existencia)."""
+    """Ruta por defecto (.mp4) — para guardar cuando no se sabe la extensión."""
     return config.VIDEO_LIBRARY_DIR / slug / segment_filename(segment)
 
 
-def segment_url(slug: str, segment: int) -> str:
-    """URL relativa servida por el backend (montado en /videos)."""
-    return f"/videos/{slug}/{segment_filename(segment)}"
+def segment_url(slug: str, segment: int) -> str | None:
+    """URL relativa del segmento existente (o None si no hay archivo)."""
+    p = segment_file(slug, segment)
+    return f"/videos/{slug}/{p.name}" if p else None
+
+
+def segment_is_video(path: Path) -> bool:
+    return path.suffix.lower() in _SEG_VIDEO_EXTS
+
+
+def segment_kind(slug: str, segment: int) -> str | None:
+    """'video' | 'image' | None según el archivo del segmento."""
+    p = segment_file(slug, segment)
+    if p is None:
+        return None
+    return "video" if segment_is_video(p) else "image"
 
 
 def segment_exists(slug: str, segment: int) -> bool:
-    return segment_path(slug, segment).exists()
+    return segment_file(slug, segment) is not None
 
 
 # --- Música de fondo (solo obras con "music": True, ej. Malpaís) ------------
@@ -184,7 +221,19 @@ def available_works() -> list[dict]:
     out: list[dict] = []
     for slug, meta in WORKS.items():
         total = meta["segments"]
-        present = sum(1 for i in range(1, total + 1) if segment_exists(slug, i))
+        seg_files = []
+        for i in range(1, total + 1):
+            p = segment_file(slug, i)
+            seg_files.append(
+                {
+                    "n": i,
+                    "present": p is not None,
+                    "url": (f"/videos/{slug}/{p.name}" if p else None),
+                    "kind": ("video" if (p and segment_is_video(p)) else
+                             ("image" if p else None)),
+                }
+            )
+        present = sum(1 for s in seg_files if s["present"])
         out.append(
             {
                 "slug": slug,
@@ -193,6 +242,7 @@ def available_works() -> list[dict]:
                 "music_present": background_audio_exists(slug),
                 "present_segments": present,
                 "complete": present == total,
+                "segment_files": seg_files,
             }
         )
     return out
@@ -233,11 +283,12 @@ def system_prompt_section() -> str:
 
     if complete:
         lines += [
-            "### Obras con video pre-renderizado",
+            "### Obras con material visual pre-cargado",
             "",
-            "Para estas hay mp4 listos. Usá EXACTAMENTE el número de segmentos "
-            "indicado; en cada `Segment` poné `video_slug` (exacto) y "
-            "`video_segment` (1, 2, 3...), y NO pongas `image_prompt`:",
+            "Para estas hay material listo (videos y/o imágenes reales). Usá "
+            "EXACTAMENTE el número de segmentos indicado; en cada `Segment` "
+            "poné `video_slug` (exacto) y `video_segment` (1, 2, 3...), y NO "
+            "pongas `image_prompt`:",
             "",
         ]
         for w in complete:

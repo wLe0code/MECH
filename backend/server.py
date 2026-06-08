@@ -536,7 +536,9 @@ async def library_list():
 
 @app.post("/api/library/{slug}/{segment}")
 async def library_upload(slug: str, segment: int, file: UploadFile = File(...)):
-    """Sube un video para una obra+segmento. Sobrescribe si ya existía."""
+    """Sube el material de una obra+segmento. Puede ser VIDEO o IMAGEN.
+    Se guarda con la extensión real y reemplaza cualquier archivo previo
+    de ese segmento (de cualquier extensión)."""
     meta = video_library.WORKS.get(slug)
     if meta is None:
         raise HTTPException(404, f"Obra desconocida: {slug}")
@@ -545,30 +547,39 @@ async def library_upload(slug: str, segment: int, file: UploadFile = File(...)):
             400,
             f"Segmento {segment} fuera de rango (1-{meta['segments']}) para {slug}",
         )
-    dest = video_library.segment_path(slug, segment)
-    dest.parent.mkdir(parents=True, exist_ok=True)
+    ext = Path(file.filename or "seg.mp4").suffix.lower() or ".mp4"
+    if ext not in video_library._SEG_EXTS:
+        raise HTTPException(
+            400,
+            f"Formato no soportado: {ext}. Usa video (mp4, mov, webm…) o "
+            f"imagen (jpg, png, webp…).",
+        )
+    folder = config.VIDEO_LIBRARY_DIR / slug
+    folder.mkdir(parents=True, exist_ok=True)
+    # Quita cualquier archivo previo de este segmento (cualquier extensión),
+    # así no quedan un video y una imagen compitiendo para el mismo slot.
+    base = video_library.segment_basename(segment)
+    for e in video_library._SEG_EXTS:
+        old = folder / f"{base}{e}"
+        if old.exists():
+            old.unlink()
+    dest = folder / f"{base}{ext}"
     with dest.open("wb") as f:
         while chunk := await file.read(1 << 20):  # 1 MB
             f.write(chunk)
     size_mb = dest.stat().st_size / (1024 * 1024)
-    get_app().log(
-        f"Video subido: {slug}/{video_library.segment_filename(segment)} "
-        f"({size_mb:.1f} MB)",
-        "ok",
-    )
-    return {"ok": True, "url": video_library.segment_url(slug, segment)}
+    kind = "imagen" if ext in video_library._SEG_IMAGE_EXTS else "video"
+    get_app().log(f"Subido ({kind}): {slug}/{dest.name} ({size_mb:.1f} MB)", "ok")
+    return {"ok": True, "url": video_library.segment_url(slug, segment), "kind": kind}
 
 
 @app.delete("/api/library/{slug}/{segment}")
 async def library_delete(slug: str, segment: int):
-    """Elimina un video específico de la biblioteca."""
-    dest = video_library.segment_path(slug, segment)
-    if dest.exists():
-        dest.unlink()
-        get_app().log(
-            f"Video eliminado: {slug}/{video_library.segment_filename(segment)}",
-            "info",
-        )
+    """Elimina el material de un segmento (video o imagen, cualquier extensión)."""
+    path = video_library.segment_file(slug, segment)
+    if path is not None:
+        path.unlink()
+        get_app().log(f"Segmento eliminado: {slug}/{path.name}", "info")
     return {"ok": True}
 
 
