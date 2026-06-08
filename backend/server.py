@@ -79,8 +79,21 @@ def _normalize(text: str) -> str:
 
 
 def _matches_any(norm_text: str, phrases: list[str]) -> bool:
-    """True si alguna frase (normalizada) aparece dentro del texto normalizado."""
-    return any(_normalize(p) in norm_text for p in phrases if p.strip())
+    """True si alguna frase coincide con el texto.
+
+    Coincide si TODAS las palabras de la frase aparecen en el texto, en
+    CUALQUIER orden (cada palabra de la frase basta con ser parte de alguna
+    palabra del texto). Así "duermete mech", "mech duermete" y "duermete"
+    funcionan igual, y tolera mejor lo que transcribe Whisper.
+    """
+    tokens = norm_text.split()
+    if not tokens:
+        return False
+    for p in phrases:
+        words = _normalize(p).split()
+        if words and all(any(w in tok for tok in tokens) for w in words):
+            return True
+    return False
 
 
 def _voice_loop_worker():

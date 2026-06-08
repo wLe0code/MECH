@@ -73,11 +73,13 @@ VOICE_WAKE_PHRASES = [
     ).split(",") if p.strip()
 ]
 # Frases que ponen a MECH EN REPOSO (deja de responder, sigue oyendo el wake).
+# El match es por palabras en cualquier orden (ver _matches_any en server.py),
+# así que "duermete", "duermete mech" y "mech duermete" funcionan igual.
 VOICE_SLEEP_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_SLEEP_PHRASES",
         "para de escuchar,deja de escuchar,para de recibir,ya no escuches,"
-        "duermete mech,ponte en reposo,descansa mech,modo reposo",
+        "duermete,duerme,descansa mech,ponte en reposo,modo reposo",
     ).split(",") if p.strip()
 ]
 # Micrófono de entrada. Vacío = dispositivo por defecto del sistema.
