@@ -22,3 +22,6 @@ backend/video_library/*/
 # IDE
 .vscode/
 .idea/
+
+# Worktrees y estado local de Claude Code
+.claude/
