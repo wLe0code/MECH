@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import unicodedata
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
@@ -68,27 +69,73 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # -- Voice loop --------------------------------------------------------------
 
 
+def _normalize(text: str) -> str:
+    """Minúsculas, sin acentos ni signos — para comparar contra las frases
+    de despertar/reposo sin importar tildes ni puntuación."""
+    t = unicodedata.normalize("NFD", text.lower())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")  # quita acentos
+    t = "".join(c if (c.isalnum() or c.isspace()) else " " for c in t)
+    return " ".join(t.split())
+
+
+def _matches_any(norm_text: str, phrases: list[str]) -> bool:
+    """True si alguna frase (normalizada) aparece dentro del texto normalizado."""
+    return any(_normalize(p) in norm_text for p in phrases if p.strip())
+
+
 def _voice_loop_worker():
     """Bucle de voz: escucha → transcribe → procesa. Lo corremos en un
-    hilo aparte porque sd.rec/whisper son bloqueantes."""
+    hilo aparte porque sd.rec/whisper son bloqueantes.
+
+    Tiene dos estados (voice_awake):
+      - Despierto: procesa comandos normalmente. Si oye una frase de reposo
+        ("para de escuchar"), pasa a reposo.
+      - En reposo: NO llama a Claude ni gasta créditos; solo escucha y, si oye
+        la palabra de despertar ("despierta MECH"), vuelve a despierto.
+    """
     app_state = get_app()
     app_state.log("Bucle de voz iniciado", "ok")
     app_state.arduino.set_mode("IDLE")
+    if not app_state.state.get("voice_awake", True):
+        app_state.set_voice_phase("dormant")
+
     while app_state.state["voice_loop_active"]:
         try:
             app_state.arduino.set_mode("LISTEN")
+            awake = app_state.state.get("voice_awake", True)
 
-            # El callback emite las fases del micrófono al panel en vivo:
-            # waiting (puede hablar) → listening (grabando) → transcribing.
+            # En reposo no mostramos las fases (queda el banner "dormant").
             text = stt.listen_once(
                 max_seconds=config.LISTEN_MAX_SECONDS,
-                on_phase=app_state.set_voice_phase,
+                on_phase=app_state.set_voice_phase if awake else None,
             )
 
             if text is None or not text.strip():
-                # No se detectó voz; volvemos a esperar en la próxima vuelta.
+                app_state.set_voice_phase(
+                    "waiting" if app_state.state.get("voice_awake", True) else "dormant"
+                )
+                continue
+
+            norm = _normalize(text)
+            awake = app_state.state.get("voice_awake", True)
+
+            if not awake:
+                # En reposo: solo reacciona a la palabra de despertar.
+                if _matches_any(norm, config.VOICE_WAKE_PHRASES):
+                    app_state.go_awake()
+                else:
+                    app_state.set_voice_phase("dormant")
+                continue
+
+            # Despierto: ¿pidió reposo?
+            if _matches_any(norm, config.VOICE_SLEEP_PHRASES):
+                app_state.go_dormant()
+                continue
+            # Ya despierto y dijo "despierta": lo ignoramos (no es un comando).
+            if _matches_any(norm, config.VOICE_WAKE_PHRASES):
                 app_state.set_voice_phase("waiting")
                 continue
+
             # handle_text_command pone thinking → speaking y al final waiting.
             app_state.handle_text_command(text)
         except Exception as e:
@@ -101,11 +148,15 @@ def _voice_loop_worker():
 _voice_thread: threading.Thread | None = None
 
 
-def start_voice_loop():
+def start_voice_loop(awake: bool = True):
     global _voice_thread
     app_state = get_app()
     if app_state.state["voice_loop_active"]:
+        # Ya corriendo: si estaba en reposo y se pide despierto, lo despertamos.
+        if awake and not app_state.state.get("voice_awake", True):
+            app_state.go_awake()
         return
+    app_state.state["voice_awake"] = awake
     app_state.state["voice_loop_active"] = True
     _voice_thread = threading.Thread(target=_voice_loop_worker, daemon=True)
     _voice_thread.start()
@@ -127,6 +178,10 @@ async def lifespan(app: FastAPI):
     mech = get_app()
     mech.bind_loop(asyncio.get_running_loop())
     mech.log("Servidor MECH iniciado", "ok")
+    # Autostart en reposo: MECH queda escuchando solo "despierta MECH".
+    if config.VOICE_AUTOSTART:
+        mech.log("Voz en reposo: di 'despierta MECH' para activarlo.", "info")
+        start_voice_loop(awake=False)
     yield
     stop_voice_loop()
     mech.close()

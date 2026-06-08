@@ -313,6 +313,15 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     sin reiniciar); guarda en `.env` micrófono, sample rate, modelo Whisper y
     voice_id (requieren reiniciar). Prueba de TTS (`POST /api/tts/test`) y
     lista de micrófonos (`GET /api/audio/devices`).
+- **Control de voz por palabra clave** (server.py `_voice_loop_worker`): el
+  bucle tiene dos estados (`state["voice_awake"]`). En reposo el micrófono
+  sigue abierto pero solo reacciona a las frases de despertar
+  (`VOICE_WAKE_PHRASES`, ej. "despierta MECH") — no llama a Claude ni gasta
+  créditos. Despierto, una frase de reposo (`VOICE_SLEEP_PHRASES`, ej. "para
+  de escuchar") lo duerme. Con `VOICE_AUTOSTART=true` el server arranca el
+  bucle en reposo, así MECH espera "despierta MECH" sin tocar el panel. El
+  botón del panel sigue siendo el apagado/encendido TOTAL (suelta el mic).
+  Fase nueva del banner: `dormant`. Métodos `mech_app.go_awake/go_dormant`.
 - **Voces dinámicas por personaje** (`backend/voices.py`): catálogo con
   `voice_id` por personaje, campo `voice` en el `Segment`, `tts.speak()` acepta
   `voice_id`. Rellenar los `voice_id` en `voices.py` para activarlas (ej. voz

@@ -45,8 +45,11 @@ class MechApp:
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
             "voice_listening": False,
+            # voice_awake: dentro de un bucle activo, si MECH responde (True) o
+            # está en reposo escuchando solo la palabra para despertar (False).
+            "voice_awake": True,
             # Fase detallada del ciclo de voz para el panel. Una de:
-            # off | waiting | listening | transcribing | thinking | speaking
+            # off | dormant | waiting | listening | transcribing | thinking | speaking
             "voice_phase": "off",
             "claude_model": config.CLAUDE_MODEL,
             "current_mode": "IDLE",
@@ -116,6 +119,24 @@ class MechApp:
         self.state["voice_phase"] = phase
         self.state["voice_listening"] = phase in ("waiting", "listening")
         self.emit("state", state=self.state)
+
+    def go_dormant(self) -> None:
+        """Pone a MECH en reposo: deja de responder (no gasta créditos), pero
+        el bucle sigue oyendo para captar la palabra de despertar."""
+        self.state["voice_awake"] = False
+        self.log("MECH en reposo. Di 'despierta MECH' para reactivarlo.", "info")
+        tts.speak(
+            "De acuerdo, quedo en reposo. Diga, despierta MECH, cuando quiera continuar.",
+            blocking=True,
+        )
+        self.set_voice_phase("dormant")
+
+    def go_awake(self) -> None:
+        """Despierta a MECH: vuelve a responder comandos."""
+        self.state["voice_awake"] = True
+        self.log("MECH despierto. Escuchando comandos.", "ok")
+        tts.speak("Hola, ya te escucho.", blocking=True)
+        self.set_voice_phase("waiting")
 
     # ------------------------------------------------------------------
     # Acciones de alto nivel — los endpoints del server las invocan

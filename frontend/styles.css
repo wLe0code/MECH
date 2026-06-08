@@ -378,6 +378,10 @@ select:focus, input[type="text"]:focus { border-color: var(--purple-mid); }
 .phase-off    { background: var(--surface); color: var(--text-muted); }
 .phase-off .vpb-pulse { animation: none; opacity: 0.4; }
 
+/* En reposo — azul apagado, pulso lento. MECH duerme pero oye el wake. */
+.phase-dormant { background: rgba(127,119,221,0.10); color: #8a86b8; }
+.phase-dormant .vpb-pulse { animation: pulse 2.2s infinite; opacity: 0.6; }
+
 /* PUEDES HABLAR — verde, pulso marcado para llamar la atención. */
 .phase-waiting { background: rgba(29,158,117,0.18); color: #5DCAA5; }
 .phase-waiting .vpb-pulse { animation: pulse 1s infinite; }

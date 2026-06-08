@@ -136,6 +136,7 @@
   // Mapa de fases del ciclo de voz → texto + estilo del banner grande.
   const PHASES = {
     off:          { cls: 'phase-off',     text: 'Bucle de voz apagado',     hint: 'Pulsa el micrófono o la tecla V para empezar' },
+    dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'despierta MECH' para activarlo" },
     waiting:      { cls: 'phase-waiting', text: '🎤 PUEDES HABLAR',          hint: 'Dile al juez/usuario que hable AHORA' },
     listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
     transcribing: { cls: 'phase-work',    text: 'Transcribiendo…',           hint: 'Convirtiendo la voz a texto' },
@@ -157,7 +158,7 @@
     const micActive = phase === 'waiting' || phase === 'listening';
     $('dot-mic').className = micActive ? 'dot-active' : (state.voiceLoopActive ? 'dot-ok' : 'dot-off');
     const micLabel = { waiting: 'PUEDES HABLAR', listening: 'GRABANDO', transcribing: 'PROCESANDO',
-                       thinking: 'PENSANDO', speaking: 'HABLANDO', off: 'INACTIVO' }[phase] || 'INACTIVO';
+                       thinking: 'PENSANDO', speaking: 'HABLANDO', dormant: 'EN REPOSO', off: 'INACTIVO' }[phase] || 'INACTIVO';
     setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
   }
 
@@ -173,7 +174,8 @@
     updateVoicePhase(phase);
 
     $('voice-btn').classList.toggle('listening', phase === 'waiting' || phase === 'listening');
-    $('fw-voice').textContent = state.voiceLoopActive ? 'ACTIVO' : 'DETENIDO';
+    $('fw-voice').textContent = state.voiceLoopActive
+      ? (phase === 'dormant' ? 'EN REPOSO' : 'ACTIVO') : 'DETENIDO';
     if (phase === 'waiting' || phase === 'listening') startWaveAnim(); else stopWaveAnim();
 
     // Modo / firmware

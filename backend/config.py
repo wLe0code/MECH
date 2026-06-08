@@ -57,6 +57,29 @@ VAD_SILENCE_TIMEOUT = float(os.environ.get("VAD_SILENCE_TIMEOUT", "1.2"))
 # Segundos máximos que el micrófono espera por voz en cada turno. Súbelo si
 # el juez/usuario tarda en empezar a hablar.
 LISTEN_MAX_SECONDS = float(os.environ.get("AUDIO_LISTEN_MAX_SECONDS", "20"))
+
+# --- Control del bucle de voz por palabra clave ---------------------------
+# Si VOICE_AUTOSTART=true, el bucle de voz arranca solo al iniciar el server,
+# pero EN REPOSO: el micrófono escucha únicamente la palabra para despertar.
+# Así MECH queda esperando "despierta MECH" sin tocar el panel.
+VOICE_AUTOSTART = os.environ.get("VOICE_AUTOSTART", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+# Frases (separadas por coma) que ACTIVAN a MECH cuando está en reposo.
+VOICE_WAKE_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_WAKE_PHRASES",
+        "despierta mech,despierta,activa mech,mech despierta",
+    ).split(",") if p.strip()
+]
+# Frases que ponen a MECH EN REPOSO (deja de responder, sigue oyendo el wake).
+VOICE_SLEEP_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_SLEEP_PHRASES",
+        "para de escuchar,deja de escuchar,para de recibir,ya no escuches,"
+        "duermete mech,ponte en reposo,descansa mech,modo reposo",
+    ).split(",") if p.strip()
+]
 # Micrófono de entrada. Vacío = dispositivo por defecto del sistema.
 # Se puede poner el índice (número) o parte del nombre del dispositivo.
 # El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda
