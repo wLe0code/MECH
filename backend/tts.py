@@ -57,6 +57,33 @@ def clear_stop() -> None:
     _stop_event.clear()
 
 
+def play_chime() -> None:
+    """Sonido corto de 'listo' (dos notas ascendentes), sin gastar créditos.
+
+    Lo usa el arranque del bucle de voz para avisar que MECH ya está activo y
+    se le puede hablar / decir 'despierta MECH'. Es un tono puro generado en
+    el momento; no es voz, así que no dispara la detección de palabras.
+    """
+    try:
+        sr = 44100
+
+        def _tone(freq: float, dur: float) -> np.ndarray:
+            t = np.linspace(0, dur, int(sr * dur), endpoint=False)
+            wave = 0.30 * np.sin(2 * np.pi * freq * t)
+            fade = max(1, int(sr * 0.012))  # micro fade in/out (evita clics)
+            env = np.ones_like(wave)
+            env[:fade] = np.linspace(0, 1, fade)
+            env[-fade:] = np.linspace(1, 0, fade)
+            return (wave * env).astype(np.float32)
+
+        gap = np.zeros(int(sr * 0.04), dtype=np.float32)
+        audio = np.concatenate([_tone(660, 0.14), gap, _tone(988, 0.18)])
+        _stop_event.clear()
+        _play_audio(audio, sr)
+    except Exception:
+        pass
+
+
 def get_client() -> ElevenLabs:
     global _client
     if _client is None:

@@ -82,6 +82,16 @@ def _voice_loop_worker():
     app_state = get_app()
     app_state.log("Bucle de voz iniciado", "ok")
     app_state.arduino.set_mode("IDLE")
+    # Precargamos Whisper para que el primer "despierta MECH" responda rápido
+    # (la primera vez puede tardar si tiene que descargar el modelo).
+    try:
+        stt.get_model()
+    except Exception as e:
+        app_state.log(f"No se pudo precargar Whisper: {e}", "warn")
+    # Sonido de "listo": a partir de aquí el micrófono está activo y ya se le
+    # puede hablar / decir "despierta MECH".
+    tts.play_chime()
+    app_state.log("Voz lista: ya puedes decir 'despierta MECH'.", "ok")
     if not app_state.state.get("voice_awake", True):
         app_state.set_voice_phase("dormant")
 
