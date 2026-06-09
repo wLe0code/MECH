@@ -534,7 +534,7 @@ async def library_list():
     return {"works": video_library.available_works()}
 
 
-@app.post("/api/library/{slug}/{segment}")
+@app.post("/api/library/{slug}/{segment:int}")
 async def library_upload(slug: str, segment: int, file: UploadFile = File(...)):
     """Sube el material de una obra+segmento. Puede ser VIDEO o IMAGEN.
     Se guarda con la extensión real y reemplaza cualquier archivo previo
@@ -573,7 +573,7 @@ async def library_upload(slug: str, segment: int, file: UploadFile = File(...)):
     return {"ok": True, "url": video_library.segment_url(slug, segment), "kind": kind}
 
 
-@app.delete("/api/library/{slug}/{segment}")
+@app.delete("/api/library/{slug}/{segment:int}")
 async def library_delete(slug: str, segment: int):
     """Elimina el material de un segmento (video o imagen, cualquier extensión)."""
     path = video_library.segment_file(slug, segment)
