@@ -176,7 +176,8 @@
             <button class="btn btn-primary" onclick="pickMusic('${w.slug}')"><i class="ti ti-upload"></i></button>
             <button class="btn btn-danger" onclick="delMusic('${w.slug}')" data-mdel style="${w.music_present ? '' : 'display:none'}"><i class="ti ti-trash"></i></button>
           </div>
-          <input type="file" class="hidden-input" id="mfile-${w.slug}" accept="audio/*"
+          <input type="file" class="hidden-input" id="mfile-${w.slug}"
+                 accept=".mp3,.ogg,.wav,.m4a,.aac,.flac,.opus,.weba,.webm,.aiff,.wma,audio/*"
                  onchange="uploadMusic('${w.slug}', this)">
         </div>
       </div>

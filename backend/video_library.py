@@ -174,7 +174,11 @@ def segment_exists(slug: str, segment: int) -> bool:
 # --- Música de fondo (solo obras con "music": True, ej. Malpaís) ------------
 
 # Extensiones de audio aceptadas para el sample de música de fondo.
-_MUSIC_EXTS = (".mp3", ".ogg", ".wav", ".m4a", ".aac", ".flac")
+# (ffplay reproduce todas; incluimos las que salen de descargas comunes.)
+_MUSIC_EXTS = (
+    ".mp3", ".ogg", ".wav", ".m4a", ".aac", ".flac",
+    ".opus", ".weba", ".webm", ".aiff", ".aif", ".wma",
+)
 
 
 def background_audio_path(slug: str):
