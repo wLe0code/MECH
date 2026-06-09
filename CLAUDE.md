@@ -323,16 +323,14 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   botón del panel sigue siendo el apagado/encendido TOTAL (suelta el mic).
   Fase nueva del banner: `dormant`. Métodos `mech_app.go_awake/go_dormant`.
   Detección de frases en `backend/voice_phrases.py` (match por palabras en
-  cualquier orden, sin acentos), compartida por el worker y la interrupción.
-- **Interrupción por voz durante la narración** (`VOICE_INTERRUPT=true`):
-  mientras MECH narra, `execute_plan` lanza un hilo `_interrupt_listener` que
-  escucha el micrófono (libre durante la narración) y, si oye una frase de
-  reposo, corta la voz al instante (`tts.request_stop()`), para la música y
-  duerme a MECH. La voz es interrumpible porque `tts._play_audio` usa
-  `subprocess.Popen` + `_stop_event` (lo mata `request_stop`); `stt.listen_once`
-  acepta `cancel_event` para soltar el mic al terminar la narración sin
-  conflicto con el bucle principal. Si el mic capta mucho eco de MECH, poner
-  `VOICE_INTERRUPT=false`.
+  cualquier orden, sin acentos). El reposo/despertar solo se evalúa ENTRE
+  turnos (MECH no escucha mientras narra, por decisión del usuario).
+  El mensaje de `go_dormant` NO contiene la palabra "despierta" (si no, el
+  mic captaría el eco del parlante y MECH se despertaría solo). Tras
+  go_dormant/go_awake hay un `time.sleep(0.8)` para drenar el parlante.
+  `tts.request_stop()/clear_stop()` permiten cortar la voz en curso (lo usa
+  el paro de emergencia); `tts._play_audio` usa `subprocess.Popen` para ser
+  interrumpible.
 - **Voces dinámicas por personaje** (`backend/voices.py`): catálogo con
   `voice_id` por personaje, campo `voice` en el `Segment`, `tts.speak()` acepta
   `voice_id`. Rellenar los `voice_id` en `voices.py` para activarlas (ej. voz

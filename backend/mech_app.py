@@ -28,10 +28,8 @@ import gestures
 import image_gen
 import llm
 import background_audio
-import stt
 import tts
 import video_library
-import voice_phrases
 import voices
 from arduino_link import ArduinoLink, get_link
 
@@ -126,13 +124,18 @@ class MechApp:
 
     def go_dormant(self) -> None:
         """Pone a MECH en reposo: deja de responder (no gasta créditos), pero
-        el bucle sigue oyendo para captar la palabra de despertar."""
+        el bucle sigue oyendo para captar la palabra de despertar.
+
+        IMPORTANTE: el mensaje de confirmación NO debe contener las palabras de
+        despertar ("despierta"/"activa"), porque el micrófono sigue escuchando
+        en reposo y, por el eco del parlante, captaría su propia voz diciendo
+        "despierta MECH" y se despertaría solo."""
         self.state["voice_awake"] = False
         self.log("MECH en reposo. Di 'despierta MECH' para reactivarlo.", "info")
-        tts.speak(
-            "De acuerdo, quedo en reposo. Diga, despierta MECH, cuando quiera continuar.",
-            blocking=True,
-        )
+        tts.speak("De acuerdo, hasta luego.", blocking=True)
+        # Pequeña pausa para que el parlante (sobre todo Bluetooth) drene su
+        # buffer antes de volver a escuchar, y no captarse a sí mismo.
+        time.sleep(0.8)
         self.set_voice_phase("dormant")
 
     def go_awake(self) -> None:
@@ -140,6 +143,7 @@ class MechApp:
         self.state["voice_awake"] = True
         self.log("MECH despierto. Escuchando comandos.", "ok")
         tts.speak("Hola, ya te escucho.", blocking=True)
+        time.sleep(0.8)  # drena el parlante antes de escuchar (evita auto-captura)
         self.set_voice_phase("waiting")
 
     # ------------------------------------------------------------------
@@ -156,6 +160,10 @@ class MechApp:
         except Exception as e:
             self.log(f"Arduino no respondió al paro: {e}", "err")
         # Audio (TTS en curso + música de fondo)
+        try:
+            tts.request_stop()  # corta el reproductor de voz actual
+        except Exception:
+            pass
         try:
             sd.stop()
         except Exception:
@@ -258,28 +266,17 @@ class MechApp:
         """Ejecuta el plan de Claude (varios segmentos)."""
         self.arduino.set_mode("SPEAK")
         self.set_voice_phase("speaking")
+        tts.clear_stop()  # rehabilita la voz por si un paro la había cortado
         # Historia nueva → limpiamos el visual anterior. Cada segmento pondrá
         # el suyo (video o imagen); si ninguno trae, la pantalla queda limpia
         # en vez de mostrar el video de la historia anterior.
         self.clear_visual()
         # Música de fondo (solo exposiciones que la tengan, ej. Malpaís).
         self._start_background_music(plan)
-
-        # Listener de interrupción: escucha MIENTRAS MECH narra y, si oye una
-        # frase de reposo, corta la voz al instante y duerme a MECH.
-        tts.clear_stop()
-        self._narration_interrupted = False
-        cancel = threading.Event()
-        listener = None
-        if config.VOICE_INTERRUPT and self.state.get("voice_loop_active"):
-            listener = threading.Thread(
-                target=self._interrupt_listener, args=(cancel,), daemon=True
-            )
-            listener.start()
-
         try:
             for i, seg in enumerate(plan.segments, 1):
-                if not self.state["voice_loop_active"] or self._narration_interrupted:
+                if not self.state["voice_loop_active"]:
+                    # Aborted (emergency stop o stop_voice)
                     self.log("Plan abortado", "warn")
                     return
                 visual_kind = (
@@ -302,39 +299,9 @@ class MechApp:
                     voice=seg.voice or "narrator",
                 )
                 tts.speak(seg.narration, blocking=True, voice_id=voice_id)
-                if self._narration_interrupted:
-                    return
         finally:
-            cancel.set()          # suelta el mic del listener al instante
-            if listener is not None:
-                listener.join(timeout=5.0)
             background_audio.stop()
-            tts.clear_stop()
             self.arduino.set_mode("IDLE")
-            # Si nos interrumpieron por voz, MECH queda en reposo.
-            if self._narration_interrupted:
-                self.go_dormant()
-
-    def _interrupt_listener(self, cancel: "threading.Event") -> None:
-        """Corre en paralelo a la narración: escucha el micrófono y, si oye una
-        frase de reposo, marca la interrupción y corta voz + música.
-
-        El micrófono está libre durante la narración (el bucle principal está
-        bloqueado en execute_plan), así que este hilo puede usarlo. Se apaga
-        con `cancel` en cuanto termina la narración."""
-        while not cancel.is_set():
-            try:
-                text = stt.listen_once(max_seconds=8.0, cancel_event=cancel)
-            except Exception:
-                continue
-            if cancel.is_set() or not text:
-                continue
-            if voice_phrases.is_sleep(text):
-                self.log(f"Interrupción por voz: {text!r} → reposo", "warn")
-                self._narration_interrupted = True
-                tts.request_stop()
-                background_audio.stop()
-                return
 
     def _start_background_music(self, plan: "llm.Plan") -> None:
         """Arranca la música de fondo si el plan la pide y el sample existe."""
