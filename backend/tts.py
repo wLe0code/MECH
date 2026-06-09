@@ -28,6 +28,34 @@ import config
 
 _client: ElevenLabs | None = None
 
+# --- Interrupción de la voz en curso --------------------------------------
+# Permite cortar el TTS al instante (ej. cuando el usuario dice "duérmete"
+# mientras MECH narra). request_stop() mata el reproductor actual; speak()
+# revisa el flag para no empezar/seguir.
+_stop_event = threading.Event()
+_current_proc: subprocess.Popen | None = None
+_proc_lock = threading.Lock()
+
+
+def request_stop() -> None:
+    """Interrumpe la reproducción de voz en curso."""
+    _stop_event.set()
+    with _proc_lock:
+        if _current_proc is not None and _current_proc.poll() is None:
+            try:
+                _current_proc.terminate()
+            except Exception:
+                pass
+    try:
+        sd.stop()
+    except Exception:
+        pass
+
+
+def clear_stop() -> None:
+    """Rehabilita la reproducción (antes de un nuevo plan)."""
+    _stop_event.clear()
+
 
 def get_client() -> ElevenLabs:
     global _client
@@ -77,6 +105,9 @@ def _play_audio(audio: np.ndarray, samplerate: int) -> None:
     se oye pero la voz no, era porque la voz no tenía esta opción y caía al
     HDMI. sounddevice queda como último recurso.
     """
+    global _current_proc
+    if _stop_event.is_set():
+        return
     audio = _pad_lead_silence(audio, samplerate)
     tmp_path = None
     try:
@@ -89,16 +120,33 @@ def _play_audio(audio: np.ndarray, samplerate: int) -> None:
             ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", tmp_path],
         )
         for player in players:
-            try:
-                subprocess.run(player, check=True)
+            if _stop_event.is_set():
                 return
+            try:
+                proc = subprocess.Popen(player, stdin=subprocess.DEVNULL)
             except FileNotFoundError:
                 continue  # ese reproductor no está instalado; probar el siguiente
-            except subprocess.CalledProcessError:
-                continue
+            with _proc_lock:
+                _current_proc = proc
+            proc.wait()
+            with _proc_lock:
+                _current_proc = None
+            if _stop_event.is_set():
+                return  # nos interrumpieron a propósito
+            if proc.returncode == 0:
+                return  # reproducido OK
+            # returncode != 0 sin interrupción → ese player falló, probar el siguiente
         # Último recurso: sounddevice (irá al dispositivo por defecto de PortAudio).
         sd.play(audio, samplerate)
-        sd.wait()
+        try:
+            stream = sd.get_stream()
+            while stream is not None and stream.active:
+                if _stop_event.is_set():
+                    sd.stop()
+                    break
+                sd.sleep(50)
+        except Exception:
+            sd.wait()
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
@@ -129,6 +177,8 @@ def speak(
     chosen_voice = voice_id or config.ELEVENLABS_VOICE_ID
 
     def _run():
+        if _stop_event.is_set():
+            return  # interrupción pedida: no empezamos a hablar
         # Modo ahorro: no se llama a ElevenLabs (no gasta créditos). Se simula
         # la duración (~15 caracteres/seg, tope 8s) para que gestos y fases
         # mantengan un timing realista.

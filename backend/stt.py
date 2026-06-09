@@ -121,6 +121,7 @@ def _frame_generator(audio_queue: queue.Queue) -> Iterator[bytes]:
 def record_until_silence(
     max_seconds: float = 15.0,
     on_phase: Callable[[str], None] | None = None,
+    cancel_event=None,
 ) -> np.ndarray | None:
     """Graba desde el micrófono hasta detectar silencio prolongado.
 
@@ -167,6 +168,9 @@ def record_until_silence(
     ):
         _phase("waiting")  # micrófono abierto: ya se puede hablar
         for frame in _frame_generator(audio_q):
+            # Cancelación externa (ej. terminó la narración): soltamos el mic ya.
+            if cancel_event is not None and cancel_event.is_set():
+                return None
             if time.monotonic() - start > max_seconds:
                 break
 
@@ -220,13 +224,17 @@ def transcribe(audio: np.ndarray) -> str:
 def listen_once(
     max_seconds: float = 15.0,
     on_phase: Callable[[str], None] | None = None,
+    cancel_event=None,
 ) -> str | None:
     """Atajo: graba hasta silencio y devuelve la transcripción.
 
     `on_phase` recibe "waiting"/"listening" durante la grabación y
     "transcribing" mientras Whisper convierte el audio a texto.
+    `cancel_event`: si se activa, aborta la escucha y devuelve None.
     """
-    audio = record_until_silence(max_seconds=max_seconds, on_phase=on_phase)
+    audio = record_until_silence(
+        max_seconds=max_seconds, on_phase=on_phase, cancel_event=cancel_event
+    )
     if audio is None:
         return None
     if on_phase:

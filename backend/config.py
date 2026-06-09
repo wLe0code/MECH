@@ -65,6 +65,13 @@ LISTEN_MAX_SECONDS = float(os.environ.get("AUDIO_LISTEN_MAX_SECONDS", "20"))
 VOICE_AUTOSTART = os.environ.get("VOICE_AUTOSTART", "true").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
+# Si true, MECH escucha MIENTRAS narra y se detiene al instante si oye una
+# frase de reposo ("para de escuchar", "duérmete MECH"). Ponlo en false si en
+# tu montaje el micrófono capta demasiado la voz/música de MECH (eco) y se
+# interrumpe solo.
+VOICE_INTERRUPT = os.environ.get("VOICE_INTERRUPT", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 # Frases (separadas por coma) que ACTIVAN a MECH cuando está en reposo.
 VOICE_WAKE_PHRASES = [
     p.strip() for p in os.environ.get(

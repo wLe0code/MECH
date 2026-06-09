@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import asyncio
 import threading
-import unicodedata
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
@@ -57,6 +56,7 @@ import config
 import stt
 import tts
 import video_library
+import voice_phrases
 from mech_app import get_app
 
 # -- Paths -------------------------------------------------------------------
@@ -67,33 +67,6 @@ UPLOADS_DIR = config.IMAGE_OUTPUT_DIR.parent / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 # -- Voice loop --------------------------------------------------------------
-
-
-def _normalize(text: str) -> str:
-    """Minúsculas, sin acentos ni signos — para comparar contra las frases
-    de despertar/reposo sin importar tildes ni puntuación."""
-    t = unicodedata.normalize("NFD", text.lower())
-    t = "".join(c for c in t if unicodedata.category(c) != "Mn")  # quita acentos
-    t = "".join(c if (c.isalnum() or c.isspace()) else " " for c in t)
-    return " ".join(t.split())
-
-
-def _matches_any(norm_text: str, phrases: list[str]) -> bool:
-    """True si alguna frase coincide con el texto.
-
-    Coincide si TODAS las palabras de la frase aparecen en el texto, en
-    CUALQUIER orden (cada palabra de la frase basta con ser parte de alguna
-    palabra del texto). Así "duermete mech", "mech duermete" y "duermete"
-    funcionan igual, y tolera mejor lo que transcribe Whisper.
-    """
-    tokens = norm_text.split()
-    if not tokens:
-        return False
-    for p in phrases:
-        words = _normalize(p).split()
-        if words and all(any(w in tok for tok in tokens) for w in words):
-            return True
-    return False
 
 
 def _voice_loop_worker():
@@ -129,23 +102,22 @@ def _voice_loop_worker():
                 )
                 continue
 
-            norm = _normalize(text)
             awake = app_state.state.get("voice_awake", True)
 
             if not awake:
                 # En reposo: solo reacciona a la palabra de despertar.
-                if _matches_any(norm, config.VOICE_WAKE_PHRASES):
+                if voice_phrases.is_wake(text):
                     app_state.go_awake()
                 else:
                     app_state.set_voice_phase("dormant")
                 continue
 
             # Despierto: ¿pidió reposo?
-            if _matches_any(norm, config.VOICE_SLEEP_PHRASES):
+            if voice_phrases.is_sleep(text):
                 app_state.go_dormant()
                 continue
             # Ya despierto y dijo "despierta": lo ignoramos (no es un comando).
-            if _matches_any(norm, config.VOICE_WAKE_PHRASES):
+            if voice_phrases.is_wake(text):
                 app_state.set_voice_phase("waiting")
                 continue
 

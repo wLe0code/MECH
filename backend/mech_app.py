@@ -28,8 +28,10 @@ import gestures
 import image_gen
 import llm
 import background_audio
+import stt
 import tts
 import video_library
+import voice_phrases
 import voices
 from arduino_link import ArduinoLink, get_link
 
@@ -42,6 +44,7 @@ class MechApp:
     def __init__(self) -> None:
         self.arduino: ArduinoLink = get_link()
         self.history: list[dict] = []
+        self._narration_interrupted: bool = False
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -261,10 +264,22 @@ class MechApp:
         self.clear_visual()
         # Música de fondo (solo exposiciones que la tengan, ej. Malpaís).
         self._start_background_music(plan)
+
+        # Listener de interrupción: escucha MIENTRAS MECH narra y, si oye una
+        # frase de reposo, corta la voz al instante y duerme a MECH.
+        tts.clear_stop()
+        self._narration_interrupted = False
+        cancel = threading.Event()
+        listener = None
+        if config.VOICE_INTERRUPT and self.state.get("voice_loop_active"):
+            listener = threading.Thread(
+                target=self._interrupt_listener, args=(cancel,), daemon=True
+            )
+            listener.start()
+
         try:
             for i, seg in enumerate(plan.segments, 1):
-                if not self.state["voice_loop_active"]:
-                    # Aborted (emergency stop o stop_voice)
+                if not self.state["voice_loop_active"] or self._narration_interrupted:
                     self.log("Plan abortado", "warn")
                     return
                 visual_kind = (
@@ -287,9 +302,39 @@ class MechApp:
                     voice=seg.voice or "narrator",
                 )
                 tts.speak(seg.narration, blocking=True, voice_id=voice_id)
+                if self._narration_interrupted:
+                    return
         finally:
+            cancel.set()          # suelta el mic del listener al instante
+            if listener is not None:
+                listener.join(timeout=5.0)
             background_audio.stop()
+            tts.clear_stop()
             self.arduino.set_mode("IDLE")
+            # Si nos interrumpieron por voz, MECH queda en reposo.
+            if self._narration_interrupted:
+                self.go_dormant()
+
+    def _interrupt_listener(self, cancel: "threading.Event") -> None:
+        """Corre en paralelo a la narración: escucha el micrófono y, si oye una
+        frase de reposo, marca la interrupción y corta voz + música.
+
+        El micrófono está libre durante la narración (el bucle principal está
+        bloqueado en execute_plan), así que este hilo puede usarlo. Se apaga
+        con `cancel` en cuanto termina la narración."""
+        while not cancel.is_set():
+            try:
+                text = stt.listen_once(max_seconds=8.0, cancel_event=cancel)
+            except Exception:
+                continue
+            if cancel.is_set() or not text:
+                continue
+            if voice_phrases.is_sleep(text):
+                self.log(f"Interrupción por voz: {text!r} → reposo", "warn")
+                self._narration_interrupted = True
+                tts.request_stop()
+                background_audio.stop()
+                return
 
     def _start_background_music(self, plan: "llm.Plan") -> None:
         """Arranca la música de fondo si el plan la pide y el sample existe."""
@@ -324,11 +369,15 @@ class MechApp:
             self.log(f"Error procesando comando: {e}", "err")
             tts.speak("Disculpa, tuve un problema. ¿Puedes repetirme?", blocking=True)
         finally:
-            # Si el bucle de voz sigue activo, el worker volverá a poner
-            # "waiting" en la próxima vuelta; si no, dejamos "off".
-            self.set_voice_phase(
-                "waiting" if self.state["voice_loop_active"] else "off"
-            )
+            # Si quedó en reposo (interrupción por voz), mantenemos "dormant".
+            # Si no, el worker volverá a poner "waiting" en la próxima vuelta;
+            # si el bucle no está activo, dejamos "off".
+            if not self.state.get("voice_awake", True):
+                self.set_voice_phase("dormant")
+            else:
+                self.set_voice_phase(
+                    "waiting" if self.state["voice_loop_active"] else "off"
+                )
 
     def close(self) -> None:
         try:
