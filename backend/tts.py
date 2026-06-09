@@ -69,10 +69,13 @@ def _pad_lead_silence(audio: np.ndarray, samplerate: int) -> np.ndarray:
 def _play_audio(audio: np.ndarray, samplerate: int) -> None:
     """Reproduce el audio por el parlante del sistema.
 
-    Usa pw-play / paplay (PipeWire / PulseAudio) para que salga por el sink
-    por defecto —incluido un parlante Bluetooth—, porque sounddevice apunta
-    directo al hardware ALSA (que en la Pi 5 suele ser el HDMI, no la JBL).
-    Si ningún reproductor del sistema está disponible, cae a sounddevice.
+    Usa pw-play / paplay / ffplay (que salen por el sink por defecto del
+    sistema —incluido un parlante Bluetooth/USB— y se MEZCLAN con la música
+    de fondo), porque sounddevice apunta directo al hardware ALSA (que en la
+    Pi 5 suele ser el HDMI, no el parlante). Importante: ffplay está en la
+    lista porque es el mismo reproductor de la música de fondo; si la música
+    se oye pero la voz no, era porque la voz no tenía esta opción y caía al
+    HDMI. sounddevice queda como último recurso.
     """
     audio = _pad_lead_silence(audio, samplerate)
     tmp_path = None
@@ -80,7 +83,12 @@ def _play_audio(audio: np.ndarray, samplerate: int) -> None:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
         sf.write(tmp_path, audio, samplerate)
-        for player in (["pw-play", tmp_path], ["paplay", tmp_path]):
+        players = (
+            ["pw-play", tmp_path],
+            ["paplay", tmp_path],
+            ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", tmp_path],
+        )
+        for player in players:
             try:
                 subprocess.run(player, check=True)
                 return

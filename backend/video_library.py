@@ -320,5 +320,14 @@ def system_prompt_section() -> str:
         ]
         for w in music_works:
             lines.append(f"- {w['title']} → `background_music: {w['slug']}`")
+        lines += [
+            "",
+            "IMPORTANTE para las exposiciones CON música: hacé una narración "
+            "LARGA y pausada, que dure alrededor de DOS MINUTOS en total. "
+            "Aprovechá los segmentos para contar bastante (contexto, historia, "
+            "anécdotas, emoción) con párrafos de varias frases cada uno. La "
+            "música suena en bucle por debajo todo el tiempo y se detiene sola "
+            "cuando terminás de hablar.",
+        ]
 
     return "\n".join(lines)
