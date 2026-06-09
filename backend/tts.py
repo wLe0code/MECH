@@ -77,9 +77,11 @@ def play_chime() -> None:
             return (wave * env).astype(np.float32)
 
         gap = np.zeros(int(sr * 0.04), dtype=np.float32)
+        # Un pelín de silencio al inicio para que el parlante BT no se coma la
+        # primera nota, pero corto (no el silencio largo de la voz).
         audio = np.concatenate([_tone(660, 0.14), gap, _tone(988, 0.18)])
         _stop_event.clear()
-        _play_audio(audio, sr)
+        _play_audio(audio, sr, lead_silence=0.25)
     except Exception:
         pass
 
@@ -109,9 +111,13 @@ def _stream_to_audio(byte_stream: Iterator[bytes]) -> tuple[np.ndarray, int]:
 # vista Ajustes del panel pueda subirlo (1.2, 1.5) sin reiniciar.
 
 
-def _pad_lead_silence(audio: np.ndarray, samplerate: int) -> np.ndarray:
-    """Antepone un breve silencio al audio (para el arranque del Bluetooth)."""
-    pad = int(samplerate * config.AUDIO_LEAD_SILENCE)
+def _pad_lead_silence(audio: np.ndarray, samplerate: int, seconds: float | None = None) -> np.ndarray:
+    """Antepone un breve silencio al audio (para el arranque del Bluetooth).
+
+    `seconds=None` usa config.AUDIO_LEAD_SILENCE; pasar 0 lo desactiva (ej.
+    para el chime, que no necesita ese silencio largo)."""
+    lead = config.AUDIO_LEAD_SILENCE if seconds is None else seconds
+    pad = int(samplerate * lead)
     if pad <= 0:
         return audio
     if audio.ndim == 1:
@@ -121,7 +127,7 @@ def _pad_lead_silence(audio: np.ndarray, samplerate: int) -> np.ndarray:
     return np.concatenate([silence, audio], axis=0)
 
 
-def _play_audio(audio: np.ndarray, samplerate: int) -> None:
+def _play_audio(audio: np.ndarray, samplerate: int, lead_silence: float | None = None) -> None:
     """Reproduce el audio por el parlante del sistema.
 
     Usa pw-play / paplay / ffplay (que salen por el sink por defecto del
@@ -135,7 +141,7 @@ def _play_audio(audio: np.ndarray, samplerate: int) -> None:
     global _current_proc
     if _stop_event.is_set():
         return
-    audio = _pad_lead_silence(audio, samplerate)
+    audio = _pad_lead_silence(audio, samplerate, lead_silence)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:

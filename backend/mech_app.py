@@ -336,15 +336,17 @@ class MechApp:
             self.log(f"Error procesando comando: {e}", "err")
             tts.speak("Disculpa, tuve un problema. ¿Puedes repetirme?", blocking=True)
         finally:
-            # Si quedó en reposo (interrupción por voz), mantenemos "dormant".
-            # Si no, el worker volverá a poner "waiting" en la próxima vuelta;
-            # si el bucle no está activo, dejamos "off".
+            # Si quedó en reposo, mantenemos "dormant" (sin sonido).
             if not self.state.get("voice_awake", True):
                 self.set_voice_phase("dormant")
+            elif self.state["voice_loop_active"]:
+                # Terminó de presentar y sigue activo: tras un tiempito, suena
+                # el chime para avisar al usuario que ya puede hablar otra vez.
+                time.sleep(0.8)
+                tts.play_chime()
+                self.set_voice_phase("waiting")
             else:
-                self.set_voice_phase(
-                    "waiting" if self.state["voice_loop_active"] else "off"
-                )
+                self.set_voice_phase("off")
 
     def close(self) -> None:
         try:
