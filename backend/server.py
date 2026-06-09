@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
@@ -99,6 +100,14 @@ def _voice_loop_worker():
         try:
             app_state.arduino.set_mode("LISTEN")
             awake = app_state.state.get("voice_awake", True)
+
+            # Si MECH acaba de terminar de hablar y quedó listo, sonamos el
+            # chime y drenamos el parlante ANTES de abrir el micrófono — así no
+            # empezamos a grabar antes de que el sonido termine de emitirse.
+            if awake and app_state.chime_pending:
+                tts.play_chime()
+                time.sleep(0.5)  # deja salir el sonido por completo (latencia BT)
+                app_state.chime_pending = False
 
             # En reposo no mostramos las fases (queda el banner "dormant").
             text = stt.listen_once(

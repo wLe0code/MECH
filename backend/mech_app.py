@@ -43,6 +43,9 @@ class MechApp:
         self.arduino: ArduinoLink = get_link()
         self.history: list[dict] = []
         self._narration_interrupted: bool = False
+        # Cuando MECH termina de hablar y queda listo para escuchar, se marca
+        # esto para que el worker suene el chime ANTES de abrir el micrófono.
+        self.chime_pending: bool = False
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -143,7 +146,8 @@ class MechApp:
         self.state["voice_awake"] = True
         self.log("MECH despierto. Escuchando comandos.", "ok")
         tts.speak("Hola, ya te escucho.", blocking=True)
-        time.sleep(0.8)  # drena el parlante antes de escuchar (evita auto-captura)
+        # El worker sonará el chime y drenará el parlante antes de grabar.
+        self.chime_pending = True
         self.set_voice_phase("waiting")
 
     # ------------------------------------------------------------------
@@ -340,10 +344,9 @@ class MechApp:
             if not self.state.get("voice_awake", True):
                 self.set_voice_phase("dormant")
             elif self.state["voice_loop_active"]:
-                # Terminó de presentar y sigue activo: tras un tiempito, suena
-                # el chime para avisar al usuario que ya puede hablar otra vez.
-                time.sleep(0.8)
-                tts.play_chime()
+                # Terminó de presentar y sigue activo: pedimos que el worker
+                # suene el chime ANTES de empezar a grabar de nuevo.
+                self.chime_pending = True
                 self.set_voice_phase("waiting")
             else:
                 self.set_voice_phase("off")
