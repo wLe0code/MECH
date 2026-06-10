@@ -38,6 +38,13 @@ GEMINI_IMAGE_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-imag
 ARDUINO_PORT = os.environ.get("ARDUINO_PORT", "/dev/ttyACM0")
 ARDUINO_BAUD = int(os.environ.get("ARDUINO_BAUD", "115200"))
 
+# Gestos de los brazos mientras MECH habla.
+#   "subtle" = movimiento pequeño adelante/atrás cerca del reposo (default).
+#   "off"    = los brazos NO se mueven al hablar.
+ARM_GESTURE_MODE = os.environ.get("ARM_GESTURE_MODE", "subtle").strip().lower()
+# Amplitud (grados) del movimiento suave respecto a la posición neutra (90°).
+ARM_GESTURE_AMPLITUDE = int(os.environ.get("ARM_GESTURE_AMPLITUDE", "12"))
+
 # RoboKit RS — movimiento por "bus de pines".
 # La Pi pone estos pines GPIO (BCM) en alto/bajo; el RoboKit corre un programa
 # Rogic que los lee y se mueve. Un pin activo a la vez = un comando.

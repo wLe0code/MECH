@@ -1,15 +1,16 @@
-"""Traducción de gestos abstractos (de Claude) a comandos del Arduino.
+"""Gestos de los brazos mientras MECH habla.
 
-Centralizar esto aquí significa que si cambias el hardware (más servos,
-ángulos diferentes), solo tocas este archivo, no llm.py ni main.py.
+Por pedido del usuario, los brazos NO hacen poses grandes en cada segmento
+(eso se veía como si se movieran "como locos"). En su lugar hacen un
+movimiento SUAVE y pequeño adelante/atrás cerca del reposo — o nada, según
+`config.ARM_GESTURE_MODE` ("subtle" | "off").
 
-IMPORTANTE — los gestos NO se enciman. Cada gesto corre en un hilo, pero
-un lock global garantiza que solo haya UNO activo a la vez. Si llega un
-gesto nuevo mientras otro está en curso, el nuevo se ignora (en vez de
-mandar ángulos encimados al mismo servo, que hacía que el brazo se
-sacudiera sin parar). Como execute_plan llama un gesto por segmento y los
-segmentos pueden venir muy rápido (sobre todo en modo ahorro de TTS),
-sin este lock los brazos temblaban.
+Sea cual sea el gesto que pida Claude (excited, wave, point...), aquí se
+traduce todo al mismo gesto sutil, para que el movimiento sea siempre discreto
+y los brazos terminen en reposo (90°).
+
+Un lock global evita que dos gestos se encimen (si llega uno nuevo mientras
+otro corre, se descarta) — sin esto los servos temblaban.
 """
 
 from __future__ import annotations
@@ -17,43 +18,38 @@ from __future__ import annotations
 import threading
 import time
 
+import config
 from arduino_link import ArduinoLink
 
 # Solo un gesto a la vez. Si está tomado, los gestos nuevos se descartan.
 _gesture_lock = threading.Lock()
 
+_NEUTRAL = 90  # posición de reposo de los brazos
+
 
 def perform(link: ArduinoLink, gesture: str) -> None:
-    """Ejecuta un gesto de forma no bloqueante y sin encimarse con otro."""
+    """Movimiento suave de brazos al hablar (no bloqueante, sin encimarse).
+
+    `gesture` se ignora a propósito: todos los gestos se reducen al mismo
+    movimiento discreto (o a nada). Se mantiene el parámetro para no cambiar
+    las llamadas existentes."""
 
     def _run():
-        # Si ya hay un gesto en curso, no encimamos: lo dejamos pasar.
         if not _gesture_lock.acquire(blocking=False):
             return
         try:
-            if gesture == "neutral":
-                link.arm("L", 90)
-                link.arm("R", 90)
-            elif gesture == "excited":
-                link.arm("L", 40)
-                link.arm("R", 40)
-            elif gesture == "thoughtful":
-                link.arm("L", 110)
-                link.arm("R", 90)
-            elif gesture == "wave":
-                # Saludo suave: 2 movimientos y vuelve al centro.
-                for angle in (60, 120, 90):
-                    link.arm("R", angle)
-                    time.sleep(0.35)
-            elif gesture == "point":
-                link.arm("R", 30)
-            elif gesture == "arms_open":
-                link.arm("L", 20)
-                link.arm("R", 20)
-            else:
-                # Gesto desconocido: posición neutral.
-                link.arm("L", 90)
-                link.arm("R", 90)
+            if config.ARM_GESTURE_MODE == "off":
+                # Sin movimiento: dejamos los brazos en reposo.
+                link.arm("L", _NEUTRAL)
+                link.arm("R", _NEUTRAL)
+                return
+            # Modo "subtle": un pequeño adelante y atrás cerca del reposo.
+            amp = max(0, min(45, config.ARM_GESTURE_AMPLITUDE))
+            fwd = _NEUTRAL - amp  # "adelante" un poquito (si va al revés, usa +)
+            for angle in (fwd, _NEUTRAL):
+                link.arm("L", angle)
+                link.arm("R", angle)
+                time.sleep(0.45)
         finally:
             _gesture_lock.release()
 
