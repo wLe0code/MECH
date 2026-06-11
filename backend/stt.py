@@ -12,6 +12,7 @@ de hablar, así no grabamos silencio innecesario.
 from __future__ import annotations
 
 import collections
+import os
 import queue
 import sys
 import time
@@ -95,6 +96,11 @@ def get_model() -> WhisperModel:
     """Carga perezosa del modelo Whisper. En Pi 5 usa CPU + int8."""
     global _model
     if _model is None:
+        # Modo offline: usa el modelo del disco sin consultar internet, así no
+        # se cuelga si la red está mal. Se setea ANTES de crear WhisperModel.
+        if config.WHISPER_OFFLINE:
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
         print(f"[STT] Cargando faster-whisper '{config.WHISPER_MODEL}'...")
         _model = WhisperModel(
             config.WHISPER_MODEL,

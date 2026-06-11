@@ -56,6 +56,12 @@ ROBOKIT_PIN_RIGHT = int(os.environ.get("ROBOKIT_PIN_RIGHT", "22"))  # girar der 
 # STT
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base")
 WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "es")
+# Modo offline: usa el modelo ya descargado del disco SIN tocar internet, así
+# no se cuelga esperando la red (clave en eventos con wifi mala). Default true.
+# Ponlo en false SOLO si necesitas DESCARGAR un modelo nuevo de Whisper.
+WHISPER_OFFLINE = os.environ.get("WHISPER_OFFLINE", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 
 # Audio
 AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "48000"))
