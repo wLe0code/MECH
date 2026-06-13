@@ -129,14 +129,52 @@
       case 'projector':   applyProjector(msg.id, msg.on, msg.file); break;
       case 'image':       msg.url ? applyAIImage(msg.url) : clearImmersivePreview(); break;
       case 'video':       msg.url ? applyAIVideo(msg.url) : clearImmersivePreview(); break;
+      case 'vision':      applyVision(msg); break;
+      case 'mic_level':   applyMicLevel(msg); break;
       case 'pong':        break;
     }
+  }
+
+  // ─── Visión (cámara) ──────────────────────────────────────────────
+  function applyVision(v) {
+    state.backend.vision = v;
+    let text, cls;
+    if (!v.enabled)            { text = 'APAGADA'; cls = 'val-off'; }
+    else if (!v.user_present)  { text = 'SIN USUARIO'; cls = 'val-ok'; }
+    else {
+      const d = v.distance != null ? `${v.distance.toFixed(1)} m` : '? m';
+      const near = v.distance != null && v.distance <= (v.min_distance || 1.2) + 0.3;
+      text = `USUARIO a ${d}`;
+      cls = near ? 'val-active' : 'val-ok';
+    }
+    setSensor('sen-cam', text, cls);
+    const st = $('vision-status');
+    if (st) {
+      if (!v.enabled) st.innerHTML = '<span style="color:var(--text-muted)">Cámara apagada</span>';
+      else if (!v.user_present) st.innerHTML = '<span style="color:#5DCAA5">Cámara activa — sin usuario a la vista</span>';
+      else st.innerHTML = `<span style="color:#5DCAA5">Usuario detectado a ${v.distance != null ? v.distance.toFixed(1) : '?'} m (x=${v.x})</span>`;
+    }
+  }
+
+  // ─── Nivel de micrófono en vivo (barras de onda reales) ───────────
+  function applyMicLevel(m) {
+    const bars = document.querySelectorAll('.wave-bar');
+    if (!bars.length) return;
+    state.micLevelAt = Date.now();  // los niveles reales le ganan a la animación
+    // Escala: el umbral de disparo ocupa ~la mitad de la barra.
+    const ratio = m.threshold > 0 ? m.level / m.threshold : 0;
+    bars.forEach((b) => {
+      const jitter = 0.7 + Math.random() * 0.6;
+      const h = Math.max(4, Math.min(28, ratio * 14 * jitter));
+      b.style.height = h + 'px';
+      b.classList.toggle('active', m.recording);
+    });
   }
 
   // Mapa de fases del ciclo de voz → texto + estilo del banner grande.
   const PHASES = {
     off:          { cls: 'phase-off',     text: 'Bucle de voz apagado',     hint: 'Pulsa el micrófono o la tecla V para empezar' },
-    dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'despierta MECH' para activarlo" },
+    dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'ok MECH' para activarlo" },
     waiting:      { cls: 'phase-waiting', text: '🎤 PUEDES HABLAR',          hint: 'Dile al juez/usuario que hable AHORA' },
     listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
     transcribing: { cls: 'phase-work',    text: 'Transcribiendo…',           hint: 'Convirtiendo la voz a texto' },
@@ -202,6 +240,9 @@
     // Transcript / respuesta
     if (s.last_transcript) showTranscript(s.last_transcript);
     if (s.last_ai_response) showAIResponse(s.last_ai_response);
+
+    // Visión
+    if (s.vision) applyVision(s.vision);
   }
 
   function showTranscript(text) {
@@ -295,6 +336,8 @@
     const bars = document.querySelectorAll('.wave-bar');
     bars.forEach(b => b.classList.add('active'));
     state.waveInterval = setInterval(() => {
+      // Si están llegando niveles reales del micrófono, esos mandan.
+      if (Date.now() - (state.micLevelAt || 0) < 600) return;
       bars.forEach(b => b.style.height = (Math.random() * 22 + 4) + 'px');
     }, 120);
   }
@@ -427,9 +470,18 @@
       // En vivo
       setSlider('set-vad', 'vad', L.VAD_AGGRESSIVENESS);
       setSlider('set-silence', 'silence', L.VAD_SILENCE_TIMEOUT);
+      setSlider('set-energy', 'energy', L.VAD_ENERGY_FACTOR);
       setSlider('set-lead', 'lead', L.AUDIO_LEAD_SILENCE);
       setSlider('set-listen', 'listen', L.AUDIO_LISTEN_MAX_SECONDS);
       if ($('set-dryrun')) $('set-dryrun').checked = !!L.TTS_DRY_RUN;
+      if ($('set-armmode')) $('set-armmode').value = L.ARM_GESTURE_MODE || 'full';
+      if ($('set-wheels')) $('set-wheels').checked = !!L.GESTURE_WHEELS;
+      // Visión
+      if ($('set-vision')) $('set-vision').checked = !!L.VISION_ENABLED;
+      setSlider('set-dist', 'dist', L.VISION_MIN_DISTANCE);
+      if ($('set-approach')) $('set-approach').checked = !!L.VISION_APPROACH;
+      if ($('set-follow')) $('set-follow').checked = !!L.VISION_FOLLOW;
+      if ($('set-gate')) $('set-gate').checked = !!L.VISION_PROJECT_GATE;
       // Reinicio
       if ($('set-rate'))    $('set-rate').value = String(R.AUDIO_SAMPLE_RATE ?? 48000);
       if ($('set-whisper')) $('set-whisper').value = R.WHISPER_MODEL || 'base';
@@ -456,15 +508,40 @@
       const updates = {
         VAD_AGGRESSIVENESS: String(parseInt($('set-vad').value)),
         VAD_SILENCE_TIMEOUT: $('set-silence').value,
+        VAD_ENERGY_FACTOR: $('set-energy').value,
         AUDIO_LEAD_SILENCE: $('set-lead').value,
         AUDIO_LISTEN_MAX_SECONDS: $('set-listen').value,
         TTS_DRY_RUN: $('set-dryrun').checked ? 'true' : 'false',
+        ARM_GESTURE_MODE: $('set-armmode').value,
+        GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
+        VISION_MIN_DISTANCE: $('set-dist').value,
+        VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',
+        VISION_FOLLOW: $('set-follow').checked ? 'true' : 'false',
+        VISION_PROJECT_GATE: $('set-gate').checked ? 'true' : 'false',
       };
       const res = await fetchJSON('/api/config', { json: { updates } });
       if (res && res.ok) {
         log(`Ajustes aplicados en vivo: ${res.applied.join(', ')}`, 'ok');
         if ($('set-dryrun').checked) log('Modo ahorro ON: el TTS no gastará créditos', 'warn');
       }
+    },
+
+    async visionToggle(on) {
+      const res = await fetchJSON(`/api/vision/${on ? 'on' : 'off'}`);
+      if (!res || !res.ok) {
+        // Falló (ej. falta opencv/mediapipe o la cámara no está): revertimos.
+        if ($('set-vision')) $('set-vision').checked = false;
+        log('No se pudo encender la visión. Revisa el log del servidor.', 'err');
+        return;
+      }
+      log(on ? 'Visión encendida (cámara activa).' : 'Visión apagada.', on ? 'ok' : 'info');
+    },
+
+    async arduinoReconnect() {
+      log('Intentando reconectar al Arduino…', 'info');
+      const res = await fetchJSON('/api/arduino/reconnect');
+      if (res && res.connected) log('Arduino conectado.', 'ok');
+      else log('Arduino no encontrado todavía (el servidor sigue reintentando solo).', 'warn');
     },
 
     async saveRestartSettings() {
@@ -482,7 +559,7 @@
   };
 
   // Helpers de sliders de ajustes (texto con unidad).
-  const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s' };
+  const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', dist: ' m' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

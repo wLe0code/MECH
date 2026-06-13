@@ -46,6 +46,10 @@ class MechApp:
         # Cuando MECH termina de hablar y queda listo para escuchar, se marca
         # esto para que el worker suene el chime ANTES de abrir el micrófono.
         self.chime_pending: bool = False
+        # Último patrón enviado al aro de LEDs (para no repetir comandos).
+        self._last_led: str | None = None
+        # Throttle del nivel de micrófono que se emite al panel.
+        self._last_mic_level_emit: float = 0.0
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -65,15 +69,39 @@ class MechApp:
             },
             "current_image": None,  # URL relativa de imagen en el proyector AI
             "current_video": None,  # URL relativa de video pre-renderizado (Opción B)
-            "arduino_connected": self.arduino._ser is not None
-            and self.arduino._ser.is_open,
+            "arduino_connected": self.arduino.is_connected,
             "last_transcript": "",
             "last_ai_response": "",
+            # Estado de la visión (lo actualiza backend/vision.py).
+            "vision": {
+                "enabled": False,
+                "user_present": False,
+                "x": 0.0,
+                "distance": None,
+                "min_distance": config.VISION_MIN_DISTANCE,
+            },
         }
 
         self._subscribers: set[EventCallback] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._lock = threading.Lock()
+
+        # Reflejar conexión/desconexión del Arduino en el panel en vivo
+        # (el link reintenta solo en segundo plano si se desconecta).
+        self.arduino.on_status = self._on_arduino_status
+
+    def _on_arduino_status(self, connected: bool) -> None:
+        self.state["arduino_connected"] = connected
+        self.log(
+            "Arduino conectado." if connected else "Arduino desconectado (reintentando).",
+            "ok" if connected else "warn",
+        )
+        self.emit("state", state=self.state)
+        if connected:
+            # Restablecer modo y LEDs tras el reset que sufre al reconectar.
+            self.arduino.set_mode(self.state.get("current_mode", "IDLE"))
+            if self._last_led:
+                self.arduino.led(self._last_led)
 
     # ------------------------------------------------------------------
     # Event bus
@@ -114,16 +142,50 @@ class MechApp:
         print(f"[{level}] {message}")
         self.emit("log", message=message, level=level, ts=time.time())
 
+    # Patrón del aro de LEDs (estilo Alexa) para cada fase de voz.
+    _LED_BY_PHASE = {
+        "off": "OFF",
+        "dormant": "IDLE",
+        "waiting": "LISTEN",
+        "listening": "LISTEN",
+        "transcribing": "THINK",
+        "thinking": "THINK",
+        "speaking": "SPEAK",
+    }
+
     def set_voice_phase(self, phase: str) -> None:
         """Actualiza la fase del ciclo de voz y la difunde al panel.
 
         Fases: off | waiting | listening | transcribing | thinking | speaking.
         `voice_listening` se mantiene en sincronía (True solo cuando el
         micrófono está realmente abierto) para no romper indicadores viejos.
+        También sincroniza el aro de LEDs del robot (como un Alexa Echo:
+        encendido = puedes hablar, girando = pensando, etc.).
         """
         self.state["voice_phase"] = phase
         self.state["voice_listening"] = phase in ("waiting", "listening")
+        self.set_led(self._LED_BY_PHASE.get(phase, "OFF"))
         self.emit("state", state=self.state)
+
+    def set_led(self, pattern: str) -> None:
+        """Manda un patrón al aro de LEDs solo si cambió (evita spam serial)."""
+        if pattern != self._last_led:
+            self._last_led = pattern
+            self.arduino.led(pattern)
+
+    def report_mic_level(self, rms: float, threshold: float, recording: bool) -> None:
+        """Nivel del micrófono en vivo (lo manda stt vía callback). Se emite
+        al panel con throttle para no inundar el WebSocket."""
+        now = time.time()
+        if now - self._last_mic_level_emit < 0.12:
+            return
+        self._last_mic_level_emit = now
+        self.emit(
+            "mic_level",
+            level=round(rms, 4),
+            threshold=round(threshold, 4),
+            recording=recording,
+        )
 
     def go_dormant(self) -> None:
         """Pone a MECH en reposo: deja de responder (no gasta créditos), pero
@@ -134,7 +196,7 @@ class MechApp:
         en reposo y, por el eco del parlante, captaría su propia voz diciendo
         "despierta MECH" y se despertaría solo."""
         self.state["voice_awake"] = False
-        self.log("MECH en reposo. Di 'despierta MECH' para reactivarlo.", "info")
+        self.log("MECH en reposo. Di 'ok MECH' para reactivarlo.", "info")
         tts.speak("De acuerdo, hasta luego.", blocking=True)
         # Pequeña pausa para que el parlante (sobre todo Bluetooth) drene su
         # buffer antes de volver a escuchar, y no captarse a sí mismo.
@@ -144,11 +206,41 @@ class MechApp:
     def go_awake(self) -> None:
         """Despierta a MECH: vuelve a responder comandos."""
         self.state["voice_awake"] = True
+        # Animación de despertar del aro (como el aro azul de un Alexa Echo):
+        # el usuario VE que el comando "ok MECH" funcionó, además de oírlo.
+        self.set_led("WAKE")
         self.log("MECH despierto. Escuchando comandos.", "ok")
         tts.speak("Hola, ya te escucho.", blocking=True)
         # El worker sonará el chime y drenará el parlante antes de grabar.
         self.chime_pending = True
         self.set_voice_phase("waiting")
+
+    # ------------------------------------------------------------------
+    # Visión (backend/vision.py llama estos hooks)
+    # ------------------------------------------------------------------
+
+    def on_user_detected(self) -> None:
+        """Alguien entró al campo de la cámara: MECH saluda con el brazo
+        (sin gastar créditos de voz) y gira hacia la persona."""
+        v = self.state.get("vision", {})
+        if self.state.get("voice_phase") not in ("speaking", "thinking", "transcribing"):
+            gestures.perform(self.arduino, "wave", user_x=v.get("x"))
+
+    def on_user_lost(self) -> None:
+        """El usuario salió de cámara. (El propio módulo de visión ya detuvo
+        los motores; aquí solo queda el hook por si se quiere más lógica.)"""
+
+    def user_in_range(self) -> bool:
+        """True si hay un usuario dentro de la distancia mínima configurada.
+
+        Si la visión está apagada, devuelve True (no bloquea la proyección)."""
+        v = self.state.get("vision", {})
+        if not v.get("enabled"):
+            return True
+        if not v.get("user_present"):
+            return False
+        dist = v.get("distance")
+        return dist is not None and dist <= config.VISION_MIN_DISTANCE + 0.3
 
     # ------------------------------------------------------------------
     # Acciones de alto nivel — los endpoints del server las invocan
@@ -161,6 +253,7 @@ class MechApp:
         try:
             self.arduino.stop_motors()
             self.arduino.set_mode("STOP")
+            self.set_led("ERR")  # parpadeo rojo en el aro y se apaga
         except Exception as e:
             self.log(f"Arduino no respondió al paro: {e}", "err")
         # Audio (TTS en curso + música de fondo)
@@ -275,6 +368,14 @@ class MechApp:
         # el suyo (video o imagen); si ninguno trae, la pantalla queda limpia
         # en vez de mostrar el video de la historia anterior.
         self.clear_visual()
+        # Gate de proyección por distancia: si la visión está activa y NO hay
+        # un usuario dentro de la distancia mínima, narramos sin proyectar.
+        project_ok = (not config.VISION_PROJECT_GATE) or self.user_in_range()
+        if not project_ok:
+            self.log(
+                "Sin usuario dentro de la distancia mínima: narro sin proyectar.",
+                "warn",
+            )
         # Música de fondo (solo exposiciones que la tengan, ej. Malpaís).
         self._start_background_music(plan)
         try:
@@ -291,8 +392,12 @@ class MechApp:
                     f"Segmento {i}/{len(plan.segments)} — {seg.gesture} — {visual_kind}",
                     "info",
                 )
-                self._render_segment_visual(seg, plan.title, i)
-                gestures.perform(self.arduino, seg.gesture)
+                if project_ok:
+                    self._render_segment_visual(seg, plan.title, i)
+                # Gira hacia el usuario (si la cámara sabe dónde está) y gesticula.
+                v = self.state.get("vision", {})
+                user_x = v.get("x") if (v.get("enabled") and v.get("user_present")) else None
+                gestures.perform(self.arduino, seg.gesture, user_x=user_x)
                 self.state["last_ai_response"] = seg.narration
                 voice_id = voices.resolve(seg.voice)
                 self.emit(

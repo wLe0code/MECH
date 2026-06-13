@@ -119,6 +119,7 @@ El firmware [`arduino/mech_controller/mech_controller.ino`](arduino/mech_control
 
 - **Servos (brazos):** ARM_L = pin **9**, ARM_R = pin **10** (la librería Servo usa el Timer1 = pines 9/10).
 - **Motores (4× DC vía 2× L298N):** PWM/ENA en **3, 5, 6, 11**; direcciones IN1/IN2 en **2, 4, 7, 8, 12, 13, A0, A1**. (No se usan 9/10 para PWM porque los ocupa el Servo.)
+- **Aro de LEDs (WS2812/NeoPixel 12 LEDs, estilo Alexa):** DIN = pin **A2** (con ~330 Ω en serie), VCC al **5V del Arduino** (brillo limitado a 60/255 — NO a la fuente de 6V de los servos), GND común. Requiere librería **Adafruit NeoPixel**; sin aro, poner `#define MECH_LEDS 0` en el .ino y compila sin ella. El backend sincroniza el aro con la fase de voz (`mech_app.set_voice_phase` → `LED:<patrón>`).
 - **Sin cabeza:** el comando `HEAD` se reconoce pero es un no-op (no rompe el lado de la Pi; los gestos siguen con los brazos).
 
 Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard), GND común. Si una rueda gira al revés, intercambia sus 2 cables o sus pines IN1/IN2.
@@ -162,8 +163,12 @@ backend/
   video_library/      ← Carpeta con los .mp4 (gitignored). Estructura:
                         <slug>/seg01.mp4, seg02.mp4, ...
   arduino_link.py     ← Serial al Arduino. Protocolo de texto líneas \n.
-  gestures.py         ← Traduce gestos abstractos ("excited", "wave"...)
-                        a comandos del Arduino.
+                        Auto-reconexión + autodetección de puerto + LED:.
+  gestures.py         ← Coreografías reales de gestos (wave, excited...)
+                        con interpolación suave; modos full/subtle/off;
+                        opcionalmente mueve ruedas (GESTURE_WHEELS).
+  vision.py           ← C930e + MediaPipe: presencia, posición y distancia
+                        del usuario; seguir/acercarse; gate de proyección.
   projector.py        ← Visor tkinter ALTERNATIVO (solo para main.py standalone).
                         En operación normal se usa el visor browser-based.
   config.py           ← Lee .env.
@@ -291,6 +296,7 @@ HEAD:<pan>:<tilt>          # 0-180 cada uno
 ARM:{L|R}:<angle>          # 0-180
 MOVE:<vx>:<vy>:<w>         # -100..100 cada uno
 STOP
+LED:{OFF|IDLE|WAKE|LISTEN|THINK|SPEAK|ERR}   # aro NeoPixel estilo Alexa
 ```
 
 Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir contexto al usuario.
@@ -316,10 +322,10 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 - **Control de voz por palabra clave** (server.py `_voice_loop_worker`): el
   bucle tiene dos estados (`state["voice_awake"]`). En reposo el micrófono
   sigue abierto pero solo reacciona a las frases de despertar
-  (`VOICE_WAKE_PHRASES`, ej. "despierta MECH") — no llama a Claude ni gasta
+  (`VOICE_WAKE_PHRASES`, ej. "ok MECH" / "despierta MECH") — no llama a Claude ni gasta
   créditos. Despierto, una frase de reposo (`VOICE_SLEEP_PHRASES`, ej. "para
   de escuchar") lo duerme. Con `VOICE_AUTOSTART=true` el server arranca el
-  bucle en reposo, así MECH espera "despierta MECH" sin tocar el panel. El
+  bucle en reposo, así MECH espera "ok MECH" sin tocar el panel. El
   botón del panel sigue siendo el apagado/encendido TOTAL (suelta el mic).
   Fase nueva del banner: `dormant`. Métodos `mech_app.go_awake/go_dormant`.
   Detección de frases en `backend/voice_phrases.py` (match por palabras en
@@ -349,34 +355,61 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   encima (lo mezcla PipeWire). Claude lo activa con el campo `Plan.background_music`
   (slug). Se sube en `/library` (slot extra) y se sirve por `POST/DELETE
   /api/library/{slug}/music`. Requiere `ffplay` (paquete ffmpeg) en la Pi.
+- **Wake word "ok MECH"** — es el comando principal (variantes "okay/okey/ok
+  mek/oye mech" en `VOICE_WAKE_PHRASES`). `voice_phrases.py` además tolera
+  1 letra de error (levenshtein ≤1 en palabras de 4+ letras). OJO: si el
+  `.env` de la Pi define `VOICE_WAKE_PHRASES` viejo, tapa el default — borrar
+  la línea o añadir "ok mech".
+- **Detección de voz híbrida anti-ruido** (`stt.record_until_silence`): mide
+  el piso de ruido ambiente (RMS adaptativo: baja rápido, sube lento, y NO se
+  actualiza mientras graba) y solo dispara si webrtcvad dice voz Y la
+  amplitud supera `piso × VAD_ENERGY_FACTOR` (live, slider "Umbral ruido").
+  El fin de frase = la amplitud cae cerca del piso (la "caída de onda"). En
+  reposo cada grabación se corta a `WAKE_MAX_UTTERANCE` (4 s) para revisar el
+  wake rápido. `on_level` emite `mic_level` por WS (barras reales en panel).
+  Esto se hizo porque en la olimpiada el ruido impedía que MECH despertara.
+- **Aro de LEDs estilo Alexa Echo** (NeoPixel 12 en A2 del Arduino): firmware
+  con animaciones no bloqueantes (`LED:` OFF/IDLE/WAKE/LISTEN/THINK/SPEAK/ERR).
+  `mech_app.set_voice_phase()` lo sincroniza solo: reposo=respiración tenue,
+  "ok MECH"=barrido WAKE, puedes hablar=cometa girando, pensando=pulso,
+  narrando=fijo (fijo a propósito: show() repetidos hacen temblar los servos).
+  Paro de emergencia = ERR (rojo). Ver docs/PRUEBAS_HARDWARE.md §6.
+- **Gestos reales con movimiento suave** (`gestures.py` reescrito): modo
+  `full` (default) con coreografía por gesto (wave oscila el brazo derecho,
+  excited brazos arriba con rebote + balanceo de ruedas, point/arms_open/
+  thoughtful sostienen pose) interpolando en pasos de 30 ms (nada de saltos).
+  `GESTURE_WHEELS` (live) habilita los movimientos cortos de ruedas; si la
+  visión sabe dónde está el usuario, MECH gira hacia él antes del gesto.
+  Modos `subtle`/`off` siguen disponibles (selector en Ajustes).
+- **Arduino robusto**: `arduino_link.py` autodetecta el puerto (busca
+  "Arduino"/"CH340"/ACM en los puertos serie) y reintenta conectar cada 4 s
+  en segundo plano (server puede arrancar sin Arduino, o sobrevivir a un
+  desenchufe). `on_status` actualiza `state["arduino_connected"]` en vivo y
+  al reconectar re-manda el MODE y el patrón de LED vigentes.
+  `POST /api/arduino/reconnect` + botón en la vista Firmware.
+- **Visión completa** (`backend/vision.py`): C930e por OpenCV (MJPG forzado,
+  640×360 @10fps) + MediaPipe Face Detection (full-range). Estima distancia
+  por el ancho de la cara (~16 cm, focal ≈320 px para FOV 90°). Publica
+  `state["vision"]` + evento WS `vision` (panel: Sensores → Cámara y tarjeta
+  en Ajustes). Comportamientos: saludo al detectar usuario
+  (`mech_app.on_user_detected`), girar para seguirlo (`VISION_FOLLOW`),
+  acercarse hasta `VISION_MIN_DISTANCE` (`VISION_APPROACH`; solo en fases
+  waiting/dormant/off, nunca narrando; siempre STOP al perderlo) y **gate de
+  proyección** (`VISION_PROJECT_GATE`: sin usuario dentro de la distancia
+  mínima, narra sin proyectar — se evalúa una vez por plan en
+  `execute_plan`). Imports de cv2/mediapipe perezosos: sin instalar, el
+  server corre igual. On/off con `POST /api/vision/{on|off}` (persiste
+  `VISION_ENABLED` en .env) o toggle en Ajustes; el resto de claves
+  `VISION_*` son live.
 
 ### 🚧 Pendiente
 
 - **Generar los videos pre-renderizados** para cada obra (Kling/Veo/Runway en otra máquina) y subirlos vía `/library`. Hasta que estén, MECH cae a NanoBanana para esas obras automáticamente.
 - **Cablear y probar el Arduino Uno** — firmware ya mapeado (`mech_controller.ino`, fqbn `arduino:avr:uno`). Falta: conseguir 2× L298N, cablear motores + servos (servos con 5–6V de protoboard), flashear y probar por serial.
-- **Módulo de visión** (`backend/vision.py`) — Logitech C930e (USB UVC) + MediaPipe Face Detection para:
-  - Detectar presencia de usuario → activar LISTEN automáticamente.
-  - Seguimiento de cara con la cabeza del robot (servo pan/tilt sigue la posición de la cara).
-  - Posiblemente: detección de gestos (alzar mano, señalar) → MediaPipe Pose.
-- **Integración visión ↔ mech_app**: callback `on_user_detected` que dispara el bucle de voz sin necesidad de toque manual.
+- **Comprar/cablear el aro NeoPixel de 12 LEDs** (DIN→A2, 5V del Arduino, GND común) e instalar la librería Adafruit NeoPixel. Hasta entonces: `#define MECH_LEDS 0`.
+- **Probar la visión en la Pi real**: `pip install opencv-python-headless mediapipe`, enchufar la C930e, encender visión desde Ajustes. Calibrar `VISION_MIN_DISTANCE` y la constante `FACE_WIDTH_M`/`FOCAL_PX` de `vision.py` si la distancia estimada sale corrida (medir con cinta métrica a 1 m y comparar con lo que muestra el panel).
+- **Probar el despertar con ruido**: ajustar el slider "Umbral ruido" (VAD_ENERGY_FACTOR) en el lugar del evento. Si MECH no despierta: bajarlo; si graba fantasmas: subirlo.
 - **Selección de dispositivo de audio**: ✅ resuelto. `stt.py` usa `config.AUDIO_INPUT_DEVICE` (de `.env`) para elegir el mic. El mic del proyecto es el **Steren MIC-9010** (receptor USB); la C930e queda solo para video. Si hay varios dispositivos de captura, poner en `.env` `AUDIO_INPUT_DEVICE=Steren` (o el índice que muestre `sounddevice`).
-
-### Próximo trabajo previsto
-
-El usuario ya tiene la **Logitech C930e** comprada. Antes de escribir `vision.py`:
-
-1. Pregunta si la enchufó a la Pi por USB.
-2. Pide que corra `v4l2-ctl --list-devices` para confirmar que aparece (y en qué `/dev/videoN`).
-3. Prueba rápida: `ffmpeg -f v4l2 -i /dev/video0 -frames 1 test.jpg` o `fswebcam test.jpg` para capturar un frame.
-
-Si funciona, escribimos `vision.py` con este plan:
-- **OpenCV + V4L2** (`cv2.VideoCapture(0)`) — NO `picamera2`. La C930e es USB UVC, no CSI.
-- Reducir a 640×360 @ 10 fps antes de pasar a MediaPipe (la C930e da 1080p pero no lo necesitamos).
-- `mediapipe` para Face Detection (light, ~150 MB RAM).
-- Correr en hilo aparte para no bloquear el event loop.
-- Publicar eventos `user_detected`, `user_lost`, `face_position(x, y)` al event bus de `mech_app`.
-- `mech_app` reacciona: cuando hay usuario, activa bucle de voz + envía `HEAD:pan:tilt` al Arduino para seguir la cara.
-- Añadir a `requirements.txt`: `opencv-python-headless` y `mediapipe`.
 
 ---
 
@@ -394,7 +427,10 @@ Si funciona, escribimos `vision.py` con este plan:
 10. **Modo standalone (`python -m backend.main`) NO muestra videos pre-renderizados.** El visor tkinter solo sabe de imágenes. Para ver videos hace falta `python -m backend.server` + `/projector` en navegador. `main.py` loguea el slug/segmento del video y sigue con la narración/gesto.
 11. **Slug del video_library debe coincidir con el subdirectorio.** Si añades una obra al manifest pero la carpeta se llama distinto, `available_works()` la reporta como incompleta y no aparece a Claude.
 12. **Sample rate del micrófono ≠ el que usa Whisper.** Muchos mics USB baratos (Steren MIC-9010 / "WXMH mini") NO abren a 16000 Hz y dan `Invalid sample rate [PaErrorCode -9997]`. Por eso `AUDIO_SAMPLE_RATE=48000` (captura). **faster-whisper exige arrays a 16000 Hz y NO resamplea solo**: `stt.py` captura a 48000 (para VAD) y **resamplea a 16000** (`WHISPER_SAMPLE_RATE`) antes de transcribir. Si se pasa audio a otra tasa, Whisper lo "oye" 3× más rápido, transcribe basura y **alucina** el contenido del `initial_prompt`. Por eso ese prompt ya NO lista títulos de obras.
-13. **El `.env` del panel.** La vista Ajustes escribe `backend/.env` con `config.update_env_file()`. Solo las claves en `_LIVE_KEYS` (server.py) se aplican sin reiniciar (VAD, silencios, idioma); las demás (mic, sample rate, modelo, voice_id) necesitan reiniciar el server.
+13. **El `.env` del panel.** La vista Ajustes escribe `backend/.env` con `config.update_env_file()`. Solo las claves en `_LIVE_KEYS` (server.py) se aplican sin reiniciar (VAD, umbral de ruido, silencios, idioma, visión, gestos); las demás (mic, sample rate, modelo, voice_id) necesitan reiniciar el server.
+14. **`VOICE_WAKE_PHRASES` en el `.env` de la Pi tapa el default.** Si "ok mech" no despierta a MECH, revisar si el `.env` tiene esa clave con la lista vieja ("despierta mech,...") y borrarla o añadirle "ok mech".
+15. **NeoPixel + servos**: `ring.show()` bloquea interrupciones un instante; por eso el patrón SPEAK es fijo (se pinta una vez) y las animaciones solo corren cuando los brazos están quietos. No añadir animaciones al estado SPEAK.
+16. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
 
 ---
 

@@ -124,15 +124,33 @@ def _frame_generator(audio_queue: queue.Queue) -> Iterator[bytes]:
             buffer = buffer[FRAME_BYTES:]
 
 
+def _frame_rms(frame: bytes) -> float:
+    """RMS normalizado (0..1) de un frame int16."""
+    samples = np.frombuffer(frame, dtype=np.int16).astype(np.float32)
+    if samples.size == 0:
+        return 0.0
+    return float(np.sqrt(np.mean(samples * samples)) / 32768.0)
+
+
 def record_until_silence(
     max_seconds: float = 15.0,
     on_phase: Callable[[str], None] | None = None,
     cancel_event=None,
+    max_utterance_seconds: float | None = None,
+    on_level: Callable[[float, float, bool], None] | None = None,
 ) -> np.ndarray | None:
     """Graba desde el micrófono hasta detectar silencio prolongado.
 
     Devuelve un array float32 mono a WHISPER_SAMPLE_RATE Hz, o None si nunca
     detectó voz dentro del tiempo máximo.
+
+    Detección HÍBRIDA (clave para ambientes ruidosos como la olimpiada):
+    el detector mide continuamente el piso de ruido del ambiente (RMS) y solo
+    considera "voz" un frame si webrtcvad dice que es voz Y su amplitud supera
+    `piso * VAD_ENERGY_FACTOR`. El fin de la frase se detecta cuando la
+    amplitud CAE de vuelta cerca del piso de ruido — así el murmullo del
+    público no mantiene la grabación abierta para siempre ni dispara
+    grabaciones fantasma.
 
     Args:
         max_seconds: tiempo máximo de espera por voz.
@@ -141,6 +159,11 @@ def record_until_silence(
               - "waiting": micrófono abierto, esperando que la persona hable
                 (esta es la señal para decirle al juez "ya puedes hablar").
               - "listening": se detectó voz, grabando hasta que haya silencio.
+        max_utterance_seconds: tope de duración de la grabación una vez que
+            arrancó la voz (None = sin tope). En reposo se usa un tope corto
+            porque "ok MECH" dura ~1s y queremos revisarlo rápido.
+        on_level: callback opcional (rms, umbral, grabando) ~cada frame, para
+            mostrar el nivel del micrófono en vivo en el panel.
     """
     def _phase(p: str) -> None:
         if on_phase:
@@ -163,6 +186,15 @@ def record_until_silence(
     voiced_frames: list[bytes] = []
     triggered = False
     start = time.monotonic()
+    triggered_at = 0.0
+
+    # Piso de ruido adaptativo: baja rápido (sigue al ambiente cuando se
+    # calma) y sube lento (un grito puntual no lo arrastra hacia arriba).
+    noise_floor: float | None = None
+    start_factor = max(1.2, config.VAD_ENERGY_FACTOR)
+    # El umbral para CORTAR es más bajo que el de arranque: basta con que la
+    # amplitud caiga significativamente para considerar que terminó la frase.
+    end_factor = 1.0 + (start_factor - 1.0) * 0.5
 
     with sd.RawInputStream(
         samplerate=config.AUDIO_SAMPLE_RATE,
@@ -180,23 +212,50 @@ def record_until_silence(
             if time.monotonic() - start > max_seconds:
                 break
 
-            is_speech = vad.is_speech(frame, config.AUDIO_SAMPLE_RATE)
+            rms = _frame_rms(frame)
+            if noise_floor is None:
+                noise_floor = max(rms, 1e-4)
+            elif not triggered:
+                # Solo medimos ambiente cuando NO estamos grabando voz.
+                alpha = 0.20 if rms < noise_floor else 0.02
+                noise_floor += (rms - noise_floor) * alpha
+                noise_floor = max(noise_floor, 1e-4)
+
+            loud = rms > noise_floor * start_factor
+            vad_speech = vad.is_speech(frame, config.AUDIO_SAMPLE_RATE)
+            is_speech = vad_speech and loud
+            # Para terminar: o el VAD ya no oye voz, o la amplitud cayó cerca
+            # del piso de ruido (la "caída de onda" que marca el fin).
+            still_talking = vad_speech and rms > noise_floor * end_factor
+
+            if on_level:
+                try:
+                    on_level(rms, noise_floor * start_factor, triggered)
+                except Exception:
+                    pass
 
             if not triggered:
                 ring_buffer.append((frame, is_speech))
                 num_voiced = sum(1 for _, sp in ring_buffer if sp)
                 if num_voiced > 0.5 * ring_buffer.maxlen:
                     triggered = True
+                    triggered_at = time.monotonic()
                     _phase("listening")  # grabando la voz del usuario
                     print("[STT] Detectada voz.")
                     voiced_frames.extend(f for f, _ in ring_buffer)
                     ring_buffer.clear()
             else:
                 voiced_frames.append(frame)
-                ring_buffer.append((frame, is_speech))
+                ring_buffer.append((frame, still_talking))
                 num_unvoiced = sum(1 for _, sp in ring_buffer if not sp)
                 if num_unvoiced > 0.9 * ring_buffer.maxlen:
-                    print("[STT] Fin de voz.")
+                    print("[STT] Fin de voz (amplitud cayó al piso de ruido).")
+                    break
+                if (
+                    max_utterance_seconds is not None
+                    and time.monotonic() - triggered_at > max_utterance_seconds
+                ):
+                    print("[STT] Tope de duración alcanzado; transcribiendo.")
                     break
 
     if not voiced_frames:
@@ -231,15 +290,22 @@ def listen_once(
     max_seconds: float = 15.0,
     on_phase: Callable[[str], None] | None = None,
     cancel_event=None,
+    max_utterance_seconds: float | None = None,
+    on_level: Callable[[float, float, bool], None] | None = None,
 ) -> str | None:
     """Atajo: graba hasta silencio y devuelve la transcripción.
 
     `on_phase` recibe "waiting"/"listening" durante la grabación y
     "transcribing" mientras Whisper convierte el audio a texto.
     `cancel_event`: si se activa, aborta la escucha y devuelve None.
+    `max_utterance_seconds`/`on_level`: ver record_until_silence().
     """
     audio = record_until_silence(
-        max_seconds=max_seconds, on_phase=on_phase, cancel_event=cancel_event
+        max_seconds=max_seconds,
+        on_phase=on_phase,
+        cancel_event=cancel_event,
+        max_utterance_seconds=max_utterance_seconds,
+        on_level=on_level,
     )
     if audio is None:
         return None

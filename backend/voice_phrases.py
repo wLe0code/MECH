@@ -24,6 +24,46 @@ def normalize(text: str) -> str:
     return " ".join(t.split())
 
 
+def _lev_leq1(a: str, b: str) -> bool:
+    """True si la distancia de edición entre a y b es 0 o 1.
+
+    Whisper a veces transcribe "mech" como "mec", "mek" o "meche"; con una
+    edición de tolerancia el wake word sigue funcionando sin abrir la puerta
+    a falsos positivos graves.
+    """
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la > lb:
+        a, b, la, lb = b, a, lb, la
+    # la <= lb, diferencia 0 o 1.
+    i = j = 0
+    edited = False
+    while i < la and j < lb:
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+            continue
+        if edited:
+            return False
+        edited = True
+        if la == lb:
+            i += 1  # sustitución
+        j += 1  # inserción en b (o sustitución)
+    return True
+
+
+def _word_matches(w: str, tok: str) -> bool:
+    """Una palabra del wake phrase coincide con un token de la transcripción
+    si es substring (comportamiento original) o, para palabras de 4+ letras,
+    si están a una edición de distancia (tolerancia a errores de Whisper)."""
+    if w in tok:
+        return True
+    return len(w) >= 4 and _lev_leq1(w, tok)
+
+
 def matches_any(text: str, phrases: list[str]) -> bool:
     norm_text = normalize(text)
     tokens = norm_text.split()
@@ -31,7 +71,7 @@ def matches_any(text: str, phrases: list[str]) -> bool:
         return False
     for p in phrases:
         words = normalize(p).split()
-        if words and all(any(w in tok for tok in tokens) for w in words):
+        if words and all(any(_word_matches(w, tok) for tok in tokens) for w in words):
             return True
     return False
 

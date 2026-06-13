@@ -209,5 +209,67 @@ de audio, o usá `fuser -v /dev/snd/*` para ver qué lo retiene.
 batería baja, o estás fuera del rango (>20 m). Recargá y acercate.
 
 **La C930e funciona pero a 5 fps** → la Pi está negociando YUYV en vez
-de MJPG. Forzá MJPG en MediaPipe / OpenCV cuando hagamos `vision.py`
-(`cv2.VideoCapture(0)` + `cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))`).
+de MJPG. `backend/vision.py` ya fuerza MJPG con
+`cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))`.
+
+---
+
+## 5. Módulo de visión (backend/vision.py)
+
+Ya está implementado. Para activarlo en la Pi:
+
+```bash
+source .venv/bin/activate
+pip install opencv-python-headless mediapipe
+```
+
+Después enchufá la C930e, arrancá el server (`python -m backend.server`)
+y encendé la visión desde el panel: **Ajustes → Visión → "Detectar
+usuarios con la cámara"** (o poné `VISION_ENABLED=true` en `.env`).
+
+Qué hace cuando está encendida:
+- Detecta personas (cara) y estima su **distancia** por el tamaño de la
+  cara. Se ve en vivo en **Sensores → Cámara** y en Ajustes.
+- **Saluda con el brazo** cuando alguien entra a cámara.
+- **Gira hacia el usuario** y lo sigue si camina (toggle "Seguir").
+- **Avanza hasta la distancia mínima** configurada (toggle "Acercarse";
+  slider "Distancia mín."). Solo se mueve cuando NO está narrando.
+- Con el **"Candado proy."** activo, si no hay un usuario dentro de la
+  distancia mínima, MECH narra pero NO proyecta visuales.
+
+---
+
+## 6. Aro de LEDs estilo Alexa (Arduino, pin A2)
+
+Hardware: un **aro NeoPixel/WS2812 de 12 LEDs** (se vende como
+"NeoPixel ring 12"). Cableado:
+
+| Aro | Arduino Uno |
+|---|---|
+| DIN | **A2** (idealmente con resistencia de ~330 Ω en serie) |
+| VCC | **5V del Arduino** (con brillo 60/255, 12 LEDs consumen poco) |
+| GND | **GND** (común con todo lo demás) |
+
+> NO alimentes el aro de la fuente de 6 V de los servos: los WS2812
+> aguantan máximo ~5.3 V.
+
+Firmware: instalá la librería **Adafruit NeoPixel** (Arduino IDE →
+Library Manager) y subí `mech_controller.ino` normalmente. Si todavía
+no tenés el aro, poné `#define MECH_LEDS 0` arriba del .ino y compila
+sin la librería.
+
+Probar por serial (115200 baud) o desde el panel (Arduino → comando
+crudo):
+
+```
+LED:WAKE     → barrido cian (lo que se ve al decir "ok MECH")
+LED:LISTEN   → cometa girando (puedes hablar)
+LED:THINK    → pulso (pensando)
+LED:SPEAK    → fijo (narrando)
+LED:IDLE     → respiración tenue (reposo)
+LED:OFF      → apagado
+```
+
+En operación normal no hay que mandar nada: el backend sincroniza el
+aro con la fase de voz automáticamente (igual que un Alexa Echo: aro
+encendido = ya puedes hablar, además del chime).

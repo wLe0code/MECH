@@ -4,6 +4,16 @@ Protocolo de texto sobre serial, líneas terminadas en '\\n', a 115200 baud.
 Las respuestas del Arduino se imprimen como log; no las parseamos para
 mantener el código simple.
 
+Robustez de conexión:
+- Si el puerto configurado (ARDUINO_PORT) no existe, se buscan puertos que
+  parezcan un Arduino (descripción "Arduino", "CH340", "ACM", etc.).
+- Un hilo de fondo reintenta la conexión cada pocos segundos si el Arduino
+  está desconectado (o se desconectó en caliente). Así da igual el orden en
+  que se enchufen las cosas: el server puede arrancar sin Arduino y este se
+  conecta solo cuando aparece.
+- `on_status(conectado: bool)` permite a mech_app reflejar el estado en el
+  panel en vivo.
+
 Comandos soportados (los implementa el firmware mech_controller.ino):
 
     MODE:AUTO            Estado "vivo" en reposo (no conduce solo).
@@ -19,16 +29,36 @@ Comandos soportados (los implementa el firmware mech_controller.ino):
     MOVE:<vx>:<vy>:<w>   Velocidad omnidireccional. vx,vy,w en [-100, 100].
                          vx=adelante/atrás, vy=lateral, w=rotación.
     STOP                 Atajo para MOVE:0:0:0.
+    LED:<patrón>         Aro de LEDs estilo Alexa: OFF | IDLE | WAKE |
+                         LISTEN | THINK | SPEAK | ERR.
 """
 
 from __future__ import annotations
 
 import threading
 import time
+from typing import Callable
 
 import serial
+from serial.tools import list_ports
 
 import config
+
+# Pistas para reconocer un Arduino entre los puertos serie del sistema.
+_PORT_HINTS = ("arduino", "ch340", "ch341", "usb serial", "ttyacm", "usb-serial")
+
+
+def _autodetect_port() -> str | None:
+    """Busca un puerto que parezca un Arduino. None si no hay candidatos."""
+    try:
+        ports = list(list_ports.comports())
+    except Exception:
+        return None
+    for p in ports:
+        desc = f"{p.device} {p.description or ''} {p.manufacturer or ''}".lower()
+        if any(h in desc for h in _PORT_HINTS):
+            return p.device
+    return None
 
 
 class ArduinoLink:
@@ -38,34 +68,101 @@ class ArduinoLink:
         self._ser: serial.Serial | None = None
         self._reader_thread: threading.Thread | None = None
         self._stop_reader = threading.Event()
+        self._reconnect_thread: threading.Thread | None = None
+        self._closing = False
+        self._write_lock = threading.Lock()
+        # Callback opcional: se llama con True/False al conectar/desconectar.
+        self.on_status: Callable[[bool], None] | None = None
+
+    @property
+    def is_connected(self) -> bool:
+        return self._ser is not None and self._ser.is_open
+
+    def _notify_status(self) -> None:
+        if self.on_status is not None:
+            try:
+                self.on_status(self.is_connected)
+            except Exception:
+                pass
 
     def connect(self) -> None:
-        print(f"[Arduino] Abriendo {self.port} @ {self.baud}...")
-        self._ser = serial.Serial(self.port, self.baud, timeout=1)
+        """Intenta abrir el puerto configurado; si falla, autodetecta."""
+        last_err: Exception | None = None
+        candidates = [self.port]
+        detected = _autodetect_port()
+        if detected and detected not in candidates:
+            candidates.append(detected)
+        for port in candidates:
+            try:
+                print(f"[Arduino] Abriendo {port} @ {self.baud}...")
+                self._ser = serial.Serial(port, self.baud, timeout=1)
+                self.port = port
+                break
+            except (serial.SerialException, FileNotFoundError, OSError) as e:
+                last_err = e
+                self._ser = None
+        if self._ser is None:
+            raise last_err or serial.SerialException("Sin puertos candidatos")
         # Arduino se resetea al abrir el puerto; espera el boot.
         time.sleep(2.0)
         self._stop_reader.clear()
         self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
         self._reader_thread.start()
-        print("[Arduino] Conectado.")
+        print(f"[Arduino] Conectado en {self.port}.")
+        self._notify_status()
+
+    def start_auto_reconnect(self, interval: float = 4.0) -> None:
+        """Hilo de fondo que reintenta conectar mientras esté desconectado."""
+        if self._reconnect_thread is not None and self._reconnect_thread.is_alive():
+            return
+
+        def _loop():
+            while not self._closing:
+                if not self.is_connected:
+                    try:
+                        self.connect()
+                    except (serial.SerialException, FileNotFoundError, OSError):
+                        pass  # sin Arduino todavía; reintentamos luego
+                time.sleep(interval)
+
+        self._reconnect_thread = threading.Thread(target=_loop, daemon=True)
+        self._reconnect_thread.start()
 
     def _reader_loop(self) -> None:
-        assert self._ser is not None
+        ser = self._ser
+        if ser is None:
+            return
         while not self._stop_reader.is_set():
             try:
-                line = self._ser.readline().decode("utf-8", errors="ignore").strip()
+                line = ser.readline().decode("utf-8", errors="ignore").strip()
                 if line:
                     print(f"[Arduino] {line}")
-            except serial.SerialException:
+            except (serial.SerialException, OSError):
+                # El Arduino se desenchufó en caliente.
+                self._handle_disconnect()
                 break
 
+    def _handle_disconnect(self) -> None:
+        if self._ser is not None:
+            try:
+                self._ser.close()
+            except Exception:
+                pass
+            self._ser = None
+        print("[Arduino] Desconectado. Reintentando en segundo plano...")
+        self._notify_status()
+
     def send(self, command: str) -> None:
-        if self._ser is None or not self._ser.is_open:
+        if not self.is_connected:
             print(f"[Arduino] (no conectado) {command}")
             return
         line = command.strip() + "\n"
-        self._ser.write(line.encode("utf-8"))
-        self._ser.flush()
+        try:
+            with self._write_lock:
+                self._ser.write(line.encode("utf-8"))
+                self._ser.flush()
+        except (serial.SerialException, OSError):
+            self._handle_disconnect()
 
     # --- Helpers de alto nivel ---
 
@@ -92,11 +189,18 @@ class ArduinoLink:
     def stop_motors(self) -> None:
         self.send("STOP")
 
+    def led(self, pattern: str) -> None:
+        """Patrón del aro de LEDs (estilo Alexa). Ver firmware: OFF, IDLE,
+        WAKE, LISTEN, THINK, SPEAK, ERR."""
+        self.send(f"LED:{pattern.strip().upper()}")
+
     def close(self) -> None:
+        self._closing = True
         self._stop_reader.set()
         if self._ser is not None and self._ser.is_open:
             try:
                 self.stop_motors()
+                self.led("OFF")
                 self.set_mode("IDLE")
             finally:
                 self._ser.close()
@@ -112,6 +216,9 @@ def get_link() -> ArduinoLink:
         _link = ArduinoLink()
         try:
             _link.connect()
-        except (serial.SerialException, FileNotFoundError) as e:
-            print(f"[Arduino] No se pudo conectar ({e}). Funcionando sin robot.")
+        except (serial.SerialException, FileNotFoundError, OSError) as e:
+            print(f"[Arduino] No se pudo conectar ({e}). Reintentando en segundo plano.")
+        # Pase lo que pase, dejamos el reintento automático corriendo: si el
+        # Arduino aparece (o se reenchufa), se conecta solo.
+        _link.start_auto_reconnect()
     return _link

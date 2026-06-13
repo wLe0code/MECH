@@ -39,11 +39,18 @@ ARDUINO_PORT = os.environ.get("ARDUINO_PORT", "/dev/ttyACM0")
 ARDUINO_BAUD = int(os.environ.get("ARDUINO_BAUD", "115200"))
 
 # Gestos de los brazos mientras MECH habla.
-#   "subtle" = movimiento pequeño adelante/atrás cerca del reposo (default).
+#   "full"   = gestos reales según lo que pida Claude (wave, excited...),
+#              con movimiento suave interpolado (default).
+#   "subtle" = movimiento pequeño adelante/atrás cerca del reposo.
 #   "off"    = los brazos NO se mueven al hablar.
-ARM_GESTURE_MODE = os.environ.get("ARM_GESTURE_MODE", "subtle").strip().lower()
+ARM_GESTURE_MODE = os.environ.get("ARM_GESTURE_MODE", "full").strip().lower()
 # Amplitud (grados) del movimiento suave respecto a la posición neutra (90°).
 ARM_GESTURE_AMPLITUDE = int(os.environ.get("ARM_GESTURE_AMPLITUDE", "12"))
+# Si true, algunos gestos también mueven las ruedas (giro corto, balanceo).
+# Los movimientos son cortos y siempre terminan en STOP.
+GESTURE_WHEELS = os.environ.get("GESTURE_WHEELS", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 
 # RoboKit RS — movimiento por "bus de pines".
 # La Pi pone estos pines GPIO (BCM) en alto/bajo; el RoboKit corre un programa
@@ -67,6 +74,15 @@ WHISPER_OFFLINE = os.environ.get("WHISPER_OFFLINE", "true").strip().lower() in (
 AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "48000"))
 VAD_AGGRESSIVENESS = int(os.environ.get("VAD_AGGRESSIVENESS", "2"))
 VAD_SILENCE_TIMEOUT = float(os.environ.get("VAD_SILENCE_TIMEOUT", "1.2"))
+# Cuánto más fuerte que el ruido de fondo debe sonar la voz para que MECH
+# empiece a grabar (y al revés: cuando la amplitud cae cerca del piso de
+# ruido, se considera que terminó de hablar). El piso de ruido se mide solo
+# y se adapta al ambiente (clave en stands ruidosos como la olimpiada).
+#   2.0 = sensible · 2.5 = equilibrado · 4.0+ = solo voz fuerte y cercana
+VAD_ENERGY_FACTOR = float(os.environ.get("VAD_ENERGY_FACTOR", "2.5"))
+# En reposo (esperando "ok MECH"), tope de duración de cada grabación: la
+# frase de despertar es corta, así que cortamos rápido y revisamos enseguida.
+WAKE_MAX_UTTERANCE = float(os.environ.get("WAKE_MAX_UTTERANCE", "4.0"))
 # Segundos máximos que el micrófono espera por voz en cada turno. Súbelo si
 # el juez/usuario tarda en empezar a hablar.
 LISTEN_MAX_SECONDS = float(os.environ.get("AUDIO_LISTEN_MAX_SECONDS", "20"))
@@ -74,14 +90,17 @@ LISTEN_MAX_SECONDS = float(os.environ.get("AUDIO_LISTEN_MAX_SECONDS", "20"))
 # --- Control del bucle de voz por palabra clave ---------------------------
 # Si VOICE_AUTOSTART=true, el bucle de voz arranca solo al iniciar el server,
 # pero EN REPOSO: el micrófono escucha únicamente la palabra para despertar.
-# Así MECH queda esperando "despierta MECH" sin tocar el panel.
+# Así MECH queda esperando "ok MECH" sin tocar el panel.
 VOICE_AUTOSTART = os.environ.get("VOICE_AUTOSTART", "true").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
 # Frases (separadas por coma) que ACTIVAN a MECH cuando está en reposo.
+# El comando principal es "ok mech" (estilo Alexa/Google). Se incluyen
+# variantes de cómo suele transcribirlo Whisper ("okay", "oye", etc.).
 VOICE_WAKE_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_WAKE_PHRASES",
+        "ok mech,okay mech,okey mech,ok mek,oye mech,"
         "despierta mech,despierta,activa mech,mech despierta",
     ).split(",") if p.strip()
 ]
@@ -120,6 +139,34 @@ IMAGE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # Ver backend/video_library.py para el manifest y backend/video_library/README.md.
 VIDEO_LIBRARY_DIR = Path(os.environ.get("VIDEO_LIBRARY_DIR", BASE_DIR / "video_library"))
 VIDEO_LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _bool_env(key: str, default: str) -> bool:
+    return os.environ.get(key, default).strip().lower() in (
+        "1", "true", "yes", "on", "si", "sí",
+    )
+
+
+# === Visión (Logitech C930e + MediaPipe) =====================================
+# Detección de usuarios frente al robot: presencia, posición y distancia
+# estimada (por el tamaño de la cara). Ver backend/vision.py.
+VISION_ENABLED = _bool_env("VISION_ENABLED", "false")
+# Índice de la cámara para OpenCV (/dev/videoN en la Pi; 0 = primera).
+VISION_CAMERA_INDEX = int(os.environ.get("VISION_CAMERA_INDEX", "0"))
+# Distancia mínima (metros) a la que debe estar un usuario para que MECH
+# proyecte y deje de acercarse. Ajustable en vivo desde el panel (Ajustes).
+VISION_MIN_DISTANCE = float(os.environ.get("VISION_MIN_DISTANCE", "1.2"))
+# Si true, MECH avanza hacia el usuario hasta quedar a VISION_MIN_DISTANCE.
+# Solo se mueve cuando NO está narrando (fases waiting/dormant).
+VISION_APPROACH = _bool_env("VISION_APPROACH", "true")
+# Si true, MECH gira sobre sí mismo para quedar de frente al usuario
+# (sigue a la persona si se mueve por el stand).
+VISION_FOLLOW = _bool_env("VISION_FOLLOW", "true")
+# Si true, NO se proyectan visuales cuando no hay un usuario dentro de la
+# distancia mínima (la cámara manda: sin usuario cerca = sin proyección).
+VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "true")
+# Velocidad máxima (0-100) de los movimientos autónomos de visión.
+VISION_MAX_SPEED = int(os.environ.get("VISION_MAX_SPEED", "35"))
 
 
 def assert_required() -> None:

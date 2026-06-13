@@ -29,9 +29,36 @@
  *                       vy = derecha(+)/izquierda(-)
  *                       w  = rotacion horaria(+)/antihoraria(-)
  *   STOP                atajo para MOVE:0:0:0
+ *   LED:<patron>        aro de LEDs estilo Alexa Echo:
+ *                       OFF    apagado
+ *                       IDLE   respiracion azul tenue (MECH en reposo)
+ *                       WAKE   barrido cian rapido (oyo "ok MECH")
+ *                       LISTEN cometa cian girando (puedes hablar / grabando)
+ *                       THINK  pulso rapido (transcribiendo / pensando)
+ *                       SPEAK  azul-verde fijo (narrando; fijo a proposito
+ *                              para no hacer temblar los servos)
+ *                       ERR    3 parpadeos rojos y se apaga
+ *
+ * ARO DE LEDS (estilo Alexa Echo):
+ *   - Hardware: aro WS2812/NeoPixel de 12 LEDs (cualquier aro "NeoPixel ring").
+ *   - Libreria: "Adafruit NeoPixel" (Arduino IDE -> Library Manager).
+ *   - Cableado: DIN -> pin A2 (idealmente con resistencia de ~330 ohm en
+ *     serie), VCC -> 5V del Arduino, GND -> GND. Con brillo limitado (60/255)
+ *     12 LEDs consumen poco y el 5V del Arduino los aguanta bien.
+ *     NO los alimentes de la fuente de 6V de los servos (los quema).
+ *   - Si NO tenes el aro todavia: pone MECH_LEDS en 0 abajo y el firmware
+ *     compila sin la libreria (el comando LED responde ACK y no hace nada).
  */
 
 #include <Servo.h>
+
+// 1 = con aro NeoPixel en A2 (requiere libreria Adafruit NeoPixel).
+// 0 = sin aro (no necesita la libreria; LED:... se ignora con ACK).
+#define MECH_LEDS 1
+
+#if MECH_LEDS
+#include <Adafruit_NeoPixel.h>
+#endif
 
 // ============================================================
 // CONFIGURACION DE PINES — Arduino Uno R3
@@ -54,12 +81,27 @@ const uint8_t PIN_M_BL_PWM = 6,  PIN_M_BL_IN1 = 12, PIN_M_BL_IN2 = 13;  // M3: E
 const uint8_t PIN_M_BR_PWM = 11, PIN_M_BR_IN1 = A0, PIN_M_BR_IN2 = A1;  // M4: ENB=11, IN3=A0, IN4=A1
 // Si una rueda gira al reves, intercambia sus 2 cables de motor (OUT) o sus IN.
 
+// Aro de LEDs (WS2812/NeoPixel). A2 esta libre (A0/A1 los usan los motores).
+#if MECH_LEDS
+const uint8_t PIN_LED_RING = A2;
+const uint8_t NUM_LEDS     = 12;   // cambia si tu aro tiene 16/24 LEDs
+const uint8_t LED_BRIGHT   = 60;   // 0-255; bajo para poder alimentar del 5V
+Adafruit_NeoPixel ring(NUM_LEDS, PIN_LED_RING, NEO_GRB + NEO_KHZ800);
+#endif
+
 // ============================================================
 // ESTADO
 // ============================================================
 
 enum Mode { MODE_AUTO, MODE_IDLE, MODE_LISTEN, MODE_SPEAK, MODE_STOPPED };
 Mode currentMode = MODE_IDLE;
+
+// Estados del aro de LEDs (se anima en loop() sin bloquear).
+enum LedMode { LED_OFF, LED_IDLE, LED_WAKE, LED_LISTEN, LED_THINK, LED_SPEAK, LED_ERR };
+LedMode ledMode = LED_OFF;
+unsigned long ledT0 = 0;        // cuando empezo el patron actual
+unsigned long ledLastFrame = 0; // ultimo refresco de animacion
+bool ledStaticDone = false;     // para patrones fijos (pintar una sola vez)
 
 Servo servoArmL, servoArmR;
 
@@ -128,6 +170,119 @@ void driveOmni(int vx, int vy, int w) {
 }
 
 // ============================================================
+// ARO DE LEDS (animaciones estilo Alexa, no bloqueantes)
+// ============================================================
+
+void setLedMode(LedMode m) {
+  ledMode = m;
+  ledT0 = millis();
+  ledStaticDone = false;
+#if MECH_LEDS
+  if (m == LED_OFF) {
+    ring.clear();
+    ring.show();
+  }
+#endif
+}
+
+#if MECH_LEDS
+// Pinta todo el aro de un color.
+void ringFill(uint8_t r, uint8_t g, uint8_t b) {
+  for (uint8_t i = 0; i < NUM_LEDS; i++) ring.setPixelColor(i, r, g, b);
+  ring.show();
+}
+
+void updateLeds() {
+  unsigned long now = millis();
+  // Refrescar cada 40 ms es suficiente y molesta poco a los servos
+  // (NeoPixel bloquea interrupciones un instante en cada show()).
+  if (now - ledLastFrame < 40) return;
+  ledLastFrame = now;
+  unsigned long t = now - ledT0;
+
+  switch (ledMode) {
+    case LED_OFF:
+      break;  // ya se apago en setLedMode
+
+    case LED_IDLE: {
+      // Respiracion azul tenue, ciclo de 4 s (MECH dormido pero presente).
+      float ph = (t % 4000) / 4000.0;
+      float lvl = 0.5 - 0.5 * cos(ph * 6.2832);     // 0..1
+      uint8_t v = (uint8_t)(6 + lvl * 24);          // muy tenue
+      ringFill(0, v / 3, v);
+      break;
+    }
+
+    case LED_WAKE: {
+      // Barrido de encendido: el aro se llena de cian en ~0.8 s y queda
+      // lleno. Es la senal visual de "te escuche" (como el aro de Alexa).
+      uint8_t lit = (uint8_t)min((unsigned long)NUM_LEDS, t / (800 / NUM_LEDS));
+      for (uint8_t i = 0; i < NUM_LEDS; i++)
+        if (i < lit) ring.setPixelColor(i, 0, 160, 200);
+        else         ring.setPixelColor(i, 0, 0, 0);
+      ring.show();
+      break;
+    }
+
+    case LED_LISTEN: {
+      // Cometa cian girando sobre base tenue: "puedes hablar / te escucho".
+      uint8_t head = (t / 90) % NUM_LEDS;
+      for (uint8_t i = 0; i < NUM_LEDS; i++) {
+        uint8_t d = (head - i + NUM_LEDS) % NUM_LEDS;  // distancia detras del cometa
+        if      (d == 0) ring.setPixelColor(i, 0, 180, 220);
+        else if (d == 1) ring.setPixelColor(i, 0, 70, 90);
+        else if (d == 2) ring.setPixelColor(i, 0, 25, 35);
+        else             ring.setPixelColor(i, 0, 6, 10);
+      }
+      ring.show();
+      break;
+    }
+
+    case LED_THINK: {
+      // Pulso rapido azul-violeta (transcribiendo / pensando con Claude).
+      float ph = (t % 900) / 900.0;
+      float lvl = 0.5 - 0.5 * cos(ph * 6.2832);
+      uint8_t v = (uint8_t)(15 + lvl * 120);
+      ringFill(v / 3, 0, v);
+      break;
+    }
+
+    case LED_SPEAK:
+      // Fijo azul-verde mientras narra. Se pinta UNA vez: durante la
+      // narracion los brazos gesticulan y no queremos show() repetidos
+      // (bloquean interrupciones y hacen temblar los servos).
+      if (!ledStaticDone) {
+        ringFill(0, 90, 60);
+        ledStaticDone = true;
+      }
+      break;
+
+    case LED_ERR: {
+      // 3 parpadeos rojos y se apaga solo.
+      if (t > 1800) { setLedMode(LED_OFF); break; }
+      bool on = (t / 300) % 2 == 0;
+      if (on) ringFill(150, 0, 0); else ringFill(0, 0, 0);
+      break;
+    }
+  }
+}
+#endif  // MECH_LEDS
+
+void applyLedCommand(const String& name) {
+  LedMode m;
+  if      (name == "OFF")    m = LED_OFF;
+  else if (name == "IDLE")   m = LED_IDLE;
+  else if (name == "WAKE")   m = LED_WAKE;
+  else if (name == "LISTEN") m = LED_LISTEN;
+  else if (name == "THINK")  m = LED_THINK;
+  else if (name == "SPEAK")  m = LED_SPEAK;
+  else if (name == "ERR")    m = LED_ERR;
+  else { Serial.print("ERR:UNKNOWN_LED:"); Serial.println(name); return; }
+  setLedMode(m);
+  Serial.print("ACK:LED:"); Serial.println(name);
+}
+
+// ============================================================
 // PARSEO DE COMANDOS
 // ============================================================
 
@@ -165,6 +320,10 @@ void handleCommand(const String& cmd) {
     else if (side == "R") servoArmR.write(angle);
     else { Serial.println("ERR:BAD_ARM_SIDE"); return; }
     Serial.println("ACK:ARM");
+    return;
+  }
+  if (cmd.startsWith("LED:")) {
+    applyLedCommand(cmd.substring(4));
     return;
   }
   if (cmd.startsWith("MOVE:")) {
@@ -217,6 +376,13 @@ void setup() {
   servoArmL.write(90);
   servoArmR.write(90);
 
+#if MECH_LEDS
+  ring.begin();
+  ring.setBrightness(LED_BRIGHT);
+  ring.clear();
+  ring.show();
+#endif
+
   stopAllMotors();
   Serial.println("READY:MECH");
 }
@@ -225,4 +391,7 @@ void loop() {
   // Sin comportamientos autonomos: el robot solo reacciona a comandos de la Pi.
   // (Las ruedas por MOVE, los brazos por ARM.)
   readSerial();
+#if MECH_LEDS
+  updateLeds();
+#endif
 }

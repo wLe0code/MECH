@@ -57,6 +57,7 @@ import config
 import stt
 import tts
 import video_library
+import vision
 import voice_phrases
 from mech_app import get_app
 
@@ -92,7 +93,7 @@ def _voice_loop_worker():
     # Sonido de "listo": a partir de aquí el micrófono está activo y ya se le
     # puede hablar / decir "despierta MECH".
     tts.play_chime()
-    app_state.log("Voz lista: ya puedes decir 'despierta MECH'.", "ok")
+    app_state.log("Voz lista: ya puedes decir 'ok MECH'.", "ok")
     if not app_state.state.get("voice_awake", True):
         app_state.set_voice_phase("dormant")
 
@@ -110,9 +111,13 @@ def _voice_loop_worker():
                 app_state.chime_pending = False
 
             # En reposo no mostramos las fases (queda el banner "dormant").
+            # En reposo también acotamos la grabación: "ok MECH" dura ~1 s,
+            # así que cortamos rápido y revisamos enseguida (despertar ágil).
             text = stt.listen_once(
                 max_seconds=config.LISTEN_MAX_SECONDS,
                 on_phase=app_state.set_voice_phase if awake else None,
+                max_utterance_seconds=None if awake else config.WAKE_MAX_UTTERANCE,
+                on_level=app_state.report_mic_level,
             )
 
             if text is None or not text.strip():
@@ -182,12 +187,16 @@ async def lifespan(app: FastAPI):
     mech = get_app()
     mech.bind_loop(asyncio.get_running_loop())
     mech.log("Servidor MECH iniciado", "ok")
-    # Autostart en reposo: MECH queda escuchando solo "despierta MECH".
+    # Autostart en reposo: MECH queda escuchando solo "ok MECH".
     if config.VOICE_AUTOSTART:
-        mech.log("Voz en reposo: di 'despierta MECH' para activarlo.", "info")
+        mech.log("Voz en reposo: di 'ok MECH' para activarlo.", "info")
         start_voice_loop(awake=False)
+    # Visión (cámara C930e): arranca sola si está habilitada en .env.
+    if config.VISION_ENABLED:
+        vision.get_vision(mech).start()
     yield
     stop_voice_loop()
+    vision.get_vision(mech).stop()
     mech.close()
 
 
@@ -376,9 +385,48 @@ async def arduino_mode(mode: str):
     return {"ok": True}
 
 
+@app.post("/api/arduino/reconnect")
+async def arduino_reconnect():
+    """Fuerza un intento de reconexión al Arduino (también reintenta solo)."""
+    link = get_app().arduino
+    if link.is_connected:
+        return {"ok": True, "connected": True}
+    try:
+        link.connect()
+    except Exception as e:
+        return {"ok": False, "connected": False, "error": str(e)}
+    return {"ok": True, "connected": link.is_connected}
+
+
+@app.post("/api/vision/{onoff}")
+async def vision_toggle(onoff: str):
+    """Enciende/apaga el módulo de visión (cámara + detección de usuarios).
+    También persiste VISION_ENABLED en .env para que sobreviva reinicios."""
+    if onoff not in ("on", "off"):
+        raise HTTPException(400, "Usa /api/vision/on o /api/vision/off")
+    mech = get_app()
+    v = vision.get_vision(mech)
+    if onoff == "on":
+        started = v.start()
+        config.VISION_ENABLED = started
+        config.update_env_file({"VISION_ENABLED": "true" if started else "false"})
+        if not started:
+            raise HTTPException(500, "No se pudo iniciar la visión (revisa el log)")
+    else:
+        v.stop()
+        config.VISION_ENABLED = False
+        config.update_env_file({"VISION_ENABLED": "false"})
+    return {"ok": True, "enabled": config.VISION_ENABLED}
+
+
 @app.post("/api/emergency/stop")
 async def emergency_stop():
     stop_voice_loop()
+    try:
+        vision.get_vision(get_app()).stop()
+        config.VISION_ENABLED = False
+    except Exception:
+        pass
     get_app().emergency_stop()
     return {"ok": True}
 
@@ -398,10 +446,19 @@ def _to_bool(v: str) -> bool:
 _LIVE_KEYS = {
     "VAD_AGGRESSIVENESS": int,
     "VAD_SILENCE_TIMEOUT": float,
+    "VAD_ENERGY_FACTOR": float,  # umbral de voz sobre el ruido ambiente
     "AUDIO_LEAD_SILENCE": float,
     "AUDIO_LISTEN_MAX_SECONDS": float,  # se guarda en config.LISTEN_MAX_SECONDS
     "WHISPER_LANGUAGE": str,
     "TTS_DRY_RUN": _to_bool,  # modo ahorro de créditos de voz
+    # Visión / comportamiento físico (se leen en cada frame/gesto).
+    "VISION_MIN_DISTANCE": float,
+    "VISION_APPROACH": _to_bool,
+    "VISION_FOLLOW": _to_bool,
+    "VISION_PROJECT_GATE": _to_bool,
+    "VISION_MAX_SPEED": int,
+    "GESTURE_WHEELS": _to_bool,
+    "ARM_GESTURE_MODE": str,
 }
 # Claves que solo tienen efecto tras reiniciar el servidor.
 _RESTART_KEYS = {
@@ -423,10 +480,18 @@ async def get_config():
         "live": {
             "VAD_AGGRESSIVENESS": config.VAD_AGGRESSIVENESS,
             "VAD_SILENCE_TIMEOUT": config.VAD_SILENCE_TIMEOUT,
+            "VAD_ENERGY_FACTOR": config.VAD_ENERGY_FACTOR,
             "AUDIO_LEAD_SILENCE": config.AUDIO_LEAD_SILENCE,
             "AUDIO_LISTEN_MAX_SECONDS": config.LISTEN_MAX_SECONDS,
             "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
             "TTS_DRY_RUN": config.TTS_DRY_RUN,
+            "VISION_ENABLED": config.VISION_ENABLED,
+            "VISION_MIN_DISTANCE": config.VISION_MIN_DISTANCE,
+            "VISION_APPROACH": config.VISION_APPROACH,
+            "VISION_FOLLOW": config.VISION_FOLLOW,
+            "VISION_PROJECT_GATE": config.VISION_PROJECT_GATE,
+            "GESTURE_WHEELS": config.GESTURE_WHEELS,
+            "ARM_GESTURE_MODE": config.ARM_GESTURE_MODE,
         },
         "restart": {
             "AUDIO_INPUT_DEVICE": config.AUDIO_INPUT_DEVICE,
