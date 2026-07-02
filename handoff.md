@@ -13,6 +13,11 @@ de tocar nada.
 > robot terminado que el usuario tiene en su teléfono); mientras no existan,
 > muestra un render SVG de respaldo. Falta que el usuario copie esas 2 fotos.
 > Hosting sugerido: GitHub Pages (instrucciones en `web/README.md`).
+>
+> **Nombre del robot: PHOTON** (la empresa sigue siendo MECH). La web ya lo
+> usa; el backend aún despierta con "ok MECH" — el cambio de wake word a
+> "ok photon" quedó como pendiente en CLAUDE.md (el usuario aceptó el riesgo
+> de colisión "foto"/"botón" con la tolerancia lev≤1 del matcher).
 
 Esta sesión anterior (la que escribió el handoff original) hizo
 cambios de código en el backend/firmware.

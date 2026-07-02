@@ -412,9 +412,17 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   server corre igual. On/off con `POST /api/vision/{on|off}` (persiste
   `VISION_ENABLED` en .env) o toggle en Ajustes; el resto de claves
   `VISION_*` son live.
+- **Nombre del robot: PHOTON** (decidido 2 jul 2026). La empresa sigue siendo
+  MECH; el robot ya NO se llama "MECH-1". Significado adaptado: *Projected ·
+  Humanized · Omnidirectional · Theatrical · Oral · Narrator* ("cada historia
+  empieza con un fotón"). OJO detección de voz: "fotón" está a 1 edición de
+  "foto" y "botón" (colisión con la tolerancia lev≤1 de `voice_phrases.py`);
+  el usuario CONOCE el riesgo y lo aceptó ("los jueces no se sacan fotos").
+  La web ya usa PHOTON; el backend sigue despertando con "ok MECH" (cambiarlo
+  a "ok photon" está en Pendiente).
 - **Sitio web de presentación (`web/`)**: one-page estático en español con la
   estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial del
-  trabajo escrito recreado en SVG). Secciones: hero con typing "ok MECH" y aro
+  trabajo escrito recreado en SVG). Secciones: hero con typing "ok PHOTON" y aro
   LED animado en CSS, qué es M.E.C.H, problemática, showcase con scroll estilo
   Apple (4 tomas del robot con captions; sticky + crossfade), pipeline de cómo
   funciona, hardware por capas (con el diagrama del PDF), las 5 obras de la
@@ -427,6 +435,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 
 ### 🚧 Pendiente
 
+- **Renombrar el robot a PHOTON en el backend/panel**: añadir "ok photon" (y
+  variantes "foton", "fotón", "ok foton") a `VOICE_WAKE_PHRASES` en
+  `backend/config.py` / `.env.example`, y revisar los textos al usuario
+  (saludos de `mech_app`, system prompt de `llm.py`, panel) que digan
+  "MECH" refiriéndose al robot. Recordar la gotcha #14: el `.env` de la Pi
+  puede tapar el default con la lista vieja.
 - **Copiar las fotos reales del robot terminado** a `web/assets/robot-01.jpg`
   (frontal, la de la sala con la banda de píxeles) y `web/assets/robot-02.jpg`
   (tres cuartos) para que el showcase de la web use fotos en vez del render SVG.
