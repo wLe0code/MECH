@@ -192,6 +192,17 @@ arduino/mech_controller/
   mech_controller.ino ← Firmware. Modos: AUTO/IDLE/LISTEN/SPEAK/STOP.
                         Comandos: MODE, HEAD, ARM, MOVE (omnidireccional), STOP.
 
+web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
+  index.html          ← One-page: hero, qué es, showcase scroll estilo Apple,
+                        cómo funciona, hardware, obras, construcción, equipo.
+  styles.css          ← Estética heredada del panel (mismo dark + acentos).
+  app.js              ← Scroll showcase + typing + reveals. Sin dependencias;
+                        funciona abriendo index.html con doble click (file://).
+  assets/             ← Logo oficial, favicon, fotos del PDF del trabajo
+                        escrito. El showcase busca robot-01.jpg/robot-02.jpg
+                        (fotos del robot terminado); si faltan usa un render SVG.
+  README.md           ← Cómo verla y cómo publicar en GitHub Pages.
+
 windows/              ← Control desde laptop Windows
   MECH Control.bat    ← Doble click → Edge --app, ventana sin barras.
   MECH Kiosko.bat     ← Pantalla completa kiosko.
@@ -401,9 +412,24 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   server corre igual. On/off con `POST /api/vision/{on|off}` (persiste
   `VISION_ENABLED` en .env) o toggle en Ajustes; el resto de claves
   `VISION_*` son live.
+- **Sitio web de presentación (`web/`)**: one-page estático en español con la
+  estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial del
+  trabajo escrito recreado en SVG). Secciones: hero con typing "ok MECH" y aro
+  LED animado en CSS, qué es M.E.C.H, problemática, showcase con scroll estilo
+  Apple (4 tomas del robot con captions; sticky + crossfade), pipeline de cómo
+  funciona, hardware por capas (con el diagrama del PDF), las 5 obras de la
+  biblioteca, bitácora de construcción (7 fotos extraídas de
+  `Documentación/MECH.pdf` con pypdf), impacto social + Business Model Canvas,
+  equipo y footer con contactos (GitHub, IG @wr0mech, wromech@gmail.com).
+  Sin build ni dependencias: doble click a `web/index.html`. El showcase busca
+  `assets/robot-01.jpg` (frontal) y `assets/robot-02.jpg` (tres cuartos); si
+  faltan, muestra un render SVG del robot (template `robotRenderTpl`).
 
 ### 🚧 Pendiente
 
+- **Copiar las fotos reales del robot terminado** a `web/assets/robot-01.jpg`
+  (frontal, la de la sala con la banda de píxeles) y `web/assets/robot-02.jpg`
+  (tres cuartos) para que el showcase de la web use fotos en vez del render SVG.
 - **Generar los videos pre-renderizados** para cada obra (Kling/Veo/Runway en otra máquina) y subirlos vía `/library`. Hasta que estén, MECH cae a NanoBanana para esas obras automáticamente.
 - **Cablear y probar el Arduino Uno** — firmware ya mapeado (`mech_controller.ino`, fqbn `arduino:avr:uno`). Falta: conseguir 2× L298N, cablear motores + servos (servos con 5–6V de protoboard), flashear y probar por serial.
 - **Comprar/cablear el aro NeoPixel de 12 LEDs** (DIN→A2, 5V del Arduino, GND común) e instalar la librería Adafruit NeoPixel. Hasta entonces: `#define MECH_LEDS 0`.

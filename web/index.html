@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MECH — El robot que narra la cultura</title>
+  <meta name="description" content="MECH-1: robot expositor cultural para la WRO 2026 (Robots and Culture). Espacios inmersivos con voz, proyección y movimiento, hecho en Costa Rica.">
+  <meta property="og:title" content="MECH — El robot que narra la cultura">
+  <meta property="og:description" content="Multisensory Engineering Cyberphysical Humanized. Robot expositor cultural con IA, proyección inmersiva y movimiento omnidireccional.">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ═══ NAV ═══════════════════════════════════════════════════════════ -->
+<nav class="nav" id="nav">
+  <a class="nav-logo" href="#top" aria-label="MECH — inicio">
+    <svg class="wordmark" viewBox="0 0 300 120" aria-hidden="true">
+      <g transform="translate(150,60)">
+        <g transform="skewX(-8)">
+          <rect x="-132" y="-48" width="264" height="96" rx="22"
+                fill="none" stroke="currentColor" stroke-width="11"/>
+        </g>
+        <text x="0" y="1" text-anchor="middle" dominant-baseline="central"
+              font-family="Sora, sans-serif" font-style="italic" font-weight="800"
+              font-size="56" letter-spacing="2" fill="currentColor">MECH</text>
+      </g>
+    </svg>
+  </a>
+  <button class="nav-burger" id="navBurger" aria-label="Abrir menú">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links" id="navLinks">
+    <a href="#robot">El robot</a>
+    <a href="#como-funciona">Cómo funciona</a>
+    <a href="#hardware">Hardware</a>
+    <a href="#obras">Obras</a>
+    <a href="#construccion">Construcción</a>
+    <a href="#equipo">Equipo</a>
+    <a class="nav-cta" href="https://github.com/wLe0code/MECH" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<!-- ═══ HERO ══════════════════════════════════════════════════════════ -->
+<header class="hero" id="top">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="hero-grid" aria-hidden="true"></div>
+
+  <div class="hero-inner">
+    <p class="hero-kicker mono reveal">WRO 2026 · ROBOTS AND CULTURE · COSTA RICA</p>
+
+    <svg class="hero-wordmark reveal delay-1" viewBox="0 0 300 120" role="img" aria-label="MECH">
+      <g transform="translate(150,60)">
+        <g transform="skewX(-8)">
+          <rect x="-132" y="-48" width="264" height="96" rx="22"
+                fill="none" stroke="currentColor" stroke-width="9"/>
+        </g>
+        <text x="0" y="1" text-anchor="middle" dominant-baseline="central"
+              font-family="Sora, sans-serif" font-style="italic" font-weight="800"
+              font-size="56" letter-spacing="2" fill="currentColor">MECH</text>
+      </g>
+    </svg>
+
+    <h1 class="hero-title reveal delay-2">El robot que narra<br><em>la cultura.</em></h1>
+    <p class="hero-sub reveal delay-3">
+      <span class="mono accent-red">M</span>ultisensory ·
+      <span class="mono accent-purple">E</span>ngineering ·
+      <span class="mono accent-teal">C</span>yberphysical ·
+      <span class="mono accent-amber">H</span>umanized
+    </p>
+    <p class="hero-desc reveal delay-3">
+      Un expositor autónomo que combina inteligencia artificial, proyección
+      inmersiva y movimiento físico para que ninguna historia se quede sin contar.
+    </p>
+
+    <!-- Chip de voz: aro LED + terminal "ok MECH" -->
+    <div class="voice-chip reveal delay-4" aria-hidden="true">
+      <div class="led-ring">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="voice-text mono">
+        <span class="prompt">›</span> <span id="typedText"></span><span class="caret"></span>
+      </div>
+    </div>
+
+    <div class="hero-stats reveal delay-5">
+      <div class="stat"><b>5</b><span>obras en biblioteca</span></div>
+      <div class="stat"><b>1</b><span>request de IA por historia</span></div>
+      <div class="stat"><b>100%</b><span>voz a texto local</span></div>
+      <div class="stat"><b>360°</b><span>movimiento omnidireccional</span></div>
+    </div>
+  </div>
+
+  <a class="scroll-hint" href="#que-es" aria-label="Bajar">
+    <span class="mono">DESLIZA</span>
+    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 4v14m0 0l-6-6m6 6l6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </a>
+</header>
+
+<div class="pixel-band" aria-hidden="true"></div>
+
+<!-- ═══ QUÉ ES MECH ═══════════════════════════════════════════════════ -->
+<section class="section" id="que-es">
+  <div class="container">
+    <p class="section-kicker mono reveal">¿QUÉ ES M.E.C.H?</p>
+    <h2 class="section-title reveal">Cuatro letras,<br>una misión.</h2>
+    <p class="section-lead reveal">
+      MECH es una empresa tecnológica costarricense dedicada a construir
+      <b>espacios inmersivos</b> para la preservación cultural. Su primer
+      robot, <b>MECH‑1</b>, lo demuestra en vivo.
+    </p>
+
+    <div class="letter-grid">
+      <article class="letter-card reveal" style="--tint: var(--red)">
+        <span class="letter mono">M</span>
+        <h3>Multisensory</h3>
+        <p>Experiencias con visión, sonido, movimiento y proyección. La cultura se vive con todos los sentidos, no solo se lee.</p>
+      </article>
+      <article class="letter-card reveal" style="--tint: var(--purple-mid)">
+        <span class="letter mono">E</span>
+        <h3>Engineering</h3>
+        <p>Ingeniería integrada: sistemas físicos y mecatrónicos diseñados y ensamblados por el propio equipo.</p>
+      </article>
+      <article class="letter-card reveal" style="--tint: var(--teal)">
+        <span class="letter mono">C</span>
+        <h3>Cyberphysical</h3>
+        <p>Firmware propio que une el mundo digital con el físico: la IA decide, y los motores, luces y proyectores obedecen.</p>
+      </article>
+      <article class="letter-card reveal" style="--tint: var(--amber)">
+        <span class="letter mono">H</span>
+        <h3>Humanized</h3>
+        <p>Diseñado para la experiencia humana: reacciona a las personas que se acercan, escucha y responde en español.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ EL PROBLEMA ═══════════════════════════════════════════════════ -->
+<section class="section problem" id="problema">
+  <div class="container narrow">
+    <p class="section-kicker mono reveal">LA PROBLEMÁTICA</p>
+    <h2 class="big-statement reveal">
+      Las nuevas generaciones crecen en entornos cada vez más tecnológicos…
+      <span class="dim">y con cada vez menos arraigo cultural.</span>
+    </h2>
+    <p class="section-lead reveal">
+      Hoy es difícil encontrar un museo donde cada obra tenga una exposición
+      viva que la explique. Ante esa distancia, la sociedad pierde interés por
+      el arte y las tradiciones se van apagando. MECH‑1 ataca ese problema con
+      un espacio inmersivo que narra cualquier obra <b>con solo pedírselo por voz</b> —
+      una manera innovadora, escalable y fácil de comprender de darle
+      visibilidad a los artistas de cada región.
+    </p>
+  </div>
+</section>
+
+<!-- ═══ SHOWCASE ESTILO APPLE (scroll-driven) ═════════════════════════ -->
+<section class="showcase" id="robot">
+  <div class="showcase-sticky">
+    <p class="showcase-kicker mono">MECH‑1 · PROTOTIPO FUNCIONAL</p>
+
+    <div class="showcase-stage" id="showcaseStage">
+
+      <figure class="frame" data-img="assets/robot-01.jpg" data-viewbox="0 0 600 780">
+        <div class="frame-media"></div>
+        <figcaption class="frame-caption cap-left">
+          <h3>Este es MECH‑1.</h3>
+          <p>Un expositor cultural autónomo. Cuerpo cilíndrico, cabeza
+          proyectora y una franja de píxeles que es su firma visual.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="frame" data-img="assets/robot-02.jpg" data-viewbox="0 0 600 780">
+        <div class="frame-media"></div>
+        <figcaption class="frame-caption cap-right">
+          <h3>Una cabeza que proyecta mundos.</h3>
+          <p>Proyector HD para el espacio inmersivo y cámara
+          <span class="mono">Logitech C930e</span> con 90° de visión para
+          detectar a quien se acerca.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="frame zoom-head" data-img="assets/robot-01.jpg" data-viewbox="110 120 380 240">
+        <div class="frame-media"></div>
+        <figcaption class="frame-caption cap-left">
+          <h3>Dile «ok MECH».</h3>
+          <p>Despierta con la voz, escucha aun con ruido de evento y
+          responde en español. Un aro de 12 LEDs le pone cara a cada
+          fase: escuchando, pensando, narrando.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="frame" data-img="assets/robot-final.jpg" data-viewbox="0 0 600 780">
+        <div class="frame-media"></div>
+        <figcaption class="frame-caption cap-right">
+          <h3>Y además, se mueve.</h3>
+          <p>Ruedas omnidireccionales tipo mecanum: gira hacia el visitante,
+          se acerca, gesticula con los brazos y acompaña cada relato
+          con movimiento real.</p>
+        </figcaption>
+      </figure>
+
+      <div class="showcase-dots" id="showcaseDots" aria-hidden="true">
+        <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Render SVG de respaldo (se usa si faltan las fotos) -->
+<template id="robotRenderTpl">
+  <svg viewBox="0 0 600 780" xmlns="http://www.w3.org/2000/svg" class="robot-render">
+    <defs>
+      <radialGradient id="rrGlow" cx="50%" cy="42%" r="60%">
+        <stop offset="0%" stop-color="#E24B4A" stop-opacity="0.16"/>
+        <stop offset="60%" stop-color="#534AB7" stop-opacity="0.07"/>
+        <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="rrBody" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#101016"/>
+        <stop offset="18%" stop-color="#23232c"/>
+        <stop offset="50%" stop-color="#17171e"/>
+        <stop offset="85%" stop-color="#0c0c10"/>
+        <stop offset="100%" stop-color="#141419"/>
+      </linearGradient>
+      <linearGradient id="rrHead" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#1c1c24"/>
+        <stop offset="100%" stop-color="#0b0b0f"/>
+      </linearGradient>
+    </defs>
+
+    <ellipse cx="300" cy="420" rx="290" ry="300" fill="url(#rrGlow)"/>
+    <ellipse cx="300" cy="722" rx="170" ry="20" fill="#000" opacity="0.55"/>
+
+    <!-- discos laterales -->
+    <ellipse cx="152" cy="520" rx="26" ry="120" fill="#0a0a0e" stroke="#26262e" stroke-width="2"/>
+    <ellipse cx="448" cy="520" rx="26" ry="120" fill="#0a0a0e" stroke="#26262e" stroke-width="2"/>
+
+    <!-- cuerpo -->
+    <path d="M168 340 v330 a132 26 0 0 0 264 0 v-330 Z" fill="url(#rrBody)" stroke="#2a2a33" stroke-width="2"/>
+    <ellipse cx="300" cy="340" rx="132" ry="26" fill="#f2f1f4"/>
+    <ellipse cx="300" cy="340" rx="132" ry="26" fill="none" stroke="#0c0c10" stroke-width="3"/>
+
+    <!-- franja de píxeles -->
+    <g fill="#f2f1f4">
+      <rect x="188" y="382" width="20" height="20"/><rect x="214" y="396" width="14" height="14"/>
+      <rect x="236" y="378" width="16" height="16"/><rect x="258" y="398" width="22" height="18"/>
+      <rect x="288" y="380" width="14" height="14"/><rect x="308" y="400" width="18" height="16"/>
+      <rect x="334" y="382" width="22" height="20"/><rect x="362" y="398" width="14" height="14"/>
+      <rect x="384" y="380" width="16" height="16"/><rect x="196" y="418" width="12" height="12"/>
+      <rect x="246" y="422" width="14" height="12"/><rect x="298" y="424" width="12" height="12"/>
+      <rect x="348" y="420" width="14" height="12"/><rect x="396" y="416" width="12" height="12"/>
+    </g>
+
+    <!-- tornillos frontales -->
+    <circle cx="252" cy="648" r="5" fill="#e9e8ec"/>
+    <circle cx="300" cy="654" r="5" fill="#e9e8ec"/>
+    <circle cx="348" cy="648" r="5" fill="#e9e8ec"/>
+
+    <!-- ruedas -->
+    <ellipse cx="240" cy="716" rx="26" ry="16" fill="#08080b"/>
+    <ellipse cx="360" cy="716" rx="26" ry="16" fill="#08080b"/>
+
+    <!-- cuello -->
+    <rect x="278" y="286" width="44" height="60" rx="8" fill="#0b0b0f"/>
+
+    <!-- cabeza -->
+    <g>
+      <rect x="134" y="152" width="332" height="140" rx="16" fill="url(#rrHead)" stroke="#33333d" stroke-width="2"/>
+      <path d="M150 152 h300 a16 16 0 0 1 16 16 v6 h-332 v-6 a16 16 0 0 1 16 -16 Z" fill="#f2f1f4" opacity="0.92"/>
+      <!-- lente del proyector -->
+      <circle cx="238" cy="226" r="46" fill="#0a0a0d" stroke="#e9e8ec" stroke-width="5"/>
+      <circle cx="238" cy="226" r="30" fill="#11131c"/>
+      <circle cx="238" cy="226" r="17" fill="#1b2033"/>
+      <circle cx="228" cy="216" r="6" fill="#8f97c4" opacity="0.8"/>
+      <!-- cámara -->
+      <rect x="352" y="210" width="66" height="34" rx="8" fill="#232329" stroke="#3a3a44" stroke-width="2"/>
+      <circle cx="385" cy="227" r="9" fill="#0b0b0f" stroke="#565664" stroke-width="2"/>
+      <circle cx="385" cy="227" r="3.5" fill="#3d4568"/>
+    </g>
+  </svg>
+</template>
+
+<div class="pixel-band flip" aria-hidden="true"></div>
+
+<!-- ═══ CÓMO FUNCIONA ═════════════════════════════════════════════════ -->
+<section class="section" id="como-funciona">
+  <div class="container">
+    <p class="section-kicker mono reveal">CÓMO FUNCIONA</p>
+    <h2 class="section-title reveal">De tu voz a un mundo proyectado<br>en segundos.</h2>
+    <p class="section-lead reveal">
+      Todo el flujo lo orquesta una Raspberry Pi 5 dentro del robot. La IA
+      recibe <b>una sola consulta</b> y devuelve el guion completo de la
+      exposición: rápido, económico y predecible.
+    </p>
+
+    <ol class="pipeline">
+      <li class="pipe-step reveal" style="--tint: var(--amber)">
+        <span class="pipe-num mono">01</span>
+        <h3>Escucha</h3>
+        <p>El micrófono inalámbrico capta tu voz y <b>faster‑whisper</b> la transcribe <b>100% local</b>, sin depender de internet.</p>
+        <span class="pipe-tag mono">STT · EN LA PI</span>
+      </li>
+      <li class="pipe-step reveal" style="--tint: var(--purple-mid)">
+        <span class="pipe-num mono">02</span>
+        <h3>Piensa</h3>
+        <p><b>Claude</b> (Anthropic) recibe la petición y devuelve un plan estructurado: narración por escenas, visuales y gestos.</p>
+        <span class="pipe-tag mono">IA · 1 REQUEST</span>
+      </li>
+      <li class="pipe-step reveal" style="--tint: var(--red)">
+        <span class="pipe-num mono">03</span>
+        <h3>Narra</h3>
+        <p>La voz se genera con <b>ElevenLabs</b> en español — incluso con voces distintas por personaje.</p>
+        <span class="pipe-tag mono">TTS · STREAMING</span>
+      </li>
+      <li class="pipe-step reveal" style="--tint: var(--teal)">
+        <span class="pipe-num mono">04</span>
+        <h3>Proyecta</h3>
+        <p>Videos pre‑renderizados de la biblioteca cultural, o imágenes generadas al vuelo con <b>Gemini</b> si pides algo nuevo.</p>
+        <span class="pipe-tag mono">VIDEO + IMAGEN</span>
+      </li>
+      <li class="pipe-step reveal" style="--tint: var(--purple)">
+        <span class="pipe-num mono">05</span>
+        <h3>Se mueve</h3>
+        <p>Un <b>Arduino Uno</b> ejecuta gestos con los brazos, giros con las ruedas mecanum y anima el aro de LEDs.</p>
+        <span class="pipe-tag mono">FIRMWARE · SERIAL</span>
+      </li>
+    </ol>
+
+    <div class="how-notes reveal">
+      <div class="note-chip mono">✦ Detección anti‑ruido: mide el ruido del ambiente y solo graba cuando tu voz lo supera.</div>
+      <div class="note-chip mono">✦ Si nadie está cerca, la cámara lo sabe: MECH narra sin proyectar en vano.</div>
+      <div class="note-chip mono">✦ Paro de emergencia y panel de supervisión web incluidos.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HARDWARE ══════════════════════════════════════════════════════ -->
+<section class="section hardware" id="hardware">
+  <div class="container">
+    <p class="section-kicker mono reveal">HARDWARE</p>
+    <h2 class="section-title reveal">Tres capas,<br>un solo organismo.</h2>
+
+    <div class="hw-layout">
+      <div class="hw-diagram reveal">
+        <img src="assets/diagrama-capas.png" alt="Diagrama de las tres capas físicas de MECH-1: superior (webcam y proyector), central (brazos, Raspberry Pi, micrófono y parlante) y mecánica (Arduino, ruedas, motores y fuente de poder)" loading="lazy">
+      </div>
+
+      <div class="hw-lists">
+        <div class="hw-layer reveal" style="--tint: var(--purple-mid)">
+          <h3 class="mono">CAPA SUPERIOR</h3>
+          <ul>
+            <li><b>Proyector HD</b> — el corazón del espacio inmersivo</li>
+            <li><b>Logitech C930e</b> — cámara 1080p, campo visual de 90°</li>
+          </ul>
+        </div>
+        <div class="hw-layer reveal" style="--tint: var(--red)">
+          <h3 class="mono">CAPA CENTRAL</h3>
+          <ul>
+            <li><b>Raspberry Pi 5 (8 GB)</b> — el cerebro de MECH‑1</li>
+            <li><b>Steren MIC‑9010</b> — micrófono inalámbrico de solapa</li>
+            <li><b>Parlante JBL Charge</b> — la voz del robot</li>
+            <li><b>2 brazos servo MG996R</b> — gestos y saludos</li>
+          </ul>
+        </div>
+        <div class="hw-layer reveal" style="--tint: var(--teal)">
+          <h3 class="mono">CAPA MECÁNICA</h3>
+          <ul>
+            <li><b>Arduino Uno R3</b> — orquestación del movimiento</li>
+            <li><b>2× driver L298N + 4 motores DC</b> — tracción total</li>
+            <li><b>Ruedas mecanum</b> — desplazamiento en cualquier dirección</li>
+            <li><b>Aro NeoPixel de 12 LEDs</b> — estados visuales estilo asistente</li>
+            <li><b>Batería 12V 21.6 Ah</b> — energía para todo el sistema</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="pixel-band" aria-hidden="true"></div>
+
+<!-- ═══ OBRAS CULTURALES ══════════════════════════════════════════════ -->
+<section class="section" id="obras">
+  <div class="container">
+    <p class="section-kicker mono reveal">BIBLIOTECA CULTURAL</p>
+    <h2 class="section-title reveal">Las historias que MECH<br>ya sabe contar.</h2>
+    <p class="section-lead reveal">
+      Cada obra vive en la biblioteca del robot con videos pre‑renderizados
+      por escena. ¿Pides algo que no está? MECH improvisa la narración y
+      genera las imágenes en vivo.
+    </p>
+
+    <div class="works-grid">
+      <article class="work-card reveal" style="--tint: var(--amber)">
+        <span class="work-slug mono">don_quijote</span>
+        <h3>Don Quijote de la Mancha</h3>
+        <p class="work-author mono">Miguel de Cervantes</p>
+        <p>Un hidalgo enloquecido por las novelas de caballería sale junto a Sancho Panza a buscar aventuras imposibles.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">VOZ DE PERSONAJE</span></div>
+      </article>
+      <article class="work-card reveal" style="--tint: var(--red)">
+        <span class="work-slug mono">campana_1856</span>
+        <h3>Campaña Nacional de 1856</h3>
+        <p class="work-author mono">Historia de Costa Rica</p>
+        <p>Costa Rica y Centroamérica se unen para expulsar al filibustero William Walker. La gesta de Juan Santamaría en la Batalla de Rivas.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">HISTORIA VIVA</span></div>
+      </article>
+      <article class="work-card reveal" style="--tint: var(--purple-mid)">
+        <span class="work-slug mono">jimenez_deredia</span>
+        <h3>Esculturas de Jiménez Deredia</h3>
+        <p class="work-author mono">Jorge Jiménez Deredia</p>
+        <p>Esferas y figuras en mármol y bronce: la serie «Génesis» fusiona el simbolismo precolombino de Costa Rica con la transformación y la vida.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">ESCULTURA</span></div>
+      </article>
+      <article class="work-card reveal" style="--tint: var(--teal)">
+        <span class="work-slug mono">malpais</span>
+        <h3>Música de Malpaís</h3>
+        <p class="work-author mono">Malpaís · banda costarricense</p>
+        <p>El folclor y el rock de Fidel Gamboa: paisajes, nostalgia y el alma de Costa Rica en cada canción.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">♫ MÚSICA DE FONDO</span></div>
+      </article>
+      <article class="work-card reveal" style="--tint: var(--amber)">
+        <span class="work-slug mono">isidro_con_wong</span>
+        <h3>Cuadros de Isidro Con Wong</h3>
+        <p class="work-author mono">Isidro Con Wong · pintor</p>
+        <p>Pionero costarricense del realismo mágico: toros rojos, soles y lunas que retratan la mística rural con color vibrante.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">PINTURA</span></div>
+      </article>
+      <article class="work-card work-card-open reveal">
+        <span class="work-slug mono">tu_obra_aqui</span>
+        <h3>¿Y la que falta?</h3>
+        <p>La biblioteca es abierta: cualquier museo o artista puede sumar su obra con videos por escena — MECH la contará al día siguiente.</p>
+        <div class="work-tags"><span class="mono">+ IMPROVISACIÓN CON IA</span></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONSTRUCCIÓN ══════════════════════════════════════════════════ -->
+<section class="section build" id="construccion">
+  <div class="container">
+    <p class="section-kicker mono reveal">BITÁCORA DE CONSTRUCCIÓN</p>
+    <h2 class="section-title reveal">Del esqueleto de aluminio<br>al robot con identidad.</h2>
+    <p class="section-lead reveal">Siete etapas, cero atajos. Desliza para ver la evolución →</p>
+  </div>
+
+  <div class="build-strip reveal" id="buildStrip">
+    <figure class="build-item">
+      <img src="assets/build-01.jpg" alt="Estructura básica del robot en perfiles de aluminio" loading="lazy">
+      <figcaption><span class="mono">ETAPA 01</span> Estructura básica del robot</figcaption>
+    </figure>
+    <figure class="build-item">
+      <img src="assets/build-02.jpg" alt="Primer reforzamiento de la estructura con anillos blancos" loading="lazy">
+      <figcaption><span class="mono">ETAPA 02</span> Primer reforzamiento</figcaption>
+    </figure>
+    <figure class="build-item">
+      <img src="assets/build-03.jpg" alt="Recubrimiento exterior negro del cuerpo cilíndrico" loading="lazy">
+      <figcaption><span class="mono">ETAPA 03</span> Recubrimiento de la estructura</figcaption>
+    </figure>
+    <figure class="build-item">
+      <img src="assets/build-04.jpg" alt="Vista superior del segundo reforzamiento interno" loading="lazy">
+      <figcaption><span class="mono">ETAPA 04</span> Segundo reforzamiento</figcaption>
+    </figure>
+    <figure class="build-item">
+      <img src="assets/build-05.jpg" alt="Creación del soporte del proyector y la cámara" loading="lazy">
+      <figcaption><span class="mono">ETAPA 05</span> Soporte de proyector y cámara</figcaption>
+    </figure>
+    <figure class="build-item">
+      <img src="assets/build-06.jpg" alt="Sistema de enfriamiento del módulo principal de proyección" loading="lazy">
+      <figcaption><span class="mono">ETAPA 06</span> Sistema de enfriamiento</figcaption>
+    </figure>
+    <figure class="build-item">
+      <img src="assets/robot-final.jpg" alt="Modelo final del robot MECH-1 en un pasillo" loading="lazy">
+      <figcaption><span class="mono">ETAPA 07</span> Modelo final: MECH‑1</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ═══ IMPACTO ═══════════════════════════════════════════════════════ -->
+<section class="section impact" id="impacto">
+  <div class="container narrow">
+    <p class="section-kicker mono reveal">IMPACTO SOCIAL</p>
+    <h2 class="section-title reveal">Tecnología que suma,<br>no que sustituye.</h2>
+
+    <div class="impact-grid">
+      <div class="impact-card reveal">
+        <h3>Preserva la cultura</h3>
+        <p>Convierte cualquier sala en una exposición viva: la obra se explica sola, con emoción, al alcance de un comando de voz.</p>
+      </div>
+      <div class="impact-card reveal">
+        <h3>No reemplaza empleos</h3>
+        <p>MECH cubre un trabajo que hoy casi ningún museo implementa. Es un complemento a la labor humana, no una amenaza.</p>
+      </div>
+      <div class="impact-card reveal">
+        <h3>Empodera a los artistas</h3>
+        <p>Artistas locales pueden exponer su obra de forma autónoma, sin pagar un expositor — más económico y más accesible.</p>
+      </div>
+    </div>
+
+    <blockquote class="impact-quote reveal">
+      «El objetivo final es claro: aportar a un mundo más lleno de cultura.»
+      <cite class="mono">— Trabajo escrito de MECH, WRO 2026</cite>
+    </blockquote>
+
+    <details class="bmc reveal">
+      <summary class="mono">VER MODELO DE NEGOCIO (BUSINESS MODEL CANVAS) +</summary>
+      <img src="assets/canvas-negocio.png" alt="Business Model Canvas de MECH" loading="lazy">
+    </details>
+  </div>
+</section>
+
+<!-- ═══ EQUIPO ════════════════════════════════════════════════════════ -->
+<section class="section" id="equipo">
+  <div class="container">
+    <p class="section-kicker mono reveal">EL EQUIPO</p>
+    <h2 class="section-title reveal">Tres ingenieros,<br>un robot.</h2>
+
+    <div class="team-grid">
+      <article class="team-card reveal">
+        <span class="avatar" style="--tint: var(--red)">AR</span>
+        <h3>Alejandro Ramírez</h3>
+        <p class="team-role mono">INGENIERO MECÁNICO</p>
+        <p>Supervisó la producción y materialización del robot, cuidando que
+        cada componente fuera amigable con el diseño. Clave para iterar
+        prototipos y lograr un ecosistema inmersivo funcional y estético.</p>
+      </article>
+      <article class="team-card reveal">
+        <span class="avatar" style="--tint: var(--purple-mid)">LR</span>
+        <h3>Leonardo Ramírez</h3>
+        <p class="team-role mono">INGENIERO MECATRÓNICO</p>
+        <p>Diseñó los sistemas mecatrónicos y el «desarrollo neuronal» del
+        robot: cada orden y tarea que MECH‑1 ejecuta nació de sus esquemas
+        y diagramas de orquestación.</p>
+      </article>
+      <article class="team-card reveal">
+        <span class="avatar" style="--tint: var(--teal)">JJ</span>
+        <h3>Jimmy Jara</h3>
+        <p class="team-role mono">INGENIERO EN COMPUTADORES</p>
+        <p>El puente entre la estructura y el cerebro: desarrolló los sistemas
+        de movimiento, energía, comunicación, sonido y visión que dan vida
+        al proyecto.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ════════════════════════════════════════════════════════ -->
+<footer class="footer" id="contacto">
+  <div class="pixel-band" aria-hidden="true"></div>
+  <div class="container footer-inner">
+    <svg class="wordmark footer-mark" viewBox="0 0 300 120" role="img" aria-label="MECH">
+      <g transform="translate(150,60)">
+        <g transform="skewX(-8)">
+          <rect x="-132" y="-48" width="264" height="96" rx="22" fill="none" stroke="currentColor" stroke-width="10"/>
+        </g>
+        <text x="0" y="1" text-anchor="middle" dominant-baseline="central"
+              font-family="Sora, sans-serif" font-style="italic" font-weight="800"
+              font-size="56" letter-spacing="2" fill="currentColor">MECH</text>
+      </g>
+    </svg>
+    <p class="footer-tag">El robot que narra la cultura.</p>
+
+    <div class="footer-links">
+      <a href="https://github.com/wLe0code/MECH" target="_blank" rel="noopener" class="mono">GITHUB ↗</a>
+      <a href="https://instagram.com/wr0mech" target="_blank" rel="noopener" class="mono">INSTAGRAM @wr0mech ↗</a>
+      <a href="mailto:wromech@gmail.com" class="mono">wromech@gmail.com</a>
+    </div>
+
+    <p class="footer-note mono">HECHO EN COSTA RICA 🇨🇷 · WRO 2026 — ROBOTS AND CULTURE · <span id="year"></span></p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
