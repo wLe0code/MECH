@@ -220,11 +220,20 @@ Ya está implementado. Para activarlo en la Pi:
 
 ```bash
 source .venv/bin/activate
-pip install -r backend/requirements-vision.txt
+pip install opencv-python-headless        # con esto la visión YA funciona
 ```
 
-> ⚠️ `mediapipe` solo tiene versiones para Python **3.11 y 3.12** (no 3.13).
-> Si el `.venv` está en 3.13, recréalo con 3.11: `python3.11 -m venv .venv`.
+Con solo OpenCV, la visión usa un detector Haar integrado (caras frontales,
+distancia media) — funciona en **cualquier Python, incluido 3.13**.
+
+Para el modo **full-range** (~5 m, caras de perfil) instala además mediapipe,
+pero ⚠️ solo tiene versiones para Python **3.11/3.12** (no 3.13):
+
+```bash
+pip install -r backend/requirements-vision.txt   # requiere Python 3.11/3.12
+```
+
+El panel loguea qué detector quedó activo (`mediapipe` u `opencv-haar`).
 
 Después enchufá la C930e, arrancá el server (`python -m backend.server`)
 y encendé la visión desde el panel: **Ajustes → Visión → "Detectar

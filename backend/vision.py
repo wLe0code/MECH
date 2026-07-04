@@ -1,15 +1,21 @@
 """Visión de MECH — detección de usuarios con la Logitech C930e.
 
 Pipeline:
-  OpenCV (V4L2/USB UVC) captura a 640x360 → MediaPipe Face Detection
-  (modelo full-range, alcance ~5 m) → por cada frame se calcula:
+  OpenCV (V4L2/USB UVC) captura a 640x360 → detector de rostros → por cada
+  frame se calcula:
 
     - user_present : hay al menos una cara (con debounce para no parpadear).
     - x            : posición horizontal de la cara más grande, -1 (izq) .. +1 (der).
     - distance     : distancia estimada en metros, a partir del ancho de la
                      cara en píxeles (cara promedio ~16 cm; focal estimada
                      según el FOV de 90° de la C930e).
-    - vx_user      : hacia dónde se está moviendo el usuario (deriva de x).
+
+Dos backends de detección (se elige el mejor disponible automáticamente):
+    1. MediaPipe Face Detection (full-range, ~5 m) — el más preciso. Requiere
+       `mediapipe`, que solo tiene wheels para Python 3.11/3.12.
+    2. OpenCV Haar cascade — fallback que solo necesita `opencv`. Funciona en
+       cualquier Python donde OpenCV instale (incluido 3.13). Alcance algo
+       menor y solo caras frontales, pero suficiente para un stand.
 
 Comportamientos (configurables en vivo desde el panel):
     - VISION_FOLLOW   : MECH gira para quedar de frente al usuario.
@@ -47,6 +53,79 @@ LOST_AFTER_S = 1.5
 APPROACH_MARGIN_M = 0.15
 
 
+# ── Detectores de rostro ─────────────────────────────────────────────
+# Cada detector expone detect(frame_bgr) -> lista de (cx_rel, w_rel), donde
+# cx_rel es el centro X de la cara en 0..1 y w_rel su ancho en 0..1 (ambos
+# relativos al ancho del frame). Así el resto del código no depende del
+# backend ni de la resolución real que negocie la cámara.
+
+class _MediaPipeDetector:
+    name = "mediapipe"
+
+    def __init__(self) -> None:
+        import cv2
+        import mediapipe as mp
+        self._cv2 = cv2
+        self._fd = mp.solutions.face_detection.FaceDetection(
+            model_selection=1,  # full-range: hasta ~5 m
+            min_detection_confidence=0.5,
+        )
+
+    def detect(self, frame_bgr):
+        rgb = self._cv2.cvtColor(frame_bgr, self._cv2.COLOR_BGR2RGB)
+        res = self._fd.process(rgb)
+        faces = []
+        if res.detections:
+            for d in res.detections:
+                bb = d.location_data.relative_bounding_box
+                faces.append((bb.xmin + bb.width / 2, bb.width))
+        return faces
+
+    def close(self) -> None:
+        self._fd.close()
+
+
+class _HaarDetector:
+    name = "opencv-haar"
+
+    def __init__(self) -> None:
+        import cv2
+        self._cv2 = cv2
+        path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        self._cascade = cv2.CascadeClassifier(path)
+        if self._cascade.empty():
+            raise RuntimeError("No se pudo cargar el clasificador Haar de OpenCV")
+
+    def detect(self, frame_bgr):
+        cv2 = self._cv2
+        gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
+        h, w = gray.shape[:2]
+        rects = self._cascade.detectMultiScale(
+            gray, scaleFactor=1.2, minNeighbors=5, minSize=(40, 40)
+        )
+        return [((x + ww / 2) / w, ww / w) for (x, y, ww, hh) in rects]
+
+    def close(self) -> None:
+        pass
+
+
+def _make_detector(app):
+    """Elige MediaPipe si está; si no, cae a OpenCV Haar. Devuelve
+    (detector, warn_opcional)."""
+    try:
+        return _MediaPipeDetector(), None
+    except ImportError:
+        pass
+    except Exception as e:
+        app.log(f"MediaPipe presente pero falló ({e}); uso OpenCV.", "warn")
+    return _HaarDetector(), (
+        "Visión con OpenCV Haar (sin mediapipe): funciona, pero detecta solo "
+        "caras frontales y a menor distancia. Para el modo full-range instala "
+        "mediapipe (Python 3.11/3.12)."
+    )
+
+
 class Vision:
     """Hilo de visión. Publica su estado en mech_app.state["vision"]."""
 
@@ -65,12 +144,11 @@ class Vision:
             return True
         try:
             import cv2  # noqa: F401
-            import mediapipe  # noqa: F401
-        except ImportError as e:
+        except ImportError:
             self.app.log(
-                f"Visión no disponible (falta instalar {e.name}): "
-                "pip install -r backend/requirements-vision.txt "
-                "(requiere Python 3.11/3.12; mediapipe no soporta 3.13)",
+                "Visión no disponible (falta OpenCV): "
+                "pip install opencv-python-headless "
+                "(o -r backend/requirements-vision.txt para también mediapipe).",
                 "warn",
             )
             return False
@@ -118,7 +196,6 @@ class Vision:
 
     def _loop(self) -> None:
         import cv2
-        import mediapipe as mp
 
         cap = cv2.VideoCapture(config.VISION_CAMERA_INDEX)
         # Forzar MJPG: sin esto la C930e negocia YUYV y cae a ~5 fps en la Pi.
@@ -135,11 +212,18 @@ class Vision:
             self._publish(enabled=False, present=False, x=0.0, distance=None)
             return
 
-        detector = mp.solutions.face_detection.FaceDetection(
-            model_selection=1,  # full-range: hasta ~5 m
-            min_detection_confidence=0.5,
+        try:
+            detector, warn = _make_detector(self.app)
+        except Exception as e:
+            self.app.log(f"No se pudo iniciar ningún detector de rostros: {e}", "err")
+            cap.release()
+            self._publish(enabled=False, present=False, x=0.0, distance=None)
+            return
+        if warn:
+            self.app.log(warn, "warn")
+        self.app.log(
+            f"Visión activa (detector: {detector.name}): detectando usuarios.", "ok"
         )
-        self.app.log("Visión activa: cámara abierta, detectando usuarios.", "ok")
 
         # Estado suavizado.
         x_s = 0.0
@@ -156,24 +240,18 @@ class Vision:
                 if not ok:
                     self.app.log("La cámara dejó de dar frames; visión detenida.", "err")
                     break
-                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                result = detector.process(rgb)
 
-                face = None
-                if result.detections:
-                    # La cara más grande = la persona más cercana.
-                    face = max(
-                        result.detections,
-                        key=lambda d: d.location_data.relative_bounding_box.width,
-                    )
+                faces = detector.detect(frame)  # lista de (cx_rel, w_rel)
+                # La cara más grande = la persona más cercana.
+                face = max(faces, key=lambda f: f[1]) if faces else None
 
                 now = time.monotonic()
                 if face is not None:
-                    bb = face.location_data.relative_bounding_box
-                    cx = (bb.xmin + bb.width / 2) * 2 - 1  # -1..+1
-                    # bb.width es relativo (0..1): el resultado no depende de
-                    # la resolución real que haya negociado la cámara.
-                    width_px = bb.width * FRAME_W
+                    cx_rel, w_rel = face
+                    cx = cx_rel * 2 - 1  # -1..+1
+                    # w_rel es relativo (0..1): el resultado no depende de la
+                    # resolución real que haya negociado la cámara.
+                    width_px = w_rel * FRAME_W
                     distance = (FACE_WIDTH_M * FOCAL_PX) / max(width_px, 1.0)
                     # Suavizado exponencial (la detección tiembla frame a frame).
                     x_s += (cx - x_s) * 0.4

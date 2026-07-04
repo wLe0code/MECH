@@ -4,18 +4,26 @@
 # del resto del robot. El backend importa cv2/mediapipe de forma perezosa, así
 # que sin estos paquetes el server arranca igual (con la visión deshabilitada).
 #
-#   pip install -r backend/requirements-vision.txt
+# Hay DOS backends de detección de rostros; el código elige el mejor que haya:
 #
-# ⚠️ IMPORTANTE — versión de Python:
-#   mediapipe NO publica wheels para Python 3.13 (solo hasta 3.12). Si tu
-#   entorno virtual usa 3.13, verás:
-#       "Could not find a version that satisfies the requirement mediapipe"
-#   Solución: crea el .venv con Python 3.11 o 3.12. En Raspberry Pi OS
-#   Bookworm el Python del sistema es 3.11 — el más probado para este proyecto:
-#       python3.11 -m venv .venv
-#       source .venv/bin/activate
-#       pip install -r backend/requirements.txt
-#       pip install -r backend/requirements-vision.txt
+#   1. OpenCV (obligatorio para cualquier visión). Trae un detector Haar
+#      integrado que funciona en CUALQUIER Python donde OpenCV instale,
+#      incluido Python 3.13. Detecta caras frontales a distancia media —
+#      suficiente para un stand. Con solo esto la visión YA funciona:
+#
+#          pip install opencv-python-headless
+#
+#   2. MediaPipe (opcional, mejora la detección: full-range ~5 m, caras de
+#      perfil). ⚠️ mediapipe SOLO tiene wheels para Python 3.11 y 3.12
+#      (NO 3.13). Si tu .venv es 3.13 y quieres mediapipe, recréalo:
+#          python3.11 -m venv .venv && source .venv/bin/activate
+#          pip install -r backend/requirements.txt
+#
+# Instalar ambos (en Python 3.11/3.12):
+#   pip install -r backend/requirements-vision.txt
 
+# Backend de visión mínimo (funciona en Python 3.13).
 opencv-python-headless>=4.9.0
+
+# Mejora opcional — solo instala en Python 3.11/3.12.
 mediapipe>=0.10.14
