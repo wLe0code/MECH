@@ -69,7 +69,8 @@ class Vision:
         except ImportError as e:
             self.app.log(
                 f"Visión no disponible (falta instalar {e.name}): "
-                "pip install opencv-python-headless mediapipe",
+                "pip install -r backend/requirements-vision.txt "
+                "(requiere Python 3.11/3.12; mediapipe no soporta 3.13)",
                 "warn",
             )
             return False

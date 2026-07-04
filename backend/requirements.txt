@@ -19,11 +19,6 @@ google-genai>=0.3.0
 # Comunicación con Arduino
 pyserial>=3.5
 
-# Visión (detección de usuarios con la C930e). Solo hace falta en la Pi;
-# si no se instalan, el server corre igual con la visión deshabilitada.
-opencv-python-headless>=4.9.0
-mediapipe>=0.10.14
-
 # Proyección de imágenes (overlay fullscreen)
 pillow>=10.4.0
 

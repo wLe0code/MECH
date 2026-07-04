@@ -1,0 +1,21 @@
+# Dependencias OPCIONALES para la visión (detección de usuarios con la C930e).
+#
+# Se instalan aparte a propósito: si fallan, NO deben tumbar la instalación
+# del resto del robot. El backend importa cv2/mediapipe de forma perezosa, así
+# que sin estos paquetes el server arranca igual (con la visión deshabilitada).
+#
+#   pip install -r backend/requirements-vision.txt
+#
+# ⚠️ IMPORTANTE — versión de Python:
+#   mediapipe NO publica wheels para Python 3.13 (solo hasta 3.12). Si tu
+#   entorno virtual usa 3.13, verás:
+#       "Could not find a version that satisfies the requirement mediapipe"
+#   Solución: crea el .venv con Python 3.11 o 3.12. En Raspberry Pi OS
+#   Bookworm el Python del sistema es 3.11 — el más probado para este proyecto:
+#       python3.11 -m venv .venv
+#       source .venv/bin/activate
+#       pip install -r backend/requirements.txt
+#       pip install -r backend/requirements-vision.txt
+
+opencv-python-headless>=4.9.0
+mediapipe>=0.10.14

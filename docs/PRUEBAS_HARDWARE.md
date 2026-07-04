@@ -220,8 +220,11 @@ Ya está implementado. Para activarlo en la Pi:
 
 ```bash
 source .venv/bin/activate
-pip install opencv-python-headless mediapipe
+pip install -r backend/requirements-vision.txt
 ```
+
+> ⚠️ `mediapipe` solo tiene versiones para Python **3.11 y 3.12** (no 3.13).
+> Si el `.venv` está en 3.13, recréalo con 3.11: `python3.11 -m venv .venv`.
 
 Después enchufá la C930e, arrancá el server (`python -m backend.server`)
 y encendé la visión desde el panel: **Ajustes → Visión → "Detectar
