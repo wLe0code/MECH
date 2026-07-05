@@ -99,15 +99,24 @@ Servos de brazos (MG996R):
   Alimentación de los servos: 5–6V desde la PROTOBOARD (fuente externa),
   NO desde el Arduino. GND de los servos unido al GND del Uno (común).
 
-Motores DC (4×, con 2× driver L298N):
-  Cada L298N maneja 2 motores. Necesitas 2 drivers para las 4 ruedas.
-  Por cada motor: ENA/ENB (PWM) + IN1 + IN2.
-    FL: PWM→3,  IN1→2,  IN2→4
-    FR: PWM→5,  IN1→7,  IN2→8
-    BL: PWM→6,  IN1→12, IN2→13
-    BR: PWM→11, IN1→A0, IN2→A1
-  Potencia de motores: batería → entrada VMS/+12V de los L298N (NO desde la Pi).
-  GND de la batería unido al GND del Uno (común).
+Motores DC (4×, con 2× driver L298N). Cada L298N maneja 2 motores.
+Los pines de velocidad (ENA/ENB) van en los PWM del Uno (3, 5, 6, 11); los de
+dirección (IN1–IN4) en pines normales. (No se usan 9/10: son de los servos.)
+
+  L298N #1 (motores M1=FL, M2=FR):
+    ENA → 3    IN1 → 4    IN2 → 2      (motor M1)
+    ENB → 5    IN3 → 7    IN4 → 8      (motor M2)
+  L298N #2 (motores M3=BL, M4=BR):
+    ENA → 6    IN1 → 12   IN2 → 13     (motor M3)
+    ENB → 11   IN3 → A0   IN4 → A1     (motor M4)
+
+  Jumpers de cada L298N:
+    - Quita los jumpers de ENA y ENB (para controlar velocidad por PWM).
+    - Deja el jumper de 5V puesto (la placa saca su lógica de la batería;
+      si la batería es <7V, en su lugar conecta el +5V del L298N al 5V del Uno).
+
+  Potencia de motores: batería (≥7V con buena corriente) → entrada VMS/+12V de
+  los L298N (NO desde la Pi ni el Arduino). GND de la batería al GND común.
 
 Cámara C930e ↔ Raspberry Pi:   USB directo a la Pi (solo video). /dev/videoN
 Mic Steren MIC-9010 ↔ Pi:       receptor USB a la Pi.
