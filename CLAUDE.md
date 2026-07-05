@@ -192,9 +192,13 @@ arduino/mech_controller/
   mech_controller.ino ← Firmware. Modos: AUTO/IDLE/LISTEN/SPEAK/STOP.
                         Comandos: MODE, HEAD, ARM, MOVE (omnidireccional), STOP.
 
+branding/             ← Logo de MECH en alta calidad (logo-mech.jpg 4500px y
+                        logo-mech.pdf 300 dpi), réplica del SVG del sitio.
+
 web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
-  index.html          ← One-page: hero, qué es, showcase scroll estilo Apple,
-                        cómo funciona, hardware, obras, construcción, equipo.
+  index.html          ← One-page en 2 capítulos: 01·empresa (lateral sticky) y
+                        02·robot (banner MECH-1, showcase scroll estilo Apple,
+                        pipeline, hardware, obras y construcción en tiras).
   styles.css          ← Estética heredada del panel (mismo dark + acentos).
   app.js              ← Scroll showcase + typing + reveals. Sin dependencias;
                         funciona abriendo index.html con doble click (file://).
@@ -412,35 +416,34 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   server corre igual. On/off con `POST /api/vision/{on|off}` (persiste
   `VISION_ENABLED` en .env) o toggle en Ajustes; el resto de claves
   `VISION_*` son live.
-- **Nombre del robot: PHOTON** (decidido 2 jul 2026). La empresa sigue siendo
-  MECH; el robot ya NO se llama "MECH-1". Significado adaptado: *Projected ·
-  Humanized · Omnidirectional · Theatrical · Oral · Narrator* ("cada historia
-  empieza con un fotón"). OJO detección de voz: "fotón" está a 1 edición de
-  "foto" y "botón" (colisión con la tolerancia lev≤1 de `voice_phrases.py`);
-  el usuario CONOCE el riesgo y lo aceptó ("los jueces no se sacan fotos").
-  La web ya usa PHOTON; el backend sigue despertando con "ok MECH" (cambiarlo
-  a "ok photon" está en Pendiente).
+- **Nombre del robot: MECH-1** (el usuario lo dejó así "por el momento",
+  4 jul 2026). PHOTON se propuso y se DESCARTÓ. Si el usuario retoma el
+  renombre, hay candidatos ya validados contra `voice_phrases.py` (cero
+  colisiones con palabras comunes): TÓTEM, ORFEO, CÓDICE, MORFEO. NO proponer
+  nombres a 1 edición de palabras comunes (la tolerancia lev≤1 del matcher los
+  dispararía solos: musa→mesa, mito→moto, domo→como, faro→paro, fotón→foto…).
 - **Sitio web de presentación (`web/`)**: one-page estático en español con la
   estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial del
-  trabajo escrito recreado en SVG). Secciones: hero con typing "ok PHOTON" y aro
-  LED animado en CSS, qué es M.E.C.H, problemática, showcase con scroll estilo
-  Apple (4 tomas del robot con captions; sticky + crossfade), pipeline de cómo
-  funciona, hardware por capas (con el diagrama del PDF), las 5 obras de la
-  biblioteca, bitácora de construcción (7 fotos extraídas de
-  `Documentación/MECH.pdf` con pypdf), impacto social + Business Model Canvas,
-  equipo y footer con contactos (GitHub, IG @wr0mech, wromech@gmail.com).
-  Sin build ni dependencias: doble click a `web/index.html`. El showcase busca
-  `assets/robot-01.jpg` (frontal) y `assets/robot-02.jpg` (tres cuartos); si
-  faltan, muestra un render SVG del robot (template `robotRenderTpl`).
+  trabajo escrito recreado en SVG). Estructurado en DOS capítulos para no ser
+  todo vertical (pedido del usuario): **01·LA EMPRESA** (columna lateral
+  sticky con logo+índice; qué es M.E.C.H en 2×2, problemática, impacto+BMC e
+  equipo en filas horizontales) y **02·EL ROBOT** (banner horizontal "MECH-1"
+  con stats y render, showcase con scroll estilo Apple de 4 tomas, pipeline,
+  hardware por capas, obras en tira horizontal deslizable, bitácora de
+  construcción con 7 fotos extraídas de `Documentación/MECH.pdf` con pypdf).
+  Hero con typing "ok MECH" y aro LED CSS; footer con contactos (GitHub,
+  IG @wr0mech, wromech@gmail.com). Sin build ni dependencias: doble click a
+  `web/index.html`. El showcase y el banner buscan `assets/robot-01.jpg`
+  (frontal) y `assets/robot-02.jpg` (tres cuartos); si faltan, muestran un
+  render SVG del robot (template `robotRenderTpl`). El usuario preguntó por
+  React y se decidió NO usarlo (sin beneficio para un sitio estático).
+- **Logo en alta calidad (`branding/`)**: `logo-mech.jpg` (4500×2000, fondo
+  `#0e0e12`) y `logo-mech.pdf` (300 dpi) — la versión del sitio (marco
+  redondeado con skew 8° + "MECH" en Sora ExtraBold con itálica sintética),
+  generados con PIL + fuente Sora variable descargada de google/fonts.
 
 ### 🚧 Pendiente
 
-- **Renombrar el robot a PHOTON en el backend/panel**: añadir "ok photon" (y
-  variantes "foton", "fotón", "ok foton") a `VOICE_WAKE_PHRASES` en
-  `backend/config.py` / `.env.example`, y revisar los textos al usuario
-  (saludos de `mech_app`, system prompt de `llm.py`, panel) que digan
-  "MECH" refiriéndose al robot. Recordar la gotcha #14: el `.env` de la Pi
-  puede tapar el default con la lista vieja.
 - **Copiar las fotos reales del robot terminado** a `web/assets/robot-01.jpg`
   (frontal, la de la sala con la banda de píxeles) y `web/assets/robot-02.jpg`
   (tres cuartos) para que el showcase de la web use fotos en vez del render SVG.

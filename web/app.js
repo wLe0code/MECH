@@ -38,11 +38,11 @@
   );
   document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
 
-  /* ─── Hero: animación de escritura "ok PHOTON" ────────────────────── */
+  /* ─── Hero: animación de escritura "ok MECH" ──────────────────────── */
 
   const typedEl = document.getElementById('typedText');
   const phrases = [
-    '«ok PHOTON»',
+    '«ok MECH»',
     'cuéntame Don Quijote',
     'háblame de Malpaís',
     '¿quién fue Juan Santamaría?',
