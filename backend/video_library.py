@@ -43,6 +43,10 @@ class WorkMeta(TypedDict, total=False):
     # Opcional: True si esta exposición admite música de fondo bajo la
     # narración (se sube un sample a video_library/<slug>/music.<ext>).
     music: bool
+    # Opcional: lista de datos VERIFICADOS (fechas, nombres, hechos). Se
+    # inyectan al system prompt para que Claude no los invente/alucine.
+    # Solo poné aquí cosas que sepas ciertas; MECH tratará esto como verdad.
+    facts: list[str]
 
 
 # Catálogo de obras con video pre-renderizado.
@@ -93,6 +97,14 @@ WORKS: dict[str, WorkMeta] = {
             "folclor y rock, evocando los paisajes, la nostalgia y el alma de "
             "Costa Rica."
         ),
+        "facts": [
+            "Fidel Gamboa (1961–2011) fue MÚSICO, compositor y cantautor "
+            "costarricense; NO fue médico ni tuvo otra profesión.",
+            "Fidel Gamboa murió en 2011 (NO en 2018).",
+            "Malpaís fue fundada por los hermanos Fidel y Jaime Gamboa.",
+            "Tras la muerte de Fidel, la banda continuó con otros vocalistas.",
+            "Su música mezcla folclor costarricense con rock, jazz y trova.",
+        ],
         "segments": 4,
         "music": True,  # admite sample de música de fondo bajo la narración
     },
@@ -276,6 +288,13 @@ def system_prompt_section() -> str:
         "Estos son los temas/obras del stand. Usá su sinopsis para narrar con "
         "precisión (sobre todo los artistas costarricenses). Modo `immersive`.",
         "",
+        "REGLA DE EXACTITUD (importante): NO inventes datos biográficos, "
+        "fechas, profesiones ni hechos. Narrá usando la sinopsis, los 'Datos "
+        "verificados' que se dan abajo, y solo conocimiento MUY establecido. "
+        "Si no estás seguro de una fecha o un dato, NO lo digas: preferí una "
+        "narración evocativa y emotiva antes que afirmar algo que podría ser "
+        "falso. Nunca contradigas los 'Datos verificados'.",
+        "",
     ]
     for w in works:
         tag = " — [VIDEO disponible]" if w["complete"] else ""
@@ -283,6 +302,8 @@ def system_prompt_section() -> str:
         lines.append(
             f"- **{w['title']}** (`{w['slug']}`){tag}{music_tag}: {w['synopsis']}"
         )
+        for fact in w.get("facts", []):
+            lines.append(f"    - Dato verificado: {fact}")
     lines.append("")
 
     if complete:

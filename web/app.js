@@ -90,6 +90,20 @@
   const dots = Array.from(document.querySelectorAll('#showcaseDots .dot'));
   const renderTpl = document.getElementById('robotRenderTpl');
 
+  // Banner del capítulo 02: foto real del robot o render SVG de respaldo
+  const bannerMedia = document.getElementById('bannerMedia');
+  if (bannerMedia && renderTpl) {
+    const bImg = new Image();
+    bImg.onload = () => {
+      bImg.alt = '';
+      bannerMedia.appendChild(bImg);
+    };
+    bImg.onerror = () => {
+      bannerMedia.appendChild(renderTpl.content.firstElementChild.cloneNode(true));
+    };
+    bImg.src = 'assets/robot-01.jpg';
+  }
+
   // Carga cada foto; si no existe el archivo, usa el render SVG del template
   frames.forEach((frame) => {
     const media = frame.querySelector('.frame-media');

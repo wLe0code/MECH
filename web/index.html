@@ -35,11 +35,10 @@
     <span></span><span></span><span></span>
   </button>
   <div class="nav-links" id="navLinks">
+    <a href="#empresa">La empresa</a>
     <a href="#robot">El robot</a>
     <a href="#como-funciona">Cómo funciona</a>
-    <a href="#hardware">Hardware</a>
     <a href="#obras">Obras</a>
-    <a href="#construccion">Construcción</a>
     <a href="#equipo">Equipo</a>
     <a class="nav-cta" href="https://github.com/wLe0code/MECH" target="_blank" rel="noopener">GitHub ↗</a>
   </div>
@@ -89,15 +88,13 @@
       </div>
     </div>
 
-    <div class="hero-stats reveal delay-5">
-      <div class="stat"><b>5</b><span>obras en biblioteca</span></div>
-      <div class="stat"><b>1</b><span>request de IA por historia</span></div>
-      <div class="stat"><b>100%</b><span>voz a texto local</span></div>
-      <div class="stat"><b>360°</b><span>movimiento omnidireccional</span></div>
+    <div class="hero-ctas reveal delay-5">
+      <a class="btn btn-primary" href="#robot">Conocer a PHOTON</a>
+      <a class="btn btn-ghost" href="#empresa">La empresa</a>
     </div>
   </div>
 
-  <a class="scroll-hint" href="#que-es" aria-label="Bajar">
+  <a class="scroll-hint" href="#empresa" aria-label="Bajar">
     <span class="mono">DESLIZA</span>
     <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 4v14m0 0l-6-6m6 6l6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </a>
@@ -105,112 +102,442 @@
 
 <div class="pixel-band" aria-hidden="true"></div>
 
-<!-- ═══ QUÉ ES MECH ═══════════════════════════════════════════════════ -->
-<section class="section" id="que-es">
-  <div class="container">
-    <p class="section-kicker mono reveal">¿QUÉ ES M.E.C.H?</p>
-    <h2 class="section-title reveal">Cuatro letras,<br>una misión.</h2>
-    <p class="section-lead reveal">
-      MECH es una empresa tecnológica costarricense dedicada a construir
-      <b>espacios inmersivos</b> para la preservación cultural. Su primer
-      robot, <b>PHOTON</b>, lo demuestra en vivo.
-    </p>
+<!-- ═══════════════════════════════════════════════════════════════════
+     CAPÍTULO 01 · LA EMPRESA (columna lateral fija + contenido)
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="chapter" id="empresa">
+  <div class="container chapter-head reveal">
+    <span class="chapter-num mono">01</span>
+    <span class="chapter-rule" aria-hidden="true"></span>
+    <span class="chapter-label mono">LA EMPRESA</span>
+  </div>
 
-    <div class="letter-grid">
-      <article class="letter-card reveal" style="--tint: var(--red)">
-        <span class="letter mono">M</span>
-        <h3>Multisensory</h3>
-        <p>Experiencias con visión, sonido, movimiento y proyección. La cultura se vive con todos los sentidos, no solo se lee.</p>
+  <div class="container chapter-grid">
+
+    <aside class="chapter-side">
+      <svg class="wordmark side-mark" viewBox="0 0 300 120" role="img" aria-label="MECH">
+        <g transform="translate(150,60)">
+          <g transform="skewX(-8)">
+            <rect x="-132" y="-48" width="264" height="96" rx="22" fill="none" stroke="currentColor" stroke-width="10"/>
+          </g>
+          <text x="0" y="1" text-anchor="middle" dominant-baseline="central"
+                font-family="Sora, sans-serif" font-style="italic" font-weight="800"
+                font-size="56" letter-spacing="2" fill="currentColor">MECH</text>
+        </g>
+      </svg>
+      <p class="side-desc">
+        Empresa tecnológica <b>costarricense</b> dedicada a construir espacios
+        inmersivos para la preservación cultural. Diseña la ingeniería, el
+        firmware y la experiencia — de la idea al robot.
+      </p>
+      <nav class="side-index mono" aria-label="Índice de la sección">
+        <a href="#que-es">— Qué es M.E.C.H</a>
+        <a href="#problema">— La problemática</a>
+        <a href="#impacto">— Impacto y negocio</a>
+        <a href="#equipo">— El equipo</a>
+      </nav>
+    </aside>
+
+    <div class="chapter-body">
+
+      <!-- Qué es M.E.C.H -->
+      <div class="block" id="que-es">
+        <p class="block-kicker mono reveal">¿QUÉ ES M.E.C.H?</p>
+        <h2 class="block-title reveal">Cuatro letras, una misión.</h2>
+        <div class="letter-grid">
+          <article class="letter-card reveal" style="--tint: var(--red)">
+            <span class="letter mono">M</span>
+            <h3>Multisensory</h3>
+            <p>Experiencias con visión, sonido, movimiento y proyección. La cultura se vive con todos los sentidos.</p>
+          </article>
+          <article class="letter-card reveal" style="--tint: var(--purple-mid)">
+            <span class="letter mono">E</span>
+            <h3>Engineering</h3>
+            <p>Ingeniería integrada: sistemas físicos y mecatrónicos diseñados y ensamblados por el propio equipo.</p>
+          </article>
+          <article class="letter-card reveal" style="--tint: var(--teal)">
+            <span class="letter mono">C</span>
+            <h3>Cyberphysical</h3>
+            <p>Firmware propio que une lo digital con lo físico: la IA decide y los motores, luces y proyectores obedecen.</p>
+          </article>
+          <article class="letter-card reveal" style="--tint: var(--amber)">
+            <span class="letter mono">H</span>
+            <h3>Humanized</h3>
+            <p>Diseñado para la experiencia humana: reacciona a las personas, escucha y responde en español.</p>
+          </article>
+        </div>
+      </div>
+
+      <!-- La problemática -->
+      <div class="block" id="problema">
+        <p class="block-kicker mono reveal">LA PROBLEMÁTICA</p>
+        <h2 class="big-statement reveal">
+          Las nuevas generaciones crecen en entornos cada vez más tecnológicos…
+          <span class="dim">y con cada vez menos arraigo cultural.</span>
+        </h2>
+        <p class="block-lead reveal">
+          Hoy es difícil encontrar un museo donde cada obra tenga una exposición
+          viva que la explique. Ante esa distancia, la sociedad pierde interés
+          por el arte y las tradiciones se van apagando. MECH ataca ese problema
+          con espacios inmersivos que narran cualquier obra <b>con solo
+          pedírselo por voz</b> — una manera innovadora, escalable y fácil de
+          comprender de darle visibilidad a los artistas de cada región.
+        </p>
+      </div>
+
+      <!-- Impacto + negocio -->
+      <div class="block" id="impacto">
+        <p class="block-kicker mono reveal">IMPACTO SOCIAL</p>
+        <h2 class="block-title reveal">Tecnología que suma, no que sustituye.</h2>
+
+        <div class="impact-rows">
+          <div class="impact-row reveal" style="--tint: var(--teal)">
+            <h3>Preserva la cultura</h3>
+            <p>Convierte cualquier sala en una exposición viva: la obra se explica sola, con emoción, al alcance de un comando de voz.</p>
+          </div>
+          <div class="impact-row reveal" style="--tint: var(--purple-mid)">
+            <h3>No reemplaza empleos</h3>
+            <p>PHOTON cubre un trabajo que hoy casi ningún museo implementa. Es un complemento a la labor humana, no una amenaza.</p>
+          </div>
+          <div class="impact-row reveal" style="--tint: var(--amber)">
+            <h3>Empodera a los artistas</h3>
+            <p>Artistas locales pueden exponer su obra de forma autónoma, sin pagar un expositor — más económico y accesible.</p>
+          </div>
+        </div>
+
+        <blockquote class="impact-quote reveal">
+          «El objetivo final es claro: aportar a un mundo más lleno de cultura.»
+          <cite class="mono">— Trabajo escrito de MECH, WRO 2026</cite>
+        </blockquote>
+
+        <details class="bmc reveal">
+          <summary class="mono">VER MODELO DE NEGOCIO (BUSINESS MODEL CANVAS) +</summary>
+          <img src="assets/canvas-negocio.png" alt="Business Model Canvas de MECH" loading="lazy">
+        </details>
+      </div>
+
+      <!-- El equipo -->
+      <div class="block" id="equipo">
+        <p class="block-kicker mono reveal">EL EQUIPO</p>
+        <h2 class="block-title reveal">Tres ingenieros, un robot.</h2>
+
+        <div class="team-rows">
+          <article class="team-row reveal">
+            <span class="avatar" style="--tint: var(--red)">AR</span>
+            <div>
+              <h3>Alejandro Ramírez <span class="team-role mono">INGENIERO MECÁNICO</span></h3>
+              <p>Supervisó la producción y materialización del robot, cuidando que
+              cada componente fuera amigable con el diseño. Clave para iterar
+              prototipos y lograr un ecosistema inmersivo funcional y estético.</p>
+            </div>
+          </article>
+          <article class="team-row reveal">
+            <span class="avatar" style="--tint: var(--purple-mid)">LR</span>
+            <div>
+              <h3>Leonardo Ramírez <span class="team-role mono">INGENIERO MECATRÓNICO</span></h3>
+              <p>Diseñó los sistemas mecatrónicos y el «desarrollo neuronal» del
+              robot: cada orden y tarea que PHOTON ejecuta nació de sus esquemas
+              y diagramas de orquestación.</p>
+            </div>
+          </article>
+          <article class="team-row reveal">
+            <span class="avatar" style="--tint: var(--teal)">JJ</span>
+            <div>
+              <h3>Jimmy Jara <span class="team-role mono">INGENIERO EN COMPUTADORES</span></h3>
+              <p>El puente entre la estructura y el cerebro: desarrolló los sistemas
+              de movimiento, energía, comunicación, sonido y visión que dan vida
+              al proyecto.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+
+    </div><!-- /chapter-body -->
+  </div><!-- /chapter-grid -->
+</section>
+
+<div class="pixel-band flip" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     CAPÍTULO 02 · EL ROBOT (banner horizontal + showcase + tecnología)
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="chapter chapter-dark" id="robot">
+  <div class="container chapter-head reveal">
+    <span class="chapter-num mono">02</span>
+    <span class="chapter-rule" aria-hidden="true"></span>
+    <span class="chapter-label mono">EL ROBOT</span>
+  </div>
+
+  <!-- Banner de presentación: texto a la izquierda, robot a la derecha -->
+  <div class="container robot-banner">
+    <div class="banner-text">
+      <p class="block-kicker mono reveal">MECH PRESENTA A</p>
+      <h2 class="banner-title reveal">PHOTON</h2>
+      <p class="banner-acronym mono reveal">
+        <span class="accent-red">P</span>rojected ·
+        <span class="accent-purple">H</span>umanized ·
+        <span class="accent-teal">O</span>mnidirectional ·
+        <span class="accent-amber">T</span>heatrical ·
+        <span class="accent-red">O</span>ral ·
+        <span class="accent-purple">N</span>arrator
+      </p>
+      <p class="block-lead reveal">
+        Como la partícula de luz: cada historia que proyecta empieza con un
+        fotón. Cuerpo cilíndrico, cabeza proyectora y una franja de píxeles
+        que es su firma visual.
+      </p>
+      <div class="banner-stats reveal">
+        <div class="stat"><b>5</b><span>obras en biblioteca</span></div>
+        <div class="stat"><b>1</b><span>request de IA por historia</span></div>
+        <div class="stat"><b>100%</b><span>voz a texto local</span></div>
+        <div class="stat"><b>360°</b><span>movimiento omnidireccional</span></div>
+      </div>
+    </div>
+    <div class="banner-media reveal" id="bannerMedia" aria-hidden="true"></div>
+  </div>
+
+  <!-- Showcase estilo Apple (scroll-driven) -->
+  <div class="showcase" id="showcase">
+    <div class="showcase-sticky">
+      <p class="showcase-kicker mono">PHOTON · PROTOTIPO FUNCIONAL</p>
+
+      <div class="showcase-stage" id="showcaseStage">
+
+        <figure class="frame" data-img="assets/robot-01.jpg" data-viewbox="0 0 600 780">
+          <div class="frame-media"></div>
+          <figcaption class="frame-caption cap-left">
+            <h3>Este es PHOTON.</h3>
+            <p>Un expositor cultural autónomo, diseñado y construido desde
+            cero: estructura, electrónica, firmware e identidad visual.</p>
+          </figcaption>
+        </figure>
+
+        <figure class="frame" data-img="assets/robot-02.jpg" data-viewbox="0 0 600 780">
+          <div class="frame-media"></div>
+          <figcaption class="frame-caption cap-right">
+            <h3>Una cabeza que proyecta mundos.</h3>
+            <p>Proyector HD para el espacio inmersivo y cámara
+            <span class="mono">Logitech C930e</span> con 90° de visión para
+            detectar a quien se acerca.</p>
+          </figcaption>
+        </figure>
+
+        <figure class="frame zoom-head" data-img="assets/robot-01.jpg" data-viewbox="110 120 380 240">
+          <div class="frame-media"></div>
+          <figcaption class="frame-caption cap-left">
+            <h3>Dile «ok PHOTON».</h3>
+            <p>Despierta con la voz, escucha aun con ruido de evento y
+            responde en español. Un aro de 12 LEDs le pone cara a cada
+            fase: escuchando, pensando, narrando.</p>
+          </figcaption>
+        </figure>
+
+        <figure class="frame" data-img="assets/robot-final.jpg" data-viewbox="0 0 600 780">
+          <div class="frame-media"></div>
+          <figcaption class="frame-caption cap-right">
+            <h3>Y además, se mueve.</h3>
+            <p>Ruedas omnidireccionales tipo mecanum: gira hacia el visitante,
+            se acerca, gesticula con los brazos y acompaña cada relato
+            con movimiento real.</p>
+          </figcaption>
+        </figure>
+
+        <div class="showcase-dots" id="showcaseDots" aria-hidden="true">
+          <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cómo funciona -->
+  <div class="section" id="como-funciona">
+    <div class="container">
+      <p class="section-kicker mono reveal">CÓMO FUNCIONA</p>
+      <h2 class="section-title reveal">De tu voz a un mundo proyectado<br>en segundos.</h2>
+      <p class="section-lead reveal">
+        Todo el flujo lo orquesta una Raspberry Pi 5 dentro del robot. La IA
+        recibe <b>una sola consulta</b> y devuelve el guion completo de la
+        exposición: rápido, económico y predecible.
+      </p>
+
+      <ol class="pipeline">
+        <li class="pipe-step reveal" style="--tint: var(--amber)">
+          <span class="pipe-num mono">01</span>
+          <h3>Escucha</h3>
+          <p>El micrófono inalámbrico capta tu voz y <b>faster‑whisper</b> la transcribe <b>100% local</b>, sin depender de internet.</p>
+          <span class="pipe-tag mono">STT · EN LA PI</span>
+        </li>
+        <li class="pipe-step reveal" style="--tint: var(--purple-mid)">
+          <span class="pipe-num mono">02</span>
+          <h3>Piensa</h3>
+          <p><b>Claude</b> (Anthropic) recibe la petición y devuelve un plan estructurado: narración por escenas, visuales y gestos.</p>
+          <span class="pipe-tag mono">IA · 1 REQUEST</span>
+        </li>
+        <li class="pipe-step reveal" style="--tint: var(--red)">
+          <span class="pipe-num mono">03</span>
+          <h3>Narra</h3>
+          <p>La voz se genera con <b>ElevenLabs</b> en español — incluso con voces distintas por personaje.</p>
+          <span class="pipe-tag mono">TTS · STREAMING</span>
+        </li>
+        <li class="pipe-step reveal" style="--tint: var(--teal)">
+          <span class="pipe-num mono">04</span>
+          <h3>Proyecta</h3>
+          <p>Videos pre‑renderizados de la biblioteca cultural, o imágenes generadas al vuelo con <b>Gemini</b> si pides algo nuevo.</p>
+          <span class="pipe-tag mono">VIDEO + IMAGEN</span>
+        </li>
+        <li class="pipe-step reveal" style="--tint: var(--purple)">
+          <span class="pipe-num mono">05</span>
+          <h3>Se mueve</h3>
+          <p>Un <b>Arduino Uno</b> ejecuta gestos con los brazos, giros con las ruedas mecanum y anima el aro de LEDs.</p>
+          <span class="pipe-tag mono">FIRMWARE · SERIAL</span>
+        </li>
+      </ol>
+
+      <div class="how-notes reveal">
+        <div class="note-chip mono">✦ Detección anti‑ruido: mide el ruido del ambiente y solo graba cuando tu voz lo supera.</div>
+        <div class="note-chip mono">✦ Si nadie está cerca, la cámara lo sabe: PHOTON narra sin proyectar en vano.</div>
+        <div class="note-chip mono">✦ Paro de emergencia y panel de supervisión web incluidos.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hardware -->
+  <div class="section hardware" id="hardware">
+    <div class="container">
+      <p class="section-kicker mono reveal">HARDWARE</p>
+      <h2 class="section-title reveal">Tres capas,<br>un solo organismo.</h2>
+
+      <div class="hw-layout">
+        <div class="hw-diagram reveal">
+          <img src="assets/diagrama-capas.png" alt="Diagrama de las tres capas físicas de PHOTON: superior (webcam y proyector), central (brazos, Raspberry Pi, micrófono y parlante) y mecánica (Arduino, ruedas, motores y fuente de poder)" loading="lazy">
+        </div>
+
+        <div class="hw-lists">
+          <div class="hw-layer reveal" style="--tint: var(--purple-mid)">
+            <h3 class="mono">CAPA SUPERIOR</h3>
+            <ul>
+              <li><b>Proyector HD</b> — el corazón del espacio inmersivo</li>
+              <li><b>Logitech C930e</b> — cámara 1080p, campo visual de 90°</li>
+            </ul>
+          </div>
+          <div class="hw-layer reveal" style="--tint: var(--red)">
+            <h3 class="mono">CAPA CENTRAL</h3>
+            <ul>
+              <li><b>Raspberry Pi 5 (8 GB)</b> — el cerebro de PHOTON</li>
+              <li><b>Steren MIC‑9010</b> — micrófono inalámbrico de solapa</li>
+              <li><b>Parlante JBL Charge</b> — la voz del robot</li>
+              <li><b>2 brazos servo MG996R</b> — gestos y saludos</li>
+            </ul>
+          </div>
+          <div class="hw-layer reveal" style="--tint: var(--teal)">
+            <h3 class="mono">CAPA MECÁNICA</h3>
+            <ul>
+              <li><b>Arduino Uno R3</b> — orquestación del movimiento</li>
+              <li><b>2× driver L298N + 4 motores DC</b> — tracción total</li>
+              <li><b>Ruedas mecanum</b> — desplazamiento en cualquier dirección</li>
+              <li><b>Aro NeoPixel de 12 LEDs</b> — estados visuales estilo asistente</li>
+              <li><b>Batería 12V 21.6 Ah</b> — energía para todo el sistema</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Obras culturales (tira horizontal) -->
+  <div class="section" id="obras">
+    <div class="container">
+      <p class="section-kicker mono reveal">BIBLIOTECA CULTURAL</p>
+      <h2 class="section-title reveal">Las historias que PHOTON<br>ya sabe contar.</h2>
+      <p class="section-lead reveal">
+        Cada obra vive en la biblioteca del robot con videos pre‑renderizados
+        por escena. ¿Pides algo que no está? PHOTON improvisa la narración y
+        genera las imágenes en vivo. Desliza →
+      </p>
+    </div>
+
+    <div class="works-strip reveal">
+      <article class="work-card" style="--tint: var(--amber)">
+        <span class="work-slug mono">don_quijote</span>
+        <h3>Don Quijote de la Mancha</h3>
+        <p class="work-author mono">Miguel de Cervantes</p>
+        <p>Un hidalgo enloquecido por las novelas de caballería sale junto a Sancho Panza a buscar aventuras imposibles.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">VOZ DE PERSONAJE</span></div>
       </article>
-      <article class="letter-card reveal" style="--tint: var(--purple-mid)">
-        <span class="letter mono">E</span>
-        <h3>Engineering</h3>
-        <p>Ingeniería integrada: sistemas físicos y mecatrónicos diseñados y ensamblados por el propio equipo.</p>
+      <article class="work-card" style="--tint: var(--red)">
+        <span class="work-slug mono">campana_1856</span>
+        <h3>Campaña Nacional de 1856</h3>
+        <p class="work-author mono">Historia de Costa Rica</p>
+        <p>Costa Rica y Centroamérica se unen para expulsar al filibustero William Walker. La gesta de Juan Santamaría en la Batalla de Rivas.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">HISTORIA VIVA</span></div>
       </article>
-      <article class="letter-card reveal" style="--tint: var(--teal)">
-        <span class="letter mono">C</span>
-        <h3>Cyberphysical</h3>
-        <p>Firmware propio que une el mundo digital con el físico: la IA decide, y los motores, luces y proyectores obedecen.</p>
+      <article class="work-card" style="--tint: var(--purple-mid)">
+        <span class="work-slug mono">jimenez_deredia</span>
+        <h3>Esculturas de Jiménez Deredia</h3>
+        <p class="work-author mono">Jorge Jiménez Deredia</p>
+        <p>Esferas y figuras en mármol y bronce: la serie «Génesis» fusiona el simbolismo precolombino de Costa Rica con la transformación y la vida.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">ESCULTURA</span></div>
       </article>
-      <article class="letter-card reveal" style="--tint: var(--amber)">
-        <span class="letter mono">H</span>
-        <h3>Humanized</h3>
-        <p>Diseñado para la experiencia humana: reacciona a las personas que se acercan, escucha y responde en español.</p>
+      <article class="work-card" style="--tint: var(--teal)">
+        <span class="work-slug mono">malpais</span>
+        <h3>Música de Malpaís</h3>
+        <p class="work-author mono">Malpaís · banda costarricense</p>
+        <p>El folclor y el rock de Fidel Gamboa: paisajes, nostalgia y el alma de Costa Rica en cada canción.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">♫ MÚSICA DE FONDO</span></div>
+      </article>
+      <article class="work-card" style="--tint: var(--amber)">
+        <span class="work-slug mono">isidro_con_wong</span>
+        <h3>Cuadros de Isidro Con Wong</h3>
+        <p class="work-author mono">Isidro Con Wong · pintor</p>
+        <p>Pionero costarricense del realismo mágico: toros rojos, soles y lunas que retratan la mística rural con color vibrante.</p>
+        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">PINTURA</span></div>
+      </article>
+      <article class="work-card work-card-open">
+        <span class="work-slug mono">tu_obra_aqui</span>
+        <h3>¿Y la que falta?</h3>
+        <p>La biblioteca es abierta: cualquier museo o artista puede sumar su obra con videos por escena — PHOTON la contará al día siguiente.</p>
+        <div class="work-tags"><span class="mono">+ IMPROVISACIÓN CON IA</span></div>
       </article>
     </div>
   </div>
-</section>
 
-<!-- ═══ EL PROBLEMA ═══════════════════════════════════════════════════ -->
-<section class="section problem" id="problema">
-  <div class="container narrow">
-    <p class="section-kicker mono reveal">LA PROBLEMÁTICA</p>
-    <h2 class="big-statement reveal">
-      Las nuevas generaciones crecen en entornos cada vez más tecnológicos…
-      <span class="dim">y con cada vez menos arraigo cultural.</span>
-    </h2>
-    <p class="section-lead reveal">
-      Hoy es difícil encontrar un museo donde cada obra tenga una exposición
-      viva que la explique. Ante esa distancia, la sociedad pierde interés por
-      el arte y las tradiciones se van apagando. PHOTON ataca ese problema con
-      un espacio inmersivo que narra cualquier obra <b>con solo pedírselo por voz</b> —
-      una manera innovadora, escalable y fácil de comprender de darle
-      visibilidad a los artistas de cada región.
-    </p>
-  </div>
-</section>
+  <!-- Construcción -->
+  <div class="section build" id="construccion">
+    <div class="container">
+      <p class="section-kicker mono reveal">BITÁCORA DE CONSTRUCCIÓN</p>
+      <h2 class="section-title reveal">Del esqueleto de aluminio<br>al robot con identidad.</h2>
+      <p class="section-lead reveal">Siete etapas, cero atajos. Desliza para ver la evolución →</p>
+    </div>
 
-<!-- ═══ SHOWCASE ESTILO APPLE (scroll-driven) ═════════════════════════ -->
-<section class="showcase" id="robot">
-  <div class="showcase-sticky">
-    <p class="showcase-kicker mono">PHOTON · PROTOTIPO FUNCIONAL</p>
-
-    <div class="showcase-stage" id="showcaseStage">
-
-      <figure class="frame" data-img="assets/robot-01.jpg" data-viewbox="0 0 600 780">
-        <div class="frame-media"></div>
-        <figcaption class="frame-caption cap-left">
-          <h3>Este es PHOTON.</h3>
-          <p><span class="mono">P</span>rojected · <span class="mono">H</span>umanized ·
-          <span class="mono">O</span>mnidirectional · <span class="mono">T</span>heatrical ·
-          <span class="mono">O</span>ral · <span class="mono">N</span>arrator.
-          Como la partícula de luz: cada historia que proyecta empieza con un fotón.</p>
-        </figcaption>
+    <div class="build-strip reveal" id="buildStrip">
+      <figure class="build-item">
+        <img src="assets/build-01.jpg" alt="Estructura básica del robot en perfiles de aluminio" loading="lazy">
+        <figcaption><span class="mono">ETAPA 01</span> Estructura básica del robot</figcaption>
       </figure>
-
-      <figure class="frame" data-img="assets/robot-02.jpg" data-viewbox="0 0 600 780">
-        <div class="frame-media"></div>
-        <figcaption class="frame-caption cap-right">
-          <h3>Una cabeza que proyecta mundos.</h3>
-          <p>Proyector HD para el espacio inmersivo y cámara
-          <span class="mono">Logitech C930e</span> con 90° de visión para
-          detectar a quien se acerca.</p>
-        </figcaption>
+      <figure class="build-item">
+        <img src="assets/build-02.jpg" alt="Primer reforzamiento de la estructura con anillos blancos" loading="lazy">
+        <figcaption><span class="mono">ETAPA 02</span> Primer reforzamiento</figcaption>
       </figure>
-
-      <figure class="frame zoom-head" data-img="assets/robot-01.jpg" data-viewbox="110 120 380 240">
-        <div class="frame-media"></div>
-        <figcaption class="frame-caption cap-left">
-          <h3>Dile «ok PHOTON».</h3>
-          <p>Despierta con la voz, escucha aun con ruido de evento y
-          responde en español. Un aro de 12 LEDs le pone cara a cada
-          fase: escuchando, pensando, narrando.</p>
-        </figcaption>
+      <figure class="build-item">
+        <img src="assets/build-03.jpg" alt="Recubrimiento exterior negro del cuerpo cilíndrico" loading="lazy">
+        <figcaption><span class="mono">ETAPA 03</span> Recubrimiento de la estructura</figcaption>
       </figure>
-
-      <figure class="frame" data-img="assets/robot-final.jpg" data-viewbox="0 0 600 780">
-        <div class="frame-media"></div>
-        <figcaption class="frame-caption cap-right">
-          <h3>Y además, se mueve.</h3>
-          <p>Ruedas omnidireccionales tipo mecanum: gira hacia el visitante,
-          se acerca, gesticula con los brazos y acompaña cada relato
-          con movimiento real.</p>
-        </figcaption>
+      <figure class="build-item">
+        <img src="assets/build-04.jpg" alt="Vista superior del segundo reforzamiento interno" loading="lazy">
+        <figcaption><span class="mono">ETAPA 04</span> Segundo reforzamiento</figcaption>
       </figure>
-
-      <div class="showcase-dots" id="showcaseDots" aria-hidden="true">
-        <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-      </div>
+      <figure class="build-item">
+        <img src="assets/build-05.jpg" alt="Creación del soporte del proyector y la cámara" loading="lazy">
+        <figcaption><span class="mono">ETAPA 05</span> Soporte de proyector y cámara</figcaption>
+      </figure>
+      <figure class="build-item">
+        <img src="assets/build-06.jpg" alt="Sistema de enfriamiento del módulo principal de proyección" loading="lazy">
+        <figcaption><span class="mono">ETAPA 06</span> Sistema de enfriamiento</figcaption>
+      </figure>
+      <figure class="build-item">
+        <img src="assets/robot-final.jpg" alt="Modelo final del robot PHOTON en un pasillo" loading="lazy">
+        <figcaption><span class="mono">ETAPA 07</span> Modelo final: PHOTON</figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -289,270 +616,6 @@
   </svg>
 </template>
 
-<div class="pixel-band flip" aria-hidden="true"></div>
-
-<!-- ═══ CÓMO FUNCIONA ═════════════════════════════════════════════════ -->
-<section class="section" id="como-funciona">
-  <div class="container">
-    <p class="section-kicker mono reveal">CÓMO FUNCIONA</p>
-    <h2 class="section-title reveal">De tu voz a un mundo proyectado<br>en segundos.</h2>
-    <p class="section-lead reveal">
-      Todo el flujo lo orquesta una Raspberry Pi 5 dentro del robot. La IA
-      recibe <b>una sola consulta</b> y devuelve el guion completo de la
-      exposición: rápido, económico y predecible.
-    </p>
-
-    <ol class="pipeline">
-      <li class="pipe-step reveal" style="--tint: var(--amber)">
-        <span class="pipe-num mono">01</span>
-        <h3>Escucha</h3>
-        <p>El micrófono inalámbrico capta tu voz y <b>faster‑whisper</b> la transcribe <b>100% local</b>, sin depender de internet.</p>
-        <span class="pipe-tag mono">STT · EN LA PI</span>
-      </li>
-      <li class="pipe-step reveal" style="--tint: var(--purple-mid)">
-        <span class="pipe-num mono">02</span>
-        <h3>Piensa</h3>
-        <p><b>Claude</b> (Anthropic) recibe la petición y devuelve un plan estructurado: narración por escenas, visuales y gestos.</p>
-        <span class="pipe-tag mono">IA · 1 REQUEST</span>
-      </li>
-      <li class="pipe-step reveal" style="--tint: var(--red)">
-        <span class="pipe-num mono">03</span>
-        <h3>Narra</h3>
-        <p>La voz se genera con <b>ElevenLabs</b> en español — incluso con voces distintas por personaje.</p>
-        <span class="pipe-tag mono">TTS · STREAMING</span>
-      </li>
-      <li class="pipe-step reveal" style="--tint: var(--teal)">
-        <span class="pipe-num mono">04</span>
-        <h3>Proyecta</h3>
-        <p>Videos pre‑renderizados de la biblioteca cultural, o imágenes generadas al vuelo con <b>Gemini</b> si pides algo nuevo.</p>
-        <span class="pipe-tag mono">VIDEO + IMAGEN</span>
-      </li>
-      <li class="pipe-step reveal" style="--tint: var(--purple)">
-        <span class="pipe-num mono">05</span>
-        <h3>Se mueve</h3>
-        <p>Un <b>Arduino Uno</b> ejecuta gestos con los brazos, giros con las ruedas mecanum y anima el aro de LEDs.</p>
-        <span class="pipe-tag mono">FIRMWARE · SERIAL</span>
-      </li>
-    </ol>
-
-    <div class="how-notes reveal">
-      <div class="note-chip mono">✦ Detección anti‑ruido: mide el ruido del ambiente y solo graba cuando tu voz lo supera.</div>
-      <div class="note-chip mono">✦ Si nadie está cerca, la cámara lo sabe: PHOTON narra sin proyectar en vano.</div>
-      <div class="note-chip mono">✦ Paro de emergencia y panel de supervisión web incluidos.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ HARDWARE ══════════════════════════════════════════════════════ -->
-<section class="section hardware" id="hardware">
-  <div class="container">
-    <p class="section-kicker mono reveal">HARDWARE</p>
-    <h2 class="section-title reveal">Tres capas,<br>un solo organismo.</h2>
-
-    <div class="hw-layout">
-      <div class="hw-diagram reveal">
-        <img src="assets/diagrama-capas.png" alt="Diagrama de las tres capas físicas de PHOTON: superior (webcam y proyector), central (brazos, Raspberry Pi, micrófono y parlante) y mecánica (Arduino, ruedas, motores y fuente de poder)" loading="lazy">
-      </div>
-
-      <div class="hw-lists">
-        <div class="hw-layer reveal" style="--tint: var(--purple-mid)">
-          <h3 class="mono">CAPA SUPERIOR</h3>
-          <ul>
-            <li><b>Proyector HD</b> — el corazón del espacio inmersivo</li>
-            <li><b>Logitech C930e</b> — cámara 1080p, campo visual de 90°</li>
-          </ul>
-        </div>
-        <div class="hw-layer reveal" style="--tint: var(--red)">
-          <h3 class="mono">CAPA CENTRAL</h3>
-          <ul>
-            <li><b>Raspberry Pi 5 (8 GB)</b> — el cerebro de PHOTON</li>
-            <li><b>Steren MIC‑9010</b> — micrófono inalámbrico de solapa</li>
-            <li><b>Parlante JBL Charge</b> — la voz del robot</li>
-            <li><b>2 brazos servo MG996R</b> — gestos y saludos</li>
-          </ul>
-        </div>
-        <div class="hw-layer reveal" style="--tint: var(--teal)">
-          <h3 class="mono">CAPA MECÁNICA</h3>
-          <ul>
-            <li><b>Arduino Uno R3</b> — orquestación del movimiento</li>
-            <li><b>2× driver L298N + 4 motores DC</b> — tracción total</li>
-            <li><b>Ruedas mecanum</b> — desplazamiento en cualquier dirección</li>
-            <li><b>Aro NeoPixel de 12 LEDs</b> — estados visuales estilo asistente</li>
-            <li><b>Batería 12V 21.6 Ah</b> — energía para todo el sistema</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="pixel-band" aria-hidden="true"></div>
-
-<!-- ═══ OBRAS CULTURALES ══════════════════════════════════════════════ -->
-<section class="section" id="obras">
-  <div class="container">
-    <p class="section-kicker mono reveal">BIBLIOTECA CULTURAL</p>
-    <h2 class="section-title reveal">Las historias que PHOTON<br>ya sabe contar.</h2>
-    <p class="section-lead reveal">
-      Cada obra vive en la biblioteca del robot con videos pre‑renderizados
-      por escena. ¿Pides algo que no está? PHOTON improvisa la narración y
-      genera las imágenes en vivo.
-    </p>
-
-    <div class="works-grid">
-      <article class="work-card reveal" style="--tint: var(--amber)">
-        <span class="work-slug mono">don_quijote</span>
-        <h3>Don Quijote de la Mancha</h3>
-        <p class="work-author mono">Miguel de Cervantes</p>
-        <p>Un hidalgo enloquecido por las novelas de caballería sale junto a Sancho Panza a buscar aventuras imposibles.</p>
-        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">VOZ DE PERSONAJE</span></div>
-      </article>
-      <article class="work-card reveal" style="--tint: var(--red)">
-        <span class="work-slug mono">campana_1856</span>
-        <h3>Campaña Nacional de 1856</h3>
-        <p class="work-author mono">Historia de Costa Rica</p>
-        <p>Costa Rica y Centroamérica se unen para expulsar al filibustero William Walker. La gesta de Juan Santamaría en la Batalla de Rivas.</p>
-        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">HISTORIA VIVA</span></div>
-      </article>
-      <article class="work-card reveal" style="--tint: var(--purple-mid)">
-        <span class="work-slug mono">jimenez_deredia</span>
-        <h3>Esculturas de Jiménez Deredia</h3>
-        <p class="work-author mono">Jorge Jiménez Deredia</p>
-        <p>Esferas y figuras en mármol y bronce: la serie «Génesis» fusiona el simbolismo precolombino de Costa Rica con la transformación y la vida.</p>
-        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">ESCULTURA</span></div>
-      </article>
-      <article class="work-card reveal" style="--tint: var(--teal)">
-        <span class="work-slug mono">malpais</span>
-        <h3>Música de Malpaís</h3>
-        <p class="work-author mono">Malpaís · banda costarricense</p>
-        <p>El folclor y el rock de Fidel Gamboa: paisajes, nostalgia y el alma de Costa Rica en cada canción.</p>
-        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">♫ MÚSICA DE FONDO</span></div>
-      </article>
-      <article class="work-card reveal" style="--tint: var(--amber)">
-        <span class="work-slug mono">isidro_con_wong</span>
-        <h3>Cuadros de Isidro Con Wong</h3>
-        <p class="work-author mono">Isidro Con Wong · pintor</p>
-        <p>Pionero costarricense del realismo mágico: toros rojos, soles y lunas que retratan la mística rural con color vibrante.</p>
-        <div class="work-tags"><span class="mono">4 ESCENAS</span><span class="mono">PINTURA</span></div>
-      </article>
-      <article class="work-card work-card-open reveal">
-        <span class="work-slug mono">tu_obra_aqui</span>
-        <h3>¿Y la que falta?</h3>
-        <p>La biblioteca es abierta: cualquier museo o artista puede sumar su obra con videos por escena — PHOTON la contará al día siguiente.</p>
-        <div class="work-tags"><span class="mono">+ IMPROVISACIÓN CON IA</span></div>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ CONSTRUCCIÓN ══════════════════════════════════════════════════ -->
-<section class="section build" id="construccion">
-  <div class="container">
-    <p class="section-kicker mono reveal">BITÁCORA DE CONSTRUCCIÓN</p>
-    <h2 class="section-title reveal">Del esqueleto de aluminio<br>al robot con identidad.</h2>
-    <p class="section-lead reveal">Siete etapas, cero atajos. Desliza para ver la evolución →</p>
-  </div>
-
-  <div class="build-strip reveal" id="buildStrip">
-    <figure class="build-item">
-      <img src="assets/build-01.jpg" alt="Estructura básica del robot en perfiles de aluminio" loading="lazy">
-      <figcaption><span class="mono">ETAPA 01</span> Estructura básica del robot</figcaption>
-    </figure>
-    <figure class="build-item">
-      <img src="assets/build-02.jpg" alt="Primer reforzamiento de la estructura con anillos blancos" loading="lazy">
-      <figcaption><span class="mono">ETAPA 02</span> Primer reforzamiento</figcaption>
-    </figure>
-    <figure class="build-item">
-      <img src="assets/build-03.jpg" alt="Recubrimiento exterior negro del cuerpo cilíndrico" loading="lazy">
-      <figcaption><span class="mono">ETAPA 03</span> Recubrimiento de la estructura</figcaption>
-    </figure>
-    <figure class="build-item">
-      <img src="assets/build-04.jpg" alt="Vista superior del segundo reforzamiento interno" loading="lazy">
-      <figcaption><span class="mono">ETAPA 04</span> Segundo reforzamiento</figcaption>
-    </figure>
-    <figure class="build-item">
-      <img src="assets/build-05.jpg" alt="Creación del soporte del proyector y la cámara" loading="lazy">
-      <figcaption><span class="mono">ETAPA 05</span> Soporte de proyector y cámara</figcaption>
-    </figure>
-    <figure class="build-item">
-      <img src="assets/build-06.jpg" alt="Sistema de enfriamiento del módulo principal de proyección" loading="lazy">
-      <figcaption><span class="mono">ETAPA 06</span> Sistema de enfriamiento</figcaption>
-    </figure>
-    <figure class="build-item">
-      <img src="assets/robot-final.jpg" alt="Modelo final del robot PHOTON en un pasillo" loading="lazy">
-      <figcaption><span class="mono">ETAPA 07</span> Modelo final: PHOTON</figcaption>
-    </figure>
-  </div>
-</section>
-
-<!-- ═══ IMPACTO ═══════════════════════════════════════════════════════ -->
-<section class="section impact" id="impacto">
-  <div class="container narrow">
-    <p class="section-kicker mono reveal">IMPACTO SOCIAL</p>
-    <h2 class="section-title reveal">Tecnología que suma,<br>no que sustituye.</h2>
-
-    <div class="impact-grid">
-      <div class="impact-card reveal">
-        <h3>Preserva la cultura</h3>
-        <p>Convierte cualquier sala en una exposición viva: la obra se explica sola, con emoción, al alcance de un comando de voz.</p>
-      </div>
-      <div class="impact-card reveal">
-        <h3>No reemplaza empleos</h3>
-        <p>PHOTON cubre un trabajo que hoy casi ningún museo implementa. Es un complemento a la labor humana, no una amenaza.</p>
-      </div>
-      <div class="impact-card reveal">
-        <h3>Empodera a los artistas</h3>
-        <p>Artistas locales pueden exponer su obra de forma autónoma, sin pagar un expositor — más económico y más accesible.</p>
-      </div>
-    </div>
-
-    <blockquote class="impact-quote reveal">
-      «El objetivo final es claro: aportar a un mundo más lleno de cultura.»
-      <cite class="mono">— Trabajo escrito de MECH, WRO 2026</cite>
-    </blockquote>
-
-    <details class="bmc reveal">
-      <summary class="mono">VER MODELO DE NEGOCIO (BUSINESS MODEL CANVAS) +</summary>
-      <img src="assets/canvas-negocio.png" alt="Business Model Canvas de MECH" loading="lazy">
-    </details>
-  </div>
-</section>
-
-<!-- ═══ EQUIPO ════════════════════════════════════════════════════════ -->
-<section class="section" id="equipo">
-  <div class="container">
-    <p class="section-kicker mono reveal">EL EQUIPO</p>
-    <h2 class="section-title reveal">Tres ingenieros,<br>un robot.</h2>
-
-    <div class="team-grid">
-      <article class="team-card reveal">
-        <span class="avatar" style="--tint: var(--red)">AR</span>
-        <h3>Alejandro Ramírez</h3>
-        <p class="team-role mono">INGENIERO MECÁNICO</p>
-        <p>Supervisó la producción y materialización del robot, cuidando que
-        cada componente fuera amigable con el diseño. Clave para iterar
-        prototipos y lograr un ecosistema inmersivo funcional y estético.</p>
-      </article>
-      <article class="team-card reveal">
-        <span class="avatar" style="--tint: var(--purple-mid)">LR</span>
-        <h3>Leonardo Ramírez</h3>
-        <p class="team-role mono">INGENIERO MECATRÓNICO</p>
-        <p>Diseñó los sistemas mecatrónicos y el «desarrollo neuronal» del
-        robot: cada orden y tarea que PHOTON ejecuta nació de sus esquemas
-        y diagramas de orquestación.</p>
-      </article>
-      <article class="team-card reveal">
-        <span class="avatar" style="--tint: var(--teal)">JJ</span>
-        <h3>Jimmy Jara</h3>
-        <p class="team-role mono">INGENIERO EN COMPUTADORES</p>
-        <p>El puente entre la estructura y el cerebro: desarrolló los sistemas
-        de movimiento, energía, comunicación, sonido y visión que dan vida
-        al proyecto.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
 <!-- ═══ FOOTER ════════════════════════════════════════════════════════ -->
 <footer class="footer" id="contacto">
   <div class="pixel-band" aria-hidden="true"></div>
@@ -567,7 +630,7 @@
               font-size="56" letter-spacing="2" fill="currentColor">MECH</text>
       </g>
     </svg>
-    <p class="footer-tag">El robot que narra la cultura.</p>
+    <p class="footer-tag">PHOTON — el robot que narra la cultura.</p>
 
     <div class="footer-links">
       <a href="https://github.com/wLe0code/MECH" target="_blank" rel="noopener" class="mono">GITHUB ↗</a>
