@@ -89,46 +89,86 @@ ffmpeg -f v4l2 -i /dev/video0 -frames 1 test.jpg   # captura un frame de prueba
 
 ### 1.3 Cableado básico
 
-El microcontrolador es un **Arduino Uno R3**. Los pines ya están en
-`mech_controller.ino` — esto es solo para cablear:
+Los pines ya están en `mech_controller.ino` (Arduino Uno R3); esto es solo la
+referencia para cablear.
 
-```
-Servos de brazos (MG996R):
-  Brazo Izq  señal → pin 9 del Uno
-  Brazo Der  señal → pin 10 del Uno
-  Alimentación de los servos: 5–6V desde la PROTOBOARD (fuente externa),
-  NO desde el Arduino. GND de los servos unido al GND del Uno (común).
+**Hay 3 fuentes de alimentación independientes.** Solo comparten la **tierra
+(GND)**; los positivos NUNCA se mezclan (por eso no se quema nada):
 
-Motores DC (4×, con 2× driver L298N). Cada L298N maneja 2 motores.
-Los pines de velocidad (ENA/ENB) van en los PWM del Uno (3, 5, 6, 11); los de
-dirección (IN1–IN4) en pines normales. (No se usan 9/10: son de los servos.)
+| Fuente | Alimenta |
+|---|---|
+| **USB de la Pi** | Lógica del Arduino |
+| **Batería de motores** (≥7V ideal; con 6V funciona con menos fuerza) | Los 4 motores (vía L298N) + la lógica de los L298N |
+| **Fuente de 5–6V** (protoboard) | Los 2 servos MG996R |
 
-  L298N #1 (motores M1=FL, M2=FR):
-    ENA → 3    IN1 → 4    IN2 → 2      (motor M1)
-    ENB → 5    IN3 → 7    IN4 → 8      (motor M2)
-  L298N #2 (motores M3=BL, M4=BR):
-    ENA → 6    IN1 → 12   IN2 → 13     (motor M3)
-    ENB → 11   IN3 → A0   IN4 → A1     (motor M4)
+#### Servos (2× MG996R — brazos)
+| Cable del servo | Va a |
+|---|---|
+| Señal Brazo Izq | pin **9** del Uno |
+| Señal Brazo Der | pin **10** del Uno |
+| **+** (rojo) | riel **+** de la protoboard (fuente de 5–6V) |
+| **−** (café) | riel **−** (tierra común) |
 
-  Jumpers de cada L298N:
-    - Quita los jumpers de ENA y ENB (para controlar velocidad por PWM).
-    - Deja el jumper de 5V puesto (la placa saca su lógica de la batería;
-      si la batería es <7V, en su lugar conecta el +5V del L298N al 5V del Uno).
+*(Los servos NO usan driver: el Uno les da la señal directo.)*
 
-  Potencia de motores: batería (≥7V con buena corriente) → entrada VMS/+12V de
-  los L298N (NO desde la Pi ni el Arduino). GND de la batería al GND común.
+#### Driver L298N #1 (motores M1=FL, M2=FR)
+| L298N | → Uno | | L298N | → Uno |
+|---|---|---|---|---|
+| ENA | **3** | | ENB | **5** |
+| IN1 | **4** | | IN3 | **7** |
+| IN2 | **2** | | IN4 | **8** |
 
-Cámara C930e ↔ Raspberry Pi:   USB directo a la Pi (solo video). /dev/videoN
-Mic Steren MIC-9010 ↔ Pi:       receptor USB a la Pi.
-Arduino Uno ↔ Raspberry Pi:      USB. Aparece como /dev/ttyACM0 o /dev/ttyUSB0.
-```
+- **OUT1/OUT2** → motor M1 · **OUT3/OUT4** → motor M2
+- **+12V (VMS)** → **+** de la batería · **GND** → tierra común · **+5V** → SIN conectar
 
-> ⚠️ **Tierra común obligatoria:** todos los GND unidos (Uno, los 2 L298N, la
-> batería de motores y la fuente de 5–6V de los servos). Sin esto, las señales
-> no tienen referencia y nada funciona bien.
+#### Driver L298N #2 (motores M3=BL, M4=BR)
+| L298N | → Uno | | L298N | → Uno |
+|---|---|---|---|---|
+| ENA | **6** | | ENB | **11** |
+| IN1 | **12** | | IN3 | **A0** |
+| IN2 | **13** | | IN4 | **A1** |
+
+- **OUT1/OUT2** → motor M3 · **OUT3/OUT4** → motor M4
+- **+12V (VMS)** → **+** de la batería · **GND** → tierra común · **+5V** → SIN conectar
+
+#### Batería de motores
+- **+** → +12V (VMS) de **ambos** L298N.
+- **−** → tierra común, con **cable directo y grueso** (no por un rielito fino,
+  para no ahogar la corriente de los motores).
+
+#### Tierra común (riel − de la protoboard)
+Unir aquí **todos** los negativos: GND de los 2 L298N, GND del Arduino, **−** de
+la fuente de servos, **−** de la batería de motores. Sin esto nada funciona bien.
+
+#### Periféricos de la Pi (USB directo, NO al Arduino)
+- **Cámara Logitech C930e** → USB de la Pi (solo video, `/dev/videoN`).
+- **Receptor del mic Steren MIC-9010** → USB de la Pi.
+- **Arduino Uno** → USB de la Pi (`/dev/ttyACM0` o `/dev/ttyUSB0`).
+
+#### Jumpers de cada L298N
+- **ENA y ENB:** QUITADOS (para controlar velocidad por PWM).
+- **Jumper de 5V:** PUESTO — la placa saca su lógica de la batería de motores.
+  El terminal **+5V se deja SIN conectar**.
+
+> 🚨 **Seguridad (no quemar nada):**
+> - Los positivos NO se mezclan; cada voltaje por su lado. Solo el GND es común.
+> - **NUNCA** conectes el 5V del Arduino al **+5V** del L298N con el jumper de 5V
+>   puesto (dos fuentes de 5V peleando → se quema). Con esta config no hace falta.
+> - Revisa la **polaridad** de la batería (+ al +12V, − al GND) antes de encender.
+> - La fuente de servos debe dar **varios amperios** a 5–6V (2 MG996R piden harto).
 >
-> 💡 Si una rueda gira al revés, intercambia sus 2 cables de motor (o sus pines
-> IN1/IN2). Los servos NO necesitan driver — el Uno les da la señal directo.
+> 💡 Si una rueda gira al revés, intercambia sus 2 cables de motor (OUT) o sus IN.
+
+**Mapa de pines del Arduino de un vistazo:**
+```
+Pin 2  -> L298N#1 IN2      Pin 9  -> Servo Brazo IZQ
+Pin 3  -> L298N#1 ENA      Pin 10 -> Servo Brazo DER
+Pin 4  -> L298N#1 IN1      Pin 11 -> L298N#2 ENB
+Pin 5  -> L298N#1 ENB      Pin 12 -> L298N#2 IN1
+Pin 6  -> L298N#2 ENA      Pin 13 -> L298N#2 IN2
+Pin 7  -> L298N#1 IN3      Pin A0 -> L298N#2 IN3
+Pin 8  -> L298N#1 IN4      Pin A1 -> L298N#2 IN4
+```
 
 ## 2. Cuentas y API keys
 
