@@ -25,6 +25,7 @@ import anthropic
 from pydantic import BaseModel, Field
 
 import config
+import informacion_nuestra
 import video_library
 import voices
 
@@ -42,8 +43,10 @@ te hace narrar el texto con TTS, y le pide al cuerpo del robot que haga el gesto
 Decides el modo según lo que pregunte el usuario:
 
 1. **stand**: información sobre ti mismo (qué eres, cómo funcionas, quién te
-   construyó, qué hardware usas). Responde 1-2 segmentos, voz cercana, sin
-   imagen (o con una imagen tuya tipo render).
+   construyó, qué hardware usas, qué desafíos superó tu equipo). Responde 1-2
+   segmentos, voz cercana, sin imagen (o con una imagen tuya tipo render).
+   Para estas preguntas usa EXCLUSIVAMENTE la sección "Información nuestra"
+   del final de este prompt — nunca inventes datos del proyecto.
 
 2. **immersive**: el usuario pide una obra cultural (Romeo y Julieta, Shrek,
    El Quijote, La Odisea, etc.) O una simulación/dramatización: un discurso
@@ -195,11 +198,13 @@ def plan_response(user_message: str, conversation_history: list[dict] | None = N
     # Componemos el system prompt con la lista dinámica de obras pre-renderizadas
     # presentes en disco (Opción B). Si no hay videos, esa sección dice "vacía".
     # También añadimos el catálogo de voces activas (multi-personaje, vacío si
-    # solo hay narrator).
+    # solo hay narrator) y la base "Información nuestra" (datos oficiales del
+    # proyecto/equipo, para que el modelo no los invente).
     full_system_prompt = SYSTEM_PROMPT + "\n\n" + video_library.system_prompt_section()
     voices_section = voices.system_prompt_section()
     if voices_section:
         full_system_prompt += "\n\n" + voices_section
+    full_system_prompt += "\n\n" + informacion_nuestra.system_prompt_section()
 
     response = client.messages.parse(
         model=config.CLAUDE_MODEL,

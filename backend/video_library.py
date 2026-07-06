@@ -47,6 +47,10 @@ class WorkMeta(TypedDict, total=False):
     # inyectan al system prompt para que Claude no los invente/alucine.
     # Solo poné aquí cosas que sepas ciertas; MECH tratará esto como verdad.
     facts: list[str]
+    # Opcional: URLs de donde se verificaron los facts. Documentación para
+    # humanos — NO se inyectan al prompt (no gastan tokens). Si corregís o
+    # añadís un fact, anotá aquí de dónde lo sacaste.
+    sources: list[str]
 
 
 # Catálogo de obras con video pre-renderizado.
@@ -64,6 +68,21 @@ WORKS: dict[str, WorkMeta] = {
             "Un hidalgo enloquecido por las novelas de caballería sale junto "
             "a Sancho Panza a buscar aventuras imposibles."
         ),
+        "facts": [
+            "La primera parte se publicó en 1605 y la segunda en 1615.",
+            "Miguel de Cervantes nació en Alcalá de Henares en 1547 y murió "
+            "en Madrid en 1616 (un año después de publicar la segunda parte).",
+            "El protagonista es el hidalgo Alonso Quijano (don Quijote); su "
+            "escudero es Sancho Panza, su caballo Rocinante y su amada "
+            "idealizada Dulcinea del Toboso.",
+            "Es considerada la primera novela moderna y una de las obras "
+            "cumbre de la literatura universal.",
+        ],
+        "sources": [
+            "https://www.britannica.com/topic/Don-Quixote-novel",
+            "https://en.wikipedia.org/wiki/Don_Quixote",
+            "https://www.britannica.com/biography/Miguel-de-Cervantes",
+        ],
         "segments": 4,
     },
     "campana_1856": {
@@ -74,6 +93,22 @@ WORKS: dict[str, WorkMeta] = {
             "William Walker. Gesta del héroe Juan Santamaría, que incendia el "
             "mesón en la Batalla de Rivas."
         ),
+        "facts": [
+            "La Campaña Nacional fue de marzo de 1856 a mayo de 1857; el "
+            "presidente de Costa Rica era Juan Rafael Mora Porras.",
+            "La Batalla de Santa Rosa fue el 20 de marzo de 1856, en "
+            "Guanacaste; la Batalla de Rivas fue el 11 de abril de 1856, en "
+            "Nicaragua.",
+            "Juan Santamaría, joven soldado y tambor de Alajuela, incendió el "
+            "Mesón de Guerra en Rivas y murió en esa gesta; el 11 de abril es "
+            "feriado nacional en Costa Rica en su honor.",
+            "William Walker era un filibustero estadounidense que había "
+            "ocupado Nicaragua desde 1855; se rindió el 1 de mayo de 1857.",
+        ],
+        "sources": [
+            "https://es.wikipedia.org/wiki/Campa%C3%B1a_Nacional_de_1856-1857",
+            "https://museojuansantamaria.go.cr/campana-nacional/",
+        ],
         "segments": 4,
     },
     "jimenez_deredia": {
@@ -86,6 +121,24 @@ WORKS: dict[str, WorkMeta] = {
             "precolombinas de Costa Rica con temas universales de "
             "transformación, gestación y vida."
         ),
+        "facts": [
+            "Jorge Jiménez Deredia nació en Heredia, Costa Rica, el 4 de "
+            "octubre de 1954; su nombre artístico 'Deredia' viene de "
+            "'de Heredia'.",
+            "Vive y trabaja en Italia desde 1976; se formó en la Academia de "
+            "Bellas Artes de Carrara y estudió arquitectura en Florencia.",
+            "Es el PRIMER escultor latinoamericano con una obra en la "
+            "Basílica de San Pedro del Vaticano: la estatua de San Marcelino "
+            "Champagnat, develada el 20 de septiembre del año 2000 ante Juan "
+            "Pablo II.",
+            "Su obra está inspirada en las esferas de piedra precolombinas "
+            "de Costa Rica; su serie más conocida es 'Génesis'. Es ESCULTOR "
+            "(mármol y bronce), no pintor.",
+        ],
+        "sources": [
+            "https://es.wikipedia.org/wiki/Jorge_Jim%C3%A9nez_Deredia",
+            "https://www.deredia.com/en/bioagrafia",
+        ],
         "segments": 4,  # 3 videos reales + 1 imagen de una obra (cada slot acepta video o imagen)
     },
     "malpais": {
@@ -98,12 +151,24 @@ WORKS: dict[str, WorkMeta] = {
             "Costa Rica."
         ),
         "facts": [
-            "Fidel Gamboa (1961–2011) fue MÚSICO, compositor y cantautor "
+            "Fidel Gamboa fue MÚSICO, compositor, arreglista y cantante "
             "costarricense; NO fue médico ni tuvo otra profesión.",
-            "Fidel Gamboa murió en 2011 (NO en 2018).",
-            "Malpaís fue fundada por los hermanos Fidel y Jaime Gamboa.",
-            "Tras la muerte de Fidel, la banda continuó con otros vocalistas.",
-            "Su música mezcla folclor costarricense con rock, jazz y trova.",
+            "Fidel Gamboa nació en Nicoya el 6 de agosto de 1961 y murió en "
+            "Escazú el 28 de agosto de 2011, a los 50 años, por un infarto "
+            "(NO murió en 2018).",
+            "Malpaís se formó en 1999; entre sus fundadores están los "
+            "hermanos Fidel y Jaime Gamboa, junto a músicos como Manuel "
+            "Obregón.",
+            "Su primer disco se llama 'Uno' y salió en 2002.",
+            "Tras la muerte de Fidel, la banda decidió continuar en honor a "
+            "su legado.",
+            "Su música mezcla folclor costarricense (sobre todo guanacasteco) "
+            "con rock, jazz y trova.",
+        ],
+        "sources": [
+            "https://es.wikipedia.org/wiki/Fidel_Gamboa",
+            "https://es.wikipedia.org/wiki/Malpa%C3%ADs_(banda)",
+            "https://www.grupomalpais.com/pages/historia",
         ],
         "segments": 4,
         "music": True,  # admite sample de música de fondo bajo la narración
@@ -117,6 +182,24 @@ WORKS: dict[str, WorkMeta] = {
             "soles y lunas que retratan la mística rural y el campo de Costa "
             "Rica con color vibrante."
         ),
+        "facts": [
+            "Isidro Con Wong nació en Puntarenas el 25 de febrero de 1931 y "
+            "FALLECIÓ el 1 de septiembre de 2024, a los 93 años (no hablar "
+            "de él como si estuviera vivo).",
+            "Fue hijo de inmigrantes chinos de la provincia de Cantón "
+            "(Zhongshan); parte de su educación temprana fue en China.",
+            "Antes de dedicarse al arte fue agricultor, pescador y ganadero "
+            "en Paquera y el Golfo de Nicoya; se dedicó de lleno al arte a "
+            "partir de los 40 años.",
+            "Su estilo se conoce como realismo mágico; las vacas y toros de "
+            "sus fincas y los paisajes de Puntarenas son motivos centrales.",
+            "Además de pintor fue escultor (bronce y madera).",
+        ],
+        "sources": [
+            "https://es.wikipedia.org/wiki/Isidro_Con_Wong",
+            "https://isidroconwong.com/historia/",
+            "https://www.larepublica.net/noticia/isidro-con-wong-maestro-del-realismo-magico-y-escultor-costarricense-fallece-a-los-93-anos",
+        ],
         "segments": 4,  # 3 videos reales + 1 imagen de una obra (cada slot acepta video o imagen)
     },
 }

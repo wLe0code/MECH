@@ -441,6 +441,25 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `#0e0e12`) y `logo-mech.pdf` (300 dpi) — la versión del sitio (marco
   redondeado con skew 8° + "MECH" en Sora ExtraBold con itálica sintética),
   generados con PIL + fuente Sora variable descargada de google/fonts.
+- **Base «Información nuestra» (`backend/informacion_nuestra.py`)**: datos
+  OFICIALES sobre MECH/el equipo/el proyecto (identidad, equipo, problemática,
+  impacto, hardware, software, innovaciones, desafíos, contacto), inyectados
+  al system prompt con regla de exactitud (responder SOLO con esos datos; si
+  falta algo, decirlo en vez de inventar). FUENTE: trabajo escrito del equipo
+  (volcado vía web/index.html) + bitácora del repo. Si MECH dice algo falso
+  sobre el proyecto → añadir el dato correcto ahí (igual que los `facts` de
+  las obras). Se concatena en `llm.plan_response()`.
+- **`facts` + `sources` completos para las 5 obras** (`video_library.py`):
+  datos verificados por búsqueda web (jul 2026) con URLs de respaldo en el
+  campo `sources` (solo documentación para humanos; NO se inyecta al prompt).
+  Claves: Fidel Gamboa (1961–2011, músico), Isidro Con Wong FALLECIÓ el
+  1 set 2024, Deredia primer escultor latinoamericano en la Basílica de San
+  Pedro (2000), Batalla de Rivas 11 abr 1856, Quijote 1605/1615.
+- **Vista Arduino del panel actualizada**: se quitó la tarjeta CABEZA (el
+  robot no tiene cabeza móvil; `API.headLive` eliminado de app.js), tarjeta
+  nueva de ARO DE LEDS (botones LED:WAKE/LISTEN/…) y COMANDO CRUDO con chips
+  de plantillas (`API.rawPreset`) + referencia del protocolo y mapa de pines
+  real (giro solo FL+BR, servos 9/10, aro A2). Verificado en preview estático.
 
 ### 🚧 Pendiente
 
