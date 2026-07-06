@@ -429,14 +429,6 @@
     move(vx, vy, w) { fetchJSON('/api/arduino/move', { json: { vx, vy, w } }); },
     stopMove() { this.move(0, 0, 0); },
 
-    headLive() {
-      const pan = parseInt($('head-pan').value);
-      const tilt = parseInt($('head-tilt').value);
-      $('head-pan-val').textContent = pan + '°';
-      $('head-tilt-val').textContent = tilt + '°';
-      fetchJSON('/api/arduino/head', { json: { pan, tilt } });
-    },
-
     armLive(side) {
       const id = side === 'L' ? 'arm-l' : 'arm-r';
       const angle = parseInt($(id).value);
@@ -448,7 +440,21 @@
       const cmd = $('raw-cmd').value.trim();
       if (!cmd) return;
       fetchJSON('/api/arduino/raw', { json: { cmd } });
+      log(`Serial → ${cmd}`, 'info');
       $('raw-cmd').value = '';
+    },
+
+    // Manda un comando serial directo (botones de LED, etc.).
+    sendRawCmd(cmd) {
+      fetchJSON('/api/arduino/raw', { json: { cmd } });
+      log(`Serial → ${cmd}`, 'info');
+    },
+
+    // Rellena el input de comando crudo con una plantilla (para editarla).
+    rawPreset(cmd) {
+      const input = $('raw-cmd');
+      input.value = cmd;
+      input.focus();
     },
 
     async emergencyStop() {

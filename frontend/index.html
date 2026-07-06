@@ -258,21 +258,7 @@
         </div>
 
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">CABEZA</div>
-          <div class="slider-row">
-            <label>PAN</label>
-            <input type="range" min="0" max="180" value="90" id="head-pan" oninput="API.headLive()">
-            <span class="val" id="head-pan-val">90°</span>
-          </div>
-          <div class="slider-row">
-            <label>TILT</label>
-            <input type="range" min="0" max="180" value="90" id="head-tilt" oninput="API.headLive()">
-            <span class="val" id="head-tilt-val">90°</span>
-          </div>
-        </div>
-
-        <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">BRAZOS</div>
+          <div class="fw-key" style="margin-bottom:8px">BRAZOS (servos MG996R — pines 9 y 10)</div>
           <div class="slider-row">
             <label>IZQ</label>
             <input type="range" min="0" max="180" value="90" id="arm-l" oninput="API.armLive('L')">
@@ -283,13 +269,49 @@
             <input type="range" min="0" max="180" value="90" id="arm-r" oninput="API.armLive('R')">
             <span class="val" id="arm-r-val">90°</span>
           </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+            90° = reposo. Los gestos automáticos (saludar, señalar…) los dispara la Pi al narrar.
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">ARO DE LEDS (NeoPixel 12 — pin A2)</div>
+          <div class="arduino-cmd-grid">
+            <button class="arduino-btn" onclick="API.sendRawCmd('LED:WAKE')">◐ WAKE</button>
+            <button class="arduino-btn" onclick="API.sendRawCmd('LED:LISTEN')">◉ LISTEN</button>
+            <button class="arduino-btn" onclick="API.sendRawCmd('LED:THINK')">◎ THINK</button>
+            <button class="arduino-btn" onclick="API.sendRawCmd('LED:SPEAK')">● SPEAK</button>
+            <button class="arduino-btn" onclick="API.sendRawCmd('LED:IDLE')">○ IDLE</button>
+            <button class="arduino-btn danger" onclick="API.sendRawCmd('LED:OFF')">✕ OFF</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+            En operación normal el aro se sincroniza solo con la fase de voz.
+          </div>
         </div>
 
         <div class="fw-card">
           <div class="fw-key" style="margin-bottom:8px">COMANDO CRUDO (debug)</div>
           <div class="text-input-row">
-            <input class="text-input" id="raw-cmd" type="text" placeholder="Ej: HEAD:90:90 o MOVE:50:0:0">
+            <input class="text-input" id="raw-cmd" type="text" placeholder="Ej: MOVE:50:0:0 · ARM:L:120 · LED:WAKE"
+                   onkeydown="if(event.key==='Enter') API.sendRaw()">
             <button class="btn btn-purple" onclick="API.sendRaw()"><i class="ti ti-send"></i>Enviar</button>
+          </div>
+          <div class="cmd-grid" style="margin-top:10px">
+            <div class="cmd-chip" onclick="API.rawPreset('MOVE:50:0:0')"><i class="ti ti-arrow-up"></i>MOVE:50:0:0</div>
+            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:50:0')"><i class="ti ti-arrow-right"></i>MOVE:0:50:0</div>
+            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:0:60')"><i class="ti ti-rotate-clockwise"></i>MOVE:0:0:60</div>
+            <div class="cmd-chip" onclick="API.rawPreset('STOP')"><i class="ti ti-hand-stop"></i>STOP</div>
+            <div class="cmd-chip" onclick="API.rawPreset('ARM:L:150')"><i class="ti ti-hand-three-fingers"></i>ARM:L:150</div>
+            <div class="cmd-chip" onclick="API.rawPreset('ARM:R:150')"><i class="ti ti-hand-three-fingers"></i>ARM:R:150</div>
+            <div class="cmd-chip" onclick="API.rawPreset('MODE:IDLE')"><i class="ti ti-bed"></i>MODE:IDLE</div>
+            <div class="cmd-chip" onclick="API.rawPreset('LED:WAKE')"><i class="ti ti-bulb"></i>LED:WAKE</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:10px;font-family:var(--font-mono);line-height:1.7">
+            <b>MOVE:vx:vy:w</b> — vx adelante(+)/atrás(−) · vy derecha(+)/izq(−) · w giro (el giro usa SOLO las ruedas FL+BR, en diagonal) · valores −100..100<br>
+            <b>ARM:L/R:ángulo</b> — brazos 0–180 (90 = reposo) · <b>STOP</b> — detiene ruedas<br>
+            <b>MODE:</b> AUTO · IDLE · LISTEN · SPEAK · STOP &nbsp;·&nbsp; <b>LED:</b> OFF · IDLE · WAKE · LISTEN · THINK · SPEAK · ERR<br>
+            Pines: servos <b>9/10</b> · L298N#1 ENA <b>3</b> IN <b>4/2/7/8</b> ENB <b>5</b> · L298N#2 ENA <b>6</b> IN <b>12/13/A0/A1</b> ENB <b>11</b> · aro <b>A2</b>.
+            Si una rueda gira al revés: invierte sus 2 cables OUT (o sus IN).
           </div>
         </div>
       </div>
