@@ -124,7 +124,7 @@ El firmware [`arduino/mech_controller/mech_controller.ino`](arduino/mech_control
 
 Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard), GND común.
 
-**Sentido de giro por motor:** constantes `DIR_FL/DIR_FR/DIR_BL/DIR_BR` en el .ino (1 = normal, −1 = invertido). Calibrado con el robot real (jul 2026): **FR y BL van en −1** (quedaron cableadas con la polaridad opuesta). Si una rueda gira al revés, se cambia su signo ahí y se reflashea — NO recablear ni tocar pines.
+**Sentido de giro por motor:** constantes `DIR_FL/DIR_FR/DIR_BL/DIR_BR` en el .ino (1 = normal, −1 = invertido). Recalibrado con el robot en el suelo (jul 2026): **FL y BR van en −1** (la primera calibración quedó espejada porque el frente del robot se identificó al revés). Si una rueda gira al revés, se cambia su signo ahí y se reflashea — NO recablear ni tocar pines. Para calibrar sin adivinar: comando `WHEEL:<id>:<vel>` (mueve una sola rueda; chips en el panel → Arduino → comando crudo). OJO pendiente: los laterales hacían ROTAR el cuerpo en vez de deslizarlo — sospecha de ruedas mecanum montadas en posición incorrecta (los rodillos, vistos desde arriba, deben formar una X hacia el centro); eso es mecánico, no de código.
 
 ---
 
@@ -313,6 +313,7 @@ HEAD:<pan>:<tilt>          # 0-180 cada uno
 ARM:{L|R}:<angle>          # 0-180
 MOVE:<vx>:<vy>:<w>         # -100..100 cada uno
 STOP
+WHEEL:{FL|FR|BL|BR}:<vel>  # debug/calibración: UNA rueda, -100..100
 LED:{OFF|IDLE|WAKE|LISTEN|THINK|SPEAK|ERR}   # aro NeoPixel estilo Alexa
 ```
 

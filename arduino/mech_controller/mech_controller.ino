@@ -29,6 +29,8 @@
  *                       vy = derecha(+)/izquierda(-)
  *                       w  = rotacion horaria(+)/antihoraria(-)
  *   STOP                atajo para MOVE:0:0:0
+ *   WHEEL:<id>:<vel>    debug/calibracion: mueve UNA rueda (FL|FR|BL|BR),
+ *                       vel -100..100 (positivo = adelante). Las demas paran.
  *   LED:<patron>        aro de LEDs estilo Alexa Echo:
  *                       OFF    apagado
  *                       IDLE   respiracion azul tenue (MECH en reposo)
@@ -82,12 +84,17 @@ const uint8_t PIN_M_BR_PWM = 11, PIN_M_BR_IN1 = A0, PIN_M_BR_IN2 = A1;  // M4: E
 
 // Sentido fisico de cada motor: 1 = normal, -1 = invertido.
 // Si una rueda gira al reves de lo esperado, cambia AQUI su signo (no hace
-// falta recablear nada). Calibrado con el robot real (jul 2026): FR y BL
-// quedaron cableadas con la polaridad opuesta, por eso van en -1.
-const int8_t DIR_FL = 1;
-const int8_t DIR_FR = -1;
-const int8_t DIR_BL = -1;
-const int8_t DIR_BR = 1;
+// falta recablear nada).
+//
+// RECALIBRADO (jul 2026): en el suelo, AVANZAR movia el robot hacia ATRAS
+// -> las 4 ruedas estaban invertidas respecto a la calibracion anterior
+// (en la primera prueba el frente del robot se identifico al reves). La
+// pareja invertida por cableado es FL y BR. Para recalibrar sin adivinar,
+// usa el comando WHEEL:FL:60 (una rueda a la vez) desde el panel.
+const int8_t DIR_FL = -1;
+const int8_t DIR_FR = 1;
+const int8_t DIR_BL = 1;
+const int8_t DIR_BR = -1;
 
 // Aro de LEDs (WS2812/NeoPixel). A2 esta libre (A0/A1 los usan los motores).
 #if MECH_LEDS
@@ -334,6 +341,25 @@ void handleCommand(const String& cmd) {
   }
   if (cmd.startsWith("LED:")) {
     applyLedCommand(cmd.substring(4));
+    return;
+  }
+  if (cmd.startsWith("WHEEL:")) {
+    // Debug/calibracion: mueve UNA sola rueda (las demas se detienen).
+    //   WHEEL:FL:60   WHEEL:BR:-40   WHEEL:FR:0
+    // Sirve para identificar que rueda fisica responde a cada canal y en
+    // que sentido, sin adivinar con movimientos compuestos de MOVE.
+    // Aplica DIR_*, asi que velocidad positiva = esa rueda hacia ADELANTE.
+    int p1 = cmd.indexOf(':', 6);
+    if (p1 < 0) { Serial.println("ERR:BAD_WHEEL"); return; }
+    String which = cmd.substring(6, p1);
+    int sp = clamp(cmd.substring(p1 + 1).toInt(), -100, 100) * 255 / 100;
+    stopAllMotors();
+    if      (which == "FL") setMotor(PIN_M_FL_PWM, PIN_M_FL_IN1, PIN_M_FL_IN2, DIR_FL * sp);
+    else if (which == "FR") setMotor(PIN_M_FR_PWM, PIN_M_FR_IN1, PIN_M_FR_IN2, DIR_FR * sp);
+    else if (which == "BL") setMotor(PIN_M_BL_PWM, PIN_M_BL_IN1, PIN_M_BL_IN2, DIR_BL * sp);
+    else if (which == "BR") setMotor(PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2, DIR_BR * sp);
+    else { Serial.println("ERR:BAD_WHEEL_ID"); return; }
+    Serial.print("ACK:WHEEL:"); Serial.println(which);
     return;
   }
   if (cmd.startsWith("MOVE:")) {

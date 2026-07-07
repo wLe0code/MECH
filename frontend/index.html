@@ -305,10 +305,15 @@
             <div class="cmd-chip" onclick="API.rawPreset('ARM:R:150')"><i class="ti ti-hand-three-fingers"></i>ARM:R:150</div>
             <div class="cmd-chip" onclick="API.rawPreset('MODE:IDLE')"><i class="ti ti-bed"></i>MODE:IDLE</div>
             <div class="cmd-chip" onclick="API.rawPreset('LED:WAKE')"><i class="ti ti-bulb"></i>LED:WAKE</div>
+            <div class="cmd-chip" onclick="API.rawPreset('WHEEL:FL:50')"><i class="ti ti-wheel"></i>WHEEL:FL:50</div>
+            <div class="cmd-chip" onclick="API.rawPreset('WHEEL:FR:50')"><i class="ti ti-wheel"></i>WHEEL:FR:50</div>
+            <div class="cmd-chip" onclick="API.rawPreset('WHEEL:BL:50')"><i class="ti ti-wheel"></i>WHEEL:BL:50</div>
+            <div class="cmd-chip" onclick="API.rawPreset('WHEEL:BR:50')"><i class="ti ti-wheel"></i>WHEEL:BR:50</div>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:10px;font-family:var(--font-mono);line-height:1.7">
             <b>MOVE:vx:vy:w</b> — vx adelante(+)/atrás(−) · vy derecha(+)/izq(−) · w giro (el giro usa SOLO las ruedas FL+BR, en diagonal) · valores −100..100<br>
             <b>ARM:L/R:ángulo</b> — brazos 0–180 (90 = reposo) · <b>STOP</b> — detiene ruedas<br>
+            <b>WHEEL:FL/FR/BL/BR:vel</b> — calibración: mueve UNA sola rueda (positivo = adelante); <b>WHEEL:FL:0</b> o <b>STOP</b> la detiene<br>
             <b>MODE:</b> AUTO · IDLE · LISTEN · SPEAK · STOP &nbsp;·&nbsp; <b>LED:</b> OFF · IDLE · WAKE · LISTEN · THINK · SPEAK · ERR<br>
             Pines: servos <b>9/10</b> · L298N#1 ENA <b>3</b> IN <b>4/2/7/8</b> ENB <b>5</b> · L298N#2 ENA <b>6</b> IN <b>12/13/A0/A1</b> ENB <b>11</b> · aro <b>A2</b>.
             Si una rueda gira al revés: cámbiale el signo en las constantes <b>DIR_*</b> del .ino y reflashea (FR y BL ya van invertidas).
