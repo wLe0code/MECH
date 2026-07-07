@@ -79,7 +79,15 @@ const uint8_t PIN_M_FR_PWM = 5,  PIN_M_FR_IN1 = 7,  PIN_M_FR_IN2 = 8;   // M2: E
 // Driver L298N #2 (motores M3=BL, M4=BR):
 const uint8_t PIN_M_BL_PWM = 6,  PIN_M_BL_IN1 = 12, PIN_M_BL_IN2 = 13;  // M3: ENA=6, IN1=12, IN2=13
 const uint8_t PIN_M_BR_PWM = 11, PIN_M_BR_IN1 = A0, PIN_M_BR_IN2 = A1;  // M4: ENB=11, IN3=A0, IN4=A1
-// Si una rueda gira al reves, intercambia sus 2 cables de motor (OUT) o sus IN.
+
+// Sentido fisico de cada motor: 1 = normal, -1 = invertido.
+// Si una rueda gira al reves de lo esperado, cambia AQUI su signo (no hace
+// falta recablear nada). Calibrado con el robot real (jul 2026): FR y BL
+// quedaron cableadas con la polaridad opuesta, por eso van en -1.
+const int8_t DIR_FL = 1;
+const int8_t DIR_FR = -1;
+const int8_t DIR_BL = -1;
+const int8_t DIR_BR = 1;
 
 // Aro de LEDs (WS2812/NeoPixel). A2 esta libre (A0/A1 los usan los motores).
 #if MECH_LEDS
@@ -162,11 +170,13 @@ void driveOmni(int vx, int vy, int w) {
     br = br * 100 / maxMag;
   }
 
-  // Escala [-100,100] -> PWM [-255,255].
-  setMotor(PIN_M_FL_PWM, PIN_M_FL_IN1, PIN_M_FL_IN2, fl * 255 / 100);
-  setMotor(PIN_M_FR_PWM, PIN_M_FR_IN1, PIN_M_FR_IN2, fr * 255 / 100);
-  setMotor(PIN_M_BL_PWM, PIN_M_BL_IN1, PIN_M_BL_IN2, bl * 255 / 100);
-  setMotor(PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2, br * 255 / 100);
+  // Escala [-100,100] -> PWM [-255,255], aplicando el sentido fisico de
+  // cada motor (DIR_*): asi "positivo" siempre significa girar hacia
+  // adelante, sin importar como quedo cableado el L298N.
+  setMotor(PIN_M_FL_PWM, PIN_M_FL_IN1, PIN_M_FL_IN2, DIR_FL * fl * 255 / 100);
+  setMotor(PIN_M_FR_PWM, PIN_M_FR_IN1, PIN_M_FR_IN2, DIR_FR * fr * 255 / 100);
+  setMotor(PIN_M_BL_PWM, PIN_M_BL_IN1, PIN_M_BL_IN2, DIR_BL * bl * 255 / 100);
+  setMotor(PIN_M_BR_PWM, PIN_M_BR_IN1, PIN_M_BR_IN2, DIR_BR * br * 255 / 100);
 }
 
 // ============================================================

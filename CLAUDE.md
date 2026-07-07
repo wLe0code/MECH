@@ -122,7 +122,9 @@ El firmware [`arduino/mech_controller/mech_controller.ino`](arduino/mech_control
 - **Aro de LEDs (WS2812/NeoPixel 12 LEDs, estilo Alexa):** DIN = pin **A2** (con ~330 Ω en serie), VCC al **5V del Arduino** (brillo limitado a 60/255 — NO a la fuente de 6V de los servos), GND común. Requiere librería **Adafruit NeoPixel**; sin aro, poner `#define MECH_LEDS 0` en el .ino y compila sin ella. El backend sincroniza el aro con la fase de voz (`mech_app.set_voice_phase` → `LED:<patrón>`).
 - **Sin cabeza:** el comando `HEAD` se reconoce pero es un no-op (no rompe el lado de la Pi; los gestos siguen con los brazos).
 
-Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard), GND común. Si una rueda gira al revés, intercambia sus 2 cables o sus pines IN1/IN2.
+Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard), GND común.
+
+**Sentido de giro por motor:** constantes `DIR_FL/DIR_FR/DIR_BL/DIR_BR` en el .ino (1 = normal, −1 = invertido). Calibrado con el robot real (jul 2026): **FR y BL van en −1** (quedaron cableadas con la polaridad opuesta). Si una rueda gira al revés, se cambia su signo ahí y se reflashea — NO recablear ni tocar pines.
 
 ---
 
