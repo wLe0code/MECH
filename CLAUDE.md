@@ -124,7 +124,9 @@ El firmware [`arduino/mech_controller/mech_controller.ino`](arduino/mech_control
 
 Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard), GND común.
 
-**Sentido de giro por motor:** constantes `DIR_FL/DIR_FR/DIR_BL/DIR_BR` en el .ino (1 = normal, −1 = invertido). Recalibrado con el robot en el suelo (jul 2026): **FL y BR van en −1** (la primera calibración quedó espejada porque el frente del robot se identificó al revés). Si una rueda gira al revés, se cambia su signo ahí y se reflashea — NO recablear ni tocar pines. Para calibrar sin adivinar: comando `WHEEL:<id>:<vel>` (mueve una sola rueda; chips en el panel → Arduino → comando crudo). OJO pendiente: los laterales hacían ROTAR el cuerpo en vez de deslizarlo — sospecha de ruedas mecanum montadas en posición incorrecta (los rodillos, vistos desde arriba, deben formar una X hacia el centro); eso es mecánico, no de código.
+**Sentido de giro por motor:** constantes `DIR_FL/DIR_FR/DIR_BL/DIR_BR` en el .ino (1 = normal, −1 = invertido). Calibración CONFIRMADA en el robot real (jul 2026): **FR y BL van en −1** (cableadas con polaridad opuesta); con esos signos AVANZAR va hacia adelante. Si una rueda gira al revés, se cambia su signo ahí y se reflashea — NO recablear. Para calibrar sin adivinar: comando `WHEEL:<id>:<vel>` (una sola rueda; chips en el panel → Arduino → comando crudo).
+
+**Cinemática ADAPTADA a las ruedas reales (jul 2026) — NO "corregirla" al estándar de libro:** por cómo están montadas las mecanum del robot (el usuario decidió NO remontarlas), los roles de `vy` y `w` van INTERCAMBIADOS respecto a la fórmula clásica: el patrón diagonal (FL+BR vs FR+BL) produce el GIRO sobre sí mismo, y el patrón de lados (izq vs der) produce el desplazamiento LATERAL. `driveOmni()`: `fl=vx+vy+w · fr=vx−vy−w · bl=vx+vy−w · br=vx−vy+w`. El giro a 2 ruedas (solo FL+BR sin las otras) se descartó: se sentía "trabado". Verificado con el usuario en el suelo. Si un sentido sale espejado (giro der ↔ izq o lateral der ↔ izq), se voltea el signo de `w` o `vy` en esta fórmula, nada más.
 
 ---
 

@@ -84,17 +84,16 @@ const uint8_t PIN_M_BR_PWM = 11, PIN_M_BR_IN1 = A0, PIN_M_BR_IN2 = A1;  // M4: E
 
 // Sentido fisico de cada motor: 1 = normal, -1 = invertido.
 // Si una rueda gira al reves de lo esperado, cambia AQUI su signo (no hace
-// falta recablear nada).
+// falta recablear nada). Para calibrar sin adivinar, usa el comando
+// WHEEL:FL:60 (una rueda a la vez) desde el panel.
 //
-// RECALIBRADO (jul 2026): en el suelo, AVANZAR movia el robot hacia ATRAS
-// -> las 4 ruedas estaban invertidas respecto a la calibracion anterior
-// (en la primera prueba el frente del robot se identifico al reves). La
-// pareja invertida por cableado es FL y BR. Para recalibrar sin adivinar,
-// usa el comando WHEEL:FL:60 (una rueda a la vez) desde el panel.
-const int8_t DIR_FL = -1;
-const int8_t DIR_FR = 1;
-const int8_t DIR_BL = 1;
-const int8_t DIR_BR = -1;
+// Calibracion CONFIRMADA en el robot real (jul 2026): con estos signos,
+// AVANZAR mueve el robot hacia adelante. FR y BL van invertidas porque
+// quedaron cableadas al L298N con la polaridad opuesta.
+const int8_t DIR_FL = 1;
+const int8_t DIR_FR = -1;
+const int8_t DIR_BL = -1;
+const int8_t DIR_BR = 1;
 
 // Aro de LEDs (WS2812/NeoPixel). A2 esta libre (A0/A1 los usan los motores).
 #if MECH_LEDS
@@ -159,14 +158,21 @@ void stopAllMotors() {
 
 // Cinematica de ruedas mecanum/omnidireccionales.
 // Entradas: vx (adelante), vy (lateral), w (rotacion), cada uno en [-100,100].
+//
+// OJO: esta formula esta ADAPTADA A NUESTRO ROBOT (calibrada empiricamente
+// en el suelo, jul 2026). Con el montaje real de nuestras ruedas mecanum:
+//   - El patron DIAGONAL (FL+BR contra FR+BL) hace GIRAR al robot sobre si
+//     mismo -> lo usamos para w (rotacion).
+//   - El patron de LADOS (izquierda contra derecha) lo DESLIZA lateralmente
+//     -> lo usamos para vy (lateral).
+// Es el intercambio de la formula clasica de libro (donde diagonal =
+// lateral y lados = giro). Las ruedas NO se van a remontar; el software se
+// adapta a ellas. NO "corregir" esto de vuelta al estandar.
 void driveOmni(int vx, int vy, int w) {
-  // Giro con SOLO 2 ruedas en diagonal (FL y BR), por pedido del equipo:
-  // el término de rotación (w) se aplica únicamente a FL y BR; FR y BL no rotan.
-  // (Adelante/atrás y desplazamiento lateral siguen usando las 4 ruedas.)
   long fl = (long)vx + vy + w;
-  long fr = (long)vx - vy;
-  long bl = (long)vx - vy;
-  long br = (long)vx + vy - w;
+  long fr = (long)vx - vy - w;
+  long bl = (long)vx + vy - w;
+  long br = (long)vx - vy + w;
 
   // Normaliza si la suma excede 100 (puede pasar al mezclar componentes).
   long maxMag = max(max(abs(fl), abs(fr)), max(abs(bl), abs(br)));
