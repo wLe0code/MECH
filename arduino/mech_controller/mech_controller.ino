@@ -161,17 +161,19 @@ void stopAllMotors() {
 //
 // OJO: esta formula esta ADAPTADA A NUESTRO ROBOT (calibrada empiricamente
 // en el suelo, jul 2026). Con el montaje real de nuestras ruedas mecanum:
-//   - El patron DIAGONAL (FL+BR contra FR+BL) hace GIRAR al robot sobre si
-//     mismo -> lo usamos para w (rotacion).
-//   - El patron de LADOS (izquierda contra derecha) lo DESLIZA lateralmente
-//     -> lo usamos para vy (lateral).
-// Es el intercambio de la formula clasica de libro (donde diagonal =
-// lateral y lados = giro). Las ruedas NO se van a remontar; el software se
-// adapta a ellas. NO "corregir" esto de vuelta al estandar.
+//   - Las 4 iguales -> avanza/retrocede (vx). CONFIRMADO.
+//   - Patron DIAGONAL (FL+BR contra FR+BL) -> GIRA sobre si mismo (w).
+//     CONFIRMADO ("gira perfecto").
+//   - Patron de LADOS (izq contra der) -> las fuerzas se ANULAN y el robot
+//     se queda en el sitio. CONFIRMADO. Por eso NO se usa para nada.
+//   - Patron DELANTERO/TRASERO (las 2 de adelante contra las 2 de atras)
+//     -> es el que desliza LATERALMENTE con este montaje (vy).
+// Es distinto a la formula clasica de libro. Las ruedas NO se van a
+// remontar; el software se adapta a ellas. NO "corregir" esto al estandar.
 void driveOmni(int vx, int vy, int w) {
   long fl = (long)vx + vy + w;
-  long fr = (long)vx - vy - w;
-  long bl = (long)vx + vy - w;
+  long fr = (long)vx + vy - w;
+  long bl = (long)vx - vy - w;
   long br = (long)vx - vy + w;
 
   // Normaliza si la suma excede 100 (puede pasar al mezclar componentes).
