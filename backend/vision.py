@@ -91,6 +91,13 @@ class _HaarDetector:
     def __init__(self) -> None:
         import cv2
         self._cv2 = cv2
+        if not hasattr(cv2, "CascadeClassifier"):
+            # OpenCV 5 eliminó el detector Haar clásico. Necesitamos la 4.x:
+            raise RuntimeError(
+                f"Tu OpenCV ({getattr(cv2, '__version__', '?')}) no trae "
+                "CascadeClassifier (lo quitaron en OpenCV 5). Instala la "
+                "serie 4: pip install \"opencv-python-headless<5\""
+            )
         path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         self._cascade = cv2.CascadeClassifier(path)
         if self._cascade.empty():

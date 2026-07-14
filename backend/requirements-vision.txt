@@ -23,7 +23,9 @@
 #   pip install -r backend/requirements-vision.txt
 
 # Backend de visión mínimo (funciona en Python 3.13).
-opencv-python-headless>=4.9.0
+# OJO: fijado a la serie 4.x — OpenCV 5 eliminó cv2.CascadeClassifier,
+# que es lo que usa el detector Haar de respaldo en vision.py.
+opencv-python-headless>=4.9.0,<5
 
 # Mejora opcional — solo instala en Python 3.11/3.12.
 mediapipe>=0.10.14
