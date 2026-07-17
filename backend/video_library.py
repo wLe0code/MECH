@@ -378,6 +378,14 @@ def system_prompt_section() -> str:
         "narración evocativa y emotiva antes que afirmar algo que podría ser "
         "falso. Nunca contradigas los 'Datos verificados'.",
         "",
+        "REGLA DE VISUAL (importante): cuando el usuario pida cualquiera de "
+        "estos temas del stand — aunque lo diga como 'háblame de…', 'qué "
+        "es…' o 'explícame…' — usá el modo `immersive` y poné SIEMPRE un "
+        "visual en cada segmento: `video_slug`+`video_segment` si la obra "
+        "tiene video, o `image_prompt` si no. NUNCA narres un tema del stand "
+        "sin visual — la proyección es parte del show (hay pantallas y "
+        "visores esperando contenido).",
+        "",
     ]
     for w in works:
         tag = " — [VIDEO disponible]" if w["complete"] else ""

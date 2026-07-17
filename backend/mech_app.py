@@ -337,6 +337,7 @@ class MechApp:
           3. Nada (mantiene el visual anterior).
         """
         # Material de biblioteca (video o imagen)
+        image_prompt = seg.image_prompt
         if seg.video_slug and seg.video_segment:
             if video_library.segment_exists(seg.video_slug, seg.video_segment):
                 self.show_library_segment(seg.video_slug, seg.video_segment)
@@ -348,11 +349,25 @@ class MechApp:
                 "Cayendo a NanoBanana.",
                 "warn",
             )
+            if not image_prompt:
+                # Claude confió en la biblioteca y no trajo image_prompt: para
+                # no dejar la proyección vacía, generamos una imagen genérica
+                # de la obra a partir de su título.
+                meta = video_library.WORKS.get(seg.video_slug)
+                if meta:
+                    image_prompt = (
+                        f"{meta['title']}, cinematic cultural exhibition "
+                        "scene, painterly style, dramatic lighting"
+                    )
+                    self.log(
+                        "Segmento sin image_prompt: genero imagen genérica de la obra.",
+                        "info",
+                    )
         # Fallback / flujo original
-        if seg.image_prompt:
+        if image_prompt:
             try:
                 img = image_gen.generate_image(
-                    seg.image_prompt,
+                    image_prompt,
                     filename=f"{plan_title.replace(' ', '_')}_{idx}.png",
                 )
                 self.show_ai_image(img)
