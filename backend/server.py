@@ -230,6 +230,7 @@ async def root():
 
 
 @app.get("/projector")
+@app.get("/proyector")  # alias en español (error de dedo común)
 async def projector_page():
     page = FRONTEND_DIR / "projector.html"
     if not page.exists():
@@ -238,6 +239,7 @@ async def projector_page():
 
 
 @app.get("/projector/vr")
+@app.get("/proyector/vr")  # alias en español
 async def projector_vr_page():
     """Vista estéreo lado a lado para Google Cardboard.
 
