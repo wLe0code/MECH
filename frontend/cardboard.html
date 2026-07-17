@@ -6,32 +6,27 @@
 <title>MECH · Proyección VR (Cardboard)</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden;
+               font-family: 'Space Mono', monospace; -webkit-user-select: none; user-select: none; }
 
-  /* Dos "ojos" lado a lado: la MISMA imagen/video en cada mitad.
-     Al meter el teléfono en el Google Cardboard, cada lente ve una mitad
-     y el cerebro las funde en una sola pantalla grande e inmersiva. */
+  /* Dos "ojos" lado a lado. Cada uno es un <canvas> donde pintamos la MISMA
+     imagen/video (UNA sola decodificación, ver el script). Al meter el
+     teléfono en el Cardboard, cada lente ve un ojo y el cerebro los funde. */
   #eyes { position: fixed; inset: 0; display: flex; }
-  .eye {
-    position: relative; width: 50%; height: 100%;
-    overflow: hidden; background: #000;
-  }
+  .eye { position: relative; width: 50%; height: 100%; overflow: hidden; background: #000; }
+  .eye canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   /* Separador central sutil para alinear el visor. */
   #eyes::after {
     content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
-    width: 2px; transform: translateX(-1px);
-    background: #111;
-  }
-  .eye img, .eye video {
-    width: 100%; height: 100%;
-    object-fit: cover;           /* llena el ojo (recorta bordes) */
+    width: 2px; transform: translateX(-1px); background: #111; pointer-events: none;
   }
   .idle {
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 10px;
-    color: #2a2a33; font-family: 'Space Mono', monospace;
-    font-size: 13px; letter-spacing: 4px; text-align: center;
+    color: #2a2a33; font-size: 13px; letter-spacing: 4px; text-align: center;
+    pointer-events: none;
   }
+  .idle.hidden { display: none; }
   .idle .ring {
     width: 46px; height: 46px; border-radius: 50%;
     border: 2px solid #1c1c26; border-top-color: #534AB7;
@@ -42,8 +37,7 @@
   /* Aviso si el teléfono está en vertical (el Cardboard es horizontal). */
   #rotate {
     position: fixed; inset: 0; display: none; z-index: 10;
-    background: #000; color: #888;
-    font-family: 'Space Mono', monospace; font-size: 13px;
+    background: #000; color: #888; font-size: 13px;
     letter-spacing: 2px; text-align: center;
     flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   }
@@ -51,88 +45,175 @@
   @keyframes tilt { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
   @media (orientation: portrait) { #rotate { display: flex; } }
 
-  /* Pista para entrar a pantalla completa (desaparece al tocar). */
   #hint {
     position: fixed; bottom: 12px; left: 0; right: 0; z-index: 5;
-    text-align: center; color: #444;
-    font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    text-align: center; color: #444; font-size: 11px; letter-spacing: 2px;
     transition: opacity .5s;
+  }
+
+  /* ── Panel de calibración (separación + zoom) ─────────────────────
+     Se ajusta ANTES de meter el teléfono al visor; queda guardado. */
+  #calib {
+    position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+    z-index: 20; display: flex; gap: 8px; align-items: center;
+    background: rgba(14,14,18,0.92); border: 1px solid #26262e; border-radius: 12px;
+    padding: 7px 10px; color: #cfcfe0; font-size: 12px; letter-spacing: 1px;
+  }
+  #calib.hidden { display: none; }
+  #calib .grp { display: flex; align-items: center; gap: 4px; }
+  #calib .lbl { color: #7a7a8c; font-size: 10px; }
+  #calib button {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid #33333f;
+    background: #1a1a22; color: #e6e6f0; font-size: 16px; line-height: 1;
+    font-family: inherit;
+  }
+  #calib button:active { background: #534AB7; }
+  #calib .val { min-width: 34px; text-align: center; color: #8f97c4; }
+  #calib .done {
+    width: auto; padding: 0 12px; border-color: #3a5; color: #9fe0b8;
+  }
+  #calibToggle {
+    position: fixed; top: 8px; right: 10px; z-index: 20;
+    background: rgba(14,14,18,0.85); border: 1px solid #26262e; border-radius: 10px;
+    color: #6a6a7c; font-size: 11px; letter-spacing: 1px; padding: 8px 10px;
+    font-family: inherit;
   }
 </style>
 </head>
 <body>
   <div id="eyes">
-    <div class="eye" id="eyeL"><div class="idle"><div class="ring"></div>MECH · VR</div></div>
-    <div class="eye" id="eyeR"><div class="idle"><div class="ring"></div>MECH · VR</div></div>
+    <div class="eye" id="eyeL"><canvas></canvas><div class="idle"><div class="ring"></div>MECH · VR</div></div>
+    <div class="eye" id="eyeR"><canvas></canvas><div class="idle"><div class="ring"></div>MECH · VR</div></div>
   </div>
+
   <div id="rotate"><div class="phone">📱</div>GIRA EL TELÉFONO<br>Y MÉTELO EN EL CARDBOARD</div>
-  <div id="hint">TOCA LA PANTALLA PARA PANTALLA COMPLETA</div>
+
+  <!-- Calibración: ajusta hasta que en el visor se vea UNA sola imagen nítida -->
+  <div id="calib" class="hidden">
+    <div class="grp"><span class="lbl">SEPARACIÓN</span>
+      <button data-act="sep-">−</button><span class="val" id="sepVal">0</span><button data-act="sep+">+</button>
+    </div>
+    <div class="grp"><span class="lbl">ZOOM</span>
+      <button data-act="zoom-">−</button><span class="val" id="zoomVal">100</span><button data-act="zoom+">+</button>
+    </div>
+    <button class="done" data-act="done">LISTO</button>
+  </div>
+  <button id="calibToggle">AJUSTAR VR</button>
+
+  <div id="hint">TOCA EL CENTRO PARA PANTALLA COMPLETA · «AJUSTAR VR» PARA CALIBRAR</div>
 
 <script>
 /* MECH · Proyección estéreo para Google Cardboard.
  *
- * Misma fuente que /projector (WebSocket del backend), pero renderizada
- * DOS veces lado a lado, una por ojo. Abrir EN EL TELÉFONO (misma wifi
- * que la Pi):
- *
+ * Abrir EN EL TELÉFONO (misma wifi que la Pi):
  *     http://<ip-de-la-pi>:8000/projector/vr
  *
- * Tocar la pantalla → pantalla completa. Meter el teléfono al Cardboard.
+ * Dos mejoras clave sobre la versión ingenua:
+ *  1) UNA sola decodificación de video, pintada a los dos ojos con canvas.
+ *     Antes había dos <video> del mismo archivo y el segundo PARPADEABA
+ *     (los teléfonos suelen tener un solo decodificador de video por hardware).
+ *  2) SEPARACIÓN y ZOOM ajustables (guardados en el teléfono). Si en el visor
+ *     se ve "doble", es que la separación entre las dos imágenes no coincide
+ *     con la distancia entre tus ojos/lentes: se calibra a mano una vez.
  *
- * Nota: es estéreo "plano" (sin corrección de distorsión de lentes). El QR
- * de calibración del visor solo lo usan apps con el SDK de Cardboard; para
- * proyectar imágenes/videos así se ve bien sin él. El modo WebXR real se
- * descartó porque exige HTTPS y la Pi sirve por HTTP en la red local.
+ * Sigue siendo estéreo "plano" (sin corrección de distorsión de lente). El QR
+ * del visor solo lo usan apps con el SDK de Cardboard; para proyectar así, la
+ * separación ajustable resuelve el "doble" sin necesitarlo. WebXR (que sí lo
+ * usaría) exige HTTPS y la Pi sirve por HTTP.
  */
 
-const eyeL = document.getElementById('eyeL');
-const eyeR = document.getElementById('eyeR');
+const eyes = [
+  { root: document.getElementById('eyeL'), canvas: null, ctx: null, idle: null, sign: +1 },
+  { root: document.getElementById('eyeR'), canvas: null, ctx: null, idle: null, sign: -1 },
+];
+eyes.forEach(e => {
+  e.canvas = e.root.querySelector('canvas');
+  e.ctx = e.canvas.getContext('2d');
+  e.idle = e.root.querySelector('.idle');
+});
 const hint = document.getElementById('hint');
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 
-let ws = null;
-let syncTimer = null;
-
-function detectVideo(url) {
-  return /\.(mp4|webm|mov|m4v)$/i.test(url || '');
+// ── Calibración persistente ───────────────────────────────────────
+// sep = desplazamiento horizontal de cada imagen hacia el centro (px CSS).
+// zoom = escala (%). Se guardan por teléfono en localStorage.
+let sep = parseInt(localStorage.getItem('mech_vr_sep') || '0', 10);
+let zoom = parseInt(localStorage.getItem('mech_vr_zoom') || '100', 10);
+function saveCalib() {
+  localStorage.setItem('mech_vr_sep', String(sep));
+  localStorage.setItem('mech_vr_zoom', String(zoom));
+  document.getElementById('sepVal').textContent = sep;
+  document.getElementById('zoomVal').textContent = zoom;
 }
 
-function clear() {
-  clearInterval(syncTimer);
-  const idle = '<div class="idle"><div class="ring"></div>MECH · VR</div>';
-  eyeL.innerHTML = idle;
-  eyeR.innerHTML = idle;
-}
+// ── Media actual (UNA sola, compartida por los dos ojos) ──────────
+let media = null;        // el <img> o <video> que se está decodificando
+let mediaReady = false;
+let rafId = null;
 
-function makeMedia(url, isVideo) {
-  const el = document.createElement(isVideo ? 'video' : 'img');
-  el.src = url;
-  if (isVideo) { el.autoplay = true; el.loop = true; el.muted = true; el.playsInline = true; }
-  return el;
+function detectVideo(url) { return /\.(mp4|webm|mov|m4v)$/i.test(url || ''); }
+
+function setIdle(on) { eyes.forEach(e => e.idle.classList.toggle('hidden', !on)); }
+
+function clearMedia() {
+  if (media && media.tagName === 'VIDEO') { try { media.pause(); } catch (e) {} }
+  media = null; mediaReady = false;
+  eyes.forEach(e => e.ctx.clearRect(0, 0, e.canvas.width, e.canvas.height));
+  setIdle(true);
 }
 
 function show(url, isVideo) {
-  clearInterval(syncTimer);
-  if (!url) { clear(); return; }
-  eyeL.innerHTML = '';
-  eyeR.innerHTML = '';
-  const l = makeMedia(url, isVideo);
-  const r = makeMedia(url, isVideo);
-  eyeL.appendChild(l);
-  eyeR.appendChild(r);
+  if (!url) { clearMedia(); return; }
+  clearMedia();
   if (isVideo) {
-    // Mantener ambos videos sincronizados (dos <video> del mismo archivo
-    // pueden desfasarse poco a poco; cada 3 s realineamos el derecho).
-    syncTimer = setInterval(() => {
-      if (Math.abs(l.currentTime - r.currentTime) > 0.12) {
-        r.currentTime = l.currentTime;
-      }
-    }, 3000);
+    const v = document.createElement('video');
+    v.src = url; v.loop = true; v.muted = true; v.playsInline = true; v.autoplay = true;
+    v.addEventListener('loadeddata', () => { mediaReady = true; setIdle(false); });
+    v.play().catch(() => {});
+    media = v;
+  } else {
+    const img = new Image();
+    img.onload = () => { mediaReady = true; setIdle(false); };
+    img.src = url;
+    media = img;
   }
 }
 
+function resizeCanvases() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  eyes.forEach(e => {
+    e.canvas.width = Math.round(e.root.clientWidth * dpr);
+    e.canvas.height = Math.round(e.root.clientHeight * dpr);
+    e._dpr = dpr;
+  });
+}
+window.addEventListener('resize', resizeCanvases);
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvases, 300));
+
+// Bucle de render: pinta la MISMA media (ya decodificada una vez) en los dos
+// ojos, aplicando separación y zoom. Cover + centrado.
+function render() {
+  rafId = requestAnimationFrame(render);
+  if (!media || !mediaReady) return;
+  const sw = media.videoWidth || media.naturalWidth || media.width;
+  const sh = media.videoHeight || media.naturalHeight || media.height;
+  if (!sw || !sh) return;
+
+  for (const e of eyes) {
+    const dw = e.canvas.width, dh = e.canvas.height, dpr = e._dpr || 1;
+    const scale = Math.max(dw / sw, dh / sh) * (zoom / 100);
+    const drawW = sw * scale, drawH = sh * scale;
+    const offX = e.sign * sep * dpr;   // acerca/aleja la imagen del centro
+    const dx = (dw - drawW) / 2 + offX;
+    const dy = (dh - drawH) / 2;
+    e.ctx.clearRect(0, 0, dw, dh);
+    try { e.ctx.drawImage(media, dx, dy, drawW, drawH); } catch (err) {}
+  }
+}
+
+// ── WebSocket (misma fuente y prioridad que /projector) ───────────
+let ws = null;
 function applyState(s) {
-  // Misma prioridad que /projector: video AI > imagen AI > inmersivo > stands.
   if (s.current_video) { show(s.current_video, true); return; }
   if (s.current_image) { show(s.current_image, false); return; }
   const imm = s.projectors?.imm;
@@ -141,18 +222,16 @@ function applyState(s) {
   if (s1?.on && s1.file) { show(s1.file, detectVideo(s1.file)); return; }
   const s2 = s.projectors?.s2;
   if (s2?.on && s2.file) { show(s2.file, detectVideo(s2.file)); return; }
-  clear();
+  clearMedia();
 }
-
 function connect() {
-  try {
-    ws = new WebSocket(WS_URL);
-  } catch (e) { setTimeout(connect, 3000); return; }
+  try { ws = new WebSocket(WS_URL); }
+  catch (e) { setTimeout(connect, 3000); return; }
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'state') applyState(msg.state);
-    else if (msg.type === 'image') { msg.url ? show(msg.url, false) : clear(); }
-    else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clear(); }
+    else if (msg.type === 'image') { msg.url ? show(msg.url, false) : clearMedia(); }
+    else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clearMedia(); }
     else if (msg.type === 'projector') {
       fetch('/api/state').then(r => r.json()).then(applyState).catch(() => {});
     }
@@ -160,50 +239,50 @@ function connect() {
   ws.onclose = () => setTimeout(connect, 2000);
 }
 
-// ── Mantener la pantalla encendida durante la proyección ──────────
-// La Wake Lock API solo funciona en HTTPS y la Pi sirve por HTTP, así que
-// el plan B es el truco clásico: un video invisible SIEMPRE en reproducción
-// (un canvas convertido en stream). Mientras un video se reproduce, el
-// teléfono no apaga la pantalla. Se activa con el primer toque (los
-// navegadores móviles exigen un gesto del usuario para reproducir).
-let wakeLock = null;
-let awakeVideo = null;
-
+// ── Mantener la pantalla encendida ────────────────────────────────
+let wakeLock = null, awakeVideo = null;
 async function keepAwake() {
   try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-      return;  // API moderna disponible (https/localhost)
-    }
-  } catch (e) { /* seguimos con el plan B */ }
+    if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); return; }
+  } catch (e) { /* plan B */ }
   if (awakeVideo) { awakeVideo.play().catch(() => {}); return; }
-  const canvas = document.createElement('canvas');
-  canvas.width = 32; canvas.height = 32;
-  const ctx = canvas.getContext('2d');
-  // Un píxel que parpadea para que el stream se considere "vivo".
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const cx = c.getContext('2d');
   setInterval(() => {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, 32, 32);
-    ctx.fillStyle = (Date.now() / 1000 | 0) % 2 ? '#010101' : '#000';
-    ctx.fillRect(0, 0, 1, 1);
+    cx.fillStyle = '#000'; cx.fillRect(0, 0, 32, 32);
+    cx.fillStyle = (Date.now() / 1000 | 0) % 2 ? '#010101' : '#000'; cx.fillRect(0, 0, 1, 1);
   }, 1000);
   awakeVideo = document.createElement('video');
-  awakeVideo.srcObject = canvas.captureStream(1);
-  awakeVideo.muted = true;
-  awakeVideo.playsInline = true;
-  awakeVideo.setAttribute('aria-hidden', 'true');
-  awakeVideo.style.cssText =
-    'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
+  awakeVideo.srcObject = c.captureStream(1);
+  awakeVideo.muted = true; awakeVideo.playsInline = true;
+  awakeVideo.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
   document.body.appendChild(awakeVideo);
   awakeVideo.play().catch(() => {});
 }
-
-// Si el usuario sale y vuelve a la pestaña, re-adquirimos el wake lock.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && (wakeLock || awakeVideo)) keepAwake();
 });
 
-// Toque → pantalla completa + horizontal + pantalla siempre encendida.
+// ── Panel de calibración ──────────────────────────────────────────
+const calib = document.getElementById('calib');
+const calibToggle = document.getElementById('calibToggle');
+calibToggle.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  calib.classList.toggle('hidden');
+});
+calib.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  const act = ev.target.getAttribute('data-act');
+  if (!act) return;
+  if (act === 'sep+') sep = Math.min(sep + 4, 300);
+  else if (act === 'sep-') sep = Math.max(sep - 4, -300);
+  else if (act === 'zoom+') zoom = Math.min(zoom + 5, 250);
+  else if (act === 'zoom-') zoom = Math.max(zoom - 5, 40);
+  else if (act === 'done') calib.classList.add('hidden');
+  saveCalib();
+});
+
+// ── Entrar en modo visor ──────────────────────────────────────────
 document.body.addEventListener('click', async () => {
   hint.style.opacity = '0';
   if (!document.fullscreenElement) {
@@ -211,10 +290,14 @@ document.body.addEventListener('click', async () => {
   }
   try { await screen.orientation.lock('landscape'); } catch (e) {}
   keepAwake();
-  // Los videos móviles a veces esperan un gesto del usuario para arrancar.
-  document.querySelectorAll('video').forEach(v => v.play().catch(() => {}));
+  if (media && media.tagName === 'VIDEO') media.play().catch(() => {});
 });
 
+// Init
+saveCalib();
+resizeCanvases();
+setIdle(true);
+render();
 connect();
 </script>
 </body>

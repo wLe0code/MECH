@@ -470,13 +470,25 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Claves: Fidel Gamboa (1961–2011, músico), Isidro Con Wong FALLECIÓ el
   1 set 2024, Deredia primer escultor latinoamericano en la Basílica de San
   Pedro (2000), Batalla de Rivas 11 abr 1856, Quijote 1605/1615.
-- **Proyección en Google Cardboard** (`/projector/vr` → `frontend/cardboard.html`):
-  vista estéreo lado a lado con lo mismo que muestra `/projector` (imagen o
-  video duplicado por ojo, videos re-sincronizados cada 3 s). Se abre EN EL
-  TELÉFONO (misma wifi que la Pi), tocar = fullscreen + lock landscape, y se
-  mete al visor. Estéreo "plano" a propósito: el QR de calibración del visor
-  solo sirve para apps con SDK de Cardboard, y WebXR se descartó porque exige
-  HTTPS (la Pi sirve por HTTP). Aviso de girar el teléfono en portrait.
+- **Proyección en Google Cardboard** (`/projector/vr` o `/proyector/vr` →
+  `frontend/cardboard.html`): vista estéreo lado a lado con lo mismo que
+  `/projector`. Se abre EN EL TELÉFONO (misma wifi que la Pi); tocar el centro
+  = fullscreen + lock landscape + mantener pantalla encendida (Wake Lock si hay
+  HTTPS; si no, truco de video invisible con canvas.captureStream). Se mete al
+  visor. Detalles clave:
+  - **Una sola decodificación**: la imagen/video se decodifica UNA vez y se
+    pinta a los dos ojos con `<canvas>` + `requestAnimationFrame`. Antes había
+    dos `<video>` del mismo archivo y el ojo derecho PARPADEABA (los teléfonos
+    suelen tener un único decodificador de video por hardware). NO volver a
+    duplicar el elemento de video.
+  - **Calibración SEPARACIÓN + ZOOM** (botón "AJUSTAR VR", guardada en
+    `localStorage`): si en el visor se ve "doble", la separación entre las dos
+    imágenes no coincide con la distancia interocular; se ajusta a mano una vez.
+    Por eso NO hace falta el QR del visor (ese solo lo usan apps con SDK de
+    Cardboard; para estéreo plano la separación ajustable lo resuelve). WebXR
+    se descartó porque exige HTTPS.
+  - Estéreo "plano" (sin corrección de distorsión de lente). Aviso de girar el
+    teléfono en portrait.
 - **Vista Arduino del panel actualizada**: se quitó la tarjeta CABEZA (el
   robot no tiene cabeza móvil; `API.headLive` eliminado de app.js), tarjeta
   nueva de ARO DE LEDS (botones LED:WAKE/LISTEN/…) y COMANDO CRUDO con chips
