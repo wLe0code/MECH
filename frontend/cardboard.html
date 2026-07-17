@@ -160,13 +160,57 @@ function connect() {
   ws.onclose = () => setTimeout(connect, 2000);
 }
 
-// Toque → pantalla completa + intento de bloquear en horizontal.
+// ── Mantener la pantalla encendida durante la proyección ──────────
+// La Wake Lock API solo funciona en HTTPS y la Pi sirve por HTTP, así que
+// el plan B es el truco clásico: un video invisible SIEMPRE en reproducción
+// (un canvas convertido en stream). Mientras un video se reproduce, el
+// teléfono no apaga la pantalla. Se activa con el primer toque (los
+// navegadores móviles exigen un gesto del usuario para reproducir).
+let wakeLock = null;
+let awakeVideo = null;
+
+async function keepAwake() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      return;  // API moderna disponible (https/localhost)
+    }
+  } catch (e) { /* seguimos con el plan B */ }
+  if (awakeVideo) { awakeVideo.play().catch(() => {}); return; }
+  const canvas = document.createElement('canvas');
+  canvas.width = 32; canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  // Un píxel que parpadea para que el stream se considere "vivo".
+  setInterval(() => {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 32, 32);
+    ctx.fillStyle = (Date.now() / 1000 | 0) % 2 ? '#010101' : '#000';
+    ctx.fillRect(0, 0, 1, 1);
+  }, 1000);
+  awakeVideo = document.createElement('video');
+  awakeVideo.srcObject = canvas.captureStream(1);
+  awakeVideo.muted = true;
+  awakeVideo.playsInline = true;
+  awakeVideo.setAttribute('aria-hidden', 'true');
+  awakeVideo.style.cssText =
+    'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
+  document.body.appendChild(awakeVideo);
+  awakeVideo.play().catch(() => {});
+}
+
+// Si el usuario sale y vuelve a la pestaña, re-adquirimos el wake lock.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && (wakeLock || awakeVideo)) keepAwake();
+});
+
+// Toque → pantalla completa + horizontal + pantalla siempre encendida.
 document.body.addEventListener('click', async () => {
   hint.style.opacity = '0';
   if (!document.fullscreenElement) {
     try { await document.documentElement.requestFullscreen(); } catch (e) {}
   }
   try { await screen.orientation.lock('landscape'); } catch (e) {}
+  keepAwake();
   // Los videos móviles a veces esperan un gesto del usuario para arrancar.
   document.querySelectorAll('video').forEach(v => v.play().catch(() => {}));
 });
