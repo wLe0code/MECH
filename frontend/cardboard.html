@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MECH · Proyección VR (Cardboard)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+
+  /* Dos "ojos" lado a lado: la MISMA imagen/video en cada mitad.
+     Al meter el teléfono en el Google Cardboard, cada lente ve una mitad
+     y el cerebro las funde en una sola pantalla grande e inmersiva. */
+  #eyes { position: fixed; inset: 0; display: flex; }
+  .eye {
+    position: relative; width: 50%; height: 100%;
+    overflow: hidden; background: #000;
+  }
+  /* Separador central sutil para alinear el visor. */
+  #eyes::after {
+    content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 2px; transform: translateX(-1px);
+    background: #111;
+  }
+  .eye img, .eye video {
+    width: 100%; height: 100%;
+    object-fit: cover;           /* llena el ojo (recorta bordes) */
+  }
+  .idle {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+    color: #2a2a33; font-family: 'Space Mono', monospace;
+    font-size: 13px; letter-spacing: 4px; text-align: center;
+  }
+  .idle .ring {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 2px solid #1c1c26; border-top-color: #534AB7;
+    animation: spin 2.4s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Aviso si el teléfono está en vertical (el Cardboard es horizontal). */
+  #rotate {
+    position: fixed; inset: 0; display: none; z-index: 10;
+    background: #000; color: #888;
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    letter-spacing: 2px; text-align: center;
+    flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  }
+  #rotate .phone { font-size: 42px; animation: tilt 1.6s ease-in-out infinite alternate; }
+  @keyframes tilt { from { transform: rotate(0deg); } to { transform: rotate(90deg); } }
+  @media (orientation: portrait) { #rotate { display: flex; } }
+
+  /* Pista para entrar a pantalla completa (desaparece al tocar). */
+  #hint {
+    position: fixed; bottom: 12px; left: 0; right: 0; z-index: 5;
+    text-align: center; color: #444;
+    font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    transition: opacity .5s;
+  }
+</style>
+</head>
+<body>
+  <div id="eyes">
+    <div class="eye" id="eyeL"><div class="idle"><div class="ring"></div>MECH · VR</div></div>
+    <div class="eye" id="eyeR"><div class="idle"><div class="ring"></div>MECH · VR</div></div>
+  </div>
+  <div id="rotate"><div class="phone">📱</div>GIRA EL TELÉFONO<br>Y MÉTELO EN EL CARDBOARD</div>
+  <div id="hint">TOCA LA PANTALLA PARA PANTALLA COMPLETA</div>
+
+<script>
+/* MECH · Proyección estéreo para Google Cardboard.
+ *
+ * Misma fuente que /projector (WebSocket del backend), pero renderizada
+ * DOS veces lado a lado, una por ojo. Abrir EN EL TELÉFONO (misma wifi
+ * que la Pi):
+ *
+ *     http://<ip-de-la-pi>:8000/projector/vr
+ *
+ * Tocar la pantalla → pantalla completa. Meter el teléfono al Cardboard.
+ *
+ * Nota: es estéreo "plano" (sin corrección de distorsión de lentes). El QR
+ * de calibración del visor solo lo usan apps con el SDK de Cardboard; para
+ * proyectar imágenes/videos así se ve bien sin él. El modo WebXR real se
+ * descartó porque exige HTTPS y la Pi sirve por HTTP en la red local.
+ */
+
+const eyeL = document.getElementById('eyeL');
+const eyeR = document.getElementById('eyeR');
+const hint = document.getElementById('hint');
+const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+
+let ws = null;
+let syncTimer = null;
+
+function detectVideo(url) {
+  return /\.(mp4|webm|mov|m4v)$/i.test(url || '');
+}
+
+function clear() {
+  clearInterval(syncTimer);
+  const idle = '<div class="idle"><div class="ring"></div>MECH · VR</div>';
+  eyeL.innerHTML = idle;
+  eyeR.innerHTML = idle;
+}
+
+function makeMedia(url, isVideo) {
+  const el = document.createElement(isVideo ? 'video' : 'img');
+  el.src = url;
+  if (isVideo) { el.autoplay = true; el.loop = true; el.muted = true; el.playsInline = true; }
+  return el;
+}
+
+function show(url, isVideo) {
+  clearInterval(syncTimer);
+  if (!url) { clear(); return; }
+  eyeL.innerHTML = '';
+  eyeR.innerHTML = '';
+  const l = makeMedia(url, isVideo);
+  const r = makeMedia(url, isVideo);
+  eyeL.appendChild(l);
+  eyeR.appendChild(r);
+  if (isVideo) {
+    // Mantener ambos videos sincronizados (dos <video> del mismo archivo
+    // pueden desfasarse poco a poco; cada 3 s realineamos el derecho).
+    syncTimer = setInterval(() => {
+      if (Math.abs(l.currentTime - r.currentTime) > 0.12) {
+        r.currentTime = l.currentTime;
+      }
+    }, 3000);
+  }
+}
+
+function applyState(s) {
+  // Misma prioridad que /projector: video AI > imagen AI > inmersivo > stands.
+  if (s.current_video) { show(s.current_video, true); return; }
+  if (s.current_image) { show(s.current_image, false); return; }
+  const imm = s.projectors?.imm;
+  if (imm?.on && imm.file) { show(imm.file, detectVideo(imm.file)); return; }
+  const s1 = s.projectors?.s1;
+  if (s1?.on && s1.file) { show(s1.file, detectVideo(s1.file)); return; }
+  const s2 = s.projectors?.s2;
+  if (s2?.on && s2.file) { show(s2.file, detectVideo(s2.file)); return; }
+  clear();
+}
+
+function connect() {
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (e) { setTimeout(connect, 3000); return; }
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'state') applyState(msg.state);
+    else if (msg.type === 'image') { msg.url ? show(msg.url, false) : clear(); }
+    else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clear(); }
+    else if (msg.type === 'projector') {
+      fetch('/api/state').then(r => r.json()).then(applyState).catch(() => {});
+    }
+  };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+
+// Toque → pantalla completa + intento de bloquear en horizontal.
+document.body.addEventListener('click', async () => {
+  hint.style.opacity = '0';
+  if (!document.fullscreenElement) {
+    try { await document.documentElement.requestFullscreen(); } catch (e) {}
+  }
+  try { await screen.orientation.lock('landscape'); } catch (e) {}
+  // Los videos móviles a veces esperan un gesto del usuario para arrancar.
+  document.querySelectorAll('video').forEach(v => v.play().catch(() => {}));
+});
+
+connect();
+</script>
+</body>
+</html>

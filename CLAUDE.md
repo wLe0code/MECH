@@ -186,6 +186,9 @@ frontend/
   styles.css
   projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
                         Maneja eventos image y video, con loop en video.
+  cardboard.html      ← Vista estéreo lado a lado (Google Cardboard) en
+                        /projector/vr. Misma fuente WS que projector.html,
+                        duplicada por ojo; se abre en el teléfono.
   library.html        ← UI sencilla en /library para subir videos
                         pre-renderizados (Opción B).
   manifest.json       ← PWA instalable.
@@ -467,6 +470,13 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Claves: Fidel Gamboa (1961–2011, músico), Isidro Con Wong FALLECIÓ el
   1 set 2024, Deredia primer escultor latinoamericano en la Basílica de San
   Pedro (2000), Batalla de Rivas 11 abr 1856, Quijote 1605/1615.
+- **Proyección en Google Cardboard** (`/projector/vr` → `frontend/cardboard.html`):
+  vista estéreo lado a lado con lo mismo que muestra `/projector` (imagen o
+  video duplicado por ojo, videos re-sincronizados cada 3 s). Se abre EN EL
+  TELÉFONO (misma wifi que la Pi), tocar = fullscreen + lock landscape, y se
+  mete al visor. Estéreo "plano" a propósito: el QR de calibración del visor
+  solo sirve para apps con SDK de Cardboard, y WebXR se descartó porque exige
+  HTTPS (la Pi sirve por HTTP). Aviso de girar el teléfono en portrait.
 - **Vista Arduino del panel actualizada**: se quitó la tarjeta CABEZA (el
   robot no tiene cabeza móvil; `API.headLive` eliminado de app.js), tarjeta
   nueva de ARO DE LEDS (botones LED:WAKE/LISTEN/…) y COMANDO CRUDO con chips

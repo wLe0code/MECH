@@ -237,6 +237,20 @@ async def projector_page():
     return FileResponse(page)
 
 
+@app.get("/projector/vr")
+async def projector_vr_page():
+    """Vista estéreo lado a lado para Google Cardboard.
+
+    Se abre EN EL TELÉFONO (misma wifi que la Pi):
+    http://<ip-pi>:8000/projector/vr — tocar para fullscreen y meter el
+    teléfono en el visor. Muestra lo mismo que /projector, duplicado por ojo.
+    """
+    page = FRONTEND_DIR / "cardboard.html"
+    if not page.exists():
+        raise HTTPException(404, "Página VR no encontrada")
+    return FileResponse(page)
+
+
 @app.get("/library")
 async def library_page():
     """UI sencilla para subir/borrar videos pre-renderizados por obra."""
