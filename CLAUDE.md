@@ -196,8 +196,15 @@ arduino/mech_controller/
   mech_controller.ino ← Firmware. Modos: AUTO/IDLE/LISTEN/SPEAK/STOP.
                         Comandos: MODE, HEAD, ARM, MOVE (omnidireccional), STOP.
 
-branding/             ← Logo de MECH en alta calidad (logo-mech.jpg 4500px y
-                        logo-mech.pdf 300 dpi), réplica del SVG del sitio.
+branding/             ← Identidad y figuras para el trabajo escrito (IEEE).
+                        logo-mech.jpg/pdf (alta calidad, réplica del SVG del
+                        sitio) + diagramas a 300 dpi generados con PIL+Sora:
+                        diagrama-arquitectura.png (capas DENTRO del render del
+                        robot, 1050px = columna IEEE), diagrama-flujo-hardware/
+                        software.png (1050px) y diagrama-caso-uso.png (2150px,
+                        figura de dos columnas, con el render como actor).
+                        Scripts regenerables en branding/scripts/ (diag_*.py
+                        + Sora.ttf; ver su README).
 
 web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
   index.html          ← One-page en 2 capítulos: 01·empresa (lateral sticky) y
