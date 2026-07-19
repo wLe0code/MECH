@@ -93,21 +93,43 @@ def _resample(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
 
 
 def get_model() -> WhisperModel:
-    """Carga perezosa del modelo Whisper. En Pi 5 usa CPU + int8."""
+    """Carga perezosa del modelo Whisper. En Pi 5 usa CPU + int8.
+
+    Con WHISPER_OFFLINE=true (default) usa el modelo YA DESCARGADO del disco
+    y NO toca internet: ni descarga ni chequea actualizaciones en Hugging
+    Face. La descarga (~150 MB) ocurre UNA sola vez, la primera vez que se
+    corre con red; después el modelo queda cacheado y se carga siempre local.
+    """
     global _model
     if _model is None:
-        # Modo offline: usa el modelo del disco sin consultar internet, así no
-        # se cuelga si la red está mal. Se setea ANTES de crear WhisperModel.
+        # Las variables de entorno son un refuerzo, pero el interruptor que
+        # de verdad garantiza "solo disco" es local_files_only (se lo pasa
+        # directo a la descarga, sin depender de cuándo se leyó el entorno).
         if config.WHISPER_OFFLINE:
             os.environ["HF_HUB_OFFLINE"] = "1"
             os.environ["TRANSFORMERS_OFFLINE"] = "1"
-        print(f"[STT] Cargando faster-whisper '{config.WHISPER_MODEL}'...")
-        _model = WhisperModel(
-            config.WHISPER_MODEL,
-            device="cpu",
-            compute_type="int8",  # menos RAM, suficiente para Pi 5
-        )
-        print("[STT] Modelo listo.")
+        modo = "solo disco (offline)" if config.WHISPER_OFFLINE else "con descarga si falta"
+        print(f"[STT] Cargando faster-whisper '{config.WHISPER_MODEL}' — {modo}...")
+        try:
+            _model = WhisperModel(
+                config.WHISPER_MODEL,
+                device="cpu",
+                compute_type="int8",  # menos RAM, suficiente para Pi 5
+                local_files_only=config.WHISPER_OFFLINE,  # NO toca la red
+            )
+        except Exception as e:
+            # Caso típico: WHISPER_OFFLINE=true pero el modelo aún no se ha
+            # descargado nunca. Damos un mensaje claro en vez de un error
+            # de red críptico.
+            if config.WHISPER_OFFLINE:
+                raise RuntimeError(
+                    f"No encontré el modelo Whisper '{config.WHISPER_MODEL}' en "
+                    "el disco y WHISPER_OFFLINE=true (no descarga). Corré UNA "
+                    "vez con internet y WHISPER_OFFLINE=false para descargarlo, "
+                    "y después volvé a poner true."
+                ) from e
+            raise
+        print("[STT] Modelo listo (cargado desde disco, sin internet).")
     return _model
 
 
