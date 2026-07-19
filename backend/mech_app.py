@@ -50,6 +50,11 @@ class MechApp:
         self._last_led: str | None = None
         # Throttle del nivel de micrófono que se emite al panel.
         self._last_mic_level_emit: float = 0.0
+        # Saludo al detectar usuario: cooldown para no saludar en bucle a la
+        # misma persona, y ventana anti-eco (mientras MECH saluda, el bucle
+        # de voz descarta lo que transcriba para no oírse a sí mismo).
+        self._last_greeting: float = 0.0
+        self.greeting_until: float = 0.0
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -219,12 +224,31 @@ class MechApp:
     # Visión (backend/vision.py llama estos hooks)
     # ------------------------------------------------------------------
 
+    # Frase oficial de bienvenida (pedida por el equipo, jul 2026).
+    GREETING_TEXT = "¡Hola! Soy MECH. Un gusto verte hoy aquí."
+
     def on_user_detected(self) -> None:
-        """Alguien entró al campo de la cámara: MECH saluda con el brazo
-        (sin gastar créditos de voz) y gira hacia la persona."""
-        v = self.state.get("vision", {})
-        if self.state.get("voice_phase") not in ("speaking", "thinking", "transcribing"):
-            gestures.perform(self.arduino, "wave", user_x=v.get("x"))
+        """Alguien entró al campo de la cámara: MECH hace el protocolo de
+        saludo (arco de brazo del video del equipo) y da la bienvenida por
+        voz. Con cooldown para no saludar en bucle a la misma persona."""
+        if self.state.get("voice_phase") in ("speaking", "thinking", "transcribing"):
+            return  # no interrumpir una narración
+        gestures.perform(self.arduino, "wave")
+        now = time.time()
+        if now - self._last_greeting < 60:
+            return  # ya saludó hace poco
+        self._last_greeting = now
+
+        def _greet():
+            # Ventana provisional amplia mientras habla; al terminar se
+            # ajusta a un margen corto para drenar el eco del parlante.
+            self.greeting_until = time.time() + 20
+            try:
+                tts.speak(self.GREETING_TEXT, blocking=True)
+            finally:
+                self.greeting_until = time.time() + 1.5
+
+        threading.Thread(target=_greet, daemon=True).start()
 
     def on_user_lost(self) -> None:
         """El usuario salió de cámara. (El propio módulo de visión ya detuvo
@@ -254,6 +278,9 @@ class MechApp:
             self.arduino.stop_motors()
             self.arduino.set_mode("STOP")
             self.set_led("ERR")  # parpadeo rojo en el aro y se apaga
+            # Tras un paro, la posición ya no es confiable: el punto donde
+            # quede el robot pasa a ser el nuevo inicio.
+            self.arduino.reset_odometer()
         except Exception as e:
             self.log(f"Arduino no respondió al paro: {e}", "err")
         # Audio (TTS en curso + música de fondo)
@@ -374,8 +401,36 @@ class MechApp:
             except Exception as e:
                 self.log(f"Imagen falló: {e}", "err")
 
+    def return_to_start(self) -> None:
+        """Vuelve al punto donde el robot empezó (odómetro adelante/atrás),
+        para que la proyección no quede desfasada tras acercarse a alguien.
+
+        Es una estimación por tiempo (sin encoders): suficiente para el
+        stand. Con tope de seguridad de 6 s de retorno."""
+        net = self.arduino.net_forward()
+        if abs(net) < 8:  # desplazamiento despreciable
+            self.arduino.reset_odometer()
+            return
+        speed = 40
+        secs = min(abs(net) / speed, 6.0)
+        self.log(
+            f"Volviendo al punto de inicio ({secs:.1f} s hacia "
+            f"{'atrás' if net > 0 else 'adelante'}) para proyectar alineado.",
+            "info",
+        )
+        self.arduino.move(-speed if net > 0 else speed, 0, 0)
+        time.sleep(secs)
+        self.arduino.stop_motors()
+        self.arduino.reset_odometer()
+
     def execute_plan(self, plan: "llm.Plan") -> None:
         """Ejecuta el plan de Claude (varios segmentos)."""
+        # Si la visión acercó a MECH hacia el usuario, primero regresa a su
+        # sitio: el proyector debe apuntar a donde estaba calibrado.
+        try:
+            self.return_to_start()
+        except Exception as e:
+            self.log(f"No pude volver al inicio: {e}", "warn")
         self.arduino.set_mode("SPEAK")
         self.set_voice_phase("speaking")
         tts.clear_stop()  # rehabilita la voz por si un paro la había cortado

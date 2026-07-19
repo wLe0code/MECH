@@ -73,6 +73,33 @@ class ArduinoLink:
         self._write_lock = threading.Lock()
         # Callback opcional: se llama con True/False al conectar/desconectar.
         self.on_status: Callable[[bool], None] | None = None
+        # --- Odómetro adelante/atrás (aprox., por tiempo) -----------------
+        # Integra vx · tiempo para saber cuánto se ha desplazado el robot
+        # desde su punto de inicio, y así poder VOLVER antes de proyectar
+        # (que la proyección no quede desfasada). Unidades: %velocidad · s.
+        self._odo_lock = threading.Lock()
+        self._odo_net = 0.0
+        self._odo_vx = 0
+        self._odo_t = time.monotonic()
+
+    def _odo_update(self, new_vx: int) -> None:
+        """Cierra el tramo actual del odómetro y arranca uno nuevo."""
+        with self._odo_lock:
+            now = time.monotonic()
+            self._odo_net += self._odo_vx * (now - self._odo_t)
+            self._odo_t = now
+            self._odo_vx = new_vx
+
+    def net_forward(self) -> float:
+        """Desplazamiento neto adelante(+)/atrás(−) en unidades %vel·s."""
+        with self._odo_lock:
+            return self._odo_net + self._odo_vx * (time.monotonic() - self._odo_t)
+
+    def reset_odometer(self) -> None:
+        """Declara la posición actual como nuevo punto de inicio."""
+        with self._odo_lock:
+            self._odo_net = 0.0
+            self._odo_t = time.monotonic()
 
     @property
     def is_connected(self) -> bool:
@@ -167,6 +194,10 @@ class ArduinoLink:
     # --- Helpers de alto nivel ---
 
     def set_mode(self, mode: str) -> None:
+        # El firmware detiene los motores al entrar a LISTEN/SPEAK/STOP:
+        # reflejarlo en el odómetro.
+        if mode in ("LISTEN", "SPEAK", "STOP"):
+            self._odo_update(0)
         self.send(f"MODE:{mode}")
 
     def head(self, pan: int, tilt: int) -> None:
@@ -184,9 +215,11 @@ class ArduinoLink:
         vx = max(-100, min(100, int(vx)))
         vy = max(-100, min(100, int(vy)))
         w = max(-100, min(100, int(w)))
+        self._odo_update(vx)
         self.send(f"MOVE:{vx}:{vy}:{w}")
 
     def stop_motors(self) -> None:
+        self._odo_update(0)
         self.send("STOP")
 
     def led(self, pattern: str) -> None:

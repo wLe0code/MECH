@@ -159,9 +159,10 @@ VISION_MIN_DISTANCE = float(os.environ.get("VISION_MIN_DISTANCE", "1.2"))
 # Si true, MECH avanza hacia el usuario hasta quedar a VISION_MIN_DISTANCE.
 # Solo se mueve cuando NO está narrando (fases waiting/dormant).
 VISION_APPROACH = _bool_env("VISION_APPROACH", "true")
-# Si true, MECH gira sobre sí mismo para quedar de frente al usuario
-# (sigue a la persona si se mueve por el stand).
-VISION_FOLLOW = _bool_env("VISION_FOLLOW", "true")
+# SIN EFECTO desde jul 2026: el robot ya no gira hacia el usuario (las
+# mecanum solo van bien adelante/atrás; girar es manual desde el panel).
+# La clave se conserva por compatibilidad con .env existentes.
+VISION_FOLLOW = _bool_env("VISION_FOLLOW", "false")
 # Si true, NO se proyectan visuales cuando no hay un usuario dentro de la
 # distancia mínima (la cámara manda: sin usuario cerca = sin proyección).
 VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "true")

@@ -126,6 +126,16 @@ def _voice_loop_worker():
                 )
                 continue
 
+            # Si MECH estaba dando su saludo de bienvenida (la visión lo
+            # dispara de forma asíncrona), lo que se transcribió es su propio
+            # eco por el parlante: se descarta.
+            if time.time() < app_state.greeting_until:
+                app_state.log("Ignoro la transcripción: era mi propio saludo.", "info")
+                app_state.set_voice_phase(
+                    "waiting" if app_state.state.get("voice_awake", True) else "dormant"
+                )
+                continue
+
             awake = app_state.state.get("voice_awake", True)
 
             if not awake:

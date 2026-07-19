@@ -486,7 +486,6 @@
       if ($('set-vision')) $('set-vision').checked = !!L.VISION_ENABLED;
       setSlider('set-dist', 'dist', L.VISION_MIN_DISTANCE);
       if ($('set-approach')) $('set-approach').checked = !!L.VISION_APPROACH;
-      if ($('set-follow')) $('set-follow').checked = !!L.VISION_FOLLOW;
       if ($('set-gate')) $('set-gate').checked = !!L.VISION_PROJECT_GATE;
       // Reinicio
       if ($('set-rate'))    $('set-rate').value = String(R.AUDIO_SAMPLE_RATE ?? 48000);
@@ -522,7 +521,6 @@
         GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
         VISION_MIN_DISTANCE: $('set-dist').value,
         VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',
-        VISION_FOLLOW: $('set-follow').checked ? 'true' : 'false',
         VISION_PROJECT_GATE: $('set-gate').checked ? 'true' : 'false',
       };
       const res = await fetchJSON('/api/config', { json: { updates } });

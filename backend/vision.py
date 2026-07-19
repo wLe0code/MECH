@@ -18,10 +18,12 @@ Dos backends de detección (se elige el mejor disponible automáticamente):
        menor y solo caras frontales, pero suficiente para un stand.
 
 Comportamientos (configurables en vivo desde el panel):
-    - VISION_FOLLOW   : MECH gira para quedar de frente al usuario.
     - VISION_APPROACH : MECH avanza hasta quedar a VISION_MIN_DISTANCE.
-      Solo se mueve cuando NO está narrando (fases waiting/dormant) y el
-      bucle de voz está activo. Siempre manda STOP al perder al usuario.
+      SOLO adelante/atrás (jul 2026: el robot no gira bien en el sitio;
+      VISION_FOLLOW quedó sin efecto). Solo se mueve cuando NO está
+      narrando (fases waiting/dormant) y siempre manda STOP al perder al
+      usuario. El desplazamiento queda en el odómetro de arduino_link y
+      mech_app.return_to_start() lo revierte antes de proyectar.
     - VISION_PROJECT_GATE: lo usa mech_app — sin usuario dentro de la
       distancia mínima, no se proyectan visuales.
 
@@ -307,18 +309,17 @@ class Vision:
             pass
 
     def _behave(self, present: bool, x: float, distance: float | None) -> None:
-        """Seguir / acercarse al usuario. Manda MOVE a baja velocidad."""
+        """Acercarse al usuario. SOLO adelante/atrás (decisión jul 2026: las
+        mecanum de este robot no giran bien en el sitio; los giros se hacen
+        manuales desde el panel, estilo carro). El desplazamiento queda en el
+        odómetro de arduino_link y mech_app.return_to_start() lo revierte
+        antes de proyectar, para que la proyección no quede desfasada."""
         if not present or not self._may_drive():
             self._release_drive()
             return
 
         max_v = max(10, min(100, config.VISION_MAX_SPEED))
-        w = 0
         vx = 0
-
-        # Girar para quedar de frente (sigue al usuario si camina).
-        if config.VISION_FOLLOW and abs(x) > 0.15:
-            w = int(max(-1.0, min(1.0, x)) * max_v)
 
         # Avanzar hasta la distancia mínima (con histéresis para no oscilar).
         if (
@@ -331,11 +332,11 @@ class Vision:
             excess = distance - config.VISION_MIN_DISTANCE
             vx = int(min(max_v, 12 + excess * 25))
 
-        if vx == 0 and w == 0:
+        if vx == 0:
             self._release_drive()
             return
         self._driving = True
-        self.app.arduino.move(vx, 0, w)
+        self.app.arduino.move(vx, 0, 0)
 
 
 _vision: Vision | None = None
