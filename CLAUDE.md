@@ -101,7 +101,8 @@ No las cuestiones a menos que el usuario las cuestione primero:
 | Presencia / visión | **Logitech C930e** (USB UVC, 1080p, FOV 90°) — **solo video** | FOV ancho detecta usuarios que se acercan por los lados; H.264 por hardware libera CPU de la Pi. **El mic de la C930e ya NO se usa.** |
 | Audio in | **Steren MIC-9010** — micrófono inalámbrico de solapa con receptor USB | Inalámbrico (~20–35m de alcance), batería recargable. El receptor se enchufa por USB a la Pi y aparece como dispositivo de captura. Se selecciona con `AUDIO_INPUT_DEVICE` en `.env` (ej. `Steren`). |
 | Audio out | Parlante USB o jack 3.5mm | |
-| Visualización | Proyector HDMI desde la Pi + Chromium kiosko a `/projector` | |
+| Visualización | Proyector **YG300** (HDMI desde la Pi) + Chromium kiosko a `/projector` | Se cambió del HY300 al **YG300 por el voltaje** (el YG300 va con 5V) |
+| Energía | Batería + **interruptor general** | El interruptor corta la alimentación de potencia (batería → drivers/servos) sin desenchufar |
 
 ### Sin HC-SR04 (cambio de plan)
 
@@ -119,7 +120,7 @@ El firmware [`arduino/mech_controller/mech_controller.ino`](arduino/mech_control
 
 - **Servos (brazos):** ARM_L = pin **9**, ARM_R = pin **10** (la librería Servo usa el Timer1 = pines 9/10).
 - **Motores (4× DC vía 2× L298N):** PWM/ENA en **3, 5, 6, 11**; direcciones IN1/IN2 en **2, 4, 7, 8, 12, 13, A0, A1**. (No se usan 9/10 para PWM porque los ocupa el Servo.)
-- **Aro de LEDs (WS2812/NeoPixel 12 LEDs, estilo Alexa):** DIN = pin **A2** (con ~330 Ω en serie), VCC al **5V del Arduino** (brillo limitado a 60/255 — NO a la fuente de 6V de los servos), GND común. Requiere librería **Adafruit NeoPixel**; sin aro, poner `#define MECH_LEDS 0` en el .ino y compila sin ella. El backend sincroniza el aro con la fase de voz (`mech_app.set_voice_phase` → `LED:<patrón>`).
+- **Aro de LEDs (WS2812/NeoPixel 12 LEDs, estilo Alexa):** ⏸️ **EN PAUSA (jul 2026): el equipo decidió NO usar el aro por el momento — `#define MECH_LEDS 0` en el .ino** (compila sin la librería; los `LED:` responden ACK y no hacen nada; el backend los sigue mandando y es inofensivo). Si se retoma: `MECH_LEDS 1`, DIN = pin **A2** (con ~330 Ω en serie), VCC al **5V del Arduino** (brillo limitado a 60/255 — NO a la fuente de 6V de los servos), GND común, librería **Adafruit NeoPixel**.
 - **Sin cabeza:** el comando `HEAD` se reconoce pero es un no-op (no rompe el lado de la Pi; los gestos siguen con los brazos).
 
 Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard), GND común.
@@ -127,6 +128,8 @@ Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard)
 **Sentido de giro por motor:** constantes `DIR_FL/DIR_FR/DIR_BL/DIR_BR` en el .ino (1 = normal, −1 = invertido). Calibración CONFIRMADA en el robot real (jul 2026): **FR y BL van en −1** (cableadas con polaridad opuesta); con esos signos AVANZAR va hacia adelante. Si una rueda gira al revés, se cambia su signo ahí y se reflashea — NO recablear. Para calibrar sin adivinar: comando `WHEEL:<id>:<vel>` (una sola rueda; chips en el panel → Arduino → comando crudo).
 
 **Cinemática ADAPTADA a las ruedas reales (jul 2026) — NO "corregirla" al estándar de libro:** por cómo están montadas las mecanum del robot (el usuario decidió NO remontarlas), los patrones se calibraron empíricamente en el suelo: 4 iguales = avanza (vx) ✓; patrón DIAGONAL (FL+BR vs FR+BL) = GIRO sobre sí mismo (w) ✓; patrón de LADOS (izq vs der) = las fuerzas se anulan y NO se mueve (no se usa); patrón DELANTERO/TRASERO (2 de adelante vs 2 de atrás) = desplazamiento LATERAL (vy). `driveOmni()`: `fl=vx+vy+w · fr=vx+vy−w · bl=vx−vy−w · br=vx−vy+w`. El giro a 2 ruedas (solo FL+BR sin las otras) se descartó: se sentía "trabado". Si un sentido sale espejado (giro der ↔ izq o lateral der ↔ izq), se voltea el signo de `w` o `vy` en esta fórmula, nada más.
+
+**Movimiento AUTÓNOMO = SOLO adelante/atrás (decisión jul 2026):** en la práctica el robot solo se desplaza bien hacia adelante y atrás; girar se hace MANUAL desde el panel "estilo carro" (atrás, girar un poco, atrás, girar un poco). Por eso los comportamientos automáticos (visión al acercarse, gestos con ruedas) SOLO usan `vx` — nada de `w` ni `vy`. Además `arduino_link.py` lleva un **odómetro** adelante/atrás (integra vx·tiempo) y `mech_app.return_to_start()` revierte el desplazamiento neto ANTES de cada plan, para que el proyector vuelva a apuntar a donde estaba calibrado (la proyección no se desfasa). El odómetro se resetea con el paro de emergencia (posición ya no confiable).
 
 ---
 
@@ -494,6 +497,22 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   nueva de ARO DE LEDS (botones LED:WAKE/LISTEN/…) y COMANDO CRUDO con chips
   de plantillas (`API.rawPreset`) + referencia del protocolo y mapa de pines
   real (giro solo FL+BR, servos 9/10, aro A2). Verificado en preview estático.
+- **Movimiento autónomo solo adelante/atrás + odómetro (jul 2026)**: la
+  visión ya no gira hacia el usuario (toggle "Seguir" eliminado del panel;
+  `VISION_FOLLOW` queda sin efecto) y los gestos solo balancean adelante/
+  atrás. `arduino_link` integra vx·tiempo (odómetro `net_forward()`/
+  `reset_odometer()`); `mech_app.return_to_start()` revierte el
+  desplazamiento (tope 6 s) al inicio de CADA `execute_plan`, para que el
+  proyector vuelva a su punto calibrado. Paro de emergencia = reset del
+  odómetro. Girar es manual desde el panel (estilo carro).
+- **Saludo al detectar usuario (calibrado con videos del equipo, jul 2026)**:
+  al ver a alguien, MECH dice «¡Hola! Soy MECH. Un gusto verte hoy aquí»
+  (`mech_app.GREETING_TEXT`, cooldown 60 s, no interrumpe narraciones) y hace
+  el **protocolo de saludo**: UN arco amplio y lento del brazo derecho
+  (90→170, vaivén arriba, baja) — video 1 del equipo. El bucle de voz ignora
+  transcripciones mientras dura el saludo (`mech_app.greeting_until`) para no
+  procesar su propio eco. Los gestos AL HABLAR son pequeños (máx ~125°,
+  `_TALK_MAX` en gestures.py): no girar todo el brazo — video 2 del equipo.
 
 ### 🚧 Pendiente
 
@@ -502,7 +521,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   (tres cuartos) para que el showcase de la web use fotos en vez del render SVG.
 - **Generar los videos pre-renderizados** para cada obra (Kling/Veo/Runway en otra máquina) y subirlos vía `/library`. Hasta que estén, MECH cae a NanoBanana para esas obras automáticamente.
 - **Cablear y probar el Arduino Uno** — firmware ya mapeado (`mech_controller.ino`, fqbn `arduino:avr:uno`). Falta: conseguir 2× L298N, cablear motores + servos (servos con 5–6V de protoboard), flashear y probar por serial.
-- **Comprar/cablear el aro NeoPixel de 12 LEDs** (DIN→A2, 5V del Arduino, GND común) e instalar la librería Adafruit NeoPixel. Hasta entonces: `#define MECH_LEDS 0`.
+- **Aro NeoPixel: EN PAUSA** (decisión jul 2026, no se usa por el momento; `#define MECH_LEDS 0`). Si el equipo lo retoma: DIN→A2, 5V del Arduino, GND común, librería Adafruit NeoPixel, `MECH_LEDS 1`.
 - **Probar la visión en la Pi real**: `pip install opencv-python-headless` basta (la visión cae al detector Haar de OpenCV, que corre en cualquier Python incl. 3.13). Para el modo full-range instalar además `mediapipe` (solo Python 3.11/3.12; ver `backend/requirements-vision.txt`). `vision.py` elige el mejor detector disponible y loguea cuál (`mediapipe` u `opencv-haar`). Enchufar la C930e, encender visión desde Ajustes. Calibrar `VISION_MIN_DISTANCE` y la constante `FACE_WIDTH_M`/`FOCAL_PX` de `vision.py` si la distancia estimada sale corrida (medir con cinta métrica a 1 m y comparar con lo que muestra el panel).
 - **Probar el despertar con ruido**: ajustar el slider "Umbral ruido" (VAD_ENERGY_FACTOR) en el lugar del evento. Si MECH no despierta: bajarlo; si graba fantasmas: subirlo.
 - **Selección de dispositivo de audio**: ✅ resuelto. `stt.py` usa `config.AUDIO_INPUT_DEVICE` (de `.env`) para elegir el mic. El mic del proyecto es el **Steren MIC-9010** (receptor USB); la C930e queda solo para video. Si hay varios dispositivos de captura, poner en `.env` `AUDIO_INPUT_DEVICE=Steren` (o el índice que muestre `sounddevice`).

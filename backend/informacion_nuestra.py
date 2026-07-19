@@ -77,15 +77,15 @@ INFO: dict[str, list[str]] = {
     ],
     "hardware": [
         "El robot se organiza en tres capas físicas.",
-        "Capa superior: proyector HD (el corazón del espacio inmersivo) y "
-        "cámara Logitech C930e (1080p, campo visual de 90°) para detectar "
-        "a quien se acerca.",
+        "Capa superior: proyector YG300 (el corazón del espacio inmersivo; "
+        "se eligió por funcionar con 5V) y cámara Logitech C930e (1080p, "
+        "campo visual de 90°) para detectar a quien se acerca.",
         "Capa central: Raspberry Pi 5 de 8 GB (el cerebro), micrófono "
         "inalámbrico Steren MIC-9010, parlante JBL Charge (la voz) y dos "
         "brazos con servos MG996R para gestos.",
         "Capa mecánica: Arduino Uno R3, dos drivers L298N con cuatro "
-        "motores DC, ruedas mecanum (movimiento omnidireccional en 360°), "
-        "aro NeoPixel de 12 LEDs y batería de 12V.",
+        "motores DC, ruedas mecanum, batería de 12V y un interruptor "
+        "general de energía.",
         "El cuerpo es cilíndrico, con cabeza proyectora y una franja de "
         "píxeles como firma visual; la estructura es de perfiles de "
         "aluminio construida en 7 etapas.",
@@ -116,11 +116,11 @@ INFO: dict[str, list[str]] = {
         "sumar su obra con videos por escena; si piden algo que no está, "
         "MECH improvisa y genera las imágenes en vivo.",
         "Conciencia del visitante: la cámara detecta si hay alguien cerca; "
-        "si no hay nadie a la distancia mínima, narra sin proyectar en vano "
-        "y puede acercarse o girar hacia la persona.",
-        "Aro de LEDs estilo asistente de voz: cada fase (escuchando, "
-        "pensando, narrando) tiene su animación, para que el visitante "
-        "sepa cuándo hablar.",
+        "si no hay nadie a la distancia mínima, narra sin proyectar en "
+        "vano, puede acercarse a la persona y la saluda por voz al verla.",
+        "Memoria de posición: si se acerca a un visitante, recuerda cuánto "
+        "avanzó y regresa a su punto de inicio antes de proyectar, para que "
+        "la proyección siempre quede alineada.",
     ],
     "desafios": [
         "El ruido del evento: en una presentación previa costaba mucho "

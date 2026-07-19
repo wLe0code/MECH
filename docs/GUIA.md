@@ -66,11 +66,16 @@ Esta guía cubre, en orden de ejecución, todo lo necesario para que MECH funcio
 - **2× driver de motores L298N** — para las 4 ruedas DC (cada L298N maneja 2 motores)
 - **Fuente de 5–6V para los servos** (protoboard / módulo de alimentación) con buena corriente para los 2 MG996R
 - **4 motores DC** con ruedas omnidireccionales (mecanum)
-- **4 servos** (SG90 o MG996R): cabeza pan, cabeza tilt, brazo izq, brazo der
+- **2 servos MG996R**: brazo izq, brazo der (el robot no tiene cabeza móvil)
 - **Cámara Logitech C930e** (USB UVC, 1080p, FOV 90°) — **solo video** (detección de usuario)
 - **Micrófono inalámbrico Steren MIC-9010** (de solapa, receptor USB) — entrada de voz
 - **Parlante** (la Pi 5 no tiene jack 3.5mm: usa parlante USB, Bluetooth, o un dongle USB→3.5mm)
-- **1 o 2 proyectores** (HDMI desde la Pi)
+- **Proyector YG300** (HDMI desde la Pi). ⚠️ Antes se usaba un HY300, pero se
+  cambió al **YG300 por el voltaje** — el YG300 se alimenta con 5V, compatible
+  con la energía disponible en el robot.
+- **Interruptor general de energía** — corta la alimentación de potencia del
+  robot (batería → drivers/servos) sin desenchufar nada. Apagarlo ANTES de
+  tocar el cableado.
 - **Fuente de poder** independiente para los motores (NO los alimentes desde la Pi)
 - Cables jumper, capacitores de 100µF en las líneas de motores
 

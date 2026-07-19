@@ -56,7 +56,9 @@
 
 // 1 = con aro NeoPixel en A2 (requiere libreria Adafruit NeoPixel).
 // 0 = sin aro (no necesita la libreria; LED:... se ignora con ACK).
-#define MECH_LEDS 1
+// DECISION jul 2026: por el momento el aro NO se usa -> 0. Si el equipo lo
+// retoma, poner 1 e instalar la libreria Adafruit NeoPixel.
+#define MECH_LEDS 0
 
 #if MECH_LEDS
 #include <Adafruit_NeoPixel.h>
