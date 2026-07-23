@@ -18,9 +18,15 @@
   window.addEventListener('scroll', onScrollNav, { passive: true });
   onScrollNav();
 
-  burger.addEventListener('click', () => navLinks.classList.toggle('open'));
+  burger.addEventListener('click', () => {
+    const open = navLinks.classList.toggle('open');
+    burger.setAttribute('aria-expanded', String(open));
+  });
   navLinks.querySelectorAll('a').forEach((a) =>
-    a.addEventListener('click', () => navLinks.classList.remove('open'))
+    a.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      burger.setAttribute('aria-expanded', 'false');
+    })
   );
 
   /* ─── Aparición de elementos (.reveal) ────────────────────────────── */
@@ -28,15 +34,27 @@
   const revealObserver = new IntersectionObserver(
     (entries) => {
       entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.classList.add('visible');
-          revealObserver.unobserve(e.target);
+        if (!e.isIntersecting) return;
+        // Un contenedor .stagger revela a sus hijos en cascada (el delay lo
+        // pone el CSS: .stagger.visible > .reveal:nth-child(n)). Marcamos el
+        // contenedor y sus hijos a la vez para que la cascada arranque limpia.
+        e.target.classList.add('visible');
+        if (e.target.classList.contains('stagger')) {
+          e.target.querySelectorAll(':scope > .reveal').forEach((c) =>
+            c.classList.add('visible')
+          );
         }
+        revealObserver.unobserve(e.target);
       });
     },
     { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
   );
-  document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
+  // Observa contenedores .stagger y los .reveal que NO viven dentro de uno
+  // (los que sí, los revela su contenedor para respetar la cascada).
+  document.querySelectorAll('.stagger').forEach((el) => revealObserver.observe(el));
+  document.querySelectorAll('.reveal').forEach((el) => {
+    if (!el.closest('.stagger')) revealObserver.observe(el);
+  });
 
   /* ─── Hero: animación de escritura "ok MECH" ──────────────────────── */
 

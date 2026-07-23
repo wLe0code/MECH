@@ -441,20 +441,31 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   nombres a 1 edición de palabras comunes (la tolerancia lev≤1 del matcher los
   dispararía solos: musa→mesa, mito→moto, domo→como, faro→paro, fotón→foto…).
 - **Sitio web de presentación (`web/`)**: one-page estático en español con la
-  estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial del
-  trabajo escrito recreado en SVG). Estructurado en DOS capítulos para no ser
-  todo vertical (pedido del usuario): **01·LA EMPRESA** (columna lateral
-  sticky con logo+índice; qué es M.E.C.H en 2×2, problemática, impacto+BMC e
-  equipo en filas horizontales) y **02·EL ROBOT** (banner horizontal "MECH-1"
-  con stats y render, showcase con scroll estilo Apple de 4 tomas, pipeline,
-  hardware por capas, obras en tira horizontal deslizable, bitácora de
-  construcción con 7 fotos extraídas de `Documentación/MECH.pdf` con pypdf).
-  Hero con typing "ok MECH" y aro LED CSS; footer con contactos (GitHub,
-  IG @wr0mech, wromech@gmail.com). Sin build ni dependencias: doble click a
-  `web/index.html`. El showcase y el banner buscan `assets/robot-01.jpg`
-  (frontal) y `assets/robot-02.jpg` (tres cuartos); si faltan, muestran un
-  render SVG del robot (template `robotRenderTpl`). El usuario preguntó por
-  React y se decidió NO usarlo (sin beneficio para un sitio estático).
+  estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial en SVG).
+  FUENTE DE CONTENIDO: el trabajo escrito nuevo `Documentación/Proyecto
+  MECH.pdf` (IEEE, jul 2026), que amplió la misión de solo cultura a
+  **generar interés en cultura, educación, salud, economía e historia**
+  (eslogan «si es inmersivo, es MECH»). Estructurado en DOS capítulos:
+  **01·LA EMPRESA** (columna lateral sticky con logo+eslogan+índice; qué es
+  M.E.C.H en 2×2, "un robot muchos mundos" con las 5+ aplicaciones,
+  problemática, ventaja competitiva vs Alexa en formato "versus", impacto
+  RESPALDADO por 3 estudios reales —Fuentes-Moraleda +40%, Magdin, Zhang—,
+  BMC, y equipo con FOTOS reales de estudio —`assets/team-{leo,ale,jimmy}.jpg`,
+  recortadas de `branding/{Leo,Ale,Jimmy}.png`— y roles nuevos: Mecatrónica /
+  Mecánica / Circuitos, Colegio Científico de Alajuela) y **02·EL ROBOT**
+  (banner horizontal MECH-1 con stats y render, showcase con scroll estilo
+  Apple de 4 tomas, pipeline, hardware+construcción con dims reales
+  —PVC 52×66 cm, coroplast—, **timeline de evolución MECH-1→MECH-2→MECH-3**
+  —MECH-2 añade lentes VR y autonomía—, obras en tira deslizable, bitácora de
+  construcción). Hero con typing "ok MECH" y aro LED CSS. Sin build ni
+  dependencias: doble click a `web/index.html`. El showcase y el banner buscan
+  `assets/robot-01.jpg`/`robot-02.jpg`; si faltan, render SVG (`robotRenderTpl`).
+  El usuario preguntó por React y se decidió NO usarlo (sin beneficio).
+  **Motion pulido con las skills de Emil Kowalski** (`.agents/skills/`, tras
+  `npx skills add emilkowalski/skill`): curvas propias `--ease-out`/
+  `--ease-in-out`, feedback `:active{scale(.97)}` en botones, hover SOLO bajo
+  `@media (hover:hover) and (pointer:fine)`, stagger real (contenedor `.stagger`
+  → cascada en hijos vía app.js), reduced-motion = cross-fade, nav translúcido.
 - **Logo en alta calidad (`branding/`)**: `logo-mech.jpg` (4500×2000, fondo
   `#0e0e12`) y `logo-mech.pdf` (300 dpi) — la versión del sitio (marco
   redondeado con skew 8° + "MECH" en Sora ExtraBold con itálica sintética),
