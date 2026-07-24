@@ -38,6 +38,7 @@
     border: 2px solid #1c1c26; border-top-color: #534AB7;
     animation: spin 2.4s linear infinite;
   }
+  .idle-status { color: #4a5a7a; font-size: 10px; letter-spacing: 1px; max-width: 80%; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   #rotate {
@@ -86,8 +87,8 @@
 </head>
 <body>
   <div id="eyes">
-    <div class="eye" id="eyeL"><div class="content" id="contentL"></div><div class="idle" id="idleL"><div class="ring"></div>MECH · VR</div></div>
-    <div class="eye" id="eyeR"><div class="content" id="contentR"></div><div class="idle" id="idleR"><div class="ring"></div>MECH · VR</div></div>
+    <div class="eye" id="eyeL"><div class="content" id="contentL"></div><div class="idle" id="idleL"><div class="ring"></div>MECH · VR<div class="idle-status" id="idleStatusL">iniciando…</div></div></div>
+    <div class="eye" id="eyeR"><div class="content" id="contentR"></div><div class="idle" id="idleR"><div class="ring"></div>MECH · VR<div class="idle-status" id="idleStatusR">iniciando…</div></div></div>
   </div>
 
   <div id="rotate"><div class="phone">📱</div>GIRA EL TELÉFONO<br>Y MÉTELO EN EL CARDBOARD</div>
@@ -152,7 +153,13 @@ let currentUrl = null;
 
 function detectVideo(url) { return /\.(mp4|webm|mov|m4v)$/i.test(url || ''); }
 function setIdle(on) { idleL.classList.toggle('hidden', !on); idleR.classList.toggle('hidden', !on); }
-function setStatus(t) { if (statusEl) statusEl.textContent = t; }
+function setStatus(t) {
+  if (statusEl) statusEl.textContent = t;
+  // También en la pantalla de carga, para que se vea sin buscar.
+  const a = document.getElementById('idleStatusL'), b = document.getElementById('idleStatusR');
+  if (a) a.textContent = t;
+  if (b) b.textContent = t;
+}
 
 function makeEl(url, isVideo) {
   const el = document.createElement(isVideo ? 'video' : 'img');
