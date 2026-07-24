@@ -9,13 +9,19 @@
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden;
                font-family: 'Space Mono', monospace; -webkit-user-select: none; user-select: none; }
 
-  /* Dos "ojos" lado a lado. Cada uno es un <canvas> donde pintamos la MISMA
-     imagen/video (UNA sola decodificación, ver el script). Al meter el
-     teléfono en el Cardboard, cada lente ve un ojo y el cerebro los funde. */
+  /* Dos "ojos" lado a lado. Cada uno muestra la MISMA imagen/video (elementos
+     DOM directos, igual que /projector — es lo que funciona en móvil). Al
+     meter el teléfono en el Cardboard, cada lente ve un ojo. */
   #eyes { position: fixed; inset: 0; display: flex; }
   .eye { position: relative; width: 50%; height: 100%; overflow: hidden; background: #000; }
-  .eye canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  /* Separador central sutil para alinear el visor. */
+  .eye .content {
+    position: absolute; inset: 0;
+    transform-origin: center center;
+    /* separación (translateX) y zoom (scale) los pone el script */
+  }
+  .eye .content img, .eye .content video {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
   #eyes::after {
     content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
     width: 2px; transform: translateX(-1px); background: #111; pointer-events: none;
@@ -34,7 +40,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Aviso si el teléfono está en vertical (el Cardboard es horizontal). */
   #rotate {
     position: fixed; inset: 0; display: none; z-index: 10;
     background: #000; color: #888; font-size: 13px;
@@ -50,9 +55,12 @@
     text-align: center; color: #444; font-size: 11px; letter-spacing: 2px;
     transition: opacity .5s;
   }
+  #status {
+    position: fixed; bottom: 30px; left: 0; right: 0; z-index: 5;
+    text-align: center; color: #556; font-size: 10px; letter-spacing: 1px;
+  }
 
-  /* ── Panel de calibración (separación + zoom) ─────────────────────
-     Se ajusta ANTES de meter el teléfono al visor; queda guardado. */
+  /* Panel de calibración (separación + zoom). */
   #calib {
     position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
     z-index: 20; display: flex; gap: 8px; align-items: center;
@@ -64,31 +72,26 @@
   #calib .lbl { color: #7a7a8c; font-size: 10px; }
   #calib button {
     width: 30px; height: 30px; border-radius: 8px; border: 1px solid #33333f;
-    background: #1a1a22; color: #e6e6f0; font-size: 16px; line-height: 1;
-    font-family: inherit;
+    background: #1a1a22; color: #e6e6f0; font-size: 16px; line-height: 1; font-family: inherit;
   }
   #calib button:active { background: #534AB7; }
   #calib .val { min-width: 34px; text-align: center; color: #8f97c4; }
-  #calib .done {
-    width: auto; padding: 0 12px; border-color: #3a5; color: #9fe0b8;
-  }
+  #calib .done { width: auto; padding: 0 12px; border-color: #3a5; color: #9fe0b8; }
   #calibToggle {
     position: fixed; top: 8px; right: 10px; z-index: 20;
     background: rgba(14,14,18,0.85); border: 1px solid #26262e; border-radius: 10px;
-    color: #6a6a7c; font-size: 11px; letter-spacing: 1px; padding: 8px 10px;
-    font-family: inherit;
+    color: #6a6a7c; font-size: 11px; letter-spacing: 1px; padding: 8px 10px; font-family: inherit;
   }
 </style>
 </head>
 <body>
   <div id="eyes">
-    <div class="eye" id="eyeL"><canvas></canvas><div class="idle"><div class="ring"></div>MECH · VR</div></div>
-    <div class="eye" id="eyeR"><canvas></canvas><div class="idle"><div class="ring"></div>MECH · VR</div></div>
+    <div class="eye" id="eyeL"><div class="content" id="contentL"></div><div class="idle" id="idleL"><div class="ring"></div>MECH · VR</div></div>
+    <div class="eye" id="eyeR"><div class="content" id="contentR"></div><div class="idle" id="idleR"><div class="ring"></div>MECH · VR</div></div>
   </div>
 
   <div id="rotate"><div class="phone">📱</div>GIRA EL TELÉFONO<br>Y MÉTELO EN EL CARDBOARD</div>
 
-  <!-- Calibración: ajusta hasta que en el visor se vea UNA sola imagen nítida -->
   <div id="calib" class="hidden">
     <div class="grp"><span class="lbl">SEPARACIÓN</span>
       <button data-act="sep-">−</button><span class="val" id="sepVal">0</span><button data-act="sep+">+</button>
@@ -101,118 +104,92 @@
   <button id="calibToggle">AJUSTAR VR</button>
 
   <div id="hint">TOCA EL CENTRO PARA PANTALLA COMPLETA · «AJUSTAR VR» PARA CALIBRAR</div>
+  <div id="status">iniciando…</div>
 
 <script>
 /* MECH · Proyección estéreo para Google Cardboard.
  *
  * Abrir EN EL TELÉFONO (misma wifi que la Pi):
- *     http://<ip-de-la-pi>:8000/projector/vr
+ *     http://<ip-de-la-pi>:8000/proyector/vr
  *
- * Dos mejoras clave sobre la versión ingenua:
- *  1) UNA sola decodificación de video, pintada a los dos ojos con canvas.
- *     Antes había dos <video> del mismo archivo y el segundo PARPADEABA
- *     (los teléfonos suelen tener un solo decodificador de video por hardware).
- *  2) SEPARACIÓN y ZOOM ajustables (guardados en el teléfono). Si en el visor
- *     se ve "doble", es que la separación entre las dos imágenes no coincide
- *     con la distancia entre tus ojos/lentes: se calibra a mano una vez.
+ * Render por ELEMENTOS DOM (img/video) duplicados por ojo — es exactamente
+ * lo que usa /projector, que funciona en móvil. (La versión con <canvas>
+ * no pintaba en algunos teléfonos.) Para las imágenes, dos <img> no
+ * parpadean; para video se re-sincronizan los dos <video> cada 3 s.
  *
- * Sigue siendo estéreo "plano" (sin corrección de distorsión de lente). El QR
- * del visor solo lo usan apps con el SDK de Cardboard; para proyectar así, la
- * separación ajustable resuelve el "doble" sin necesitarlo. WebXR (que sí lo
- * usaría) exige HTTPS y la Pi sirve por HTTP.
+ * SEPARACIÓN y ZOOM (guardados en el teléfono) corrigen el "se ve doble":
+ * se ajustan a mano una vez mirando por el visor. Estéreo "plano" (sin
+ * corrección de distorsión). El QR del visor solo lo usan apps con SDK de
+ * Cardboard; WebXR (que sí lo usaría) exige HTTPS y la Pi sirve por HTTP.
  */
 
-const eyes = [
-  { root: document.getElementById('eyeL'), canvas: null, ctx: null, idle: null, sign: +1 },
-  { root: document.getElementById('eyeR'), canvas: null, ctx: null, idle: null, sign: -1 },
-];
-eyes.forEach(e => {
-  e.canvas = e.root.querySelector('canvas');
-  e.ctx = e.canvas.getContext('2d');
-  e.idle = e.root.querySelector('.idle');
-});
+const contentL = document.getElementById('contentL');
+const contentR = document.getElementById('contentR');
+const idleL = document.getElementById('idleL');
+const idleR = document.getElementById('idleR');
 const hint = document.getElementById('hint');
+const statusEl = document.getElementById('status');
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 
-// ── Calibración persistente ───────────────────────────────────────
-// sep = desplazamiento horizontal de cada imagen hacia el centro (px CSS).
-// zoom = escala (%). Se guardan por teléfono en localStorage.
 let sep = parseInt(localStorage.getItem('mech_vr_sep') || '0', 10);
 let zoom = parseInt(localStorage.getItem('mech_vr_zoom') || '100', 10);
-function saveCalib() {
-  localStorage.setItem('mech_vr_sep', String(sep));
-  localStorage.setItem('mech_vr_zoom', String(zoom));
+
+function applyCalib() {
+  const z = zoom / 100;
+  contentL.style.transform = `translateX(${sep}px) scale(${z})`;
+  contentR.style.transform = `translateX(${-sep}px) scale(${z})`;
   document.getElementById('sepVal').textContent = sep;
   document.getElementById('zoomVal').textContent = zoom;
 }
+function saveCalib() {
+  localStorage.setItem('mech_vr_sep', String(sep));
+  localStorage.setItem('mech_vr_zoom', String(zoom));
+  applyCalib();
+}
 
-// ── Media actual (UNA sola, compartida por los dos ojos) ──────────
-let media = null;        // el <img> o <video> que se está decodificando
-let mediaReady = false;
-let rafId = null;
+let syncTimer = null;
+let currentUrl = null;
 
 function detectVideo(url) { return /\.(mp4|webm|mov|m4v)$/i.test(url || ''); }
+function setIdle(on) { idleL.classList.toggle('hidden', !on); idleR.classList.toggle('hidden', !on); }
+function setStatus(t) { if (statusEl) statusEl.textContent = t; }
 
-function setIdle(on) { eyes.forEach(e => e.idle.classList.toggle('hidden', !on)); }
+function makeEl(url, isVideo) {
+  const el = document.createElement(isVideo ? 'video' : 'img');
+  el.src = url;
+  if (isVideo) { el.autoplay = true; el.loop = true; el.muted = true; el.playsInline = true; el.setAttribute('playsinline', ''); }
+  return el;
+}
 
 function clearMedia() {
-  if (media && media.tagName === 'VIDEO') { try { media.pause(); } catch (e) {} }
-  media = null; mediaReady = false;
-  eyes.forEach(e => e.ctx.clearRect(0, 0, e.canvas.width, e.canvas.height));
+  clearInterval(syncTimer);
+  currentUrl = null;
+  contentL.innerHTML = '';
+  contentR.innerHTML = '';
   setIdle(true);
 }
 
 function show(url, isVideo) {
   if (!url) { clearMedia(); return; }
-  clearMedia();
+  if (url === currentUrl) return;  // ya mostrando esto
+  clearInterval(syncTimer);
+  currentUrl = url;
+  contentL.innerHTML = '';
+  contentR.innerHTML = '';
+  const l = makeEl(url, isVideo);
+  const r = makeEl(url, isVideo);
+  contentL.appendChild(l);
+  contentR.appendChild(r);
+  setIdle(false);
+  setStatus((isVideo ? 'video: ' : 'imagen: ') + url);
   if (isVideo) {
-    const v = document.createElement('video');
-    v.src = url; v.loop = true; v.muted = true; v.playsInline = true; v.autoplay = true;
-    v.addEventListener('loadeddata', () => { mediaReady = true; setIdle(false); });
-    v.play().catch(() => {});
-    media = v;
-  } else {
-    const img = new Image();
-    img.onload = () => { mediaReady = true; setIdle(false); };
-    img.src = url;
-    media = img;
+    l.play().catch(() => {}); r.play().catch(() => {});
+    syncTimer = setInterval(() => {
+      if (Math.abs((l.currentTime || 0) - (r.currentTime || 0)) > 0.15) r.currentTime = l.currentTime;
+    }, 3000);
   }
 }
 
-function resizeCanvases() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  eyes.forEach(e => {
-    e.canvas.width = Math.round(e.root.clientWidth * dpr);
-    e.canvas.height = Math.round(e.root.clientHeight * dpr);
-    e._dpr = dpr;
-  });
-}
-window.addEventListener('resize', resizeCanvases);
-window.addEventListener('orientationchange', () => setTimeout(resizeCanvases, 300));
-
-// Bucle de render: pinta la MISMA media (ya decodificada una vez) en los dos
-// ojos, aplicando separación y zoom. Cover + centrado.
-function render() {
-  rafId = requestAnimationFrame(render);
-  if (!media || !mediaReady) return;
-  const sw = media.videoWidth || media.naturalWidth || media.width;
-  const sh = media.videoHeight || media.naturalHeight || media.height;
-  if (!sw || !sh) return;
-
-  for (const e of eyes) {
-    const dw = e.canvas.width, dh = e.canvas.height, dpr = e._dpr || 1;
-    const scale = Math.max(dw / sw, dh / sh) * (zoom / 100);
-    const drawW = sw * scale, drawH = sh * scale;
-    const offX = e.sign * sep * dpr;   // acerca/aleja la imagen del centro
-    const dx = (dw - drawW) / 2 + offX;
-    const dy = (dh - drawH) / 2;
-    e.ctx.clearRect(0, 0, dw, dh);
-    try { e.ctx.drawImage(media, dx, dy, drawW, drawH); } catch (err) {}
-  }
-}
-
-// ── WebSocket (misma fuente y prioridad que /projector) ───────────
-let ws = null;
 function applyState(s) {
   if (s.current_video) { show(s.current_video, true); return; }
   if (s.current_image) { show(s.current_image, false); return; }
@@ -224,11 +201,16 @@ function applyState(s) {
   if (s2?.on && s2.file) { show(s2.file, detectVideo(s2.file)); return; }
   clearMedia();
 }
+
+// ── WebSocket ─────────────────────────────────────────────────────
+let ws = null;
 function connect() {
+  setStatus('conectando al servidor…');
   try { ws = new WebSocket(WS_URL); }
-  catch (e) { setTimeout(connect, 3000); return; }
+  catch (e) { setStatus('sin conexión, reintentando…'); setTimeout(connect, 3000); return; }
+  ws.onopen = () => setStatus('conectado · esperando proyección…');
   ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
+    let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
     if (msg.type === 'state') applyState(msg.state);
     else if (msg.type === 'image') { msg.url ? show(msg.url, false) : clearMedia(); }
     else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clearMedia(); }
@@ -236,7 +218,8 @@ function connect() {
       fetch('/api/state').then(r => r.json()).then(applyState).catch(() => {});
     }
   };
-  ws.onclose = () => setTimeout(connect, 2000);
+  ws.onclose = () => { setStatus('desconectado, reintentando…'); setTimeout(connect, 2000); };
+  ws.onerror = () => { setStatus('error de conexión'); };
 }
 
 // ── Mantener la pantalla encendida ────────────────────────────────
@@ -263,19 +246,17 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && (wakeLock || awakeVideo)) keepAwake();
 });
 
-// ── Panel de calibración ──────────────────────────────────────────
+// ── Calibración ───────────────────────────────────────────────────
 const calib = document.getElementById('calib');
-const calibToggle = document.getElementById('calibToggle');
-calibToggle.addEventListener('click', (ev) => {
-  ev.stopPropagation();
-  calib.classList.toggle('hidden');
+document.getElementById('calibToggle').addEventListener('click', (ev) => {
+  ev.stopPropagation(); calib.classList.toggle('hidden');
 });
 calib.addEventListener('click', (ev) => {
   ev.stopPropagation();
   const act = ev.target.getAttribute('data-act');
   if (!act) return;
-  if (act === 'sep+') sep = Math.min(sep + 4, 300);
-  else if (act === 'sep-') sep = Math.max(sep - 4, -300);
+  if (act === 'sep+') sep = Math.min(sep + 4, 400);
+  else if (act === 'sep-') sep = Math.max(sep - 4, -400);
   else if (act === 'zoom+') zoom = Math.min(zoom + 5, 250);
   else if (act === 'zoom-') zoom = Math.max(zoom - 5, 40);
   else if (act === 'done') calib.classList.add('hidden');
@@ -290,14 +271,12 @@ document.body.addEventListener('click', async () => {
   }
   try { await screen.orientation.lock('landscape'); } catch (e) {}
   keepAwake();
-  if (media && media.tagName === 'VIDEO') media.play().catch(() => {});
+  document.querySelectorAll('video').forEach(v => v.play().catch(() => {}));
 });
 
 // Init
-saveCalib();
-resizeCanvases();
+applyCalib();
 setIdle(true);
-render();
 connect();
 </script>
 </body>
