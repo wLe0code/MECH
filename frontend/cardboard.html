@@ -171,6 +171,7 @@ function clearMedia() {
 
 function show(url, isVideo) {
   if (!url) { clearMedia(); return; }
+  setIdle(false);              // aunque ya lo mostremos, nunca dejes el idle encima
   if (url === currentUrl) return;  // ya mostrando esto
   clearInterval(syncTimer);
   currentUrl = url;
@@ -202,25 +203,40 @@ function applyState(s) {
   clearMedia();
 }
 
-// ── WebSocket ─────────────────────────────────────────────────────
+// ── Conexión: WebSocket para tiempo real + SONDEO HTTP de respaldo ──
+// El sondeo (fetch /api/state cada 1.5 s) hace que la VR muestre lo mismo
+// que /projector AUNQUE el WebSocket no conecte en el teléfono (que era el
+// caso: la página cargaba pero no llegaba el contenido). El WS solo acelera
+// las actualizaciones; el sondeo garantiza que siempre haya imagen.
 let ws = null;
+let wsOk = false;
+
+function pollState() {
+  fetch('/api/state', { cache: 'no-store' })
+    .then(r => r.json())
+    .then(s => { if (!wsOk) setStatus('conectado (HTTP) · esperando proyección…'); applyState(s); })
+    .catch(() => { if (!wsOk) setStatus('sin conexión con el servidor…'); });
+}
+
 function connect() {
   setStatus('conectando al servidor…');
   try { ws = new WebSocket(WS_URL); }
-  catch (e) { setStatus('sin conexión, reintentando…'); setTimeout(connect, 3000); return; }
-  ws.onopen = () => setStatus('conectado · esperando proyección…');
+  catch (e) { setTimeout(connect, 3000); return; }
+  ws.onopen = () => { wsOk = true; setStatus('conectado · esperando proyección…'); pollState(); };
   ws.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
     if (msg.type === 'state') applyState(msg.state);
     else if (msg.type === 'image') { msg.url ? show(msg.url, false) : clearMedia(); }
     else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clearMedia(); }
-    else if (msg.type === 'projector') {
-      fetch('/api/state').then(r => r.json()).then(applyState).catch(() => {});
-    }
+    else if (msg.type === 'projector') { pollState(); }
   };
-  ws.onclose = () => { setStatus('desconectado, reintentando…'); setTimeout(connect, 2000); };
-  ws.onerror = () => { setStatus('error de conexión'); };
+  ws.onclose = () => { wsOk = false; setTimeout(connect, 2000); };
+  ws.onerror = () => { wsOk = false; };
 }
+
+// Sondeo de respaldo SIEMPRE activo (barato: un GET de JSON pequeño).
+pollState();
+setInterval(pollState, 1500);
 
 // ── Mantener la pantalla encendida ────────────────────────────────
 let wakeLock = null, awakeVideo = null;
