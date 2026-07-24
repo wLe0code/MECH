@@ -110,8 +110,11 @@ class _HaarDetector:
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
         h, w = gray.shape[:2]
+        # minNeighbors alto + minSize grande = menos falsos positivos (reflejos
+        # de la proyección en la oscuridad). Una cara real a ~1-2 m en 640px es
+        # bastante grande, así que exigir >=60px filtra manchas pequeñas.
         rects = self._cascade.detectMultiScale(
-            gray, scaleFactor=1.2, minNeighbors=5, minSize=(40, 40)
+            gray, scaleFactor=1.2, minNeighbors=7, minSize=(60, 60)
         )
         return [((x + ww / 2) / w, ww / w) for (x, y, ww, hh) in rects]
 
@@ -176,13 +179,15 @@ class Vision:
 
     # ------------------------------------------------------------------
 
-    def _publish(self, enabled: bool, present: bool, x: float, distance: float | None) -> None:
+    def _publish(self, enabled: bool, present: bool, x: float,
+                 distance: float | None, paused: bool = False) -> None:
         self.app.state["vision"] = {
             "enabled": enabled,
             "user_present": present,
             "x": round(x, 2),
             "distance": round(distance, 2) if distance is not None else None,
             "min_distance": config.VISION_MIN_DISTANCE,
+            "paused": paused,  # True mientras MECH narra (no se detecta)
         }
         self.app.emit("vision", **self.app.state["vision"])
 
@@ -250,11 +255,32 @@ class Vision:
                     self.app.log("La cámara dejó de dar frames; visión detenida.", "err")
                     break
 
+                now = time.monotonic()
+
+                # PAUSA durante la narración: mientras MECH habla (o piensa/
+                # transcribe) hay proyección, y en la oscuridad la luz sobre
+                # las superficies crea FALSOS POSITIVOS de cara. No detectamos
+                # hasta que termine de hablar.
+                if self.app.state.get("voice_phase") in (
+                    "speaking", "thinking", "transcribing"
+                ):
+                    if present:
+                        # No disparamos on_lost (el usuario no se fue; solo
+                        # pausamos): solo dejamos de reportarlo y de conducir.
+                        present = False
+                        dist_s = None
+                        self._release_drive()
+                    if now - last_emit > 0.5:
+                        last_emit = now
+                        self._publish(enabled=True, present=False, x=0.0,
+                                      distance=None, paused=True)
+                    time.sleep(0.15)
+                    continue
+
                 faces = detector.detect(frame)  # lista de (cx_rel, w_rel)
                 # La cara más grande = la persona más cercana.
                 face = max(faces, key=lambda f: f[1]) if faces else None
 
-                now = time.monotonic()
                 if face is not None:
                     cx_rel, w_rel = face
                     cx = cx_rel * 2 - 1  # -1..+1
