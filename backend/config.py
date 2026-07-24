@@ -165,7 +165,12 @@ VISION_APPROACH = _bool_env("VISION_APPROACH", "true")
 VISION_FOLLOW = _bool_env("VISION_FOLLOW", "false")
 # Si true, NO se proyectan visuales cuando no hay un usuario dentro de la
 # distancia mínima (la cámara manda: sin usuario cerca = sin proyección).
-VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "true")
+# ⚠️ APAGADO por defecto (jul 2026): con la visión encendida podía suprimir
+# TODA la proyección si la cámara no detectaba al usuario dentro de la
+# distancia (p. ej. operando desde el laptop, o con el detector Haar que
+# estima mal la distancia). Actívalo solo si de verdad querés ese
+# comportamiento y ya calibraste la distancia mínima.
+VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "false")
 # Velocidad máxima (0-100) de los movimientos autónomos de visión.
 VISION_MAX_SPEED = int(os.environ.get("VISION_MAX_SPEED", "35"))
 
