@@ -66,6 +66,15 @@
           </div>
           <div class="voice-status" id="voice-status">Bucle de voz apagado</div>
 
+          <!-- Idioma activo. En el stand lo decide la voz: "ok MECH" = español,
+               "wake up MECH" = inglés. Estos botones son para probar sin micro. -->
+          <div class="lang-row">
+            <span class="lang-label">IDIOMA</span>
+            <button class="lang-chip active" id="lang-es" onclick="API.setLanguage('es')" title="Despertar por voz: «ok MECH»">ES · ESPAÑOL</button>
+            <button class="lang-chip" id="lang-en" onclick="API.setLanguage('en')" title="Despertar por voz: «wake up MECH»">EN · ENGLISH</button>
+            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés</span>
+          </div>
+
           <div class="wave-bars" id="wave-bars">
             <div class="wave-bar" style="height:8px"></div>
             <div class="wave-bar" style="height:14px"></div>
@@ -380,6 +389,13 @@
             <label class="switch">
               <input type="checkbox" id="set-dryrun">
               <span class="switch-text">No gastar créditos de voz (TTS en seco)</span>
+            </label>
+          </div>
+          <div class="slider-row">
+            <label title="Muestra el guion de la narración abajo de la proyección, como en el cine. Sale en el idioma activo.">Subtítulos</label>
+            <label class="switch">
+              <input type="checkbox" id="set-subs">
+              <span class="switch-text">Subtitular la narración en la proyección</span>
             </label>
           </div>
           <div class="slider-row">

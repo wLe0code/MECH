@@ -161,7 +161,12 @@ backend/
   llm.py              ← Cliente Claude. System prompt + schema Pydantic del Plan.
                         Inyecta dinámicamente la lista de obras disponibles
                         desde video_library.
-  stt.py              ← faster-whisper local + VAD (webrtcvad).
+  lang.py             ← Idioma activo (es/en). Español por defecto; inglés
+                        SOLO si despiertan a MECH con "wake up MECH". Guarda
+                        las frases fijas de los dos idiomas y la instrucción
+                        de idioma que se le añade a Claude.
+  stt.py              ← faster-whisper local + VAD (webrtcvad). Transcribe en
+                        el idioma activo (lang.whisper_language()).
   tts.py              ← ElevenLabs streaming.
   image_gen.py        ← Gemini / NanoBanana. Fallback de visual cuando
                         no hay video pre-renderizado.
@@ -188,7 +193,11 @@ frontend/
                         Maneja eventos image y video.
   styles.css
   projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
-                        Maneja eventos image y video, con loop en video.
+                        Maneja eventos image y video, con loop en video, y
+                        pinta los SUBTÍTULOS de la narración abajo.
+  subtitles.js        ← Subtítulos estilo cine compartidos por /projector y
+                        /projector/vr: parten el guion en trozos y los pasan
+                        solos (~15 car/s). Se sirve en /static/subtitles.js.
   cardboard.html      ← Vista estéreo lado a lado (Google Cardboard) en
                         /projector/vr. Misma fuente WS que projector.html,
                         duplicada por ojo; se abre en el teléfono.
@@ -292,7 +301,9 @@ Este repo **no tiene suite de tests ni linter configurado**. La validación es m
 
 ### Idiomas
 
-- **Strings al usuario (UI, voz, logs)** → siempre español neutro.
+- **Strings al usuario (UI, voz, logs)** → siempre español neutro. Las frases
+  que MECH DICE (saludo, despedida, error) tienen su par en inglés en
+  `backend/lang.py`: si añades una, añade las dos.
 - **`image_prompt` para NanoBanana** → siempre inglés (Gemini rinde mejor).
 - **Comentarios y nombres de variables** → español está bien, ya lo usa el repo.
 - **Commits** → español también, sigue el estilo existente.
@@ -313,6 +324,35 @@ Segment:
 ```
 
 Prioridad de visual: `video_slug + video_segment` (si el archivo existe) > `image_prompt` > nada. Si Claude pide un video que no está en disco se loguea warning y se intenta el `image_prompt` del mismo segmento si lo trae.
+
+### Idioma (español / inglés)
+
+MECH **siempre arranca en español**. El **inglés se activa si y solo si** se
+le despierta con **«wake up MECH»**; con «ok MECH» / «despierta MECH» sigue en
+español. En inglés van: lo que Whisper transcribe (`language="en"`), lo que
+Claude narra (bloque de idioma en el system prompt), las frases fijas (saludo,
+despedida, error) y los subtítulos. **Al dormirse vuelve solo a español.**
+
+- Idioma activo y textos fijos: [`backend/lang.py`](backend/lang.py).
+- Frases de despertar/reposo en inglés: `VOICE_WAKE_PHRASES_EN` /
+  `VOICE_SLEEP_PHRASES_EN` (`.env`), detección en `voice_phrases.wake_language()`.
+- En reposo, si la transcripción en español no coincide con ningún wake, el
+  bucle **re-transcribe el MISMO audio en inglés** (clip corto, ≤4 s) para
+  reconocer «wake up MECH» aunque Whisper lo hubiera deformado.
+- Se puede forzar desde el panel (chips ES/EN en la vista Voz →
+  `POST /api/language/{es|en}`), útil para probar sin micrófono.
+- Apagar el modo inglés: `WAKE_ENGLISH_ENABLED=false`.
+
+### Subtítulos de la proyección
+
+El guion de cada segmento se publica como subtítulo (`state["current_subtitle"]`
++ evento WS `subtitle`) y se ve abajo de la pantalla, estilo cine, en
+`/projector` y en la vista VR `/projector/vr` (uno por ojo, con la misma
+separación de calibración). Se muestran haya video, imagen o pantalla vacía, y
+salen en el idioma activo (son el texto que Claude acaba de escribir). El
+cliente parte el texto en trozos y los pasa solo, estimando ~15 caracteres por
+segundo de voz; el último trozo se queda hasta que el backend lo borra.
+Interruptor: `SUBTITLES_ENABLED` (Ajustes → "Subtítulos", en vivo).
 
 ### Gestos disponibles
 
@@ -525,6 +565,22 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   procesar su propio eco. Los gestos AL HABLAR son pequeños (máx ~125°,
   `_TALK_MAX` en gestures.py): no girar todo el brazo — video 2 del equipo.
 
+- **Modo inglés bajo demanda (ago 2026)** — `backend/lang.py` guarda el idioma
+  activo. «wake up MECH» despierta en INGLÉS (Whisper en `en`, narración de
+  Claude en inglés, frases fijas y subtítulos en inglés); «ok MECH» /
+  «despierta MECH» sigue en español. Al dormirse vuelve a español solo. En
+  reposo se re-transcribe el audio en el otro idioma si el primero no dio
+  wake, para no perder «wake up MECH» por un error de Whisper. Chips ES/EN en
+  la vista Voz del panel (`POST /api/language/{es|en}`) para probar sin voz.
+  Claves nuevas: `WAKE_ENGLISH_ENABLED`, `VOICE_WAKE_PHRASES_EN`,
+  `VOICE_SLEEP_PHRASES_EN`.
+- **Subtítulos en la proyección (ago 2026)** — `frontend/subtitles.js` (compartido
+  por `/projector` y `/projector/vr`) muestra el guion abajo, estilo cine, haya
+  video, imagen o nada. Lo alimenta `mech_app.set_subtitle()` (evento WS
+  `subtitle` + `state["current_subtitle"]`, para que la VR los reciba también
+  por el sondeo HTTP). Idioma = el activo. Toggle en Ajustes
+  (`SUBTITLES_ENABLED`, en vivo).
+
 ### 🚧 Pendiente
 
 - **Copiar las fotos reales del robot terminado** a `web/assets/robot-01.jpg`
@@ -557,7 +613,15 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 13. **El `.env` del panel.** La vista Ajustes escribe `backend/.env` con `config.update_env_file()`. Solo las claves en `_LIVE_KEYS` (server.py) se aplican sin reiniciar (VAD, umbral de ruido, silencios, idioma, visión, gestos); las demás (mic, sample rate, modelo, voice_id) necesitan reiniciar el server.
 14. **`VOICE_WAKE_PHRASES` en el `.env` de la Pi tapa el default.** Si "ok mech" no despierta a MECH, revisar si el `.env` tiene esa clave con la lista vieja ("despierta mech,...") y borrarla o añadirle "ok mech".
 15. **NeoPixel + servos**: `ring.show()` bloquea interrupciones un instante; por eso el patrón SPEAK es fijo (se pinta una vez) y las animaciones solo corren cuando los brazos están quietos. No añadir animaciones al estado SPEAK.
-16. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
+16. **El idioma se decide en el DESPERTAR, no en medio de la conversación.**
+    Si alguien le habla en inglés a un MECH despierto en español, Whisper
+    transcribe con el modelo español y sale basura: hay que dormirlo y
+    despertarlo con «wake up MECH» (o decir «wake up MECH» estando despierto,
+    que cambia el idioma). Es a propósito: así el stand no cambia de idioma
+    por accidente.
+17. **`VOICE_WAKE_PHRASES_EN` en el `.env` de la Pi tapa el default**, igual
+    que la lista en español. Si «wake up MECH» no funciona, revisar esa clave.
+18. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
 
 ---
 

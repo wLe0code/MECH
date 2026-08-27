@@ -174,7 +174,7 @@
   // Mapa de fases del ciclo de voz → texto + estilo del banner grande.
   const PHASES = {
     off:          { cls: 'phase-off',     text: 'Bucle de voz apagado',     hint: 'Pulsa el micrófono o la tecla V para empezar' },
-    dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'ok MECH' para activarlo" },
+    dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'ok MECH' (español) o 'wake up MECH' (inglés)" },
     waiting:      { cls: 'phase-waiting', text: '🎤 PUEDES HABLAR',          hint: 'Dile al juez/usuario que hable AHORA' },
     listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
     transcribing: { cls: 'phase-work',    text: 'Transcribiendo…',           hint: 'Convirtiendo la voz a texto' },
@@ -200,8 +200,23 @@
     setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
   }
 
+  // Marca qué idioma está activo en los chips de la vista Voz.
+  function updateLanguage(code) {
+    if (state.language === code) return;
+    if (state.language) {
+      log(code === 'en' ? 'MECH pasó a INGLÉS (wake up MECH).'
+                        : 'MECH pasó a ESPAÑOL (ok MECH).', 'ok');
+    }
+    state.language = code;
+    const es = $('lang-es'), en = $('lang-en');
+    if (es) es.classList.toggle('active', code === 'es');
+    if (en) en.classList.toggle('active', code === 'en');
+  }
+
   function applyState(s) {
     state.backend = s;
+    // Idioma activo (español por defecto; inglés solo con "wake up MECH").
+    updateLanguage(s.language || 'es');
     // Bucle de voz
     state.voiceLoopActive = !!s.voice_loop_active;
     // Fase detallada: off|waiting|listening|transcribing|thinking|speaking.
@@ -397,6 +412,11 @@
       await fetchJSON(path);
     },
 
+    async setLanguage(code) {
+      const res = await fetchJSON(`/api/language/${code}`);
+      if (res && res.ok) updateLanguage(res.language);
+    },
+
     async sendTextCommand() {
       const input = $('text-cmd');
       const text = input.value.trim();
@@ -480,6 +500,7 @@
       setSlider('set-lead', 'lead', L.AUDIO_LEAD_SILENCE);
       setSlider('set-listen', 'listen', L.AUDIO_LISTEN_MAX_SECONDS);
       if ($('set-dryrun')) $('set-dryrun').checked = !!L.TTS_DRY_RUN;
+      if ($('set-subs')) $('set-subs').checked = L.SUBTITLES_ENABLED !== false;
       if ($('set-armmode')) $('set-armmode').value = L.ARM_GESTURE_MODE || 'full';
       if ($('set-wheels')) $('set-wheels').checked = !!L.GESTURE_WHEELS;
       // Visión
@@ -517,6 +538,7 @@
         AUDIO_LEAD_SILENCE: $('set-lead').value,
         AUDIO_LISTEN_MAX_SECONDS: $('set-listen').value,
         TTS_DRY_RUN: $('set-dryrun').checked ? 'true' : 'false',
+        SUBTITLES_ENABLED: $('set-subs').checked ? 'true' : 'false',
         ARM_GESTURE_MODE: $('set-armmode').value,
         GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
         VISION_MIN_DISTANCE: $('set-dist').value,

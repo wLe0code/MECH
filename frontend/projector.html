@@ -17,13 +17,32 @@
     color: #222; font-family: 'Space Mono', monospace; font-size: 12px;
     letter-spacing: 3px; position: absolute; bottom: 16px; right: 20px;
   }
+  /* Subtítulos estilo cine: abajo, centrados, con sombra fuerte para que se
+     lean igual sobre video claro u oscuro. Se ocultan solos cuando quedan
+     vacíos (:empty), así no hay que tocar clases desde el script. */
+  #subs {
+    position: fixed; left: 50%; bottom: 6vh; transform: translateX(-50%);
+    width: 86%; max-width: 1700px;
+    text-align: center; text-wrap: balance;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: clamp(20px, 3.1vw, 46px);
+    font-weight: 600; line-height: 1.28; letter-spacing: .2px;
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.9),
+                 0 0 20px rgba(0,0,0,.65);
+    opacity: 1; transition: opacity .25s ease;
+    pointer-events: none;
+  }
+  #subs:empty { opacity: 0; }
   /* Permite forzar fullscreen al hacer click. */
 </style>
 </head>
 <body>
   <div id="stage"></div>
+  <div id="subs"></div>
   <div id="idle">MECH · STAND</div>
 
+<script src="/static/subtitles.js"></script>
 <script>
 /* Pantalla de proyección fullscreen.
  *
@@ -36,6 +55,13 @@
 
 const stage = document.getElementById('stage');
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+
+/* Subtítulos del guion que narra MECH (en el idioma activo: español, o
+   inglés si lo despertaron con "wake up MECH"). Si por lo que sea no cargó
+   subtitles.js, el resto de la página sigue funcionando igual. */
+const subs = window.MechSubs
+  ? MechSubs.create([document.getElementById('subs')])
+  : { set() {}, clear() {} };
 
 let ws = null;
 
@@ -55,6 +81,7 @@ function detectVideo(url) {
 }
 
 function applyState(s) {
+  subs.set(s.current_subtitle, s.subtitle_lang);
   // Prioridad: video AI (biblioteca) > imagen AI > proyector inmersivo > stand 1 > stand 2
   if (s.current_video) { show(s.current_video, true); return; }
   if (s.current_image) { show(s.current_image, false); return; }
@@ -79,6 +106,9 @@ function connect() {
       // Video pre-renderizado de la biblioteca (Opción B).
       if (msg.url) show(msg.url, true);
       else clear();
+    } else if (msg.type === 'subtitle') {
+      // El guion del segmento que MECH está narrando (o null al terminar).
+      subs.set(msg.text, msg.lang);
     } else if (msg.type === 'projector') {
       // Solicita el estado actualizado tras el cambio.
       fetch('/api/state').then(r => r.json()).then(applyState);

@@ -162,6 +162,7 @@ El backend implementa esto en `MechApp.emergency_stop()`. Llega vía `POST /api/
 | `POST /api/arduino/head` | `{"pan": 90, "tilt": 90}` | Posición de cabeza |
 | `POST /api/arduino/arm` | `{"side": "L", "angle": 30}` | Posición de brazo |
 | `POST /api/arduino/mode/{MODE}` | — | AUTO / IDLE / LISTEN / SPEAK / STOP |
+| `POST /api/language/{es\|en}` | — | Cambia el idioma (voz, narración y subtítulos) |
 | `POST /api/emergency/stop` | — | PARO DE EMERGENCIA |
 | `GET  /api/state` | — | Estado completo (JSON) |
 | `GET  /api/library` | — | Lista de obras y cuántos segmentos están subidos |
@@ -182,6 +183,7 @@ Conecta a `ws://<pi>:8000/ws`. Recibirás un primer mensaje con el estado comple
 {"type": "projector",   "id": "s1", "on": true, "file": "/uploads/..."}
 {"type": "image",       "url": "/generated/Romeo_1.png"}     // imagen AI nueva (fallback)
 {"type": "video",       "url": "/videos/romeo_julieta/seg01.mp4"}  // video pre-renderizado (biblioteca)
+{"type": "subtitle",    "text": "Verona amanece dividida...", "lang": "es"}  // guion en pantalla (null = borrar)
 ```
 
 **Cliente → Server:**
@@ -191,6 +193,19 @@ Conecta a `ws://<pi>:8000/ws`. Recibirás un primer mensaje con el estado comple
 ```
 
 El resto de control es vía REST (más simple para llamadas puntuales). El WS es solo lectura de estado.
+
+## Idioma y subtítulos
+
+**Idioma.** MECH arranca en español. Se pasa a **inglés solo si se le despierta
+con «wake up MECH»**; con «ok MECH» o «despierta MECH» sigue en español. En
+inglés entiende, narra y subtitula en inglés hasta que se duerme (ahí vuelve a
+español solo). En el panel, la vista Voz tiene chips **ES / EN** para forzarlo
+a mano. Se apaga con `WAKE_ENGLISH_ENABLED=false`.
+
+**Subtítulos.** El guion de cada segmento se ve abajo de la pantalla, como en
+el cine, tanto en `/projector` como en la vista VR `/projector/vr` (uno por
+ojo). Salen haya video, imagen o pantalla vacía, y siempre en el idioma
+activo. Se apagan desde Ajustes → "Subtítulos" (`SUBTITLES_ENABLED`).
 
 ## Modos de operación
 

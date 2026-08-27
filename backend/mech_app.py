@@ -26,6 +26,7 @@ import sounddevice as sd
 import config
 import gestures
 import image_gen
+import lang
 import llm
 import background_audio
 import tts
@@ -65,6 +66,9 @@ class MechApp:
             # Fase detallada del ciclo de voz para el panel. Una de:
             # off | dormant | waiting | listening | transcribing | thinking | speaking
             "voice_phase": "off",
+            # Idioma activo: "es" (default) o "en" (solo si lo despertaron
+            # con "wake up MECH"). Ver backend/lang.py.
+            "language": lang.current(),
             "claude_model": config.CLAUDE_MODEL,
             "current_mode": "IDLE",
             "projectors": {
@@ -77,6 +81,10 @@ class MechApp:
             "arduino_connected": self.arduino.is_connected,
             "last_transcript": "",
             "last_ai_response": "",
+            # Subtítulo que se ve ahora en la proyección (estilo cine, abajo).
+            # Es el texto del segmento que MECH está narrando.
+            "current_subtitle": None,
+            "subtitle_lang": lang.current(),
             # Estado de la visión (lo actualiza backend/vision.py).
             "vision": {
                 "enabled": False,
@@ -192,6 +200,45 @@ class MechApp:
             recording=recording,
         )
 
+    # ------------------------------------------------------------------
+    # Idioma (español por defecto, inglés con "wake up MECH")
+    # ------------------------------------------------------------------
+
+    def set_language(self, code: str, announce: bool = False) -> None:
+        """Cambia el idioma en el que MECH escucha, narra y subtitula.
+
+        `announce=True` hace que lo confirme en voz alta (se usa cuando el
+        cambio ocurre con MECH ya despierto; al despertar no hace falta
+        porque el saludo ya sale en el idioma nuevo).
+        """
+        before = lang.current()
+        after = lang.set_current(code)
+        self.state["language"] = after
+        self.emit("state", state=self.state)
+        if after != before:
+            self.log(f"Idioma: {lang.label(after)}.", "ok")
+        if announce and after != before:
+            tts.speak(lang.say("switched", after), blocking=True)
+            time.sleep(0.5)  # deja drenar el parlante antes de volver a oír
+
+    # ------------------------------------------------------------------
+    # Subtítulos de la proyección (estilo cine: abajo, centrados)
+    # ------------------------------------------------------------------
+
+    def set_subtitle(self, text: str | None) -> None:
+        """Publica (o borra con None) el subtítulo que se ve en la pantalla.
+
+        Va al `state` ADEMÁS de emitirse por WebSocket porque la vista VR del
+        teléfono se alimenta del sondeo HTTP a /api/state cuando el WS no
+        conecta — sin esto, en el visor no habría subtítulos.
+        """
+        if text and not config.SUBTITLES_ENABLED:
+            return  # apagados desde Ajustes (borrar SIEMPRE se permite)
+        clean = (text or "").strip() or None
+        self.state["current_subtitle"] = clean
+        self.state["subtitle_lang"] = lang.current()
+        self.emit("subtitle", text=clean, lang=lang.current())
+
     def go_dormant(self) -> None:
         """Pone a MECH en reposo: deja de responder (no gasta créditos), pero
         el bucle sigue oyendo para captar la palabra de despertar.
@@ -201,21 +248,34 @@ class MechApp:
         en reposo y, por el eco del parlante, captaría su propia voz diciendo
         "despierta MECH" y se despertaría solo."""
         self.state["voice_awake"] = False
-        self.log("MECH en reposo. Di 'ok MECH' para reactivarlo.", "info")
-        tts.speak("De acuerdo, hasta luego.", blocking=True)
+        self.log(
+            "MECH en reposo. Di 'ok MECH' (o 'wake up MECH' para inglés).",
+            "info",
+        )
+        tts.speak(lang.say("dormant"), blocking=True)
         # Pequeña pausa para que el parlante (sobre todo Bluetooth) drene su
         # buffer antes de volver a escuchar, y no captarse a sí mismo.
         time.sleep(0.8)
+        # Al dormirse vuelve a español: el siguiente visitante del stand se
+        # encuentra a MECH como siempre (el inglés hay que pedirlo de nuevo).
+        self.set_language(lang.DEFAULT)
+        self.set_subtitle(None)
         self.set_voice_phase("dormant")
 
-    def go_awake(self) -> None:
-        """Despierta a MECH: vuelve a responder comandos."""
+    def go_awake(self, language: str | None = None) -> None:
+        """Despierta a MECH: vuelve a responder comandos.
+
+        `language` = idioma con el que lo despertaron ("es" con "ok MECH",
+        "en" con "wake up MECH"). El saludo ya sale en ese idioma.
+        """
+        if language:
+            self.set_language(language)
         self.state["voice_awake"] = True
         # Animación de despertar del aro (como el aro azul de un Alexa Echo):
         # el usuario VE que el comando "ok MECH" funcionó, además de oírlo.
         self.set_led("WAKE")
-        self.log("MECH despierto. Escuchando comandos.", "ok")
-        tts.speak("Hola, ya te escucho.", blocking=True)
+        self.log(f"MECH despierto ({lang.label()}). Escuchando comandos.", "ok")
+        tts.speak(lang.say("awake"), blocking=True)
         # El worker sonará el chime y drenará el parlante antes de grabar.
         self.chime_pending = True
         self.set_voice_phase("waiting")
@@ -224,8 +284,11 @@ class MechApp:
     # Visión (backend/vision.py llama estos hooks)
     # ------------------------------------------------------------------
 
-    # Frase oficial de bienvenida (pedida por el equipo, jul 2026).
-    GREETING_TEXT = "¡Hola! Soy MECH. Un gusto verte hoy aquí."
+    # Frase oficial de bienvenida (pedida por el equipo, jul 2026). En modo
+    # inglés se dice su equivalente (ver backend/lang.py).
+    # El texto vive en lang.py (una sola fuente para los dos idiomas); esta
+    # constante se conserva porque está documentada y se usa en pruebas.
+    GREETING_TEXT = lang.say("greeting", "es")
 
     def on_user_detected(self) -> None:
         """Alguien entró al campo de la cámara: MECH hace el protocolo de
@@ -243,10 +306,13 @@ class MechApp:
             # Ventana provisional amplia mientras habla; al terminar se
             # ajusta a un margen corto para drenar el eco del parlante.
             self.greeting_until = time.time() + 20
+            texto = lang.say("greeting")
+            self.set_subtitle(texto)
             try:
-                tts.speak(self.GREETING_TEXT, blocking=True)
+                tts.speak(texto, blocking=True)
             finally:
                 self.greeting_until = time.time() + 1.5
+                self.set_subtitle(None)
 
         threading.Thread(target=_greet, daemon=True).start()
 
@@ -303,6 +369,7 @@ class MechApp:
         self.state["current_video"] = None
         self.emit("image", url=None)
         self.emit("video", url=None)
+        self.set_subtitle(None)
         for pid in ("s1", "s2", "imm"):
             self.state["projectors"][pid]["on"] = False
         self.emit("state", state=self.state)
@@ -469,6 +536,10 @@ class MechApp:
                 user_x = v.get("x") if (v.get("enabled") and v.get("user_present")) else None
                 gestures.perform(self.arduino, seg.gesture, user_x=user_x)
                 self.state["last_ai_response"] = seg.narration
+                # Subtítulo estilo cine: el guion del segmento, en el idioma
+                # activo (es lo que Claude acaba de escribir). Se ve haya
+                # video, imagen o pantalla vacía.
+                self.set_subtitle(seg.narration)
                 voice_id = voices.resolve(seg.voice)
                 self.emit(
                     "ai_response",
@@ -480,6 +551,7 @@ class MechApp:
                 tts.speak(seg.narration, blocking=True, voice_id=voice_id)
         finally:
             background_audio.stop()
+            self.set_subtitle(None)  # se acabó el guion: pantalla sin texto
             self.arduino.set_mode("IDLE")
 
     def _start_background_music(self, plan: "llm.Plan") -> None:
@@ -505,7 +577,11 @@ class MechApp:
         self.log(f"Comando: {text!r}", "info")
         try:
             self.set_voice_phase("thinking")
-            plan = llm.plan_response(text, conversation_history=self.history)
+            plan = llm.plan_response(
+                text,
+                conversation_history=self.history,
+                language=lang.current(),
+            )
             self.log(f"Plan: {plan.mode} — {plan.title}", "ok")
             self.execute_plan(plan)
             self.history = llm.append_turn(self.history, text, plan)
@@ -513,7 +589,7 @@ class MechApp:
                 self.history = self.history[-12:]
         except Exception as e:
             self.log(f"Error procesando comando: {e}", "err")
-            tts.speak("Disculpa, tuve un problema. ¿Puedes repetirme?", blocking=True)
+            tts.speak(lang.say("error"), blocking=True)
         finally:
             # Si quedó en reposo, mantenemos "dormant" (sin sonido).
             if not self.state.get("voice_awake", True):

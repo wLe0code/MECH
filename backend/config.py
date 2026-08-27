@@ -114,6 +114,30 @@ VOICE_SLEEP_PHRASES = [
         "duermete,duerme,descansa mech,ponte en reposo,modo reposo",
     ).split(",") if p.strip()
 ]
+# --- Modo inglés (opcional) ----------------------------------------------
+# MECH vive en español. El INGLÉS se activa SI Y SOLO SI se le despierta con
+# "wake up MECH"; a partir de ahí entiende, narra y subtitula en inglés hasta
+# que se duerme (ahí vuelve solo a español). Ver backend/lang.py.
+WAKE_ENGLISH_ENABLED = os.environ.get("WAKE_ENGLISH_ENABLED", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+# Frases que despiertan a MECH EN INGLÉS. Se incluyen las variantes de cómo
+# suele transcribir Whisper esas palabras cuando todavía está escuchando en
+# español ("weik ap mech", "gueik ap mech").
+VOICE_WAKE_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_WAKE_PHRASES_EN",
+        "wake up mech,wake up,wakeup mech,wake mech,weik ap mech,gueik ap mech",
+    ).split(",") if p.strip()
+]
+# Frases que ponen a MECH en reposo estando en modo inglés.
+VOICE_SLEEP_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_SLEEP_PHRASES_EN",
+        "stop listening,go to sleep,sleep mech,stop mech,goodbye mech",
+    ).split(",") if p.strip()
+]
+
 # Micrófono de entrada. Vacío = dispositivo por defecto del sistema.
 # Se puede poner el índice (número) o parte del nombre del dispositivo.
 # El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda
@@ -128,6 +152,13 @@ AUDIO_LEAD_SILENCE = float(os.environ.get("AUDIO_LEAD_SILENCE", "1.0"))
 # Volumen (0-100) de la música de fondo bajo la narración (solo obras con
 # música, ej. Malpaís). Bajo a propósito para que la voz quede por encima.
 BACKGROUND_MUSIC_VOLUME = int(os.environ.get("BACKGROUND_MUSIC_VOLUME", "18"))
+
+# Subtítulos de la narración en la pantalla de proyección (estilo cine:
+# abajo, centrados). Se muestran haya video, imagen o nada. Van siempre en el
+# idioma activo, porque son el guion que Claude acaba de generar.
+SUBTITLES_ENABLED = os.environ.get("SUBTITLES_ENABLED", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 
 # Proyección
 PROJECTOR_DISPLAY = os.environ.get("PROJECTOR_DISPLAY", ":0")

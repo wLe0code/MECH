@@ -24,6 +24,7 @@ import webrtcvad
 from faster_whisper import WhisperModel
 
 import config
+import lang
 
 
 # webrtcvad solo acepta frames de 10, 20 o 30 ms a 8/16/32/48 kHz.
@@ -46,6 +47,14 @@ WHISPER_SAMPLE_RATE = 16000
 # en este prompt; si listáramos las obras, respondería esas obras sin que el
 # usuario las haya pedido.
 INITIAL_PROMPT = "Conversación en español con un robot llamado MECH."
+# Equivalente para el modo inglés (se activa con "wake up MECH"). Mismo
+# criterio: solo el nombre y el contexto, NADA de títulos de obras.
+INITIAL_PROMPT_EN = "A conversation in English with a robot named MECH."
+
+
+def _initial_prompt(language: str) -> str:
+    return INITIAL_PROMPT_EN if language == "en" else INITIAL_PROMPT
+
 
 _model: WhisperModel | None = None
 
@@ -291,15 +300,22 @@ def record_until_silence(
     return _resample(audio_f32, config.AUDIO_SAMPLE_RATE, WHISPER_SAMPLE_RATE)
 
 
-def transcribe(audio: np.ndarray) -> str:
-    """Transcribe audio mono float32 a texto."""
+def transcribe(audio: np.ndarray, language: str | None = None) -> str:
+    """Transcribe audio mono float32 a texto.
+
+    `language`: código ISO ("es", "en"). Si es None usa el idioma ACTIVO de
+    MECH (`lang.whisper_language()`), que es español salvo que lo hayan
+    despertado con "wake up MECH". Se pasa explícito en el bucle de voz para
+    reintentar en inglés la frase de despertar.
+    """
+    lang_code = language or lang.whisper_language()
     model = get_model()
     segments, _ = model.transcribe(
         audio,
-        language=config.WHISPER_LANGUAGE,
+        language=lang_code,
         beam_size=1,  # más rápido; suficiente para frases cortas
         vad_filter=False,  # ya pre-filtramos con webrtcvad
-        initial_prompt=INITIAL_PROMPT,  # ayuda a reconocer el nombre "MECH"
+        initial_prompt=_initial_prompt(lang_code),  # ayuda a reconocer "MECH"
         # Defensas contra alucinaciones cuando el audio entra con ruido:
         condition_on_previous_text=False,  # no arrastrar contexto entre turnos
         no_speech_threshold=0.6,  # descarta tramos sin habla clara
@@ -314,6 +330,7 @@ def listen_once(
     cancel_event=None,
     max_utterance_seconds: float | None = None,
     on_level: Callable[[float, float, bool], None] | None = None,
+    language: str | None = None,
 ) -> str | None:
     """Atajo: graba hasta silencio y devuelve la transcripción.
 
@@ -321,6 +338,7 @@ def listen_once(
     "transcribing" mientras Whisper convierte el audio a texto.
     `cancel_event`: si se activa, aborta la escucha y devuelve None.
     `max_utterance_seconds`/`on_level`: ver record_until_silence().
+    `language`: idioma para transcribir (None = el idioma activo de MECH).
     """
     audio = record_until_silence(
         max_seconds=max_seconds,
@@ -336,4 +354,4 @@ def listen_once(
             on_phase("transcribing")
         except Exception:
             pass
-    return transcribe(audio)
+    return transcribe(audio, language=language)

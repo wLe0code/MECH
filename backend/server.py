@@ -23,12 +23,13 @@ Endpoints REST:
     POST /api/arduino/head              → HEAD:pan:tilt
     POST /api/arduino/arm               → ARM:L/R:angle
     POST /api/arduino/mode/{mode}       → MODE:...
+    POST /api/language/{es|en}          → cambia el idioma (voz + subtítulos)
     POST /api/emergency/stop            → PARO DE EMERGENCIA
     GET  /api/state                     → estado completo (JSON)
 
 WebSocket /ws:
     Server → Client:  {type: "state"|"log"|"transcript"|"ai_response"
-                        |"projector"|"image"|"arduino", ...}
+                        |"projector"|"image"|"video"|"subtitle"|"arduino", ...}
     Client → Server:  {type: "ping"} (servidor responde pong)
 """
 
@@ -54,6 +55,7 @@ import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
+import lang
 import stt
 import tts
 import video_library
@@ -80,6 +82,11 @@ def _voice_loop_worker():
         ("para de escuchar"), pasa a reposo.
       - En reposo: NO llama a Claude ni gasta créditos; solo escucha y, si oye
         la palabra de despertar ("despierta MECH"), vuelve a despierto.
+
+    IDIOMA: con "ok MECH" / "despierta MECH" despierta en español; con
+    "wake up MECH" despierta en INGLÉS y a partir de ahí todo (lo que
+    entiende, lo que narra y los subtítulos) va en inglés hasta que se
+    duerme. Ver backend/lang.py.
     """
     app_state = get_app()
     app_state.log("Bucle de voz iniciado", "ok")
@@ -113,12 +120,23 @@ def _voice_loop_worker():
             # En reposo no mostramos las fases (queda el banner "dormant").
             # En reposo también acotamos la grabación: "ok MECH" dura ~1 s,
             # así que cortamos rápido y revisamos enseguida (despertar ágil).
-            text = stt.listen_once(
+            # Grabamos y transcribimos en dos pasos (en vez de listen_once)
+            # porque en reposo puede hacer falta re-transcribir el MISMO audio
+            # en inglés para reconocer "wake up MECH".
+            audio = stt.record_until_silence(
                 max_seconds=config.LISTEN_MAX_SECONDS,
                 on_phase=app_state.set_voice_phase if awake else None,
                 max_utterance_seconds=None if awake else config.WAKE_MAX_UTTERANCE,
                 on_level=app_state.report_mic_level,
             )
+            if audio is None:
+                app_state.set_voice_phase(
+                    "waiting" if app_state.state.get("voice_awake", True) else "dormant"
+                )
+                continue
+            if awake:
+                app_state.set_voice_phase("transcribing")
+            text = stt.transcribe(audio)
 
             if text is None or not text.strip():
                 app_state.set_voice_phase(
@@ -139,19 +157,40 @@ def _voice_loop_worker():
             awake = app_state.state.get("voice_awake", True)
 
             if not awake:
-                # En reposo: solo reacciona a la palabra de despertar.
-                if voice_phrases.is_wake(text):
-                    app_state.go_awake()
+                # En reposo: solo reacciona a la palabra de despertar, y de
+                # paso decide el IDIOMA con el que despierta.
+                wake_lang = voice_phrases.wake_language(text)
+                if wake_lang is None and config.WAKE_ENGLISH_ENABLED:
+                    # Estábamos escuchando en un idioma, así que la frase del
+                    # OTRO pudo salir deformada (lo normal: oímos en español y
+                    # dijeron "wake up MECH"). Reintentamos el MISMO audio en
+                    # el otro idioma; es corto (máx. WAKE_MAX_UTTERANCE s).
+                    otro = "es" if lang.current() == "en" else "en"
+                    try:
+                        text_otro = stt.transcribe(audio, language=otro)
+                    except Exception as e:
+                        app_state.log(f"Reintento en {otro} falló: {e}", "warn")
+                        text_otro = ""
+                    if text_otro and voice_phrases.wake_language(text_otro) == otro:
+                        wake_lang = otro
+                        text = text_otro
+                if wake_lang:
+                    app_state.go_awake(language=wake_lang)
                 else:
                     app_state.set_voice_phase("dormant")
                 continue
 
-            # Despierto: ¿pidió reposo?
-            if voice_phrases.is_sleep(text):
+            # Despierto: ¿pidió reposo? (se aceptan las frases de los dos idiomas)
+            if voice_phrases.is_sleep_any(text):
                 app_state.go_dormant()
                 continue
-            # Ya despierto y dijo "despierta": lo ignoramos (no es un comando).
-            if voice_phrases.is_wake(text):
+            # Ya despierto y volvió a decir la frase de despertar: si es la del
+            # OTRO idioma, cambia de idioma; si es la del mismo, se ignora.
+            wake_lang = voice_phrases.wake_language(text)
+            if wake_lang:
+                if wake_lang != lang.current():
+                    app_state.set_language(wake_lang, announce=True)
+                    app_state.chime_pending = True
                 app_state.set_voice_phase("waiting")
                 continue
 
@@ -445,6 +484,22 @@ async def vision_toggle(onoff: str):
     return {"ok": True, "enabled": config.VISION_ENABLED}
 
 
+@app.post("/api/language/{code}")
+async def set_language(code: str):
+    """Cambia el idioma a mano desde el panel (sin usar la palabra clave).
+
+    En el stand el idioma lo decide la voz: "ok MECH" = español,
+    "wake up MECH" = inglés. Este endpoint existe para probar sin micrófono
+    y para corregir sobre la marcha si Whisper entendió mal.
+    """
+    code = code.strip().lower()
+    if code not in lang.SUPPORTED:
+        raise HTTPException(400, f"Idioma inválido: {code}. Usa 'es' o 'en'.")
+    mech = get_app()
+    mech.set_language(code)
+    return {"ok": True, "language": lang.current()}
+
+
 @app.post("/api/emergency/stop")
 async def emergency_stop():
     stop_voice_loop()
@@ -477,6 +532,7 @@ _LIVE_KEYS = {
     "AUDIO_LISTEN_MAX_SECONDS": float,  # se guarda en config.LISTEN_MAX_SECONDS
     "WHISPER_LANGUAGE": str,
     "TTS_DRY_RUN": _to_bool,  # modo ahorro de créditos de voz
+    "SUBTITLES_ENABLED": _to_bool,  # subtítulos en la proyección
     # Visión / comportamiento físico (se leen en cada frame/gesto).
     "VISION_MIN_DISTANCE": float,
     "VISION_APPROACH": _to_bool,
@@ -511,6 +567,7 @@ async def get_config():
             "AUDIO_LISTEN_MAX_SECONDS": config.LISTEN_MAX_SECONDS,
             "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
             "TTS_DRY_RUN": config.TTS_DRY_RUN,
+            "SUBTITLES_ENABLED": config.SUBTITLES_ENABLED,
             "VISION_ENABLED": config.VISION_ENABLED,
             "VISION_MIN_DISTANCE": config.VISION_MIN_DISTANCE,
             "VISION_APPROACH": config.VISION_APPROACH,

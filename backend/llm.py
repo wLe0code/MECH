@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 import config
 import informacion_nuestra
+import lang
 import video_library
 import voices
 
@@ -112,7 +113,11 @@ class Segment(BaseModel):
 
     narration: str = Field(
         ...,
-        description="Texto en español que el robot narrará con TTS. Sin markdown.",
+        description=(
+            "Texto que el robot narrará con TTS, en el IDIOMA ACTIVO indicado "
+            "al final del system prompt (español por defecto; inglés si lo "
+            "despertaron con 'wake up MECH'). Sin markdown."
+        ),
     )
     image_prompt: str | None = Field(
         None,
@@ -179,7 +184,11 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
-def plan_response(user_message: str, conversation_history: list[dict] | None = None) -> Plan:
+def plan_response(
+    user_message: str,
+    conversation_history: list[dict] | None = None,
+    language: str | None = None,
+) -> Plan:
     """Pide a Claude un plan estructurado para responder al usuario.
 
     Args:
@@ -187,6 +196,8 @@ def plan_response(user_message: str, conversation_history: list[dict] | None = N
         conversation_history: Lista de turnos previos en formato Anthropic
             ({"role": ..., "content": ...}). Para mantener contexto entre
             preguntas dentro de una obra.
+        language: "es" o "en". None = el idioma activo de MECH (español,
+            salvo que lo hayan despertado con "wake up MECH").
 
     Returns:
         Un Plan con los segmentos a ejecutar.
@@ -206,6 +217,9 @@ def plan_response(user_message: str, conversation_history: list[dict] | None = N
         full_system_prompt += "\n\n" + voices_section
     full_system_prompt += "\n\n" + informacion_nuestra.system_prompt_section()
 
+    # El idioma va en un bloque APARTE, DESPUÉS del bloque cacheado: así el
+    # prefijo cacheado no cambia al pasar de español a inglés (el caché sigue
+    # sirviendo) y la instrucción de idioma queda de últimas, bien visible.
     response = client.messages.parse(
         model=config.CLAUDE_MODEL,
         max_tokens=4096,
@@ -214,7 +228,11 @@ def plan_response(user_message: str, conversation_history: list[dict] | None = N
                 "type": "text",
                 "text": full_system_prompt,
                 "cache_control": {"type": "ephemeral"},
-            }
+            },
+            {
+                "type": "text",
+                "text": lang.llm_directive(language),
+            },
         ],
         messages=messages,
         output_format=Plan,

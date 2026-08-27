@@ -143,6 +143,18 @@ body {
 .voice-btn i { font-size: 36px; color: var(--red); }
 .voice-status { font-size: 13px; color: var(--text-muted); font-family: var(--font-mono); }
 
+/* Idioma activo: español por defecto, inglés solo con "wake up MECH". */
+.lang-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.lang-row .lang-label { font-size: 10px; letter-spacing: 2px; color: var(--text-muted); font-family: var(--font-mono); }
+.lang-chip {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 12px; font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+}
+.lang-chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.15); }
+.lang-chip.active { color: #fff; border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.25); }
+.lang-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+
 .wave-bars { display: flex; align-items: center; gap: 3px; height: 32px; }
 .wave-bar { width: 4px; border-radius: 2px; background: var(--red); opacity: 0.3; transition: height 0.1s; }
 .wave-bar.active { opacity: 0.9; }

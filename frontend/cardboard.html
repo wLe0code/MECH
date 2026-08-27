@@ -26,6 +26,21 @@
     content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
     width: 2px; transform: translateX(-1px); background: #111; pointer-events: none;
   }
+  /* Subtítulos estilo cine, uno por ojo. Van FUERA de .content (así el zoom
+     de calibración no los agranda); solo copian la SEPARACIÓN, para que en
+     el visor caigan en el mismo sitio que la imagen. */
+  .subs {
+    position: absolute; left: 50%; bottom: 11%;
+    width: 86%; text-align: center; text-wrap: balance;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: clamp(13px, 2.6vw, 26px);
+    font-weight: 600; line-height: 1.25; color: #fff;
+    text-shadow: 0 2px 5px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.9);
+    opacity: 1; transition: opacity .25s ease; pointer-events: none;
+    /* translate(-50%) centra; el script le suma la separación de cada ojo. */
+    transform: translateX(-50%);
+  }
+  .subs:empty { opacity: 0; }
   .idle {
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 10px;
@@ -87,8 +102,8 @@
 </head>
 <body>
   <div id="eyes">
-    <div class="eye" id="eyeL"><div class="content" id="contentL"></div><div class="idle" id="idleL"><div class="ring"></div>MECH · VR<div class="idle-status" id="idleStatusL">iniciando…</div></div></div>
-    <div class="eye" id="eyeR"><div class="content" id="contentR"></div><div class="idle" id="idleR"><div class="ring"></div>MECH · VR<div class="idle-status" id="idleStatusR">iniciando…</div></div></div>
+    <div class="eye" id="eyeL"><div class="content" id="contentL"></div><div class="subs" id="subsL"></div><div class="idle" id="idleL"><div class="ring"></div>MECH · VR<div class="idle-status" id="idleStatusL">iniciando…</div></div></div>
+    <div class="eye" id="eyeR"><div class="content" id="contentR"></div><div class="subs" id="subsR"></div><div class="idle" id="idleR"><div class="ring"></div>MECH · VR<div class="idle-status" id="idleStatusR">iniciando…</div></div></div>
   </div>
 
   <div id="rotate"><div class="phone">📱</div>GIRA EL TELÉFONO<br>Y MÉTELO EN EL CARDBOARD</div>
@@ -107,6 +122,7 @@
   <div id="hint">TOCA EL CENTRO PARA PANTALLA COMPLETA · «AJUSTAR VR» PARA CALIBRAR</div>
   <div id="status">iniciando…</div>
 
+<script src="/static/subtitles.js"></script>
 <script>
 /* MECH · Proyección estéreo para Google Cardboard.
  *
@@ -130,6 +146,14 @@ const idleL = document.getElementById('idleL');
 const idleR = document.getElementById('idleR');
 const hint = document.getElementById('hint');
 const statusEl = document.getElementById('status');
+const subsL = document.getElementById('subsL');
+const subsR = document.getElementById('subsR');
+/* Subtítulos del guion (idioma activo). Se pintan iguales en los dos ojos. */
+// Trozos más cortos que en el proyector: cada ojo es media pantalla y un
+// trozo de 90 caracteres se convertiría ahí en un párrafo.
+const subs = window.MechSubs
+  ? MechSubs.create([subsL, subsR], { maxChars: 60 })
+  : { set() {}, clear() {} };
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 
 let sep = parseInt(localStorage.getItem('mech_vr_sep') || '0', 10);
@@ -139,6 +163,9 @@ function applyCalib() {
   const z = zoom / 100;
   contentL.style.transform = `translateX(${sep}px) scale(${z})`;
   contentR.style.transform = `translateX(${-sep}px) scale(${z})`;
+  // Los subtítulos copian la separación (sin el zoom, para no desbordar).
+  subsL.style.transform = `translateX(calc(-50% + ${sep}px))`;
+  subsR.style.transform = `translateX(calc(-50% + ${-sep}px))`;
   document.getElementById('sepVal').textContent = sep;
   document.getElementById('zoomVal').textContent = zoom;
 }
@@ -199,6 +226,7 @@ function show(url, isVideo) {
 }
 
 function applyState(s) {
+  subs.set(s.current_subtitle, s.subtitle_lang);
   if (s.current_video) { show(s.current_video, true); return; }
   if (s.current_image) { show(s.current_image, false); return; }
   const imm = s.projectors?.imm;
@@ -235,6 +263,7 @@ function connect() {
     if (msg.type === 'state') applyState(msg.state);
     else if (msg.type === 'image') { msg.url ? show(msg.url, false) : clearMedia(); }
     else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clearMedia(); }
+    else if (msg.type === 'subtitle') { subs.set(msg.text, msg.lang); }
     else if (msg.type === 'projector') { pollState(); }
   };
   ws.onclose = () => { wsOk = false; setTimeout(connect, 2000); };

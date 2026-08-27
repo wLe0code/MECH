@@ -77,8 +77,47 @@ def matches_any(text: str, phrases: list[str]) -> bool:
 
 
 def is_sleep(text: str) -> bool:
+    """Frase de reposo en español."""
     return matches_any(text, config.VOICE_SLEEP_PHRASES)
 
 
 def is_wake(text: str) -> bool:
+    """Frase de despertar en español ("ok MECH", "despierta MECH")."""
     return matches_any(text, config.VOICE_WAKE_PHRASES)
+
+
+def is_sleep_en(text: str) -> bool:
+    """Frase de reposo en inglés ("stop listening", "go to sleep")."""
+    return matches_any(text, config.VOICE_SLEEP_PHRASES_EN)
+
+
+def is_wake_en(text: str) -> bool:
+    """Frase de despertar en INGLÉS ("wake up MECH").
+
+    Es la única puerta al modo inglés: si no se dice esto, MECH sigue en
+    español (y no entendería comandos en inglés).
+    """
+    return matches_any(text, config.VOICE_WAKE_PHRASES_EN)
+
+
+def wake_language(text: str) -> str | None:
+    """Idioma con el que se despertó a MECH, o None si no fue un despertar.
+
+    El inglés se comprueba PRIMERO: "wake up mech" no colisiona con ninguna
+    frase española de la lista, pero así queda explícito que el modo inglés
+    manda cuando se pide de forma literal.
+    """
+    if config.WAKE_ENGLISH_ENABLED and is_wake_en(text):
+        return "en"
+    if is_wake(text):
+        return "es"
+    return None
+
+
+def is_sleep_any(text: str) -> bool:
+    """Frase de reposo en cualquiera de los dos idiomas.
+
+    Dormirse es inofensivo, así que se aceptan ambas listas sin importar el
+    idioma activo (si Whisper transcribió raro, igual obedece).
+    """
+    return is_sleep(text) or is_sleep_en(text)
