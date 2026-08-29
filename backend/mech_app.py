@@ -49,10 +49,17 @@ class MechApp:
         # Interrupción por voz: mientras MECH narra, un hilo aparte escucha
         # SOLO "oye MECH" / "hey MECH" (ver backend/interrupt_listener.py).
         self._narration_interrupted: bool = False
-        self.interrupts = InterruptListener(self._on_interrupt, self.log)
+        self.interrupts = InterruptListener(
+            self._on_interrupt, self.log, self.report_mic_level
+        )
         # Si el visitante dijo "oye MECH, <otra cosa>", eso queda aquí para
         # atenderlo en cuanto se corte la narración (sin que lo repita).
         self.pending_command: str | None = None
+        # Mientras esto está activo, el bucle de voz NO abre el micrófono: lo
+        # necesita el listener de interrupción. Importa cuando la narración se
+        # lanza desde el panel, porque ahí el bucle está esperando voz con el
+        # micrófono abierto y los dos no caben.
+        self.mic_release = threading.Event()
         # Cuando MECH termina de hablar y queda listo para escuchar, se marca
         # esto para que el worker suene el chime ANTES de abrir el micrófono.
         self.chime_pending: bool = False
@@ -686,6 +693,9 @@ class MechApp:
         self.state["last_transcript"] = text
         self.emit("transcript", text=text)
         self.log(f"Comando: {text!r}", "info")
+        # Que el bucle de voz suelte el micrófono: a partir de aquí manda el
+        # listener de interrupción ("oye MECH").
+        self.mic_release.set()
         try:
             self.set_voice_phase("thinking")
             plan = llm.plan_response(
@@ -712,6 +722,7 @@ class MechApp:
                 self.set_voice_phase("waiting")
             else:
                 self.set_voice_phase("off")
+            self.mic_release.clear()  # el bucle puede volver a grabar
 
     def close(self) -> None:
         try:

@@ -417,6 +417,12 @@
       if (res && res.ok) updateLanguage(res.language);
     },
 
+    async interrupt() {
+      const res = await fetchJSON('/api/voice/interrupt');
+      if (res && res.ok) log('Narración interrumpida desde el panel.', 'ok');
+      else if (res) log(res.reason || 'MECH no está narrando ahora.', 'warn');
+    },
+
     async sendTextCommand() {
       const input = $('text-cmd');
       const text = input.value.trim();

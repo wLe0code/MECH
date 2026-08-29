@@ -39,9 +39,13 @@ class InterruptListener:
         self,
         on_interrupt: Callable[[str], None],
         log: Callable[[str, str], None] | None = None,
+        on_level: Callable[[float, float, bool], None] | None = None,
     ) -> None:
         self._on_interrupt = on_interrupt
         self._log = log or (lambda m, l="info": print(f"[{l}] {m}"))
+        # Nivel del micrófono en vivo: alimenta las barras del panel para ver
+        # si el micrófono está captando algo MIENTRAS MECH narra.
+        self._on_level = on_level
         self._cancel: threading.Event | None = None
         self._thread: threading.Thread | None = None
 
@@ -72,12 +76,21 @@ class InterruptListener:
         self._cancel = cancel
 
         def _run() -> None:
+            try:
+                _escuchar()
+            except Exception as e:
+                # Nunca dejamos morir el hilo en silencio: si la escucha se
+                # rompe, MECH sigue narrando pero hay que poder verlo.
+                self._log(f"La escucha de interrupción se detuvo: {e}", "warn")
+
+        def _escuchar() -> None:
             while not cancel.is_set():
                 try:
                     audio = stt.record_until_silence(
                         max_seconds=_ESPERA,
                         cancel_event=cancel,
                         max_utterance_seconds=config.INTERRUPT_MAX_UTTERANCE,
+                        on_level=self._on_level,
                     )
                 except Exception as e:
                     # Típico: el micrófono ya está ocupado por otro hilo.
@@ -95,6 +108,16 @@ class InterruptListener:
                     continue
                 if cancel.is_set():
                     return
+                # Diagnóstico: SIEMPRE se registra lo que oyó mientras narraba.
+                # Es la única forma de saber, en el evento, si el problema es
+                # que no capta el micrófono o que Whisper entiende otra cosa.
+                if texto:
+                    self._log(
+                        f"Oí mientras narraba: {texto!r}"
+                        + ("" if voice_phrases.is_interrupt(texto)
+                           else " (no es la frase para interrumpir)"),
+                        "info",
+                    )
                 if texto and voice_phrases.is_interrupt(texto):
                     try:
                         self._on_interrupt(texto)
@@ -104,6 +127,15 @@ class InterruptListener:
         self._thread = threading.Thread(target=_run, daemon=True)
         self._thread.start()
         return True
+
+    def trigger(self, text: str = "oye mech") -> None:
+        """Dispara la interrupción a mano (botón del panel).
+
+        Sirve para separar los dos problemas posibles: si por aquí SÍ corta,
+        el mecanismo funciona y lo que falla es el micrófono o Whisper.
+        """
+        self.stop()
+        self._on_interrupt(text)
 
     def stop(self) -> None:
         """Corta la escucha (no espera al hilo: suelta el micrófono solo)."""

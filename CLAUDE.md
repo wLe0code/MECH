@@ -380,6 +380,20 @@ Por qué no se interrumpe solo con su propio eco:
 - Y si aun así molesta en el evento: Ajustes → "Interrumpir"
   (`VOICE_INTERRUPT_ENABLED`, en vivo).
 
+Si NO reacciona, el panel lo dice todo: el listener loguea **cada frase que
+oye mientras narra** (`Oí mientras narraba: '...'`), así se distingue entre
+"el micrófono no capta" y "Whisper entiende otra cosa". Las barras de nivel
+del micrófono también se mueven durante la narración. Y el botón
+**«Interrumpir narración»** de la vista Voz (`POST /api/voice/interrupt`)
+dispara el corte sin micrófono: si por ahí SÍ corta, el mecanismo está bien y
+el problema es de audio.
+
+**El bucle de voz cede el micrófono mientras MECH narra**
+(`mech_app.mic_release`): si no, cuando la narración se lanza desde el PANEL
+el bucle sigue con el micrófono abierto esperando y el listener no puede
+abrirlo. Con voz no pasaba (ese hilo está ocupado ejecutando el plan), pero
+desde el panel sí.
+
 ### Subtítulos de la proyección
 
 El guion se ve abajo de la pantalla, estilo cine, en `/projector` y en la

@@ -114,6 +114,13 @@ def _voice_loop_worker():
             app_state.arduino.set_mode("LISTEN")
             awake = app_state.state.get("voice_awake", True)
 
+            # Mientras MECH narra NO abrimos el micrófono: lo está usando el
+            # listener de interrupción ("oye MECH"). Pasa cuando la narración
+            # se lanzó desde el panel (con voz, este hilo ya está ocupado).
+            if app_state.state.get("voice_phase") in ("thinking", "speaking"):
+                time.sleep(0.3)
+                continue
+
             # Si MECH acaba de terminar de hablar y quedó listo, sonamos el
             # chime y drenamos el parlante ANTES de abrir el micrófono — así no
             # empezamos a grabar antes de que el sonido termine de emitirse.
@@ -133,6 +140,9 @@ def _voice_loop_worker():
                 on_phase=app_state.set_voice_phase if awake else None,
                 max_utterance_seconds=None if awake else config.WAKE_MAX_UTTERANCE,
                 on_level=app_state.report_mic_level,
+                # Si entra un comando por el panel, soltamos el micrófono para
+                # que lo pueda usar el listener de interrupción.
+                cancel_event=app_state.mic_release,
             )
             if audio is None:
                 app_state.set_voice_phase(
@@ -493,6 +503,22 @@ async def vision_toggle(onoff: str):
         config.VISION_ENABLED = False
         config.update_env_file({"VISION_ENABLED": "false"})
     return {"ok": True, "enabled": config.VISION_ENABLED}
+
+
+@app.post("/api/voice/interrupt")
+async def voice_interrupt():
+    """Interrumpe la narración a mano, como si alguien dijera "oye MECH".
+
+    Dos usos: (1) botón de "cállate" en el stand que NO es el paro de
+    emergencia; (2) diagnóstico — si por aquí corta pero por voz no, el
+    problema está en el micrófono o en lo que entiende Whisper, no en el
+    mecanismo de interrupción.
+    """
+    mech = get_app()
+    if mech.state.get("voice_phase") not in ("speaking", "thinking"):
+        return {"ok": False, "reason": "MECH no está narrando ahora mismo"}
+    threading.Thread(target=mech.interrupts.trigger, daemon=True).start()
+    return {"ok": True}
 
 
 @app.post("/api/language/{code}")

@@ -97,6 +97,12 @@
             <span style="color:var(--text-muted)">Esperando comando…</span>
           </div>
 
+          <button class="btn btn-purple" id="interrupt-btn" style="margin-top:4px"
+                  onclick="API.interrupt()"
+                  title="Corta la narración igual que decir «oye MECH». Sirve para probar la interrupción sin micrófono.">
+            <i class="ti ti-hand-stop"></i>Interrumpir narración («oye MECH»)
+          </button>
+
           <div class="text-input-row">
             <input class="text-input" id="text-cmd" type="text"
                    placeholder="O escribe un comando aquí y presiona Enter…"
