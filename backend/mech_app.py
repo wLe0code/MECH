@@ -29,6 +29,7 @@ import image_gen
 import lang
 import llm
 import background_audio
+import subtitles
 import tts
 import video_library
 import voices
@@ -56,6 +57,8 @@ class MechApp:
         # de voz descarta lo que transcriba para no oírse a sí mismo).
         self._last_greeting: float = 0.0
         self.greeting_until: float = 0.0
+        # Subtítulos: hilo que va sacando las líneas al ritmo real de la voz.
+        self._subs_cancel: threading.Event | None = None
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -239,6 +242,46 @@ class MechApp:
         self.state["subtitle_lang"] = lang.current()
         self.emit("subtitle", text=clean, lang=lang.current())
 
+    def start_subtitles(self, text: str, info: dict) -> None:
+        """Arranca los subtítulos de `text` sincronizados con la voz.
+
+        Lo llama `tts.speak` en el instante EXACTO en que empieza a sonar el
+        audio, con su duración real (y, si ElevenLabs lo dio, el segundo de
+        cada carácter). Antes se paceaban en el navegador a ojo — por eso se
+        adelantaban en cuanto MECH hacía una pausa.
+        """
+        cues = subtitles.build_cues(
+            text,
+            duration=float(info.get("duration") or 0.0),
+            char_times=info.get("char_times"),
+            lead=float(info.get("lead") or 0.0),
+        )
+        self.stop_subtitles(clear=False)
+        if not cues:
+            return
+        cancel = threading.Event()
+        self._subs_cancel = cancel
+        t0 = time.monotonic()
+
+        def _run() -> None:
+            for start, linea in cues:
+                espera = start - (time.monotonic() - t0)
+                if espera > 0 and cancel.wait(espera):
+                    return  # nos cancelaron mientras esperábamos
+                if cancel.is_set():
+                    return
+                self.set_subtitle(linea)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def stop_subtitles(self, clear: bool = True) -> None:
+        """Corta el hilo de subtítulos (y por defecto limpia la pantalla)."""
+        if self._subs_cancel is not None:
+            self._subs_cancel.set()
+            self._subs_cancel = None
+        if clear:
+            self.set_subtitle(None)
+
     def go_dormant(self) -> None:
         """Pone a MECH en reposo: deja de responder (no gasta créditos), pero
         el bucle sigue oyendo para captar la palabra de despertar.
@@ -259,7 +302,7 @@ class MechApp:
         # Al dormirse vuelve a español: el siguiente visitante del stand se
         # encuentra a MECH como siempre (el inglés hay que pedirlo de nuevo).
         self.set_language(lang.DEFAULT)
-        self.set_subtitle(None)
+        self.stop_subtitles()
         self.set_voice_phase("dormant")
 
     def go_awake(self, language: str | None = None) -> None:
@@ -307,12 +350,15 @@ class MechApp:
             # ajusta a un margen corto para drenar el eco del parlante.
             self.greeting_until = time.time() + 20
             texto = lang.say("greeting")
-            self.set_subtitle(texto)
             try:
-                tts.speak(texto, blocking=True)
+                tts.speak(
+                    texto,
+                    blocking=True,
+                    on_playback=lambda info: self.start_subtitles(texto, info),
+                )
             finally:
                 self.greeting_until = time.time() + 1.5
-                self.set_subtitle(None)
+                self.stop_subtitles()
 
         threading.Thread(target=_greet, daemon=True).start()
 
@@ -369,7 +415,7 @@ class MechApp:
         self.state["current_video"] = None
         self.emit("image", url=None)
         self.emit("video", url=None)
-        self.set_subtitle(None)
+        self.stop_subtitles()
         for pid in ("s1", "s2", "imm"):
             self.state["projectors"][pid]["on"] = False
         self.emit("state", state=self.state)
@@ -536,10 +582,6 @@ class MechApp:
                 user_x = v.get("x") if (v.get("enabled") and v.get("user_present")) else None
                 gestures.perform(self.arduino, seg.gesture, user_x=user_x)
                 self.state["last_ai_response"] = seg.narration
-                # Subtítulo estilo cine: el guion del segmento, en el idioma
-                # activo (es lo que Claude acaba de escribir). Se ve haya
-                # video, imagen o pantalla vacía.
-                self.set_subtitle(seg.narration)
                 voice_id = voices.resolve(seg.voice)
                 self.emit(
                     "ai_response",
@@ -548,10 +590,19 @@ class MechApp:
                     total=len(plan.segments),
                     voice=seg.voice or "narrator",
                 )
-                tts.speak(seg.narration, blocking=True, voice_id=voice_id)
+                # Los subtítulos (estilo cine, abajo) los dispara el propio
+                # TTS cuando empieza a sonar la voz, así van a su ritmo real
+                # y se quedan quietos en las pausas.
+                tts.speak(
+                    seg.narration,
+                    blocking=True,
+                    voice_id=voice_id,
+                    on_playback=lambda info, t=seg.narration: self.start_subtitles(t, info),
+                )
+                self.stop_subtitles()  # calló: fuera el texto hasta el próximo
         finally:
             background_audio.stop()
-            self.set_subtitle(None)  # se acabó el guion: pantalla sin texto
+            self.stop_subtitles()  # se acabó el guion: pantalla sin texto
             self.arduino.set_mode("IDLE")
 
     def _start_background_music(self, plan: "llm.Plan") -> None:

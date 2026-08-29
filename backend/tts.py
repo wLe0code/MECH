@@ -10,6 +10,7 @@ Reproducimos con sounddevice para no depender de aplay/ffplay externos.
 
 from __future__ import annotations
 
+import base64
 import io
 import os
 import subprocess
@@ -24,6 +25,7 @@ import sounddevice as sd
 from elevenlabs.client import ElevenLabs
 
 import config
+import subtitles
 
 
 _client: ElevenLabs | None = None
@@ -104,6 +106,42 @@ def _stream_to_audio(byte_stream: Iterator[bytes]) -> tuple[np.ndarray, int]:
     return data, samplerate
 
 
+def _synthesize(text: str, voice_id: str) -> tuple[np.ndarray, int, list[float] | None]:
+    """Pide el audio a ElevenLabs. Devuelve (audio, samplerate, char_times).
+
+    Intenta primero el endpoint CON marcas de tiempo por carácter (para
+    sincronizar los subtítulos con las pausas). Si esta versión del SDK o de
+    la API no lo soporta, cae al `convert` de siempre y devuelve
+    `char_times=None`.
+    """
+    client = get_client()
+    con_marcas = getattr(client.text_to_speech, "convert_with_timestamps", None)
+    if con_marcas is not None:
+        try:
+            resp = con_marcas(
+                voice_id=voice_id,
+                model_id=config.ELEVENLABS_MODEL_ID,
+                text=text,
+                output_format="mp3_44100_128",
+            )
+            b64 = resp.get("audio_base64") if isinstance(resp, dict) else getattr(resp, "audio_base64", None)
+            alignment = resp.get("alignment") if isinstance(resp, dict) else getattr(resp, "alignment", None)
+            if b64:
+                data, sr = sf.read(io.BytesIO(base64.b64decode(b64)), dtype="float32", always_2d=False)
+                return data, sr, subtitles.char_times(alignment, text)
+        except Exception as e:
+            print(f"[TTS] Sin marcas de tiempo ({e}); uso el modo normal.")
+
+    stream = client.text_to_speech.convert(
+        voice_id=voice_id,
+        model_id=config.ELEVENLABS_MODEL_ID,
+        text=text,
+        output_format="mp3_44100_128",
+    )
+    audio, sr = _stream_to_audio(stream)
+    return audio, sr, None
+
+
 # Segundos de silencio que se añaden al inicio del audio. Los parlantes
 # Bluetooth tardan en "despertar" y se comen el principio del sonido; este
 # silencio inicial evita que se pierdan las primeras palabras.
@@ -127,8 +165,19 @@ def _pad_lead_silence(audio: np.ndarray, samplerate: int, seconds: float | None 
     return np.concatenate([silence, audio], axis=0)
 
 
-def _play_audio(audio: np.ndarray, samplerate: int, lead_silence: float | None = None) -> None:
+def _play_audio(
+    audio: np.ndarray,
+    samplerate: int,
+    lead_silence: float | None = None,
+    on_started: Callable[[], None] | None = None,
+) -> None:
     """Reproduce el audio por el parlante del sistema.
+
+    `on_started` se llama en cuanto el reproductor arranca de verdad (no
+    antes de escribir el archivo temporal ni de lanzar el proceso): es el
+    t=0 que usan los subtítulos. Si el primer reproductor falla y hay que
+    probar el siguiente, se vuelve a llamar — los subtítulos reinician
+    solos y siguen cuadrando.
 
     Usa pw-play / paplay / ffplay (que salen por el sink por defecto del
     sistema —incluido un parlante Bluetooth/USB— y se MEZCLAN con la música
@@ -161,6 +210,11 @@ def _play_audio(audio: np.ndarray, samplerate: int, lead_silence: float | None =
                 continue  # ese reproductor no está instalado; probar el siguiente
             with _proc_lock:
                 _current_proc = proc
+            if on_started:
+                try:
+                    on_started()
+                except Exception as e:
+                    print(f"[TTS] on_started falló: {e}")
             proc.wait()
             with _proc_lock:
                 _current_proc = None
@@ -171,6 +225,11 @@ def _play_audio(audio: np.ndarray, samplerate: int, lead_silence: float | None =
             # returncode != 0 sin interrupción → ese player falló, probar el siguiente
         # Último recurso: sounddevice (irá al dispositivo por defecto de PortAudio).
         sd.play(audio, samplerate)
+        if on_started:
+            try:
+                on_started()
+            except Exception as e:
+                print(f"[TTS] on_started falló: {e}")
         try:
             stream = sd.get_stream()
             while stream is not None and stream.active:
@@ -191,6 +250,7 @@ def speak(
     on_end: Callable[[], None] | None = None,
     blocking: bool = True,
     voice_id: str | None = None,
+    on_playback: Callable[[dict], None] | None = None,
 ) -> None:
     """Sintetiza `text` y lo reproduce por el parlante por defecto.
 
@@ -204,6 +264,12 @@ def speak(
         voice_id: Voice ID de ElevenLabs a usar SOLO para esta llamada
             (multi-personaje, ver backend/voices.py). Si es None o vacío,
             usa `config.ELEVENLABS_VOICE_ID` por defecto.
+        on_playback: Callback que se llama JUSTO cuando arranca el sonido,
+            con `{"duration", "lead", "char_times"}`. Lo usan los subtítulos
+            para sincronizarse con la voz de verdad (no con una estimación):
+            `duration` = segundos de voz, `lead` = silencio inicial que se le
+            antepone, `char_times` = segundo de cada carácter del texto (o
+            None si la API no lo dio).
     """
     if not text.strip():
         return
@@ -217,24 +283,31 @@ def speak(
         # mantengan un timing realista.
         if config.TTS_DRY_RUN:
             print(f"[TTS ahorro] {text}")
+            simulada = min(8.0, max(1.0, len(text) / 15.0))
             if on_start:
                 on_start()
-            time.sleep(min(8.0, max(1.0, len(text) / 15.0)))
+            if on_playback:
+                on_playback({"duration": simulada, "lead": 0.0, "char_times": None})
+            time.sleep(simulada)
             if on_end:
                 on_end()
             return
 
-        client = get_client()
-        stream = client.text_to_speech.convert(
-            voice_id=chosen_voice,
-            model_id=config.ELEVENLABS_MODEL_ID,
-            text=text,
-            output_format="mp3_44100_128",
-        )
-        audio, sr = _stream_to_audio(stream)
+        audio, sr, char_times = _synthesize(text, chosen_voice)
         if on_start:
             on_start()
-        _play_audio(audio, sr)
+        # Los subtítulos arrancan cuando el sonido empieza a salir de verdad
+        # (dentro de _play_audio), con `lead` segundos de silencio delante.
+        info = {
+            "duration": len(audio) / float(sr or 1),
+            "lead": config.AUDIO_LEAD_SILENCE,
+            "char_times": char_times,
+        }
+        _play_audio(
+            audio,
+            sr,
+            on_started=(lambda: on_playback(info)) if on_playback else None,
+        )
         if on_end:
             on_end()
 

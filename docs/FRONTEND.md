@@ -183,7 +183,7 @@ Conecta a `ws://<pi>:8000/ws`. Recibirás un primer mensaje con el estado comple
 {"type": "projector",   "id": "s1", "on": true, "file": "/uploads/..."}
 {"type": "image",       "url": "/generated/Romeo_1.png"}     // imagen AI nueva (fallback)
 {"type": "video",       "url": "/videos/romeo_julieta/seg01.mp4"}  // video pre-renderizado (biblioteca)
-{"type": "subtitle",    "text": "Verona amanece dividida...", "lang": "es"}  // guion en pantalla (null = borrar)
+{"type": "subtitle",    "text": "Verona amanece dividida.", "lang": "es"}  // línea a mostrar AHORA (null = borrar)
 ```
 
 **Cliente → Server:**
@@ -202,10 +202,16 @@ inglés entiende, narra y subtitula en inglés hasta que se duerme (ahí vuelve 
 español solo). En el panel, la vista Voz tiene chips **ES / EN** para forzarlo
 a mano. Se apaga con `WAKE_ENGLISH_ENABLED=false`.
 
-**Subtítulos.** El guion de cada segmento se ve abajo de la pantalla, como en
-el cine, tanto en `/projector` como en la vista VR `/projector/vr` (uno por
-ojo). Salen haya video, imagen o pantalla vacía, y siempre en el idioma
-activo. Se apagan desde Ajustes → "Subtítulos" (`SUBTITLES_ENABLED`).
+**Subtítulos.** El guion se ve abajo de la pantalla, como en el cine, tanto en
+`/projector` como en la vista VR `/projector/vr` (uno por ojo). Salen haya
+video, imagen o pantalla vacía, y siempre en el idioma activo. Se apagan desde
+Ajustes → "Subtítulos" (`SUBTITLES_ENABLED`).
+
+El **ritmo lo lleva el backend**: pide el audio a ElevenLabs con marcas de
+tiempo por carácter y publica cada línea en el segundo que le toca, así los
+subtítulos se quedan quietos cuando MECH hace una pausa. La página solo pinta
+la línea que recibe — si algún día se ven adelantados, el problema está en
+`backend/subtitles.py` o en `tts.speak`, no en el navegador.
 
 ## Modos de operación
 

@@ -167,6 +167,9 @@ backend/
                         de idioma que se le añade a Claude.
   stt.py              ← faster-whisper local + VAD (webrtcvad). Transcribe en
                         el idioma activo (lang.whisper_language()).
+  subtitles.py        ← Parte el guion en líneas y calcula EN QUÉ SEGUNDO va
+                        cada una, con las marcas de tiempo por carácter que
+                        devuelve ElevenLabs (o proporcional si no las hay).
   tts.py              ← ElevenLabs streaming.
   image_gen.py        ← Gemini / NanoBanana. Fallback de visual cuando
                         no hay video pre-renderizado.
@@ -196,8 +199,10 @@ frontend/
                         Maneja eventos image y video, con loop en video, y
                         pinta los SUBTÍTULOS de la narración abajo.
   subtitles.js        ← Subtítulos estilo cine compartidos por /projector y
-                        /projector/vr: parten el guion en trozos y los pasan
-                        solos (~15 car/s). Se sirve en /static/subtitles.js.
+                        /projector/vr. Es un pintor TONTO: muestra la línea
+                        que manda el backend. El reparto y el ritmo los
+                        decide backend/subtitles.py (ver más abajo).
+                        Se sirve en /static/subtitles.js.
   cardboard.html      ← Vista estéreo lado a lado (Google Cardboard) en
                         /projector/vr. Misma fuente WS que projector.html,
                         duplicada por ojo; se abre en el teléfono.
@@ -345,14 +350,30 @@ despedida, error) y los subtítulos. **Al dormirse vuelve solo a español.**
 
 ### Subtítulos de la proyección
 
-El guion de cada segmento se publica como subtítulo (`state["current_subtitle"]`
-+ evento WS `subtitle`) y se ve abajo de la pantalla, estilo cine, en
-`/projector` y en la vista VR `/projector/vr` (uno por ojo, con la misma
-separación de calibración). Se muestran haya video, imagen o pantalla vacía, y
-salen en el idioma activo (son el texto que Claude acaba de escribir). El
-cliente parte el texto en trozos y los pasa solo, estimando ~15 caracteres por
-segundo de voz; el último trozo se queda hasta que el backend lo borra.
-Interruptor: `SUBTITLES_ENABLED` (Ajustes → "Subtítulos", en vivo).
+El guion se ve abajo de la pantalla, estilo cine, en `/projector` y en la
+vista VR `/projector/vr` (uno por ojo, con la misma separación de
+calibración). Se muestran haya video, imagen o pantalla vacía, y salen en el
+idioma activo (son el texto que Claude acaba de escribir).
+
+**El TIEMPO lo manda el backend, no el navegador** (ago 2026 — antes el
+navegador los paceaba a ~15 car/s y se adelantaban en cada pausa de MECH):
+
+1. `tts.speak()` pide el audio con `convert_with_timestamps` y obtiene el
+   **segundo exacto de cada carácter** (`alignment`). Si el SDK o la API no lo
+   soportan, cae a `convert` y avisa por consola.
+2. Al arrancar la reproducción llama `on_playback({duration, lead, char_times})`.
+   Ese instante es el t=0 real de la voz (ya generado el audio, y con el
+   silencio inicial `AUDIO_LEAD_SILENCE` contado aparte).
+3. `mech_app.start_subtitles()` lo convierte en "cues"
+   (`backend/subtitles.build_cues`) y un hilo publica cada línea a su hora:
+   `set_subtitle()` → evento WS `subtitle` + `state["current_subtitle"]`. Sin
+   marcas de tiempo, reparte proporcional a la duración REAL (menos fino, pero
+   sin acumular error).
+4. Al callar (`tts.speak` retorna) → `stop_subtitles()` limpia la pantalla.
+
+Por eso **NO devuelvas el pacing al navegador**: la página no sabe cuánto dura
+el audio ni dónde respira MECH. Interruptor: `SUBTITLES_ENABLED`
+(Ajustes → "Subtítulos", en vivo).
 
 ### Gestos disponibles
 
@@ -578,8 +599,14 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   por `/projector` y `/projector/vr`) muestra el guion abajo, estilo cine, haya
   video, imagen o nada. Lo alimenta `mech_app.set_subtitle()` (evento WS
   `subtitle` + `state["current_subtitle"]`, para que la VR los reciba también
-  por el sondeo HTTP). Idioma = el activo. Toggle en Ajustes
+  por el sondeo HTTP, ahora cada 0.9 s). Idioma = el activo. Toggle en Ajustes
   (`SUBTITLES_ENABLED`, en vivo).
+- **Subtítulos sincronizados con la voz real (ago 2026)** — el ritmo lo lleva
+  el backend con las marcas de tiempo por carácter de ElevenLabs
+  (`tts._synthesize` → `on_playback` → `mech_app.start_subtitles` →
+  `backend/subtitles.build_cues`). Antes se estimaban en el navegador a
+  ~15 car/s y se adelantaban en cada pausa de MECH. Respaldo automático
+  (reparto proporcional) si la API no devuelve las marcas.
 
 ### 🚧 Pendiente
 

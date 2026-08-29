@@ -149,10 +149,10 @@ const statusEl = document.getElementById('status');
 const subsL = document.getElementById('subsL');
 const subsR = document.getElementById('subsR');
 /* Subtítulos del guion (idioma activo). Se pintan iguales en los dos ojos. */
-// Trozos más cortos que en el proyector: cada ojo es media pantalla y un
-// trozo de 90 caracteres se convertiría ahí en un párrafo.
+// Las líneas y su ritmo los manda el backend (van al compás de la voz);
+// aquí solo se pintan, iguales en los dos ojos.
 const subs = window.MechSubs
-  ? MechSubs.create([subsL, subsR], { maxChars: 60 })
+  ? MechSubs.create([subsL, subsR])
   : { set() {}, clear() {} };
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 
@@ -239,7 +239,7 @@ function applyState(s) {
 }
 
 // ── Conexión: WebSocket para tiempo real + SONDEO HTTP de respaldo ──
-// El sondeo (fetch /api/state cada 1.5 s) hace que la VR muestre lo mismo
+// El sondeo (fetch /api/state cada 0.9 s) hace que la VR muestre lo mismo
 // que /projector AUNQUE el WebSocket no conecte en el teléfono (que era el
 // caso: la página cargaba pero no llegaba el contenido). El WS solo acelera
 // las actualizaciones; el sondeo garantiza que siempre haya imagen.
@@ -272,7 +272,7 @@ function connect() {
 
 // Sondeo de respaldo SIEMPRE activo (barato: un GET de JSON pequeño).
 pollState();
-setInterval(pollState, 1500);
+setInterval(pollState, 900);
 
 // ── Mantener la pantalla encendida ────────────────────────────────
 let wakeLock = null, awakeVideo = null;
