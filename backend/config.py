@@ -114,6 +114,30 @@ VOICE_SLEEP_PHRASES = [
         "duermete,duerme,descansa mech,ponte en reposo,modo reposo",
     ).split(",") if p.strip()
 ]
+# --- Interrumpir a MECH mientras narra ("oye MECH" / "hey MECH") ----------
+# Mientras MECH presenta, un hilo aparte escucha SOLO esta frase, para que el
+# visitante pueda cortarlo si necesita otra cosa. Todo lo demás que oiga
+# durante la narración se descarta (es, casi siempre, el eco de su propio
+# parlante). Se puede apagar desde el panel (Ajustes) o aquí.
+VOICE_INTERRUPT_ENABLED = os.environ.get("VOICE_INTERRUPT_ENABLED", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+VOICE_INTERRUPT_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_INTERRUPT_PHRASES",
+        "oye mech,oiga mech,disculpa mech,perdon mech",
+    ).split(",") if p.strip()
+]
+VOICE_INTERRUPT_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_INTERRUPT_PHRASES_EN",
+        "hey mech,excuse me mech,sorry mech",
+    ).split(",") if p.strip()
+]
+# Tope de duración de cada escucha mientras narra. Corto a propósito: la
+# frase de interrupción dura ~1 s y así se revisa enseguida.
+INTERRUPT_MAX_UTTERANCE = float(os.environ.get("INTERRUPT_MAX_UTTERANCE", "6.0"))
+
 # --- Modo inglés (opcional) ----------------------------------------------
 # MECH vive en español. El INGLÉS se activa SI Y SOLO SI se le despierta con
 # "wake up MECH"; a partir de ahí entiende, narra y subtitula en inglés hasta

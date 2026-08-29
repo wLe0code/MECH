@@ -79,6 +79,12 @@ _PHRASES: dict[str, dict[str, str]] = {
         "es": "Disculpa, tuve un problema. ¿Puedes repetirme?",
         "en": "Sorry, I ran into a problem. Could you say that again?",
     },
+    # Lo que dice al ser interrumpido con "oye MECH" / "hey MECH".
+    # Corta a propósito: el visitante ya quiere hablar.
+    "interrupted": {
+        "es": "Dime, te escucho.",
+        "en": "Sure, go ahead.",
+    },
     "switched": {
         "es": "Listo, sigo en español.",
         "en": "All right, I'll continue in English.",

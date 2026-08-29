@@ -179,6 +179,8 @@ backend/
                         <slug>/seg01.mp4, seg02.mp4, ...
   arduino_link.py     ← Serial al Arduino. Protocolo de texto líneas \n.
                         Auto-reconexión + autodetección de puerto + LED:.
+  interrupt_listener.py ← Hilo que escucha SOLO "oye MECH"/"hey MECH"
+                        mientras MECH narra, para poder cortarlo.
   gestures.py         ← Coreografías reales de gestos (wave, excited...)
                         con interpolación suave; modos full/subtle/off;
                         opcionalmente mueve ruedas (GESTURE_WHEELS).
@@ -348,6 +350,36 @@ despedida, error) y los subtítulos. **Al dormirse vuelve solo a español.**
   `POST /api/language/{es|en}`), útil para probar sin micrófono.
 - Apagar el modo inglés: `WAKE_ENGLISH_ENABLED=false`.
 
+### Interrumpir a MECH mientras narra ("oye MECH" / "hey MECH")
+
+Durante TODO el plan (narración y también las pausas en que genera imágenes),
+`backend/interrupt_listener.py` corre un hilo que escucha con una regla muy
+estricta: **solo** las frases de `VOICE_INTERRUPT_PHRASES` /
+`VOICE_INTERRUPT_PHRASES_EN`. Cualquier otra cosa que oiga se descarta sin
+mirarla — durante la narración, lo que más se oye es el propio parlante.
+
+Al oírla: `mech_app._on_interrupt()` corta la voz (`tts.request_stop()`), la
+música y los subtítulos, marca `_narration_interrupted`, y el bucle de
+`execute_plan` deja de recorrer segmentos. Después MECH dice «Dime, te
+escucho» y vuelve a `waiting`.
+
+Si dijeron **"oye MECH, cuéntame otra cosa"**, `voice_phrases.strip_interrupt()`
+se queda con la petición (`mech_app.pending_command`) y el bucle de voz la
+atiende enseguida (`take_pending_command()`), sin que la tengan que repetir.
+
+Por qué no se interrumpe solo con su propio eco:
+
+- El umbral del VAD es relativo al **ruido ambiente medido en vivo**: con el
+  parlante sonando, el piso sube y hace falta una voz claramente más fuerte
+  (el mic es de solapa e inalámbrico, así que el visitante entra mucho más
+  fuerte que el parlante).
+- La frase pide DOS palabras juntas ("oye" + "mech"); las narraciones dicen
+  "MECH" a menudo, pero casi nunca "oye".
+- Si el guion que va a narrar contiene la frase, el listener **no se arranca**
+  (`guard_text` en `InterruptListener.start()`).
+- Y si aun así molesta en el evento: Ajustes → "Interrumpir"
+  (`VOICE_INTERRUPT_ENABLED`, en vivo).
+
 ### Subtítulos de la proyección
 
 El guion se ve abajo de la pantalla, estilo cine, en `/projector` y en la
@@ -424,7 +456,8 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Fase nueva del banner: `dormant`. Métodos `mech_app.go_awake/go_dormant`.
   Detección de frases en `backend/voice_phrases.py` (match por palabras en
   cualquier orden, sin acentos). El reposo/despertar solo se evalúa ENTRE
-  turnos (MECH no escucha mientras narra, por decisión del usuario).
+  turnos; MIENTRAS narra solo se escucha la frase de interrupción
+  ("oye MECH", ver más abajo), nada más.
   El mensaje de `go_dormant` NO contiene la palabra "despierta" (si no, el
   mic captaría el eco del parlante y MECH se despertaría solo). Tras
   go_dormant/go_awake hay un `time.sleep(0.8)` para drenar el parlante.
@@ -608,6 +641,13 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   ~15 car/s y se adelantaban en cada pausa de MECH. Respaldo automático
   (reparto proporcional) si la API no devuelve las marcas.
 
+- **Interrupción por voz mientras narra (ago 2026)** — "oye MECH" (es) /
+  "hey MECH" (en) corta la presentación en cualquier momento:
+  `backend/interrupt_listener.py` + `mech_app._on_interrupt()`. Si la frase
+  trae petición pegada ("oye MECH, háblame de Malpaís"), se atiende enseguida
+  sin repetirla. Guarda anti-eco (umbral relativo al ruido, dos palabras,
+  `guard_text`) y switch en Ajustes (`VOICE_INTERRUPT_ENABLED`).
+
 ### 🚧 Pendiente
 
 - **Copiar las fotos reales del robot terminado** a `web/assets/robot-01.jpg`
@@ -648,7 +688,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     por accidente.
 17. **`VOICE_WAKE_PHRASES_EN` en el `.env` de la Pi tapa el default**, igual
     que la lista en español. Si «wake up MECH» no funciona, revisar esa clave.
-18. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
+18. **Si MECH se corta solo a media narración**, es el eco de su parlante
+    disparando la frase de interrupción: subí el "Umbral ruido" en Ajustes o
+    apagá "Interrumpir" (`VOICE_INTERRUPT_ENABLED=false`). Y si NO se deja
+    interrumpir, revisá que el `.env` de la Pi no tenga
+    `VOICE_INTERRUPT_PHRASES` con otra lista.
+19. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
 
 ---
 

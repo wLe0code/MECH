@@ -11,6 +11,7 @@ lo que transcribe Whisper.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 
 import config
@@ -74,6 +75,49 @@ def matches_any(text: str, phrases: list[str]) -> bool:
         if words and all(any(_word_matches(w, tok) for tok in tokens) for w in words):
             return True
     return False
+
+
+def _interrupt_phrases() -> list[str]:
+    """Frases de interrupción de los DOS idiomas.
+
+    Se aceptan ambas siempre: si MECH narra en español y alguien le suelta
+    "hey MECH", igual queremos parar. Son frases distintivas, no chocan.
+    """
+    return list(config.VOICE_INTERRUPT_PHRASES) + list(config.VOICE_INTERRUPT_PHRASES_EN)
+
+
+def is_interrupt(text: str) -> bool:
+    """¿El visitante está pidiendo cortar la narración? ("oye MECH")."""
+    return matches_any(text, _interrupt_phrases())
+
+
+def strip_interrupt(text: str) -> str:
+    """Devuelve lo que queda tras quitar la frase de interrupción.
+
+    Sirve para que "oye MECH, cuéntame otra cosa" no obligue a repetir: se
+    corta la narración Y se atiende "cuéntame otra cosa" enseguida. Si solo
+    se dijo la frase ("oye MECH"), devuelve cadena vacía.
+    """
+    tokens = list(re.finditer(r"\S+", text or ""))
+    if not tokens:
+        return ""
+    norm = [normalize(t.group(0)) for t in tokens]
+    for phrase in _interrupt_phrases():
+        usados: list[int] = []
+        for w in normalize(phrase).split():
+            hit = next(
+                (i for i, tok in enumerate(norm)
+                 if i not in usados and _word_matches(w, tok)),
+                None,
+            )
+            if hit is None:
+                usados = []
+                break
+            usados.append(hit)
+        if usados:
+            resto = text[tokens[max(usados)].end():]
+            return resto.strip(" \t,.;:¿?¡!-–—\"'")
+    return ""
 
 
 def is_sleep(text: str) -> bool:

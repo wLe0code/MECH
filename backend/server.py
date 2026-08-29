@@ -83,6 +83,11 @@ def _voice_loop_worker():
       - En reposo: NO llama a Claude ni gasta créditos; solo escucha y, si oye
         la palabra de despertar ("despierta MECH"), vuelve a despierto.
 
+    INTERRUPCIÓN: mientras narra, un hilo aparte escucha solo "oye MECH" /
+    "hey MECH" y corta la presentación si alguien lo dice (ver
+    backend/interrupt_listener.py). Si dijo "oye MECH, <otra cosa>", esa
+    petición se atiende enseguida.
+
     IDIOMA: con "ok MECH" / "despierta MECH" despierta en español; con
     "wake up MECH" despierta en INGLÉS y a partir de ahí todo (lo que
     entiende, lo que narra y los subtítulos) va en inglés hasta que se
@@ -196,6 +201,12 @@ def _voice_loop_worker():
 
             # handle_text_command pone thinking → speaking y al final waiting.
             app_state.handle_text_command(text)
+            # Si lo interrumpieron con "oye MECH, <otra cosa>", esa petición
+            # quedó guardada: la atendemos sin que la tenga que repetir.
+            pendiente = app_state.take_pending_command()
+            while pendiente and app_state.state["voice_loop_active"]:
+                app_state.handle_text_command(pendiente)
+                pendiente = app_state.take_pending_command()
         except Exception as e:
             app_state.log(f"Error en bucle de voz: {e}", "err")
     app_state.arduino.set_mode("IDLE")
@@ -533,6 +544,7 @@ _LIVE_KEYS = {
     "WHISPER_LANGUAGE": str,
     "TTS_DRY_RUN": _to_bool,  # modo ahorro de créditos de voz
     "SUBTITLES_ENABLED": _to_bool,  # subtítulos en la proyección
+    "VOICE_INTERRUPT_ENABLED": _to_bool,  # cortar la narración con "oye MECH"
     # Visión / comportamiento físico (se leen en cada frame/gesto).
     "VISION_MIN_DISTANCE": float,
     "VISION_APPROACH": _to_bool,
@@ -568,6 +580,7 @@ async def get_config():
             "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
             "TTS_DRY_RUN": config.TTS_DRY_RUN,
             "SUBTITLES_ENABLED": config.SUBTITLES_ENABLED,
+            "VOICE_INTERRUPT_ENABLED": config.VOICE_INTERRUPT_ENABLED,
             "VISION_ENABLED": config.VISION_ENABLED,
             "VISION_MIN_DISTANCE": config.VISION_MIN_DISTANCE,
             "VISION_APPROACH": config.VISION_APPROACH,

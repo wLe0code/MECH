@@ -179,7 +179,7 @@
     listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
     transcribing: { cls: 'phase-work',    text: 'Transcribiendo…',           hint: 'Convirtiendo la voz a texto' },
     thinking:     { cls: 'phase-work',    text: 'MECH está pensando…',        hint: 'Generando la respuesta con Claude' },
-    speaking:     { cls: 'phase-speak',   text: '🔊 MECH está hablando…',     hint: 'Reproduciendo la narración' },
+    speaking:     { cls: 'phase-speak',   text: '🔊 MECH está hablando…',     hint: "Di 'oye MECH' (o 'hey MECH') para interrumpirlo" },
   };
 
   function updateVoicePhase(phase) {
@@ -501,6 +501,7 @@
       setSlider('set-listen', 'listen', L.AUDIO_LISTEN_MAX_SECONDS);
       if ($('set-dryrun')) $('set-dryrun').checked = !!L.TTS_DRY_RUN;
       if ($('set-subs')) $('set-subs').checked = L.SUBTITLES_ENABLED !== false;
+      if ($('set-interrupt')) $('set-interrupt').checked = L.VOICE_INTERRUPT_ENABLED !== false;
       if ($('set-armmode')) $('set-armmode').value = L.ARM_GESTURE_MODE || 'full';
       if ($('set-wheels')) $('set-wheels').checked = !!L.GESTURE_WHEELS;
       // Visión
@@ -539,6 +540,7 @@
         AUDIO_LISTEN_MAX_SECONDS: $('set-listen').value,
         TTS_DRY_RUN: $('set-dryrun').checked ? 'true' : 'false',
         SUBTITLES_ENABLED: $('set-subs').checked ? 'true' : 'false',
+        VOICE_INTERRUPT_ENABLED: $('set-interrupt').checked ? 'true' : 'false',
         ARM_GESTURE_MODE: $('set-armmode').value,
         GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
         VISION_MIN_DISTANCE: $('set-dist').value,

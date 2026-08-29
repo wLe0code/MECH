@@ -30,10 +30,12 @@ import lang
 import llm
 import background_audio
 import subtitles
+import voice_phrases
 import tts
 import video_library
 import voices
 from arduino_link import ArduinoLink, get_link
+from interrupt_listener import InterruptListener
 
 EventCallback = Callable[[dict], Awaitable[None]]
 
@@ -44,7 +46,13 @@ class MechApp:
     def __init__(self) -> None:
         self.arduino: ArduinoLink = get_link()
         self.history: list[dict] = []
+        # Interrupción por voz: mientras MECH narra, un hilo aparte escucha
+        # SOLO "oye MECH" / "hey MECH" (ver backend/interrupt_listener.py).
         self._narration_interrupted: bool = False
+        self.interrupts = InterruptListener(self._on_interrupt, self.log)
+        # Si el visitante dijo "oye MECH, <otra cosa>", eso queda aquí para
+        # atenderlo en cuanto se corte la narración (sin que lo repita).
+        self.pending_command: str | None = None
         # Cuando MECH termina de hablar y queda listo para escuchar, se marca
         # esto para que el worker suene el chime ANTES de abrir el micrófono.
         self.chime_pending: bool = False
@@ -242,6 +250,37 @@ class MechApp:
         self.state["subtitle_lang"] = lang.current()
         self.emit("subtitle", text=clean, lang=lang.current())
 
+    def _on_interrupt(self, text: str) -> None:
+        """Alguien dijo "oye MECH" mientras MECH narraba: cortar YA.
+
+        Lo llama el hilo del listener. Aquí solo se corta (voz, música,
+        subtítulos) y se marca la bandera; el bucle de `execute_plan` ve la
+        bandera y deja de recorrer segmentos.
+        """
+        self._narration_interrupted = True
+        self.log(f"Interrupción del visitante: {text!r}", "warn")
+        try:
+            tts.request_stop()  # mata el reproductor de voz al instante
+        except Exception:
+            pass
+        try:
+            background_audio.stop()
+        except Exception:
+            pass
+        self.stop_subtitles()
+        # "oye MECH, cuéntame de Malpaís" → nos quedamos con la petición para
+        # atenderla enseguida y que no tenga que repetirla.
+        resto = voice_phrases.strip_interrupt(text)
+        if len(resto.split()) >= 2:
+            self.pending_command = resto
+            self.log(f"Lo atiendo enseguida: {resto!r}", "info")
+
+    def take_pending_command(self) -> str | None:
+        """Devuelve (y limpia) la petición que quedó de una interrupción."""
+        pendiente = self.pending_command
+        self.pending_command = None
+        return pendiente
+
     def start_subtitles(self, text: str, info: dict) -> None:
         """Arranca los subtítulos de `text` sincronizados con la voz.
 
@@ -416,6 +455,10 @@ class MechApp:
         self.emit("image", url=None)
         self.emit("video", url=None)
         self.stop_subtitles()
+        try:
+            self.interrupts.stop()
+        except Exception:
+            pass
         for pid in ("s1", "s2", "imm"):
             self.state["projectors"][pid]["on"] = False
         self.emit("state", state=self.state)
@@ -561,8 +604,18 @@ class MechApp:
             )
         # Música de fondo (solo exposiciones que la tengan, ej. Malpaís).
         self._start_background_music(plan)
+        # Escucha de interrupción: durante TODO el plan (también en las pausas
+        # en que genera imágenes) se puede decir "oye MECH" para cortarlo.
+        self._narration_interrupted = False
+        self.pending_command = None
+        guion = " ".join(seg.narration for seg in plan.segments)
+        if self.interrupts.start(guard_text=guion):
+            self.log("Puedes decir 'oye MECH' para interrumpirme.", "info")
         try:
             for i, seg in enumerate(plan.segments, 1):
+                if self._narration_interrupted:
+                    self.log("Narración interrumpida por el visitante.", "warn")
+                    break
                 if not self.state["voice_loop_active"]:
                     # Aborted (emergency stop o stop_voice)
                     self.log("Plan abortado", "warn")
@@ -601,8 +654,15 @@ class MechApp:
                 )
                 self.stop_subtitles()  # calló: fuera el texto hasta el próximo
         finally:
+            self.interrupts.stop()
             background_audio.stop()
             self.stop_subtitles()  # se acabó el guion: pantalla sin texto
+            if self._narration_interrupted:
+                # La voz estaba cortada a propósito; la rehabilitamos para
+                # poder contestar "dime, te escucho".
+                tts.clear_stop()
+                tts.speak(lang.say("interrupted"), blocking=True)
+                time.sleep(0.5)  # que el parlante drene antes de escuchar
             self.arduino.set_mode("IDLE")
 
     def _start_background_music(self, plan: "llm.Plan") -> None:

@@ -202,6 +202,13 @@ inglés entiende, narra y subtitula en inglés hasta que se duerme (ahí vuelve 
 español solo). En el panel, la vista Voz tiene chips **ES / EN** para forzarlo
 a mano. Se apaga con `WAKE_ENGLISH_ENABLED=false`.
 
+**Interrumpirlo.** Mientras MECH presenta se le puede cortar diciendo
+**«oye MECH»** (o «hey MECH» en inglés): para la voz, la música y los
+subtítulos, y queda escuchando. Si se dice todo junto («oye MECH, cuéntame de
+Malpaís»), atiende esa petición enseguida sin que haya que repetirla. Mientras
+narra NO escucha nada más que esa frase. Se apaga en Ajustes → "Interrumpir"
+(`VOICE_INTERRUPT_ENABLED`).
+
 **Subtítulos.** El guion se ve abajo de la pantalla, como en el cine, tanto en
 `/projector` como en la vista VR `/projector/vr` (uno por ojo). Salen haya
 video, imagen o pantalla vacía, y siempre en el idioma activo. Se apagan desde

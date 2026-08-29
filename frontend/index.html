@@ -72,7 +72,7 @@
             <span class="lang-label">IDIOMA</span>
             <button class="lang-chip active" id="lang-es" onclick="API.setLanguage('es')" title="Despertar por voz: «ok MECH»">ES · ESPAÑOL</button>
             <button class="lang-chip" id="lang-en" onclick="API.setLanguage('en')" title="Despertar por voz: «wake up MECH»">EN · ENGLISH</button>
-            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés</span>
+            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «oye MECH» corta la narración</span>
           </div>
 
           <div class="wave-bars" id="wave-bars">
@@ -389,6 +389,13 @@
             <label class="switch">
               <input type="checkbox" id="set-dryrun">
               <span class="switch-text">No gastar créditos de voz (TTS en seco)</span>
+            </label>
+          </div>
+          <div class="slider-row">
+            <label title="Mientras MECH narra, escucha solo 'oye MECH' / 'hey MECH' para poder cortarlo. Apágalo si se interrumpe solo con el eco del parlante.">Interrumpir</label>
+            <label class="switch">
+              <input type="checkbox" id="set-interrupt">
+              <span class="switch-text">Cortar la narración diciendo «oye MECH»</span>
             </label>
           </div>
           <div class="slider-row">
