@@ -135,8 +135,14 @@ VOICE_INTERRUPT_PHRASES_EN = [
     ).split(",") if p.strip()
 ]
 # Tope de duración de cada escucha mientras narra. Corto a propósito: la
-# frase de interrupción dura ~1 s y así se revisa enseguida.
-INTERRUPT_MAX_UTTERANCE = float(os.environ.get("INTERRUPT_MAX_UTTERANCE", "6.0"))
+# frase dura ~1 s, y cuanto más corto el clip, más rápido lo transcribe la Pi
+# (y antes se corta la narración).
+INTERRUPT_MAX_UTTERANCE = float(os.environ.get("INTERRUPT_MAX_UTTERANCE", "4.0"))
+# Silencio (segundos) que da por terminada la frase MIENTRAS narra. Más corto
+# que el normal (VAD_SILENCE_TIMEOUT) porque aquí solo esperamos dos palabras:
+# esto es lo que más recorta el retardo entre "oye MECH" y el corte. De paso
+# hace que dispare antes (el disparo pide media ventana de voz).
+INTERRUPT_SILENCE_TIMEOUT = float(os.environ.get("INTERRUPT_SILENCE_TIMEOUT", "0.6"))
 
 # --- Modo inglés (opcional) ----------------------------------------------
 # MECH vive en español. El INGLÉS se activa SI Y SOLO SI se le despierta con

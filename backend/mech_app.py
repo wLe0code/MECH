@@ -267,7 +267,9 @@ class MechApp:
         self._narration_interrupted = True
         self.log(f"Interrupción del visitante: {text!r}", "warn")
         try:
-            tts.request_stop()  # mata el reproductor de voz al instante
+            ms = tts.request_stop()  # mata el reproductor de voz al instante
+            if ms:
+                self.log(f"Voz cortada en {ms:.0f} ms.", "info")
         except Exception:
             pass
         try:

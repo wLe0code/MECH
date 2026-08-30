@@ -169,6 +169,7 @@ def record_until_silence(
     cancel_event=None,
     max_utterance_seconds: float | None = None,
     on_level: Callable[[float, float, bool], None] | None = None,
+    silence_timeout: float | None = None,
 ) -> np.ndarray | None:
     """Graba desde el micrófono hasta detectar silencio prolongado.
 
@@ -195,6 +196,11 @@ def record_until_silence(
             porque "ok MECH" dura ~1s y queremos revisarlo rápido.
         on_level: callback opcional (rms, umbral, grabando) ~cada frame, para
             mostrar el nivel del micrófono en vivo en el panel.
+        silence_timeout: segundos de silencio que dan por terminada la frase
+            (None = config.VAD_SILENCE_TIMEOUT). El listener de interrupción
+            usa uno más corto: solo espera "oye MECH", y cada décima cuenta
+            porque MECH sigue hablando mientras tanto. Este valor también
+            marca lo rápido que DISPARA (pide media ventana de voz).
     """
     def _phase(p: str) -> None:
         if on_phase:
@@ -212,7 +218,8 @@ def record_until_silence(
         # int16 little-endian, como espera webrtcvad
         audio_q.put(bytes(indata))
 
-    silence_frames_needed = int(config.VAD_SILENCE_TIMEOUT * 1000 / FRAME_DURATION_MS)
+    silencio = config.VAD_SILENCE_TIMEOUT if silence_timeout is None else silence_timeout
+    silence_frames_needed = max(4, int(silencio * 1000 / FRAME_DURATION_MS))
     ring_buffer = collections.deque(maxlen=silence_frames_needed)
     voiced_frames: list[bytes] = []
     triggered = False

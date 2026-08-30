@@ -20,7 +20,9 @@ lo que hace viable esto.
 
 from __future__ import annotations
 
+import queue
 import threading
+import time
 from typing import Callable
 
 import config
@@ -84,6 +86,57 @@ class InterruptListener:
                 self._log(f"La escucha de interrupción se detuvo: {e}", "warn")
 
         def _escuchar() -> None:
+            """Graba sin parar y transcribe en OTRO hilo.
+
+            Antes se hacía todo seguido y el micrófono quedaba CERRADO
+            mientras Whisper trabajaba (1-2 s en la Pi por cada frase que
+            oía). Justo ahí se perdían los "oye MECH" — por eso parecía que
+            MECH no estaba atento. Ahora el micrófono casi no se cierra: los
+            clips van a una cola y, si el transcriptor se atrasa, se tira el
+            viejo y se queda el más reciente (que es donde estará la frase).
+            """
+            clips: queue.Queue = queue.Queue(maxsize=1)
+
+            def _transcriptor() -> None:
+                while not cancel.is_set():
+                    try:
+                        item = clips.get(timeout=0.3)
+                    except queue.Empty:
+                        continue
+                    if item is None or cancel.is_set():
+                        return
+                    audio, fin_frase = item
+                    try:
+                        texto = stt.transcribe(audio)
+                    except Exception as e:
+                        self._log(f"Interrupción: falló la transcripción ({e})", "warn")
+                        continue
+                    if cancel.is_set():
+                        return
+                    if not texto:
+                        continue
+                    interrumpe = voice_phrases.is_interrupt(texto)
+                    # Diagnóstico: SIEMPRE se registra lo que oyó mientras
+                    # narraba. Es la única forma de saber, en el evento, si el
+                    # problema es el micrófono o lo que entiende Whisper.
+                    self._log(
+                        f"Oí mientras narraba: {texto!r}"
+                        + ("" if interrumpe else " (no es la frase para interrumpir)"),
+                        "info",
+                    )
+                    if interrumpe:
+                        self._log(
+                            "Corto la narración "
+                            f"({time.monotonic() - fin_frase:.1f} s desde que "
+                            "terminaste de hablar).",
+                            "warn",
+                        )
+                        cancel.set()  # que el grabador suelte el micrófono ya
+                        self._on_interrupt(texto)
+                        return
+
+            threading.Thread(target=_transcriptor, daemon=True).start()
+
             while not cancel.is_set():
                 try:
                     audio = stt.record_until_silence(
@@ -91,6 +144,7 @@ class InterruptListener:
                         cancel_event=cancel,
                         max_utterance_seconds=config.INTERRUPT_MAX_UTTERANCE,
                         on_level=self._on_level,
+                        silence_timeout=config.INTERRUPT_SILENCE_TIMEOUT,
                     )
                 except Exception as e:
                     # Típico: el micrófono ya está ocupado por otro hilo.
@@ -101,28 +155,19 @@ class InterruptListener:
                     return
                 if audio is None:
                     continue
+                dato = (audio, time.monotonic())
                 try:
-                    texto = stt.transcribe(audio)
-                except Exception as e:
-                    self._log(f"Interrupción: falló la transcripción ({e})", "warn")
-                    continue
-                if cancel.is_set():
-                    return
-                # Diagnóstico: SIEMPRE se registra lo que oyó mientras narraba.
-                # Es la única forma de saber, en el evento, si el problema es
-                # que no capta el micrófono o que Whisper entiende otra cosa.
-                if texto:
-                    self._log(
-                        f"Oí mientras narraba: {texto!r}"
-                        + ("" if voice_phrases.is_interrupt(texto)
-                           else " (no es la frase para interrumpir)"),
-                        "info",
-                    )
-                if texto and voice_phrases.is_interrupt(texto):
+                    clips.put_nowait(dato)
+                except queue.Full:
+                    # El transcriptor va atrasado: nos quedamos con lo último.
                     try:
-                        self._on_interrupt(texto)
-                    finally:
-                        return  # ya interrumpimos: este hilo termina
+                        clips.get_nowait()
+                    except queue.Empty:
+                        pass
+                    try:
+                        clips.put_nowait(dato)
+                    except queue.Full:
+                        pass
 
         self._thread = threading.Thread(target=_run, daemon=True)
         self._thread.start()

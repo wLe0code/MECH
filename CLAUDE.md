@@ -380,6 +380,27 @@ Por qué no se interrumpe solo con su propio eco:
 - Y si aun así molesta en el evento: Ajustes → "Interrumpir"
   (`VOICE_INTERRUPT_ENABLED`, en vivo).
 
+**Cómo está hecho para que reaccione rápido** (ago 2026, tras probarlo en el
+robot: "lo detecta pero le cuesta, y tarda en callarse"):
+
+- El listener **graba y transcribe en hilos separados** (cola de 1 clip, se
+  queda con el más reciente). Antes hacía las dos cosas seguidas y el
+  micrófono quedaba CERRADO 1-2 s en cada transcripción — justo ahí se
+  perdían los "oye MECH". **No volver a hacerlo secuencial.**
+- Mientras narra usa un silencio de fin de frase más corto
+  (`INTERRUPT_SILENCE_TIMEOUT`, 0.6 s, contra 1.2 s del bucle normal): eso
+  recorta el retardo Y hace que dispare antes (el disparo pide media
+  ventana de voz). Bájalo si tarda; súbelo si corta a media frase.
+- `tts.request_stop()` no se conforma con `terminate()`: espera 250 ms y si
+  el reproductor sigue vivo lo mata. Devuelve cuánto tardó y el panel lo
+  registra ("Voz cortada en N ms"). El rastro de voz que a veces queda
+  DESPUÉS es el buffer del parlante Bluetooth (ya tiene ese audio dentro);
+  eso no se puede cortar por software.
+
+Al interrumpir, el panel registra **"Corto la narración (X s desde que
+terminaste de hablar)"**: ese número es el retardo real de detección y es lo
+que hay que mirar para tunear.
+
 Si NO reacciona, el panel lo dice todo: el listener loguea **cada frase que
 oye mientras narra** (`Oí mientras narraba: '...'`), así se distingue entre
 "el micrófono no capta" y "Whisper entiende otra cosa". Las barras de nivel

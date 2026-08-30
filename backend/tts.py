@@ -39,19 +39,47 @@ _current_proc: subprocess.Popen | None = None
 _proc_lock = threading.Lock()
 
 
-def request_stop() -> None:
-    """Interrumpe la reproducción de voz en curso."""
+def request_stop() -> float:
+    """Interrumpe la reproducción de voz en curso, y de verdad.
+
+    No basta con `terminate()`: si el reproductor tarda en morir, MECH sigue
+    hablando unos segundos después de que lo interrumpen. Aquí se le da un
+    cuarto de segundo y, si sigue vivo, se le mata (`kill`). Devuelve por el
+    log cuánto tardó, que es justo el dato que hace falta cuando alguien dice
+    "no se calla enseguida".
+
+    (El pequeño rastro de voz que a veces queda DESPUÉS de esto es el buffer
+    del parlante Bluetooth, que ya tiene ese audio dentro; eso no se puede
+    cortar desde aquí.)
+
+    Devuelve los milisegundos que tardó en morir el reproductor (0 si no
+    había nada sonando), para poder enseñarlo en el panel.
+    """
+    ms = 0.0
     _stop_event.set()
     with _proc_lock:
-        if _current_proc is not None and _current_proc.poll() is None:
+        proc = _current_proc
+    if proc is not None and proc.poll() is None:
+        t0 = time.monotonic()
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+        # Sin proc.wait(): otro hilo ya está esperando a este proceso.
+        while proc.poll() is None and time.monotonic() - t0 < 0.25:
+            time.sleep(0.02)
+        if proc.poll() is None:
             try:
-                _current_proc.terminate()
+                proc.kill()  # no se murió por las buenas
             except Exception:
                 pass
+        ms = (time.monotonic() - t0) * 1000
+        print(f"[TTS] Voz cortada en {ms:.0f} ms")
     try:
         sd.stop()
     except Exception:
         pass
+    return ms
 
 
 def clear_stop() -> None:
