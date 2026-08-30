@@ -360,12 +360,18 @@ mirarla — durante la narración, lo que más se oye es el propio parlante.
 
 Al oírla: `mech_app._on_interrupt()` corta la voz (`tts.request_stop()`), la
 música y los subtítulos, marca `_narration_interrupted`, y el bucle de
-`execute_plan` deja de recorrer segmentos. Después MECH dice «Dime, te
-escucho» y vuelve a `waiting`.
+`execute_plan` deja de recorrer segmentos.
 
-Si dijeron **"oye MECH, cuéntame otra cosa"**, `voice_phrases.strip_interrupt()`
-se queda con la petición (`mech_app.pending_command`) y el bucle de voz la
-atiende enseguida (`take_pending_command()`), sin que la tengan que repetir.
+Después hay dos caminos:
+
+- **"oye MECH" a secas** → MECH **pregunta** «Claro, ¿de qué quieres que
+  hable?» y deja `chime_pending`, así que suena el **chime de "puedes
+  hablar"** (el mismo de después de "ok MECH") justo antes de abrir el
+  micrófono. El banner del panel pasa a "PUEDES HABLAR".
+- **"oye MECH, cuéntame otra cosa"** → `voice_phrases.strip_interrupt()` se
+  queda con la petición (`mech_app.pending_command`) y el bucle de voz la
+  atiende enseguida (`take_pending_command()`), **sin preguntar ni sonar el
+  chime**: ya se sabe qué quiere y no hay que hacerlo esperar.
 
 Por qué no se interrumpe solo con su propio eco:
 

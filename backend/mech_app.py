@@ -668,10 +668,20 @@ class MechApp:
             self.stop_subtitles()  # se acabó el guion: pantalla sin texto
             if self._narration_interrupted:
                 # La voz estaba cortada a propósito; la rehabilitamos para
-                # poder contestar "dime, te escucho".
+                # poder contestar.
                 tts.clear_stop()
-                tts.speak(lang.say("interrupted"), blocking=True)
-                time.sleep(0.5)  # que el parlante drene antes de escuchar
+                if self.pending_command:
+                    # Ya dijeron qué querían ("oye MECH, cuéntame de X"): no
+                    # los hacemos esperar una pregunta que sobra.
+                    self.log("Atiendo lo que me pediste al interrumpirme.", "info")
+                else:
+                    # Pregunta explícita + el chime de "puedes hablar" (el
+                    # mismo de después de "ok MECH"), para que se note que
+                    # ahora le toca al visitante.
+                    tts.speak(lang.say("interrupted"), blocking=True)
+                    time.sleep(0.5)  # que el parlante drene antes de escuchar
+                    self.chime_pending = True
+                    self.log("Te escucho: dime de qué quieres que hable.", "ok")
             self.arduino.set_mode("IDLE")
 
     def _start_background_music(self, plan: "llm.Plan") -> None:

@@ -80,10 +80,11 @@ _PHRASES: dict[str, dict[str, str]] = {
         "en": "Sorry, I ran into a problem. Could you say that again?",
     },
     # Lo que dice al ser interrumpido con "oye MECH" / "hey MECH".
-    # Corta a propósito: el visitante ya quiere hablar.
+    # Es una PREGUNTA a propósito: así el visitante sabe que le toca hablar
+    # (y justo después suena el chime de "puedes hablar").
     "interrupted": {
-        "es": "Dime, te escucho.",
-        "en": "Sure, go ahead.",
+        "es": "Claro, ¿de qué quieres que hable?",
+        "en": "Of course, what would you like me to talk about?",
     },
     "switched": {
         "es": "Listo, sigo en español.",
