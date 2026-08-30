@@ -257,19 +257,18 @@ class MechApp:
         self.state["subtitle_lang"] = lang.current()
         self.emit("subtitle", text=clean, lang=lang.current())
 
-    def _on_interrupt(self, text: str) -> None:
-        """Alguien dijo "oye MECH" mientras MECH narraba: cortar YA.
+    def stop_presentation(self) -> float:
+        """Para TODO lo que forma parte de la presentación, de golpe.
 
-        Lo llama el hilo del listener. Aquí solo se corta (voz, música,
-        subtítulos) y se marca la bandera; el bucle de `execute_plan` ve la
-        bandera y deja de recorrer segmentos.
+        Voz, música de fondo, subtítulos, lo que se está proyectando y las
+        ruedas. Se usa al interrumpir: si algo de esto sigue vivo mientras
+        MECH pregunta qué querés, el audio se solapa y suena sucio.
+
+        Devuelve los milisegundos que tardó en callarse la voz.
         """
-        self._narration_interrupted = True
-        self.log(f"Interrupción del visitante: {text!r}", "warn")
+        ms = 0.0
         try:
-            ms = tts.request_stop()  # mata el reproductor de voz al instante
-            if ms:
-                self.log(f"Voz cortada en {ms:.0f} ms.", "info")
+            ms = tts.request_stop() or 0.0
         except Exception:
             pass
         try:
@@ -277,6 +276,29 @@ class MechApp:
         except Exception:
             pass
         self.stop_subtitles()
+        self.clear_visual()  # el proyector deja de mostrar la obra
+        try:
+            self.arduino.stop_motors()
+        except Exception:
+            pass
+        return ms
+
+    def _on_interrupt(self, text: str) -> None:
+        """Alguien dijo "oye MECH" mientras MECH narraba: cortar YA.
+
+        Lo llama el hilo del listener. Aquí se para toda la presentación y se
+        marca la bandera; el bucle de `execute_plan` ve la bandera, deja de
+        recorrer segmentos y pregunta qué quiere el visitante.
+        """
+        if self._narration_interrupted:
+            # Ya estábamos cortando. Volver a cortar aquí mataría la pregunta
+            # ("¿de qué quieres que hable?") a media palabra.
+            return
+        self._narration_interrupted = True
+        self.log(f"Interrupción del visitante: {text!r}", "warn")
+        ms = self.stop_presentation()
+        if ms:
+            self.log(f"Voz cortada en {ms:.0f} ms.", "info")
         # "oye MECH, cuéntame de Malpaís" → nos quedamos con la petición para
         # atenderla enseguida y que no tenga que repetirla.
         resto = voice_phrases.strip_interrupt(text)
@@ -667,6 +689,14 @@ class MechApp:
             background_audio.stop()
             self.stop_subtitles()  # se acabó el guion: pantalla sin texto
             if self._narration_interrupted:
+                # Nos aseguramos de que NADA de la presentación siga vivo
+                # (por si nos interrumpieron entre segmentos) y dejamos los
+                # brazos en reposo. Solo entonces hablamos.
+                self.stop_presentation()
+                try:
+                    gestures.perform(self.arduino, "neutral")
+                except Exception:
+                    pass
                 # La voz estaba cortada a propósito; la rehabilitamos para
                 # poder contestar.
                 tts.clear_stop()
@@ -678,6 +708,10 @@ class MechApp:
                     # Pregunta explícita + el chime de "puedes hablar" (el
                     # mismo de después de "ok MECH"), para que se note que
                     # ahora le toca al visitante.
+                    # La pausa es importante: el parlante (sobre todo por
+                    # Bluetooth) todavía tiene dentro el final de la
+                    # narración, y si hablamos encima se oye sucio.
+                    time.sleep(0.4)
                     tts.speak(lang.say("interrupted"), blocking=True)
                     time.sleep(0.5)  # que el parlante drene antes de escuchar
                     self.chime_pending = True

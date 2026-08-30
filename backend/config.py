@@ -70,6 +70,14 @@ WHISPER_OFFLINE = os.environ.get("WHISPER_OFFLINE", "true").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
 
+# Modelo de Whisper que se usa SOLO para oír "oye MECH" mientras MECH narra.
+# Vacío = el mismo que WHISPER_MODEL (no hay que descargar nada). Se carga en
+# una instancia aparte limitada a pocos hilos de CPU: si no, transcribir
+# mientras habla le roba núcleos al reproductor y la voz se entrecorta.
+# Poner "tiny" lo hace aún más ligero y rápido (hay que descargarlo una vez).
+WHISPER_INTERRUPT_MODEL = os.environ.get("WHISPER_INTERRUPT_MODEL", "").strip()
+WHISPER_INTERRUPT_THREADS = int(os.environ.get("WHISPER_INTERRUPT_THREADS", "1"))
+
 # Audio
 AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "48000"))
 VAD_AGGRESSIVENESS = int(os.environ.get("VAD_AGGRESSIVENESS", "2"))

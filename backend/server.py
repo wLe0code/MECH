@@ -100,6 +100,10 @@ def _voice_loop_worker():
     # (la primera vez puede tardar si tiene que descargar el modelo).
     try:
         stt.get_model()
+        # El de las interrupciones también, para no cargarlo a mitad de una
+        # narración (eso sí que entrecortaría el audio).
+        if config.VOICE_INTERRUPT_ENABLED:
+            stt.get_interrupt_model()
     except Exception as e:
         app_state.log(f"No se pudo precargar Whisper: {e}", "warn")
     # Sonido de "listo": a partir de aquí el micrófono está activo y ya se le

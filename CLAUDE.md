@@ -358,9 +358,28 @@ estricta: **solo** las frases de `VOICE_INTERRUPT_PHRASES` /
 `VOICE_INTERRUPT_PHRASES_EN`. Cualquier otra cosa que oiga se descarta sin
 mirarla — durante la narración, lo que más se oye es el propio parlante.
 
-Al oírla: `mech_app._on_interrupt()` corta la voz (`tts.request_stop()`), la
-música y los subtítulos, marca `_narration_interrupted`, y el bucle de
-`execute_plan` deja de recorrer segmentos.
+Al oírla: `mech_app._on_interrupt()` llama a **`stop_presentation()`**, que
+para TODO lo de la presentación de golpe — voz (`tts.request_stop()`), música
+de fondo, subtítulos, **lo que se está proyectando** (`clear_visual()`) y las
+ruedas — marca `_narration_interrupted`, y el bucle de `execute_plan` deja de
+recorrer segmentos (y deja los brazos en reposo).
+
+Detalles que importan para que el audio no suene sucio (ago 2026):
+
+- `_on_interrupt` es **idempotente**: si el listener dispara dos veces
+  seguidas, la segunda no hace nada. Sin eso, el segundo corte mataba la
+  pregunta a media palabra.
+- Antes de preguntar hay una pausa de 0.4 s: el parlante (sobre todo por
+  Bluetooth) todavía tiene dentro el final de la narración, y hablar encima
+  se oye sucio.
+- `background_audio.stop()` también mata el proceso si no muere en 250 ms
+  (antes solo pedía `terminate()` y la música seguía sonando por debajo).
+- El listener transcribe con un **modelo de Whisper aparte limitado a
+  `WHISPER_INTERRUPT_THREADS` (1) hilo de CPU** (`stt.get_interrupt_model()`,
+  precargado al arrancar). Con el modelo normal usaba todos los núcleos de la
+  Pi mientras el reproductor sonaba y la voz se entrecortaba.
+  `WHISPER_INTERRUPT_MODEL` vacío = el mismo modelo de siempre (no descarga
+  nada); "tiny" es aún más ligero si se descarga una vez.
 
 Después hay dos caminos:
 

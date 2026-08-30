@@ -14,6 +14,7 @@ Si ``ffplay`` no está instalado, no rompe nada: simplemente no hay música.
 from __future__ import annotations
 
 import subprocess
+import time
 from pathlib import Path
 
 import config
@@ -48,14 +49,28 @@ def start(path: Path, volume: int | None = None) -> bool:
 
 
 def stop() -> None:
-    """Detiene la música de fondo si está sonando."""
+    """Detiene la música de fondo si está sonando.
+
+    Igual que la voz: si `terminate()` no basta en un cuarto de segundo, se
+    mata. Si no, al interrumpir a MECH la música seguía sonando un rato por
+    debajo de lo que dice después.
+    """
     global _proc
-    if _proc is not None:
+    proc, _proc = _proc, None
+    if proc is None:
+        return
+    try:
+        proc.terminate()
+    except Exception:
+        return
+    t0 = time.monotonic()
+    while proc.poll() is None and time.monotonic() - t0 < 0.25:
+        time.sleep(0.02)
+    if proc.poll() is None:
         try:
-            _proc.terminate()
+            proc.kill()
         except Exception:
             pass
-        _proc = None
 
 
 def is_playing() -> bool:

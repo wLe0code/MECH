@@ -107,7 +107,10 @@ class InterruptListener:
                         return
                     audio, fin_frase = item
                     try:
-                        texto = stt.transcribe(audio)
+                        # Modelo aparte y limitado en CPU: transcribir con
+                        # todos los núcleos mientras MECH habla entrecorta
+                        # el audio.
+                        texto = stt.transcribe(audio, model=stt.get_interrupt_model())
                     except Exception as e:
                         self._log(f"Interrupción: falló la transcripción ({e})", "warn")
                         continue

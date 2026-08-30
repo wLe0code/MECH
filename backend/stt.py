@@ -57,6 +57,7 @@ def _initial_prompt(language: str) -> str:
 
 
 _model: WhisperModel | None = None
+_interrupt_model: WhisperModel | None = None
 
 
 def _resolve_input_device() -> int | str | None:
@@ -140,6 +141,42 @@ def get_model() -> WhisperModel:
             raise
         print("[STT] Modelo listo (cargado desde disco, sin internet).")
     return _model
+
+
+def get_interrupt_model() -> WhisperModel:
+    """Modelo aparte para escuchar "oye MECH" MIENTRAS MECH narra.
+
+    Va limitado a `WHISPER_INTERRUPT_THREADS` hilos de CPU (1 por defecto)
+    porque compite con el reproductor de audio: con todos los núcleos
+    ocupados transcribiendo, la voz de MECH se entrecorta.
+
+    Si no se puede cargar (p. ej. `WHISPER_INTERRUPT_MODEL=tiny` sin
+    descargar y en modo offline), se usa el modelo principal y se avisa.
+    """
+    global _interrupt_model
+    if _interrupt_model is None:
+        nombre = config.WHISPER_INTERRUPT_MODEL or config.WHISPER_MODEL
+        try:
+            print(
+                f"[STT] Cargando Whisper '{nombre}' para interrupciones "
+                f"({config.WHISPER_INTERRUPT_THREADS} hilo/s de CPU)..."
+            )
+            _interrupt_model = WhisperModel(
+                nombre,
+                device="cpu",
+                compute_type="int8",
+                cpu_threads=max(1, config.WHISPER_INTERRUPT_THREADS),
+                local_files_only=config.WHISPER_OFFLINE,
+            )
+        except Exception as e:
+            print(
+                f"[STT] No pude cargar '{nombre}' para interrupciones ({e}). "
+                "Uso el modelo principal (puede entrecortar el audio; si pasa, "
+                "poné WHISPER_INTERRUPT_MODEL vacío o descargá ese modelo una "
+                "vez con WHISPER_OFFLINE=false)."
+            )
+            _interrupt_model = get_model()
+    return _interrupt_model
 
 
 def _frame_generator(audio_queue: queue.Queue) -> Iterator[bytes]:
@@ -307,16 +344,23 @@ def record_until_silence(
     return _resample(audio_f32, config.AUDIO_SAMPLE_RATE, WHISPER_SAMPLE_RATE)
 
 
-def transcribe(audio: np.ndarray, language: str | None = None) -> str:
+def transcribe(
+    audio: np.ndarray,
+    language: str | None = None,
+    model: WhisperModel | None = None,
+) -> str:
     """Transcribe audio mono float32 a texto.
 
     `language`: código ISO ("es", "en"). Si es None usa el idioma ACTIVO de
     MECH (`lang.whisper_language()`), que es español salvo que lo hayan
     despertado con "wake up MECH". Se pasa explícito en el bucle de voz para
     reintentar en inglés la frase de despertar.
+
+    `model`: instancia de Whisper a usar. None = la principal. El listener de
+    interrupción pasa la suya (limitada en CPU) para no entrecortar la voz.
     """
     lang_code = language or lang.whisper_language()
-    model = get_model()
+    model = model or get_model()
     segments, _ = model.transcribe(
         audio,
         language=lang_code,
