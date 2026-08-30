@@ -405,6 +405,11 @@
             </label>
           </div>
           <div class="slider-row">
+            <label title="Cuánto más fuerte que el ambiente hay que hablarle MIENTRAS él narra para que te oiga. Súbelo si se transcribe a sí mismo (audio entrecortado); bájalo si no te oye al decir «oye MECH».">Umbral al narrar</label>
+            <input type="range" min="2" max="8" step="0.2" value="4" id="set-ienergy" oninput="UI.settingLabel('set-ienergy','ienergy')">
+            <span class="val" id="set-ienergy-val">4.0×</span>
+          </div>
+          <div class="slider-row">
             <label title="Muestra el guion de la narración abajo de la proyección, como en el cine. Sale en el idioma activo.">Subtítulos</label>
             <label class="switch">
               <input type="checkbox" id="set-subs">

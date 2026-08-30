@@ -575,6 +575,7 @@ _LIVE_KEYS = {
     "TTS_DRY_RUN": _to_bool,  # modo ahorro de créditos de voz
     "SUBTITLES_ENABLED": _to_bool,  # subtítulos en la proyección
     "VOICE_INTERRUPT_ENABLED": _to_bool,  # cortar la narración con "oye MECH"
+    "INTERRUPT_ENERGY_FACTOR": float,  # umbral de voz MIENTRAS narra
     # Visión / comportamiento físico (se leen en cada frame/gesto).
     "VISION_MIN_DISTANCE": float,
     "VISION_APPROACH": _to_bool,
@@ -611,6 +612,7 @@ async def get_config():
             "TTS_DRY_RUN": config.TTS_DRY_RUN,
             "SUBTITLES_ENABLED": config.SUBTITLES_ENABLED,
             "VOICE_INTERRUPT_ENABLED": config.VOICE_INTERRUPT_ENABLED,
+            "INTERRUPT_ENERGY_FACTOR": config.INTERRUPT_ENERGY_FACTOR,
             "VISION_ENABLED": config.VISION_ENABLED,
             "VISION_MIN_DISTANCE": config.VISION_MIN_DISTANCE,
             "VISION_APPROACH": config.VISION_APPROACH,

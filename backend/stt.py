@@ -207,6 +207,8 @@ def record_until_silence(
     max_utterance_seconds: float | None = None,
     on_level: Callable[[float, float, bool], None] | None = None,
     silence_timeout: float | None = None,
+    energy_factor: float | None = None,
+    floor_average: bool = False,
 ) -> np.ndarray | None:
     """Graba desde el micrófono hasta detectar silencio prolongado.
 
@@ -233,6 +235,22 @@ def record_until_silence(
             porque "ok MECH" dura ~1s y queremos revisarlo rápido.
         on_level: callback opcional (rms, umbral, grabando) ~cada frame, para
             mostrar el nivel del micrófono en vivo en el panel.
+        energy_factor: cuánto más fuerte que el ruido de fondo debe sonar la
+            voz para empezar a grabar (None = config.VAD_ENERGY_FACTOR). El
+            listener de interrupción usa uno MÁS ALTO: mientras MECH habla,
+            su propio parlante dispararía la grabación sin parar.
+        floor_average: cómo sigue el piso de ruido al ambiente.
+            False (normal) = baja rápido y sube lento, así se queda en los
+            silencios y cualquier voz destaca — perfecto para escuchar a
+            alguien en una sala tranquila.
+            True (mientras MECH narra) = el piso SE PONE al nivel del
+            parlante, y solo pasa quien hable claramente por encima. Es la
+            clave para no transcribirse a sí mismo: con el piso pegado a los
+            silencios (modo normal), los picos de su propia voz lo superan
+            siempre por mucho. Funciona en dos tiempos: ~1 s CALIBRANDO
+            (converge rápido y no dispara) y después seguimiento lento que
+            IGNORA lo que esté por encima del umbral — si no, la propia voz
+            del visitante subiría el listón y se quedaría sin oírlo.
         silence_timeout: segundos de silencio que dan por terminada la frase
             (None = config.VAD_SILENCE_TIMEOUT). El listener de interrupción
             usa uno más corto: solo espera "oye MECH", y cada décima cuenta
@@ -266,7 +284,14 @@ def record_until_silence(
     # Piso de ruido adaptativo: baja rápido (sigue al ambiente cuando se
     # calma) y sube lento (un grito puntual no lo arrastra hacia arriba).
     noise_floor: float | None = None
-    start_factor = max(1.2, config.VAD_ENERGY_FACTOR)
+    # Modo "media" (mientras MECH narra): ~1 s de calibración antes de poder
+    # disparar, para que el piso se ponga al nivel del parlante.
+    frames_vistos = 0
+    frames_calibracion = 33 if floor_average else 0
+    suma_calibracion = 0.0
+    start_factor = max(
+        1.2, config.VAD_ENERGY_FACTOR if energy_factor is None else energy_factor
+    )
     # El umbral para CORTAR es más bajo que el de arranque: basta con que la
     # amplitud caiga significativamente para considerar que terminó la frase.
     end_factor = 1.0 + (start_factor - 1.0) * 0.5
@@ -288,15 +313,34 @@ def record_until_silence(
                 break
 
             rms = _frame_rms(frame)
+            frames_vistos += 1
+            calibrando = frames_vistos <= frames_calibracion
             if noise_floor is None:
                 noise_floor = max(rms, 1e-4)
             elif not triggered:
                 # Solo medimos ambiente cuando NO estamos grabando voz.
-                alpha = 0.20 if rms < noise_floor else 0.02
+                if floor_average and calibrando:
+                    # MEDIA de verdad (no exponencial): la voz alterna picos y
+                    # pausas, y una media exponencial se quedaría en el último
+                    # tramo en vez de en el nivel medio del parlante.
+                    suma_calibracion += rms
+                    noise_floor = max(suma_calibracion / frames_vistos, 1e-4)
+                    if on_level:
+                        try:
+                            on_level(rms, noise_floor * start_factor, False)
+                        except Exception:
+                            pass
+                    continue
+                if not floor_average:
+                    alpha = 0.20 if rms < noise_floor else 0.02
+                elif rms <= noise_floor * start_factor:
+                    alpha = 0.03  # seguimiento lento del ambiente
+                else:
+                    alpha = 0.0   # pico: NO subimos el listón por una voz
                 noise_floor += (rms - noise_floor) * alpha
                 noise_floor = max(noise_floor, 1e-4)
 
-            loud = rms > noise_floor * start_factor
+            loud = rms > noise_floor * start_factor and not calibrando
             vad_speech = vad.is_speech(frame, config.AUDIO_SAMPLE_RATE)
             is_speech = vad_speech and loud
             # Para terminar: o el VAD ya no oye voz, o la amplitud cayó cerca

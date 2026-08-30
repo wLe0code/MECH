@@ -30,8 +30,10 @@ import stt
 import voice_phrases
 
 # Segundos que espera voz cada vuelta antes de reintentar. No es un límite
-# real: si no oye nada, simplemente vuelve a empezar.
-_ESPERA = 10.0
+# real: si no oye nada, simplemente vuelve a empezar. Largo a propósito: cada
+# vuelta empieza calibrando ~1 s (ver `floor_average` en stt), y durante esa
+# calibración no puede disparar — cuantas menos vueltas, menos ratos sordo.
+_ESPERA = 30.0
 
 
 class InterruptListener:
@@ -148,6 +150,13 @@ class InterruptListener:
                         max_utterance_seconds=config.INTERRUPT_MAX_UTTERANCE,
                         on_level=self._on_level,
                         silence_timeout=config.INTERRUPT_SILENCE_TIMEOUT,
+                        # Umbral alto Y piso de ruido siguiendo la MEDIA:
+                        # así el listón se pone al nivel del parlante de MECH
+                        # y solo pasa quien hable claramente por encima. Sin
+                        # esto se transcribía a sí mismo sin parar y la Pi se
+                        # arrastraba (audio entrecortado, panel lento).
+                        energy_factor=config.INTERRUPT_ENERGY_FACTOR,
+                        floor_average=True,
                     )
                 except Exception as e:
                     # Típico: el micrófono ya está ocupado por otro hilo.
@@ -158,6 +167,8 @@ class InterruptListener:
                     return
                 if audio is None:
                     continue
+                if len(audio) < stt.WHISPER_SAMPLE_RATE * config.INTERRUPT_MIN_CLIP:
+                    continue  # un golpe o media sílaba: no vale transcribirlo
                 dato = (audio, time.monotonic())
                 try:
                     clips.put_nowait(dato)

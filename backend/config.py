@@ -76,7 +76,7 @@ WHISPER_OFFLINE = os.environ.get("WHISPER_OFFLINE", "true").strip().lower() in (
 # mientras habla le roba núcleos al reproductor y la voz se entrecorta.
 # Poner "tiny" lo hace aún más ligero y rápido (hay que descargarlo una vez).
 WHISPER_INTERRUPT_MODEL = os.environ.get("WHISPER_INTERRUPT_MODEL", "").strip()
-WHISPER_INTERRUPT_THREADS = int(os.environ.get("WHISPER_INTERRUPT_THREADS", "1"))
+WHISPER_INTERRUPT_THREADS = int(os.environ.get("WHISPER_INTERRUPT_THREADS", "2"))
 
 # Audio
 AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "48000"))
@@ -142,6 +142,17 @@ VOICE_INTERRUPT_PHRASES_EN = [
         "hey mech,excuse me mech,sorry mech",
     ).split(",") if p.strip()
 ]
+# Cuánto MÁS FUERTE que el ruido de fondo tiene que sonar una voz para que
+# MECH la grabe MIENTRAS ÉL HABLA. Es más alto que el normal a propósito: su
+# propio parlante dispara el detector todo el rato, y transcribir cada frase
+# que él mismo dice satura la CPU de la Pi (audio entrecortado, panel lento y
+# la interrupción llegando tarde). Con el micrófono de solapa, el visitante
+# entra mucho más fuerte que el parlante, así que este filtro casi no cuesta
+# detección. Súbelo si MECH se transcribe a sí mismo; bájalo si no te oye.
+INTERRUPT_ENERGY_FACTOR = float(os.environ.get("INTERRUPT_ENERGY_FACTOR", "4.0"))
+# Clips más cortos que esto son ruido (un golpe, una sílaba): no se
+# transcriben. "oye MECH" dura ~0.8 s.
+INTERRUPT_MIN_CLIP = float(os.environ.get("INTERRUPT_MIN_CLIP", "0.35"))
 # Tope de duración de cada escucha mientras narra. Corto a propósito: la
 # frase dura ~1 s, y cuanto más corto el clip, más rápido lo transcribe la Pi
 # (y antes se corta la narración).

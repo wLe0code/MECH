@@ -49,9 +49,10 @@ class MechApp:
         # Interrupción por voz: mientras MECH narra, un hilo aparte escucha
         # SOLO "oye MECH" / "hey MECH" (ver backend/interrupt_listener.py).
         self._narration_interrupted: bool = False
-        self.interrupts = InterruptListener(
-            self._on_interrupt, self.log, self.report_mic_level
-        )
+        # Sin `on_level`: emitir el nivel del micrófono durante toda la
+        # narración llenaba el WebSocket de eventos y el panel iba a tirones.
+        # Para diagnosticar ya está el log "Oí mientras narraba: ...".
+        self.interrupts = InterruptListener(self._on_interrupt, self.log)
         # Si el visitante dijo "oye MECH, <otra cosa>", eso queda aquí para
         # atenderlo en cuanto se corte la narración (sin que lo repita).
         self.pending_command: str | None = None

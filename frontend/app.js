@@ -508,6 +508,7 @@
       if ($('set-dryrun')) $('set-dryrun').checked = !!L.TTS_DRY_RUN;
       if ($('set-subs')) $('set-subs').checked = L.SUBTITLES_ENABLED !== false;
       if ($('set-interrupt')) $('set-interrupt').checked = L.VOICE_INTERRUPT_ENABLED !== false;
+      setSlider('set-ienergy', 'ienergy', L.INTERRUPT_ENERGY_FACTOR);
       if ($('set-armmode')) $('set-armmode').value = L.ARM_GESTURE_MODE || 'full';
       if ($('set-wheels')) $('set-wheels').checked = !!L.GESTURE_WHEELS;
       // Visión
@@ -547,6 +548,7 @@
         TTS_DRY_RUN: $('set-dryrun').checked ? 'true' : 'false',
         SUBTITLES_ENABLED: $('set-subs').checked ? 'true' : 'false',
         VOICE_INTERRUPT_ENABLED: $('set-interrupt').checked ? 'true' : 'false',
+        INTERRUPT_ENERGY_FACTOR: $('set-ienergy').value,
         ARM_GESTURE_MODE: $('set-armmode').value,
         GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
         VISION_MIN_DISTANCE: $('set-dist').value,
@@ -593,7 +595,7 @@
   };
 
   // Helpers de sliders de ajustes (texto con unidad).
-  const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', dist: ' m' };
+  const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', ienergy: '×', dist: ' m' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

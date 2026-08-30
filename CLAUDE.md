@@ -374,12 +374,34 @@ Detalles que importan para que el audio no suene sucio (ago 2026):
   se oye sucio.
 - `background_audio.stop()` también mata el proceso si no muere en 250 ms
   (antes solo pedía `terminate()` y la música seguía sonando por debajo).
+- **Lo que de verdad quitó el lag**: que MECH dejara de transcribirse a sí
+  mismo. Mientras narra, `record_until_silence` se llama con
+  `floor_average=True` + `INTERRUPT_ENERGY_FACTOR` (4.0): el piso de ruido se
+  PONE al nivel del parlante en vez de quedarse en los silencios, así los
+  picos de su propia voz ya no lo superan y solo dispara quien hable
+  claramente por encima (el mic es de solapa: el visitante entra 5× más
+  fuerte). Antes disparaba con cada frase suya y la Pi transcribía sin
+  parar → audio entrecortado, panel a tirones y la interrupción llegando
+  tarde. Medido en simulación con audio continuo: de 5 transcripciones a 2
+  en 15 s, sin perder al visitante. **No vuelvas al piso normal aquí.**
+  - El piso se calibra durante ~1 s al abrir el micrófono (ahí NO puede
+    disparar) y luego ignora los picos, para que la voz del visitante no
+    suba el listón y se quede sin oírlo.
+  - Queda una transcripción "de más" cada vez que MECH pasa de callado a
+    hablar (aún no conoce su nivel). Es el precio, y es barato.
+  - Ajustable en vivo: Ajustes → **"Umbral al narrar"**
+    (`INTERRUPT_ENERGY_FACTOR`). Súbelo si se transcribe a sí mismo; bájalo
+    si no te oye al interrumpirlo.
 - El listener transcribe con un **modelo de Whisper aparte limitado a
-  `WHISPER_INTERRUPT_THREADS` (1) hilo de CPU** (`stt.get_interrupt_model()`,
-  precargado al arrancar). Con el modelo normal usaba todos los núcleos de la
-  Pi mientras el reproductor sonaba y la voz se entrecortaba.
+  `WHISPER_INTERRUPT_THREADS` (2) hilos de CPU** (`stt.get_interrupt_model()`,
+  precargado al arrancar), para dejarle aire al reproductor de audio.
   `WHISPER_INTERRUPT_MODEL` vacío = el mismo modelo de siempre (no descarga
   nada); "tiny" es aún más ligero si se descarga una vez.
+- Clips de menos de `INTERRUPT_MIN_CLIP` (0.35 s) no se transcriben: son
+  golpes o sílabas sueltas.
+- El listener **NO emite el nivel del micrófono** al panel: durante toda la
+  narración eran ~8 eventos/s por WebSocket y el panel iba a tirones. Para
+  diagnosticar está el log "Oí mientras narraba: ...".
 
 Después hay dos caminos:
 
