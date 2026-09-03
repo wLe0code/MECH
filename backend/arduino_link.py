@@ -81,6 +81,12 @@ class ArduinoLink:
         self._odo_net = 0.0
         self._odo_vx = 0
         self._odo_t = time.monotonic()
+        # Último MODE enviado. Sirve para NO reenviar el mismo modo una y otra
+        # vez: en el firmware, MODE:LISTEN/SPEAK/STOP llaman a stopAllMotors(),
+        # y el bucle de voz manda MODE:LISTEN en cada vuelta (cada 0.3 s
+        # mientras narra). Eso MATABA cualquier movimiento de ruedas antes de
+        # que se notara. Ver el comentario de set_mode().
+        self._mode: str | None = None
 
     def _odo_update(self, new_vx: int) -> None:
         """Cierra el tramo actual del odómetro y arranca uno nuevo."""
@@ -176,6 +182,9 @@ class ArduinoLink:
             except Exception:
                 pass
             self._ser = None
+        # El Arduino arranca en IDLE al reconectar: olvidamos el modo que
+        # creíamos tener, para que el próximo set_mode() sí se envíe.
+        self._mode = None
         print("[Arduino] Desconectado. Reintentando en segundo plano...")
         self._notify_status()
 
@@ -193,7 +202,19 @@ class ArduinoLink:
 
     # --- Helpers de alto nivel ---
 
-    def set_mode(self, mode: str) -> None:
+    def set_mode(self, mode: str, force: bool = False) -> None:
+        """Cambia el modo del robot. **No reenvía el modo que ya está puesto.**
+
+        Importa mucho: en el firmware, `MODE:LISTEN`, `MODE:SPEAK` y
+        `MODE:STOP` llaman a `stopAllMotors()`. El bucle de voz manda
+        `MODE:LISTEN` en cada vuelta, así que sin este filtro las ruedas se
+        frenaban solas a los pocos milisegundos de arrancar (el giro de 180°
+        y el `return_to_start` no llegaban a moverse). `force=True` lo manda
+        igual: lo usa la reconexión, donde el Arduino se reinició y perdió
+        el modo que tenía."""
+        if not force and mode == self._mode:
+            return
+        self._mode = mode
         # El firmware detiene los motores al entrar a LISTEN/SPEAK/STOP:
         # reflejarlo en el odómetro.
         if mode in ("LISTEN", "SPEAK", "STOP"):

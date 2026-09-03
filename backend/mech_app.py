@@ -28,6 +28,7 @@ import gestures
 import image_gen
 import lang
 import llm
+import maneuvers
 import background_audio
 import subtitles
 import voice_phrases
@@ -75,6 +76,11 @@ class MechApp:
         self.greeting_until: float = 0.0
         # Subtítulos: hilo que va sacando las líneas al ritmo real de la voz.
         self._subs_cancel: threading.Event | None = None
+        # Mientras esto está activo, las RUEDAS están en medio de una maniobra
+        # (giro de 180°, vuelta al punto de inicio). El bucle de voz no debe
+        # tocar el modo del Arduino en ese rato: `MODE:LISTEN` ejecuta
+        # `stopAllMotors()` en el firmware y cortaría el movimiento.
+        self.wheels_busy = threading.Event()
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -104,6 +110,11 @@ class MechApp:
             # Es el texto del segmento que MECH está narrando.
             "current_subtitle": None,
             "subtitle_lang": lang.current(),
+            # Hacia dónde mira el robot: "projection" (a la superficie
+            # donde proyecta, que es su sitio de trabajo) u "outward" (de
+            # espaldas, saludando al público). Lo cambia backend/maneuvers.py
+            # con las órdenes "mira hacia afuera" / "regresa a proyectar".
+            "facing": "projection",
             # Estado de la visión (lo actualiza backend/vision.py).
             "vision": {
                 "enabled": False,
@@ -131,7 +142,9 @@ class MechApp:
         self.emit("state", state=self.state)
         if connected:
             # Restablecer modo y LEDs tras el reset que sufre al reconectar.
-            self.arduino.set_mode(self.state.get("current_mode", "IDLE"))
+            # force=True: el Arduino olvidó su modo, hay que mandarlo aunque
+            # sea el mismo que teníamos cacheado.
+            self.arduino.set_mode(self.state.get("current_mode", "IDLE"), force=True)
             if self._last_led:
                 self.arduino.led(self._last_led)
 
@@ -407,14 +420,22 @@ class MechApp:
     def on_user_detected(self) -> None:
         """Alguien entró al campo de la cámara: MECH hace el protocolo de
         saludo (arco de brazo del video del equipo) y da la bienvenida por
-        voz. Con cooldown para no saludar en bucle a la misma persona."""
+        voz. Con cooldown para no saludar en bucle a la misma persona.
+
+        El gesto y la voz van JUNTOS y bajo el MISMO cooldown (antes el brazo
+        se disparaba en cada detección, también dentro del cooldown: como la
+        visión se pausa mientras narra, al terminar cada narración volvía a
+        "detectar" y el brazo se movía solo, sin decir nada)."""
         if self.state.get("voice_phase") in ("speaking", "thinking", "transcribing"):
             return  # no interrumpir una narración
-        gestures.perform(self.arduino, "wave")
         now = time.time()
-        if now - self._last_greeting < 60:
+        if now - self._last_greeting < config.GREETING_COOLDOWN:
             return  # ya saludó hace poco
         self._last_greeting = now
+        self.log("Saludo al visitante que detectó la cámara.", "ok")
+        # El arco lento del brazo (config.ARM_WAVE_SECONDS) corre en paralelo
+        # a la voz: gestures.perform ya lanza su propio hilo.
+        gestures.perform(self.arduino, "wave")
 
         def _greet():
             # Ventana provisional amplia mientras habla; al terminar se
@@ -432,6 +453,14 @@ class MechApp:
                 self.stop_subtitles()
 
         threading.Thread(target=_greet, daemon=True).start()
+
+    def greet_now(self) -> None:
+        """Fuerza el saludo AHORA, saltándose el cooldown (botón del panel).
+
+        Sirve para probar el saludo sin tener que salir y volver a entrar al
+        campo de la cámara."""
+        self._last_greeting = 0.0
+        self.on_user_detected()
 
     def on_user_lost(self) -> None:
         """El usuario salió de cámara. (El propio módulo de visión ya detuvo
@@ -462,8 +491,11 @@ class MechApp:
             self.arduino.set_mode("STOP")
             self.set_led("ERR")  # parpadeo rojo en el aro y se apaga
             # Tras un paro, la posición ya no es confiable: el punto donde
-            # quede el robot pasa a ser el nuevo inicio.
+            # quede el robot pasa a ser el nuevo inicio. Lo mismo con la
+            # ORIENTACIÓN: damos por hecho que el operador lo recoloca a
+            # mano, para no disparar un giro "de vuelta" a ciegas.
             self.arduino.reset_odometer()
+            maneuvers.assume_projection(self)
         except Exception as e:
             self.log(f"Arduino no respondió al paro: {e}", "err")
         # Audio (TTS en curso + música de fondo)
@@ -606,13 +638,28 @@ class MechApp:
             f"{'atrás' if net > 0 else 'adelante'}) para proyectar alineado.",
             "info",
         )
-        self.arduino.move(-speed if net > 0 else speed, 0, 0)
-        time.sleep(secs)
-        self.arduino.stop_motors()
-        self.arduino.reset_odometer()
+        # Sin esto, el bucle de voz manda MODE:LISTEN a media vuelta y el
+        # firmware para los motores (ver arduino_link.set_mode).
+        self.wheels_busy.set()
+        try:
+            self.arduino.move(-speed if net > 0 else speed, 0, 0)
+            time.sleep(secs)
+            self.arduino.stop_motors()
+            self.arduino.reset_odometer()
+        finally:
+            self.wheels_busy.clear()
 
     def execute_plan(self, plan: "llm.Plan") -> None:
         """Ejecuta el plan de Claude (varios segmentos)."""
+        # Si quedó de espaldas ("mira hacia afuera"), primero vuelve a mirar a
+        # la proyección: no tiene sentido narrar una historia proyectando
+        # contra el público. Deshace el giro él solo, sin que se lo pidan.
+        try:
+            if maneuvers.facing(self) == "outward":
+                self.log("Estaba de espaldas: vuelvo a la posición de proyectar.", "info")
+                maneuvers.back_to_projection(self, announce=False)
+        except Exception as e:
+            self.log(f"No pude volver a la posición de proyección: {e}", "warn")
         # Si la visión acercó a MECH hacia el usuario, primero regresa a su
         # sitio: el proyector debe apuntar a donde estaba calibrado.
         try:
@@ -662,10 +709,16 @@ class MechApp:
                 )
                 if project_ok:
                     self._render_segment_visual(seg, plan.title, i)
-                # Gira hacia el usuario (si la cámara sabe dónde está) y gesticula.
-                v = self.state.get("vision", {})
-                user_x = v.get("x") if (v.get("enabled") and v.get("user_present")) else None
-                gestures.perform(self.arduino, seg.gesture, user_x=user_x)
+                # Gesto del segmento. Al narrar se usa la versión SIMPLE (un
+                # solo brazo, corto y sin ruedas): la proyección tiene que
+                # mandar y los servos casi no gastan. Ver backend/gestures.py.
+                # EXCEPCIÓN: en modo "movement" le pidieron el gesto en sí
+                # ("saluda al público"), así que ahí va la coreografía
+                # completa — si no, un "saluda" se vería como un tic.
+                if plan.mode == "movement":
+                    gestures.perform(self.arduino, seg.gesture)
+                else:
+                    gestures.perform_talking(self.arduino, seg.gesture)
                 self.state["last_ai_response"] = seg.narration
                 voice_id = voices.resolve(seg.voice)
                 self.emit(
@@ -733,6 +786,22 @@ class MechApp:
         else:
             self.log("No se pudo iniciar la música (¿falta ffplay?)", "warn")
 
+    def handle_movement_command(self, text: str) -> bool:
+        """¿Es una orden de movimiento? Si sí, la ejecuta y devuelve True.
+
+        Son órdenes DIRECTAS: no pasan por Claude (respuesta inmediata y sin
+        gastar crédito de API). Hoy hay dos:
+            "mira hacia afuera"   -> gira 180° y saluda al público.
+            "regresa a proyectar" -> deshace el giro.
+        """
+        if voice_phrases.is_look_outward(text):
+            maneuvers.look_outward(self)
+            return True
+        if voice_phrases.is_back_to_projection(text):
+            maneuvers.back_to_projection(self)
+            return True
+        return False
+
     def handle_text_command(self, text: str) -> None:
         """Procesa un comando de texto (de voz o frontend)."""
         if not text.strip():
@@ -740,6 +809,14 @@ class MechApp:
         self.state["last_transcript"] = text
         self.emit("transcript", text=text)
         self.log(f"Comando: {text!r}", "info")
+        # Órdenes de movimiento: se atienden aquí mismo, sin llamar a Claude.
+        if self.handle_movement_command(text):
+            if self.state["voice_loop_active"]:
+                self.chime_pending = True
+                self.set_voice_phase(
+                    "waiting" if self.state.get("voice_awake", True) else "dormant"
+                )
+            return
         # Que el bucle de voz suelte el micrófono: a partir de aquí manda el
         # listener de interrupción ("oye MECH").
         self.mic_release.set()

@@ -11,7 +11,14 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (ago 2026, §3) fueron tres cosas nuevas: **modo inglés**,
+> Lo último (sep 2026, §3.bis) es **movilidad**: giro de 180° con «mira hacia
+> afuera» / «regresa a proyectar», el saludo por cámara arreglado, saludo más
+> amplio y brazos mínimos al proyectar. En la primera prueba en el robot las
+> ruedas NO se movían: eran `MODE:LISTEN` frenando los motores + media
+> potencia; las dos cosas están arregladas pero **falta volver a probarlo**.
+> El giro HAY QUE CALIBRARLO (§3.bis).
+>
+> Antes de eso (ago 2026, §3) fueron tres cosas nuevas: **modo inglés**,
 > **subtítulos** e **interrupción por voz**. Las tres están implementadas y
 > pusheadas; la interrupción se probó cuatro veces en el robot real y se fue
 > corrigiendo, pero **la última corrección (el lag) todavía NO se ha probado
@@ -141,6 +148,101 @@ una causa distinta. Estado final:
 
 ---
 
+## 3.bis Movilidad (sep 2026) — lo último, SIN probar en el robot
+
+El usuario notó que MECH había perdido movimiento («como que le quitaste esas
+capacidades cuando logramos el VR, por ejemplo el saludo cuando pasa en la
+cámara») y pidió tres cosas más. Todo implementado y validado en simulación
+(scripts con stubs, ~70 comprobaciones), **nada probado en el robot todavía**.
+
+### El saludo por cámara: qué estaba mal de verdad
+
+No se había borrado. `on_user_detected` movía el brazo **antes** del cooldown,
+así que:
+- el brazo se disparaba en CADA detección (también dentro del cooldown),
+- la voz solo cada 60 s,
+- y como la visión se **pausa** mientras narra (commit `c446563`, del tiempo
+  del VR), al terminar cada narración "redetectaba" a la misma persona y el
+  brazo se movía **solo, en silencio**.
+
+Ahora gesto y voz van juntos bajo el mismo cooldown (`GREETING_COOLDOWN`,
+45 s, ajustable). Y hay un botón **«SALUDAR AHORA»** en la vista Arduino
+(`POST /api/move/greet`) para probarlo sin depender de la cámara.
+
+### Lo nuevo
+
+1. **«mira hacia afuera» / «regresa a proyectar»** → `backend/maneuvers.py`.
+   Giro de 180° = tramo **lateral** (apartarse de la mesa) + **rotación**; la
+   vuelta es el mismo recorrido invertido, así que termina donde empezó.
+   No pasa por Claude (instantáneo, sin gastar API). Al girar hacia afuera
+   saluda con el brazo y lo dice. `state["facing"]` se ve en el panel, y
+   `execute_plan` se da vuelta solo si le piden una historia estando de
+   espaldas.
+2. **Saludo más lento** — `ARM_WAVE_SECONDS` (2.2 s de subida y de bajada,
+   antes 1.3 fijos).
+3. **Brazos mínimos al proyectar** — `gestures.perform_talking()`: UN solo
+   brazo, máx. 115° (reposo 90), lento, **sin ruedas**; `neutral` no manda
+   nada. Los planes `mode="movement"` («saluda al público») conservan el
+   gesto completo. Se revierte con `NARRATION_GESTURE_MODE=full`.
+
+### Segunda pasada (probado en el robot: "no se mueve")
+
+Se probó en el robot y **las ruedas no se movían**. Dos causas, las dos reales:
+
+1. **`MODE:LISTEN` frena los motores.** En el firmware, `applyMode()` llama a
+   `stopAllMotors()` para LISTEN/SPEAK/STOP — y el bucle de voz mandaba
+   `MODE:LISTEN` en CADA vuelta (cada 0.3 s mientras narra). Cualquier
+   movimiento moría a los ~300 ms. **Esto afectaba también a
+   `return_to_start()`, que probablemente nunca funcionó con el bucle de voz
+   encendido.** Arreglado en tres capas: `set_mode` ya no reenvía el modo que
+   ya está puesto, el `MODE:LISTEN` del bucle se movió a justo antes de
+   grabar, y `mech_app.wheels_busy` bloquea al bucle mientras las ruedas se
+   mueven (y pone el Arduino en AUTO, el único modo que no frena).
+2. **Iba a media potencia.** `TURN_180_SPEED` era 55, y el firmware escala
+   `v * 255 / 100` → PWM 140/255. Con estos motores y el L298N eso zumba y no
+   arranca. Ahora el default es **100** (PWM 255) y cada tramo empieza con un
+   pulso a fondo (`MOTOR_KICK_SECONDS`).
+
+La **distribución de ruedas sí era la correcta**: el giro usa el patrón
+diagonal y el lateral el delantero/trasero, que es justo lo que el equipo
+calibró en julio. Se comprobó reproduciendo `driveOmni()` en la simulación.
+
+**El saludo también se agrandó**: llegaba a 170° con UN vaivén de 20°; ahora
+llega a 180° y agita 65° tres veces (`ARM_WAVE_HIGH`/`SWING`/`REPEATS`).
+
+### ⚠️ Lo que HAY QUE CALIBRAR en el robot
+
+**El giro se mide por TIEMPO (no hay encoders).** Con el robot en el suelo
+donde vaya a trabajar:
+
+0. **Primero, sin el bucle de voz**: apagá la voz desde el panel y probá
+   `MOVE:0:0:100` en Arduino → comando crudo. Si ahí gira y con la voz
+   encendida no, quedó algún resto del bug de `MODE:LISTEN`.
+1. Panel → **Arduino** → «MIRA HACIA AFUERA».
+2. Panel → **Ajustes** → «GIRO DE 180° — CALIBRACIÓN» → subir/bajar **Giro**
+   (segundos) hasta que quede justo de espaldas. Se aplica en vivo.
+3. **Lateral** = cuánto se aparta antes de rotar. Ponlo en 0 s si no hace
+   falta o si el espacio es justo.
+4. Si gira hacia el lado equivocado, se voltea el signo de `w` en
+   `driveOmni()` del `.ino` — **no** en `maneuvers.py`.
+
+Ajustes nuevos, todos en vivo: `TURN_180_SECONDS`, `TURN_180_SPEED`,
+`TURN_LATERAL_SECONDS`, `TURN_LATERAL_SPEED`, `MOTOR_KICK_SECONDS`,
+`ARM_WAVE_SECONDS`, `ARM_WAVE_HIGH`, `ARM_WAVE_SWING`, `ARM_WAVE_REPEATS`,
+`GREETING_COOLDOWN`, `NARRATION_GESTURE_MODE`.
+
+**Si aun así no se mueve, es eléctrico** (§5: los motores y ruedas son de mal
+material y hay un cambio de compra pendiente). A potencia 100 y con el bucle
+de voz apagado, si `MOVE:0:0:100` no mueve nada, el problema ya no está en
+este código: batería, L298N o los propios motores.
+
+> Recordatorio del §5: los **servos de los brazos** todavía no se habían
+> movido en el robot (respondían `ACK:ARM` pero quietos) — eso es eléctrico.
+> Si el saludo no se ve, revisar primero la alimentación de 5–6 V y la tierra
+> común, no este código.
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:
@@ -158,7 +260,12 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
    español al dormirse.
 3. **Subtítulos**: verlos en el proyector y en el visor VR (en el teléfono,
    recargar con caché limpia).
-4. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
+4. **Movilidad (§3.bis, recién hecho)**:
+   - Calibrar el giro de 180° (arriba). Es lo que más tiempo lleva.
+   - Encender la visión y pasar por delante: ¿saluda con brazo **y** voz a la
+     vez? ¿Deja de agitar el brazo solo entre narraciones?
+   - Poner a narrar algo: los brazos deben moverse **poco** y solo uno.
+5. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
    siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
    vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el
    normal).

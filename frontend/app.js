@@ -130,9 +130,21 @@
       case 'image':       msg.url ? applyAIImage(msg.url) : clearImmersivePreview(); break;
       case 'video':       msg.url ? applyAIVideo(msg.url) : clearImmersivePreview(); break;
       case 'vision':      applyVision(msg); break;
+      case 'facing':      applyFacing(msg.facing); break;
       case 'mic_level':   applyMicLevel(msg); break;
       case 'pong':        break;
     }
+  }
+
+  // ─── Orientación del robot (maniobra de 180°) ─────────────────────
+  // "projection" = mirando a donde proyecta (su sitio de trabajo).
+  // "outward"    = de espaldas, saludando al público.
+  function applyFacing(facing) {
+    const el = $('facing-val');
+    if (!el) return;
+    const outward = facing === 'outward';
+    el.textContent = outward ? 'AFUERA (al público)' : 'la proyección';
+    el.style.color = outward ? 'var(--amber)' : 'var(--text)';
   }
 
   // ─── Visión (cámara) ──────────────────────────────────────────────
@@ -258,6 +270,9 @@
 
     // Visión
     if (s.vision) applyVision(s.vision);
+
+    // Hacia dónde mira (maniobra de 180°)
+    applyFacing(s.facing || 'projection');
   }
 
   function showTranscript(text) {
@@ -452,6 +467,25 @@
 
     arduinoMode(mode) { fetchJSON(`/api/arduino/mode/${mode}`); },
 
+    // ─── Maniobras (giro de 180°) ───────────────────────────────────
+    async lookOutward() {
+      const res = await fetchJSON('/api/move/outward');
+      if (res && res.ok) log('Girando 180° para mirar hacia afuera…', 'ok');
+      else if (res) log(res.reason || 'No pude girar ahora.', 'warn');
+    },
+
+    async backToProjection() {
+      const res = await fetchJSON('/api/move/projection');
+      if (res && res.ok) log('Volviendo a la posición de proyección…', 'ok');
+      else if (res) log(res.reason || 'No pude girar ahora.', 'warn');
+    },
+
+    async greetNow() {
+      const res = await fetchJSON('/api/move/greet');
+      if (res && res.ok) log('Saludo disparado a mano.', 'ok');
+      else if (res) log(res.reason || 'No pude saludar ahora.', 'warn');
+    },
+
     move(vx, vy, w) { fetchJSON('/api/arduino/move', { json: { vx, vy, w } }); },
     stopMove() { this.move(0, 0, 0); },
 
@@ -511,6 +545,18 @@
       setSlider('set-ienergy', 'ienergy', L.INTERRUPT_ENERGY_FACTOR);
       if ($('set-armmode')) $('set-armmode').value = L.ARM_GESTURE_MODE || 'full';
       if ($('set-wheels')) $('set-wheels').checked = !!L.GESTURE_WHEELS;
+      if ($('set-narrmode')) $('set-narrmode').value = L.NARRATION_GESTURE_MODE || 'simple';
+      setSlider('set-wave', 'wave', L.ARM_WAVE_SECONDS);
+      setSlider('set-wavehigh', 'wavehigh', L.ARM_WAVE_HIGH);
+      setSlider('set-waveswing', 'waveswing', L.ARM_WAVE_SWING);
+      setSlider('set-waverep', 'waverep', L.ARM_WAVE_REPEATS);
+      setSlider('set-greetcd', 'greetcd', L.GREETING_COOLDOWN);
+      // Calibración del giro de 180°
+      setSlider('set-turnsec', 'turnsec', L.TURN_180_SECONDS);
+      setSlider('set-turnvel', 'turnvel', L.TURN_180_SPEED);
+      setSlider('set-latsec', 'latsec', L.TURN_LATERAL_SECONDS);
+      setSlider('set-latvel', 'latvel', L.TURN_LATERAL_SPEED);
+      setSlider('set-kick', 'kick', L.MOTOR_KICK_SECONDS);
       // Visión
       if ($('set-vision')) $('set-vision').checked = !!L.VISION_ENABLED;
       setSlider('set-dist', 'dist', L.VISION_MIN_DISTANCE);
@@ -551,6 +597,17 @@
         INTERRUPT_ENERGY_FACTOR: $('set-ienergy').value,
         ARM_GESTURE_MODE: $('set-armmode').value,
         GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
+        NARRATION_GESTURE_MODE: $('set-narrmode').value,
+        ARM_WAVE_SECONDS: $('set-wave').value,
+        ARM_WAVE_HIGH: String(parseInt($('set-wavehigh').value)),
+        ARM_WAVE_SWING: String(parseInt($('set-waveswing').value)),
+        ARM_WAVE_REPEATS: String(parseInt($('set-waverep').value)),
+        GREETING_COOLDOWN: $('set-greetcd').value,
+        TURN_180_SECONDS: $('set-turnsec').value,
+        TURN_180_SPEED: String(parseInt($('set-turnvel').value)),
+        TURN_LATERAL_SECONDS: $('set-latsec').value,
+        TURN_LATERAL_SPEED: String(parseInt($('set-latvel').value)),
+        MOTOR_KICK_SECONDS: $('set-kick').value,
         VISION_MIN_DISTANCE: $('set-dist').value,
         VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',
         VISION_PROJECT_GATE: $('set-gate').checked ? 'true' : 'false',
@@ -595,7 +652,9 @@
   };
 
   // Helpers de sliders de ajustes (texto con unidad).
-  const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', ienergy: '×', dist: ' m' };
+  const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', ienergy: '×', dist: ' m',
+                          wave: ' s', greetcd: ' s', turnsec: ' s', latsec: ' s', turnvel: '', latvel: '',
+                          wavehigh: '°', waveswing: '°', waverep: '', kick: ' s' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

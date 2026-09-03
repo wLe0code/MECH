@@ -17,6 +17,13 @@ CALIBRADO CON VIDEOS DEL EQUIPO (jul 2026):
   adelante/atrás. El desplazamiento queda registrado en el odómetro de
   arduino_link para poder volver al punto de inicio.
 
+- **Brazos MIENTRAS PROYECTA** (ago 2026): el equipo pidió gestos "muy
+  simples, para que no gaste casi energía — que simplemente mueva un brazo".
+  Por eso `perform_talking()` usa `_TALK_GESTURES`: UN solo brazo, ±25° sobre
+  el reposo, lento y sin ruedas. `perform()` (saludo, panel) sigue con la
+  coreografía completa. Se vuelve al comportamiento anterior con
+  `NARRATION_GESTURE_MODE=full`.
+
 Tres modos, según `config.ARM_GESTURE_MODE`:
   - "full"   (default): coreografías de arriba.
   - "subtle": un vaivén pequeño cerca del reposo.
@@ -88,11 +95,27 @@ def _g_wave(link: ArduinoLink) -> None:
     """PROTOCOLO DE SALUDO (video 1): arco completo, lento y amable.
 
     Sube el brazo derecho desde el reposo pasando por la horizontal hasta
-    quedar en alto, pequeño vaivén arriba, y baja suave. Una sola vez."""
-    _move_smooth(link, _NEUTRAL, 170, 1.3)   # sube en arco (pasa por horizontal)
-    _move_smooth(link, _NEUTRAL, 150, 0.5)   # vaivén suave arriba
-    _move_smooth(link, _NEUTRAL, 170, 0.5)
-    _move_smooth(link, _NEUTRAL, _NEUTRAL, 1.3)  # baja hasta el reposo
+    quedar en alto, pequeño vaivén arriba, y baja suave. Una sola vez.
+
+    Velocidad y AMPLITUD se configuran (ajustables en vivo desde el panel):
+      - `ARM_WAVE_SECONDS` (2.2): lo que tarda en subir y en bajar. El equipo
+        lo pidió lento (ago 2026): rápido se veía nervioso.
+      - `ARM_WAVE_HIGH` (180): hasta dónde sube. Antes eran 170.
+      - `ARM_WAVE_SWING` (65) y `ARM_WAVE_REPEATS` (3): los vaivenes de
+        arriba. Antes eran 20° y uno solo — "casi no se notaba" (sep 2026).
+
+    Solo se mueve HACIA ARRIBA (90 → 180). Por debajo de 90 el brazo choca
+    con el cuerpo del robot: no bajar de ahí."""
+    subida = max(0.4, config.ARM_WAVE_SECONDS)
+    vaiven = max(0.25, subida * 0.35)  # cada agitada de arriba
+    alto = max(_NEUTRAL + 10, min(180, config.ARM_WAVE_HIGH))
+    # El vaivén nunca baja del reposo (ahí choca con el cuerpo).
+    bajo = max(_NEUTRAL, alto - max(10, config.ARM_WAVE_SWING))
+    _move_smooth(link, _NEUTRAL, alto, subida)   # sube en arco hasta arriba
+    for _ in range(max(1, config.ARM_WAVE_REPEATS)):
+        _move_smooth(link, _NEUTRAL, bajo, vaiven)   # agita, amplio
+        _move_smooth(link, _NEUTRAL, alto, vaiven)
+    _move_smooth(link, _NEUTRAL, _NEUTRAL, subida)  # baja hasta el reposo
 
 
 def _g_excited(link: ArduinoLink) -> None:
@@ -139,6 +162,61 @@ _FULL_GESTURES = {
 }
 
 
+# ── Gestos MIENTRAS NARRA (modo "simple", default) ───────────────────
+# Pedido del equipo (ago 2026): "cuando proyecte que utilice un poco los
+# brazos, pero muy simple para que no gaste casi energía, que simplemente
+# mueva un brazo por ejemplo".
+#
+# Por eso, al narrar:
+#   - se mueve UN SOLO brazo (el derecho; "thoughtful" usa el izquierdo para
+#     que se note la diferencia),
+#   - recorridos cortos (±25° como mucho sobre el reposo de 90°),
+#   - lento, sin rebotes ni repeticiones,
+#   - NUNCA las ruedas (mover el robot mientras proyecta desalinea la
+#     proyección, y es lo que más batería gasta),
+#   - y siempre termina en reposo (90°), que es donde el servo menos fuerza
+#     hace.
+# El SALUDO no pasa por aquí: ese sí es la coreografía completa.
+
+_TALK_UP = 115      # tope del brazo al narrar (reposo 90°)
+_TALK_UP_SOFT = 105  # elevación mínima, para gestos "tranquilos"
+
+
+def _t_still(link: ArduinoLink) -> None:
+    """Sin gesto: los brazos se quedan (o vuelven) al reposo. Consumo mínimo."""
+    if _current["L"] != _NEUTRAL or _current["R"] != _NEUTRAL:
+        _move_smooth(link, _NEUTRAL, _NEUTRAL, 0.8)
+
+
+def _t_right(link: ArduinoLink, top: int, hold: float) -> None:
+    """Sube SOLO el brazo derecho, lo sostiene y lo baja. Suave."""
+    _move_smooth(link, _NEUTRAL, top, 1.0)
+    time.sleep(hold)
+    _move_smooth(link, _NEUTRAL, _NEUTRAL, 1.0)
+
+
+def _t_left(link: ArduinoLink, top: int, hold: float) -> None:
+    """Igual, pero con el brazo izquierdo."""
+    _move_smooth(link, top, _NEUTRAL, 1.0)
+    time.sleep(hold)
+    _move_smooth(link, _NEUTRAL, _NEUTRAL, 1.0)
+
+
+_TALK_GESTURES = {
+    # neutral: literalmente no gastar nada.
+    "neutral": _t_still,
+    # excited / wave: el brazo derecho sube un poco y vuelve.
+    "excited": lambda link: _t_right(link, _TALK_UP, 0.6),
+    "wave": lambda link: _t_right(link, _TALK_UP, 0.6),
+    # point: señala hacia la proyección y sostiene un momento.
+    "point": lambda link: _t_right(link, _TALK_UP, 1.8),
+    # arms_open: invitación contenida, un solo brazo abierto.
+    "arms_open": lambda link: _t_right(link, _TALK_UP_SOFT, 1.8),
+    # thoughtful: el brazo IZQUIERDO, apenas, para que se note distinto.
+    "thoughtful": lambda link: _t_left(link, _TALK_UP_SOFT, 1.8),
+}
+
+
 def _g_subtle(link: ArduinoLink) -> None:
     # Modo "subtle": un pequeño adelante y atrás cerca del reposo.
     amp = max(0, min(45, config.ARM_GESTURE_AMPLITUDE))
@@ -146,11 +224,11 @@ def _g_subtle(link: ArduinoLink) -> None:
     _move_smooth(link, _NEUTRAL, _NEUTRAL, 0.45)
 
 
-def perform(link: ArduinoLink, gesture: str, user_x: float | None = None) -> None:
-    """Ejecuta el gesto en segundo plano (no bloquea la narración).
+def _perform(link: ArduinoLink, gesture: str, talking: bool) -> None:
+    """Motor común de `perform` y `perform_talking`.
 
-    `user_x` se acepta por compatibilidad pero YA NO se usa: el robot no
-    gira hacia el usuario (las ruedas solo van adelante/atrás)."""
+    `talking=True` = el gesto acompaña a la narración: se usa la versión
+    simple (un brazo, corto, sin ruedas) salvo que se pida "full"."""
 
     def _run():
         if not _gesture_lock.acquire(blocking=False):
@@ -165,10 +243,33 @@ def perform(link: ArduinoLink, gesture: str, user_x: float | None = None) -> Non
             if mode == "subtle":
                 _g_subtle(link)
                 return
-            # Modo "full" (default): coreografía real del gesto pedido.
+            if talking and config.NARRATION_GESTURE_MODE != "full":
+                # Narrando: gesto mínimo de un solo brazo (ver _TALK_GESTURES).
+                _TALK_GESTURES.get(gesture, _t_still)(link)
+                return
+            # Modo "full": coreografía real del gesto pedido.
             fn = _FULL_GESTURES.get(gesture, _g_neutral)
             fn(link)
         finally:
             _gesture_lock.release()
 
     threading.Thread(target=_run, daemon=True).start()
+
+
+def perform(link: ArduinoLink, gesture: str, user_x: float | None = None) -> None:
+    """Ejecuta el gesto COMPLETO en segundo plano (no bloquea a quien llama).
+
+    Es el que se usa fuera de la narración: el saludo al detectar a alguien
+    con la cámara, el saludo hacia afuera y los botones del panel.
+
+    `user_x` se acepta por compatibilidad pero YA NO se usa: el robot no
+    gira hacia el usuario (las ruedas solo van adelante/atrás)."""
+    _perform(link, gesture, talking=False)
+
+
+def perform_talking(link: ArduinoLink, gesture: str) -> None:
+    """Gesto MIENTRAS NARRA: por defecto, la versión simple de un solo brazo.
+
+    Lo llama `mech_app.execute_plan` por cada segmento. Con
+    `NARRATION_GESTURE_MODE=full` vuelven las coreografías completas."""
+    _perform(link, gesture, talking=True)

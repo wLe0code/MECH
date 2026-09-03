@@ -125,6 +125,8 @@
             <div class="cmd-chip" onclick="API.testCmd('Expón los cuadros de Isidro Con Wong')"><i class="ti ti-palette"></i>Isidro Con Wong</div>
             <div class="cmd-chip" onclick="API.testCmd('¿Qué eres y cómo funcionas?')"><i class="ti ti-info-circle"></i>Sobre MECH</div>
             <div class="cmd-chip" onclick="API.testCmd('Saluda al público')"><i class="ti ti-hand-stop"></i>Saludar</div>
+            <div class="cmd-chip" onclick="API.testCmd('mira hacia afuera')"><i class="ti ti-rotate-clockwise"></i>Mira hacia afuera</div>
+            <div class="cmd-chip" onclick="API.testCmd('regresa a proyectar')"><i class="ti ti-rotate"></i>Regresa a proyectar</div>
           </div>
         </div>
       </div>
@@ -273,6 +275,20 @@
         </div>
 
         <div class="fw-card">
+          <div class="fw-key" style="margin-bottom:8px">MANIOBRAS (giro de 180°)</div>
+          <div class="arduino-cmd-grid">
+            <button class="arduino-btn" onclick="API.lookOutward()">↻ MIRA HACIA AFUERA</button>
+            <button class="arduino-btn" onclick="API.backToProjection()">↺ REGRESA A PROYECTAR</button>
+            <button class="arduino-btn" onclick="API.greetNow()">👋 SALUDAR AHORA</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+            Ahora mira a: <b id="facing-val" style="color:var(--text)">la proyección</b>.
+            Lo mismo que decirle «mira hacia afuera» / «regresa a proyectar».
+            El giro se mide por TIEMPO — calíbralo en Ajustes.
+          </div>
+        </div>
+
+        <div class="fw-card">
           <div class="fw-key" style="margin-bottom:8px">BRAZOS (servos MG996R — pines 9 y 10)</div>
           <div class="slider-row">
             <label>IZQ</label>
@@ -314,7 +330,8 @@
           <div class="cmd-grid" style="margin-top:10px">
             <div class="cmd-chip" onclick="API.rawPreset('MOVE:50:0:0')"><i class="ti ti-arrow-up"></i>MOVE:50:0:0</div>
             <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:50:0')"><i class="ti ti-arrow-right"></i>MOVE:0:50:0</div>
-            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:0:60')"><i class="ti ti-rotate-clockwise"></i>MOVE:0:0:60</div>
+            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:0:100')"><i class="ti ti-rotate-clockwise"></i>MOVE:0:0:100 (giro a fondo)</div>
+            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:100:0')"><i class="ti ti-arrows-horizontal"></i>MOVE:0:100:0 (lateral a fondo)</div>
             <div class="cmd-chip" onclick="API.rawPreset('STOP')"><i class="ti ti-hand-stop"></i>STOP</div>
             <div class="cmd-chip" onclick="API.rawPreset('ARM:L:150')"><i class="ti ti-hand-three-fingers"></i>ARM:L:150</div>
             <div class="cmd-chip" onclick="API.rawPreset('ARM:R:150')"><i class="ti ti-hand-three-fingers"></i>ARM:R:150</div>
@@ -430,6 +447,78 @@
               <input type="checkbox" id="set-wheels">
               <span class="switch-text">Gestos con ruedas (balanceo/giros cortos)</span>
             </label>
+          </div>
+          <div class="slider-row">
+            <label title="Gestos MIENTRAS proyecta. simple = un solo brazo, corto y sin ruedas (gasta casi nada). full = coreografías completas.">Al narrar</label>
+            <select class="text-input" id="set-narrmode" style="flex:1">
+              <option value="simple">simple — un brazo, mínimo</option>
+              <option value="full">full — coreografía completa</option>
+            </select>
+          </div>
+          <div class="slider-row">
+            <label title="Cuánto tarda el brazo en subir (y en bajar) durante el saludo. Más alto = más lento y amable.">Saludo lento</label>
+            <input type="range" min="0.8" max="4" step="0.1" value="2.2" id="set-wave" oninput="UI.settingLabel('set-wave','wave')">
+            <span class="val" id="set-wave-val">2.2 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Hasta dónde sube el brazo al saludar. 90 = reposo, 180 = todo arriba. No baja de 90 (ahí choca con el cuerpo).">Saludo alto</label>
+            <input type="range" min="120" max="180" step="5" value="180" id="set-wavehigh" oninput="UI.settingLabel('set-wavehigh','wavehigh')">
+            <span class="val" id="set-wavehigh-val">180°</span>
+          </div>
+          <div class="slider-row">
+            <label title="Cuántos grados baja y sube el brazo en cada agitada de arriba. Más = se nota más de lejos.">Saludo amplitud</label>
+            <input type="range" min="15" max="90" step="5" value="65" id="set-waveswing" oninput="UI.settingLabel('set-waveswing','waveswing')">
+            <span class="val" id="set-waveswing-val">65°</span>
+          </div>
+          <div class="slider-row">
+            <label title="Cuántas veces agita el brazo arriba antes de bajarlo.">Saludo agitadas</label>
+            <input type="range" min="1" max="6" step="1" value="3" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
+            <span class="val" id="set-waverep-val">3</span>
+          </div>
+          <div class="slider-row">
+            <label title="Segundos entre saludos a la cámara. Bajo = saluda a cada visitante nuevo.">Repetir saludo</label>
+            <input type="range" min="5" max="120" step="5" value="45" id="set-greetcd" oninput="UI.settingLabel('set-greetcd','greetcd')">
+            <span class="val" id="set-greetcd-val">45 s</span>
+          </div>
+          <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
+            <i class="ti ti-device-floppy"></i>Guardar y aplicar
+          </button>
+        </div>
+
+        <!-- Maniobra "mira hacia afuera" — se calibra en el robot real -->
+        <div class="fw-card settings-live">
+          <div class="fw-key" style="margin-bottom:4px;color:#E5A54B">
+            <i class="ti ti-rotate-360"></i> GIRO DE 180° — CALIBRACIÓN
+          </div>
+          <div class="section-sub" style="margin-bottom:10px">
+            MECH no tiene encoders: el giro se mide <b>por tiempo</b>. Pulsa
+            «MIRA HACIA AFUERA» en la vista Arduino y sube o baja los segundos
+            hasta que quede justo de espaldas. Se aplica en vivo.
+          </div>
+          <div class="slider-row">
+            <label title="Cuánto dura el giro sobre sí mismo. Es LO PRIMERO que hay que calibrar.">Giro</label>
+            <input type="range" min="0.4" max="6" step="0.1" value="2.0" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
+            <span class="val" id="set-turnsec-val">2.0 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Velocidad del giro (0-100). Más lento = más preciso y menos derrape.">Velocidad</label>
+            <input type="range" min="20" max="100" step="5" value="100" id="set-turnvel" oninput="UI.settingLabel('set-turnvel','turnvel')">
+            <span class="val" id="set-turnvel-val">100</span>
+          </div>
+          <div class="slider-row">
+            <label title="Se aparta de lado antes de girar, para no rozar la mesa o la pared. 0 = giro puro.">Lateral</label>
+            <input type="range" min="0" max="3" step="0.1" value="0.5" id="set-latsec" oninput="UI.settingLabel('set-latsec','latsec')">
+            <span class="val" id="set-latsec-val">0.5 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Velocidad del desplazamiento lateral (0-100).">Vel. lateral</label>
+            <input type="range" min="20" max="100" step="5" value="100" id="set-latvel" oninput="UI.settingLabel('set-latvel','latvel')">
+            <span class="val" id="set-latvel-val">100</span>
+          </div>
+          <div class="slider-row">
+            <label title="Pulso inicial a potencia MÁXIMA para romper la fricción. Súbelo si los motores zumban pero no arrancan. 0 = desactivado.">Arranque</label>
+            <input type="range" min="0" max="0.6" step="0.05" value="0.15" id="set-kick" oninput="UI.settingLabel('set-kick','kick')">
+            <span class="val" id="set-kick-val">0.15 s</span>
           </div>
           <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar

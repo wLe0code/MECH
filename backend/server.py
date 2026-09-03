@@ -56,6 +56,7 @@ _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 import lang
+import maneuvers
 import stt
 import tts
 import video_library
@@ -115,7 +116,6 @@ def _voice_loop_worker():
 
     while app_state.state["voice_loop_active"]:
         try:
-            app_state.arduino.set_mode("LISTEN")
             awake = app_state.state.get("voice_awake", True)
 
             # Mientras MECH narra NO abrimos el micrófono: lo está usando el
@@ -124,6 +124,20 @@ def _voice_loop_worker():
             if app_state.state.get("voice_phase") in ("thinking", "speaking"):
                 time.sleep(0.3)
                 continue
+
+            # Las ruedas están en medio de una maniobra (giro de 180°, vuelta
+            # al punto de inicio): no tocamos el Arduino hasta que termine.
+            if app_state.wheels_busy.is_set():
+                time.sleep(0.2)
+                continue
+
+            # OJO: esto va AQUÍ, justo antes de grabar, y NO al principio de
+            # la vuelta. En el firmware `MODE:LISTEN` ejecuta
+            # `stopAllMotors()`; mandarlo en cada iteración frenaba cualquier
+            # movimiento de ruedas a los ~300 ms de empezar (por eso el giro
+            # de 180° "no se movía"). Además `set_mode` ya no reenvía el modo
+            # que ya está puesto.
+            app_state.arduino.set_mode("LISTEN")
 
             # Si MECH acaba de terminar de hablar y quedó listo, sonamos el
             # chime y drenamos el parlante ANTES de abrir el micrófono — así no
@@ -488,6 +502,45 @@ async def arduino_reconnect():
     return {"ok": True, "connected": link.is_connected}
 
 
+@app.post("/api/move/outward")
+async def move_outward():
+    """"Mira hacia afuera": gira 180° y saluda al público.
+
+    Lo mismo que decirle "mira hacia afuera" por voz, pero desde el panel.
+    Corre en segundo plano porque la maniobra dura varios segundos (y la
+    petición HTTP no debe quedarse esperando)."""
+    mech = get_app()
+    if mech.state.get("voice_phase") in ("speaking", "thinking"):
+        return {"ok": False, "reason": "MECH está narrando; espera o interrúmpelo"}
+    threading.Thread(
+        target=maneuvers.look_outward, args=(mech,), daemon=True
+    ).start()
+    return {"ok": True}
+
+
+@app.post("/api/move/projection")
+async def move_projection():
+    """"Regresa a proyectar": deshace el giro y vuelve a su posición."""
+    mech = get_app()
+    threading.Thread(
+        target=maneuvers.back_to_projection, args=(mech,), daemon=True
+    ).start()
+    return {"ok": True}
+
+
+@app.post("/api/move/greet")
+async def move_greet():
+    """Dispara el saludo de bienvenida AHORA (sin esperar a la cámara).
+
+    Útil para probar el arco del brazo y la frase sin tener que entrar y
+    salir del campo de visión."""
+    mech = get_app()
+    if mech.state.get("voice_phase") in ("speaking", "thinking"):
+        return {"ok": False, "reason": "MECH está narrando ahora mismo"}
+    threading.Thread(target=mech.greet_now, daemon=True).start()
+    return {"ok": True}
+
+
 @app.post("/api/vision/{onoff}")
 async def vision_toggle(onoff: str):
     """Enciende/apaga el módulo de visión (cámara + detección de usuarios).
@@ -584,6 +637,18 @@ _LIVE_KEYS = {
     "VISION_MAX_SPEED": int,
     "GESTURE_WHEELS": _to_bool,
     "ARM_GESTURE_MODE": str,
+    "NARRATION_GESTURE_MODE": str,  # gestos simples (un brazo) al proyectar
+    "ARM_WAVE_SECONDS": float,      # qué tan lento es el saludo
+    "ARM_WAVE_HIGH": int,           # hasta dónde sube el brazo al saludar
+    "ARM_WAVE_SWING": int,          # amplitud de las agitadas de arriba
+    "ARM_WAVE_REPEATS": int,
+    "GREETING_COOLDOWN": float,
+    "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
+    # Maniobra "mira hacia afuera" (se calibra EN EL ROBOT, sin encoders).
+    "TURN_180_SPEED": int,
+    "TURN_180_SECONDS": float,
+    "TURN_LATERAL_SPEED": int,
+    "TURN_LATERAL_SECONDS": float,
 }
 # Claves que solo tienen efecto tras reiniciar el servidor.
 _RESTART_KEYS = {
@@ -620,6 +685,17 @@ async def get_config():
             "VISION_PROJECT_GATE": config.VISION_PROJECT_GATE,
             "GESTURE_WHEELS": config.GESTURE_WHEELS,
             "ARM_GESTURE_MODE": config.ARM_GESTURE_MODE,
+            "NARRATION_GESTURE_MODE": config.NARRATION_GESTURE_MODE,
+            "ARM_WAVE_SECONDS": config.ARM_WAVE_SECONDS,
+            "ARM_WAVE_HIGH": config.ARM_WAVE_HIGH,
+            "ARM_WAVE_SWING": config.ARM_WAVE_SWING,
+            "ARM_WAVE_REPEATS": config.ARM_WAVE_REPEATS,
+            "GREETING_COOLDOWN": config.GREETING_COOLDOWN,
+            "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,
+            "TURN_180_SPEED": config.TURN_180_SPEED,
+            "TURN_180_SECONDS": config.TURN_180_SECONDS,
+            "TURN_LATERAL_SPEED": config.TURN_LATERAL_SPEED,
+            "TURN_LATERAL_SECONDS": config.TURN_LATERAL_SECONDS,
         },
         "restart": {
             "AUDIO_INPUT_DEVICE": config.AUDIO_INPUT_DEVICE,

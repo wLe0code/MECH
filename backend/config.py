@@ -51,6 +51,55 @@ ARM_GESTURE_AMPLITUDE = int(os.environ.get("ARM_GESTURE_AMPLITUDE", "12"))
 GESTURE_WHEELS = os.environ.get("GESTURE_WHEELS", "true").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
+# Duración (segundos) del arco de SUBIDA (y de bajada) del saludo. El equipo
+# lo pidió LENTO y amable: es el gesto que ve todo el que se acerca al stand.
+# Súbelo para un saludo aún más pausado; bájalo si se siente eterno.
+ARM_WAVE_SECONDS = float(os.environ.get("ARM_WAVE_SECONDS", "2.2"))
+# Amplitud del saludo (sep 2026: "casi no se nota"). El brazo sube desde el
+# reposo (90°) hasta ARM_WAVE_HIGH y allí arriba hace ARM_WAVE_REPEATS
+# vaivenes de ARM_WAVE_SWING grados. Antes el tope era 170 y el vaivén 20°;
+# ahora llega arriba del todo y agita 65°, que se ve desde lejos.
+# Solo sube (90→180): NO bajar de 90, que es donde el brazo choca con el
+# cuerpo del robot.
+ARM_WAVE_HIGH = int(os.environ.get("ARM_WAVE_HIGH", "180"))
+ARM_WAVE_SWING = int(os.environ.get("ARM_WAVE_SWING", "65"))
+ARM_WAVE_REPEATS = int(os.environ.get("ARM_WAVE_REPEATS", "3"))
+# Gestos MIENTRAS NARRA (proyectando):
+#   "simple" (default) = UN solo brazo, recorrido corto y lento. Los servos
+#                        gastan poco y la proyección no se llena de ruido
+#                        mecánico. Es lo que pidió el equipo (ago 2026).
+#   "full"             = las coreografías completas (dos brazos, ruedas).
+# El SALUDO no se ve afectado: siempre usa la coreografía completa.
+NARRATION_GESTURE_MODE = os.environ.get(
+    "NARRATION_GESTURE_MODE", "simple"
+).strip().lower()
+# Segundos entre saludos a la cámara. Bajo = saluda a cada visitante nuevo;
+# alto = no repite el saludo a quien lleva rato enfrente.
+GREETING_COOLDOWN = float(os.environ.get("GREETING_COOLDOWN", "45"))
+
+# --- Maniobra "mira hacia afuera" / "regresa a proyectar" ------------------
+# MECH gira 180° para saludar al público que pasa y luego vuelve a quedar
+# apuntando a donde proyecta. SIN encoders: el giro se mide POR TIEMPO, así
+# que TURN_180_SECONDS hay que CALIBRARLO en el robot real (Ajustes del
+# panel, en vivo): ponlo a girar y ajusta hasta que quede de espaldas.
+# ⚠️ POTENCIA AL MÁXIMO por defecto (sep 2026). Los motores y las ruedas
+# actuales son de mal material y el L298N se "come" ~2 V: a media potencia
+# los motores zumban y no rompen la fricción estática, sobre todo girando
+# (las mecanum arrastran los rodillos de lado). 100 = PWM 255. Si el giro
+# sale demasiado brusco, baja PRIMERO los segundos, no la velocidad.
+TURN_180_SPEED = int(os.environ.get("TURN_180_SPEED", "100"))
+TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "2.0"))
+# Desplazamiento LATERAL que acompaña al giro (las mecanum lo permiten): se
+# aparta de la pared/mesa de proyección antes de girar sobre sí mismo, y al
+# volver deshace exactamente el mismo tramo. 0 s = giro puro, sin lateral
+# (útil para aislar el problema si algo no se mueve).
+TURN_LATERAL_SPEED = int(os.environ.get("TURN_LATERAL_SPEED", "100"))
+TURN_LATERAL_SECONDS = float(os.environ.get("TURN_LATERAL_SECONDS", "0.5"))
+# Arranque a fondo: cada tramo empieza con un pulso a potencia MÁXIMA para
+# romper la fricción estática, y recién después baja a la velocidad pedida.
+# Es el truco clásico cuando un motor "zumba pero no arranca". Si la
+# velocidad pedida ya es 100, el pulso no cambia nada. 0 = desactivado.
+MOTOR_KICK_SECONDS = float(os.environ.get("MOTOR_KICK_SECONDS", "0.15"))
 
 # RoboKit RS — movimiento por "bus de pines".
 # La Pi pone estos pines GPIO (BCM) en alto/bajo; el RoboKit corre un programa
@@ -162,6 +211,40 @@ INTERRUPT_MAX_UTTERANCE = float(os.environ.get("INTERRUPT_MAX_UTTERANCE", "4.0")
 # esto es lo que más recorta el retardo entre "oye MECH" y el corte. De paso
 # hace que dispare antes (el disparo pide media ventana de voz).
 INTERRUPT_SILENCE_TIMEOUT = float(os.environ.get("INTERRUPT_SILENCE_TIMEOUT", "0.6"))
+
+# --- Órdenes de movimiento por voz ---------------------------------------
+# Dos órdenes que NO pasan por Claude (son instantáneas y no gastan crédito):
+#   "mira hacia afuera"   -> gira 180° y saluda al público que pasa.
+#   "regresa a proyectar" -> deshace el giro y vuelve a su posición.
+# Ver backend/maneuvers.py. El match es por palabras en cualquier orden, así
+# que "MECH, mirá hacia afuera" o "mira afuera" también funcionan.
+VOICE_OUTWARD_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_OUTWARD_PHRASES",
+        "mira hacia afuera,mira afuera,mira para afuera,voltea hacia afuera,"
+        "date la vuelta,saluda afuera,saluda a la gente",
+    ).split(",") if p.strip()
+]
+VOICE_OUTWARD_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_OUTWARD_PHRASES_EN",
+        "look outside,look outward,turn around,face the crowd,greet the people",
+    ).split(",") if p.strip()
+]
+VOICE_PROJECT_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_PROJECT_PHRASES",
+        "regresa a proyectar,vuelve a proyectar,regresa a tu posicion,"
+        "vuelve a tu posicion,regresa a la proyeccion,ponte a proyectar",
+    ).split(",") if p.strip()
+]
+VOICE_PROJECT_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_PROJECT_PHRASES_EN",
+        "back to projecting,go back to projecting,turn back,"
+        "back to your position,face the screen",
+    ).split(",") if p.strip()
+]
 
 # --- Modo inglés (opcional) ----------------------------------------------
 # MECH vive en español. El INGLÉS se activa SI Y SOLO SI se le despierta con

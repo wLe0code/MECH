@@ -184,6 +184,12 @@ backend/
   gestures.py         ← Coreografías reales de gestos (wave, excited...)
                         con interpolación suave; modos full/subtle/off;
                         opcionalmente mueve ruedas (GESTURE_WHEELS).
+                        perform() = coreografía completa (saludo, panel);
+                        perform_talking() = versión SIMPLE de un solo brazo
+                        para MIENTRAS proyecta.
+  maneuvers.py        ← "mira hacia afuera" / "regresa a proyectar": giro de
+                        180° (lateral + rotación) y su vuelta exacta. Guarda
+                        hacia dónde mira en state["facing"].
   vision.py           ← C930e + MediaPipe: presencia, posición y distancia
                         del usuario; seguir/acercarse; gate de proyección.
   projector.py        ← Visor tkinter ALTERNATIVO (solo para main.py standalone).
@@ -495,6 +501,82 @@ Definidos en `backend/gestures.py` y referenciados en el system prompt de `llm.p
 `neutral`, `excited`, `thoughtful`, `wave`, `point`, `arms_open`.
 Si añades uno nuevo, **modifica ambos archivos** y el `Literal[...]` del schema en `llm.py`.
 
+### Dos "tamaños" de gesto (ago 2026) — NO los mezcles
+
+El equipo pidió que MIENTRAS PROYECTA los brazos se muevan **muy poco**
+("que simplemente mueva un brazo, para que no gaste casi energía"), pero que
+el SALUDO siga siendo el arco amplio del video. Por eso hay dos entradas:
+
+| Función | Cuándo | Qué hace |
+|---|---|---|
+| `gestures.perform(link, g)` | Saludo por cámara, giro hacia afuera, planes `mode="movement"` ("saluda al público"), botones del panel | Coreografía **completa** (`_FULL_GESTURES`): dos brazos, arco hasta 170°, a veces ruedas. |
+| `gestures.perform_talking(link, g)` | Cada segmento de `execute_plan` (o sea, narrando/proyectando) | Versión **simple** (`_TALK_GESTURES`): UN brazo, máx. 115° (reposo 90), lento, **sin ruedas**, y `neutral` no manda nada. |
+
+`NARRATION_GESTURE_MODE=full` (Ajustes → "Al narrar") devuelve las
+coreografías completas también al narrar. `ARM_GESTURE_MODE` (full/subtle/off)
+sigue mandando por encima de las dos.
+
+**El saludo es lento y AMPLIO a propósito** (todo ajustable en vivo):
+`ARM_WAVE_SECONDS` (2.2 s) es lo que tarda en subir y bajar; `ARM_WAVE_HIGH`
+(180°) hasta dónde llega; `ARM_WAVE_SWING` (65°) y `ARM_WAVE_REPEATS` (3) las
+agitadas de arriba. Antes era 170° con UN vaivén de 20° y el equipo dijo que
+"casi no se notaba" (sep 2026).
+**El brazo solo sube (90 → 180). Por debajo de 90 choca con el cuerpo** — el
+código lo topa ahí; no bajes ese límite sin verlo en el robot.
+
+### "Mira hacia afuera" / "Regresa a proyectar" (giro de 180°)
+
+`backend/maneuvers.py`. En el stand MECH mira a la superficie donde proyecta;
+con estas dos órdenes se pone de cara al público y vuelve.
+
+- **Se atienden SIN pasar por Claude**: `mech_app.handle_movement_command()`
+  las intercepta al principio de `handle_text_command`, así que responden al
+  instante y no gastan crédito de API. Frases en `config.VOICE_OUTWARD_PHRASES`
+  / `VOICE_PROJECT_PHRASES` (+ `_EN`), detección en `voice_phrases`.
+- **La maniobra**: primero un tramo **lateral** (`vy`, para apartarse de la
+  mesa/pared antes de rotar) y luego el **giro** (`w`). La vuelta hace lo
+  mismo al revés y con el signo cambiado, así que termina donde empezó.
+  Nunca usa `vx` (eso lo lleva el odómetro de `return_to_start`).
+- ⚠️ **`MODE:LISTEN` FRENA LOS MOTORES.** En el firmware, `applyMode()` llama
+  a `stopAllMotors()` para LISTEN/SPEAK/STOP. El bucle de voz mandaba
+  `MODE:LISTEN` en CADA vuelta (cada 0.3 s mientras narra), así que cualquier
+  movimiento de ruedas moría a los ~300 ms: el giro de 180° "no se movía" y
+  `return_to_start()` tampoco funcionaba con el bucle de voz activo.
+  Arreglado (sep 2026) en tres capas — **no deshagas ninguna**:
+  1. `arduino_link.set_mode()` **no reenvía el modo que ya está puesto**
+     (`force=True` solo para la reconexión, donde el Arduino se reseteó).
+  2. En `server._voice_loop_worker`, el `set_mode("LISTEN")` va **justo antes
+     de grabar**, no al principio de la vuelta.
+  3. `mech_app.wheels_busy` (Event): mientras una maniobra mueve las ruedas,
+     el bucle de voz no toca el Arduino. Lo toman `maneuvers._WheelsHeld` y
+     `return_to_start()`. `_WheelsHeld` además pone el modo en **AUTO**, que
+     es el único que no frena los motores.
+- **POTENCIA AL MÁXIMO por defecto.** `TURN_180_SPEED`/`TURN_LATERAL_SPEED`
+  valían 55/45 y no movían nada: en el firmware la velocidad se escala a PWM
+  (`v * 255 / 100`), así que 55 → 140/255. Con motores de mal material y el
+  L298N comiéndose ~2 V, eso no rompe la fricción estática (peor girando: las
+  mecanum arrastran los rodillos de lado). Ahora el default es **100** (PWM
+  255). Si el giro sale brusco, baja **los segundos**, no la velocidad.
+  Además `MOTOR_KICK_SECONDS` (0.15 s) arranca cada tramo a fondo antes de
+  bajar a la velocidad pedida — el truco clásico para "zumba pero no arranca".
+- **Los tramos van SEPARADOS (lateral, luego giro) a propósito.** Si se
+  mandan mezclados (`MOVE:0:100:100`), la normalización de `driveOmni` reparte
+  y deja ruedas a 0. Mezclar = menos fuerza justo donde hace falta.
+- **SIN encoders: el giro se mide POR TIEMPO.** `TURN_180_SECONDS` HAY QUE
+  CALIBRARLO en el robot real — Ajustes → "Giro de 180° — Calibración"
+  (en vivo, sin reiniciar). Junto con `TURN_180_SPEED`,
+  `TURN_LATERAL_SECONDS`, `TURN_LATERAL_SPEED`.
+- **Estado**: `state["facing"]` = `"projection"` | `"outward"`, evento WS
+  `facing`, visible en la vista Arduino del panel. Un `look_outward` estando
+  ya afuera no gira otra vez (un giro doble a ciegas sería irrecuperable).
+- **`execute_plan` se da vuelta solo**: si le piden una historia estando de
+  espaldas, vuelve a la posición de proyección antes de narrar.
+- **Paro de emergencia** = `maneuvers.assume_projection()`: tras un paro no
+  sabemos hacia dónde quedó, así que se asume "projection" y el operador lo
+  recoloca a mano (igual que el reset del odómetro).
+- Botones en el panel (vista Arduino) y endpoints `POST /api/move/outward`,
+  `/api/move/projection`, `/api/move/greet`.
+
 ### Protocolo Arduino (líneas terminadas en `\n` a 115200 baud)
 
 ```
@@ -723,6 +805,21 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   ~15 car/s y se adelantaban en cada pausa de MECH. Respaldo automático
   (reparto proporcional) si la API no devuelve las marcas.
 
+- **Movilidad al día (ago/sep 2026)** — cuatro cosas:
+  1. **Giro de 180°** con `maneuvers.py`: «mira hacia afuera» gira (lateral +
+     rotación), saluda al público y lo anuncia; «regresa a proyectar» deshace
+     el giro exacto. Sin pasar por Claude. `state["facing"]` en el panel.
+     ⚠️ `TURN_180_SECONDS` se calibra en el robot (Ajustes, en vivo).
+  2. **Saludo por cámara arreglado**: el brazo y la voz van JUNTOS y bajo el
+     MISMO cooldown (`GREETING_COOLDOWN`, 45 s). Antes el brazo se disparaba
+     en CADA detección, también dentro del cooldown — y como la visión se
+     pausa mientras narra, al terminar cada narración "redetectaba" y el
+     brazo se movía solo, sin decir nada. Botón «SALUDAR AHORA» en el panel
+     (`POST /api/move/greet`) para probarlo sin usar la cámara.
+  3. **Saludo más lento**: `ARM_WAVE_SECONDS` (2.2 s, antes 1.3 fijos).
+  4. **Gestos mínimos al proyectar**: `perform_talking()` mueve UN solo brazo,
+     máx. 115°, sin ruedas (`NARRATION_GESTURE_MODE=simple`). Los planes
+     `mode="movement"` ("saluda al público") siguen con el gesto completo.
 - **Interrupción por voz mientras narra (ago 2026)** — "oye MECH" (es) /
   "hey MECH" (en) corta la presentación en cualquier momento:
   `backend/interrupt_listener.py` + `mech_app._on_interrupt()`. Si la frase
@@ -775,7 +872,22 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     apagá "Interrumpir" (`VOICE_INTERRUPT_ENABLED=false`). Y si NO se deja
     interrumpir, revisá que el `.env` de la Pi no tenga
     `VOICE_INTERRUPT_PHRASES` con otra lista.
-19. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
+19. **Si las ruedas "no se mueven", sospecha de `MODE:LISTEN` ANTES que del
+    código de movimiento.** En el firmware ese comando llama a
+    `stopAllMotors()`. Comprobación rápida: `MOVE:0:0:100` desde el panel
+    (vista Arduino → comando crudo) con el bucle de voz APAGADO. Si ahí se
+    mueve y con el bucle encendido no, es esto. Ver la sección del giro.
+20. **Velocidad ≠ potencia.** El firmware escala `v * 255 / 100`: velocidad
+    50 son 127/255 de PWM, y con estos motores + L298N eso normalmente solo
+    zumba. Para probar movimiento SIEMPRE usa 100.
+21. **El giro de 180° no tiene encoders: se mide por TIEMPO.** Si MECH se
+    queda a 90° o se pasa, NO es un bug — hay que calibrar `TURN_180_SECONDS`
+    en Ajustes (en vivo). Cambiar de batería, de suelo o de ruedas obliga a
+    recalibrarlo. Si el giro sale al revés (gira hacia el lado equivocado),
+    voltear el signo de `w` en `driveOmni()` del .ino, no en `maneuvers.py`.
+22. **`VOICE_OUTWARD_PHRASES` / `VOICE_PROJECT_PHRASES` en el `.env` de la Pi
+    tapan el default**, igual que las de wake/sleep/interrupt.
+23. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
 
 ---
 

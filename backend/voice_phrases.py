@@ -120,6 +120,28 @@ def strip_interrupt(text: str) -> str:
     return ""
 
 
+# --- Órdenes de movimiento (no pasan por Claude) --------------------------
+# "mira hacia afuera" / "regresa a proyectar". Se aceptan las listas de los
+# DOS idiomas siempre: son frases largas y distintivas, no chocan con nada, y
+# si Whisper transcribió en el idioma equivocado igual queremos obedecer.
+
+
+def is_look_outward(text: str) -> bool:
+    """¿Le están pidiendo que gire 180° y salude hacia afuera?"""
+    return matches_any(
+        text,
+        list(config.VOICE_OUTWARD_PHRASES) + list(config.VOICE_OUTWARD_PHRASES_EN),
+    )
+
+
+def is_back_to_projection(text: str) -> bool:
+    """¿Le están pidiendo que vuelva a su posición de proyección?"""
+    return matches_any(
+        text,
+        list(config.VOICE_PROJECT_PHRASES) + list(config.VOICE_PROJECT_PHRASES_EN),
+    )
+
+
 def is_sleep(text: str) -> bool:
     """Frase de reposo en español."""
     return matches_any(text, config.VOICE_SLEEP_PHRASES)
