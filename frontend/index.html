@@ -260,17 +260,17 @@
           <div class="fw-key" style="margin-bottom:8px">MOVIMIENTO (ruedas omnidireccionales)</div>
           <div class="arduino-cmd-grid">
             <div></div>
-            <button class="arduino-btn"  onpointerdown="API.move(60,0,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↑ AVANZAR</button>
+            <button class="arduino-btn"  onpointerdown="API.move(100,0,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↑ AVANZAR</button>
             <div></div>
-            <button class="arduino-btn"  onpointerdown="API.move(0,-60,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">← LATERAL</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,-100,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">← LATERAL</button>
             <button class="arduino-btn danger" onclick="API.move(0,0,0)">■ ALTO</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,60,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">→ LATERAL</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,0,-60)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟲ GIRO IZQ</button>
-            <button class="arduino-btn"  onpointerdown="API.move(-60,0,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↓ ATRÁS</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,0,60)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟳ GIRO DER</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,100,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">→ LATERAL</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,-100)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟲ GIRO IZQ</button>
+            <button class="arduino-btn"  onpointerdown="API.move(-100,0,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↓ ATRÁS</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,100)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟳ GIRO DER</button>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
-            Mantén presionado el botón para mover. Soltar = detiene.
+            Mantén presionado el botón para mover. Soltar = detiene. Todo va a POTENCIA MÁXIMA (100): a menos, estos motores solo zumban.
           </div>
         </div>
 
@@ -474,6 +474,13 @@
             <label title="Cuántas veces agita el brazo arriba antes de bajarlo.">Saludo agitadas</label>
             <input type="range" min="1" max="6" step="1" value="3" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
             <span class="val" id="set-waverep-val">3</span>
+          </div>
+          <div class="slider-row">
+            <label title="El saludo levanta los DOS brazos (el derecho agita, el izquierdo acompaña).">Saludo brazos</label>
+            <label class="switch">
+              <input type="checkbox" id="set-waveboth">
+              <span class="switch-text">Saludar con los dos brazos</span>
+            </label>
           </div>
           <div class="slider-row">
             <label title="Segundos entre saludos a la cámara. Bajo = saluda a cada visitante nuevo.">Repetir saludo</label>

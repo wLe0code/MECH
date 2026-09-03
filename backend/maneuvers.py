@@ -83,8 +83,16 @@ def _drive(app, vx: int, vy: int, w: int, seconds: float) -> None:
     potencia hace que zumben sin moverse. Si la velocidad pedida ya es 100,
     el pulso no cambia nada."""
     if seconds <= 0:
+        app.log(
+            f"Tramo de ruedas saltado: duran 0 s "
+            f"(MOVE:{vx}:{vy}:{w}). Revisa TURN_*_SECONDS en Ajustes.",
+            "warn",
+        )
         return
     kick = min(config.MOTOR_KICK_SECONDS, seconds)
+    # Log explícito: si en el stand "no se mueve", aquí se ve si la orden
+    # llegó a salir y con qué potencia.
+    app.log(f"Ruedas: MOVE:{vx}:{vy}:{w} durante {seconds:.2f} s", "info")
     try:
         if kick > 0 and max(abs(vx), abs(vy), abs(w)) < 100:
             app.arduino.move(_sign(vx) * 100, _sign(vy) * 100, _sign(w) * 100)

@@ -51,6 +51,13 @@ ARM_GESTURE_AMPLITUDE = int(os.environ.get("ARM_GESTURE_AMPLITUDE", "12"))
 GESTURE_WHEELS = os.environ.get("GESTURE_WHEELS", "true").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
+# Velocidad del balanceo de ruedas de los gestos. También a fondo: a media
+# potencia no se movía. Como es a 100, los tramos son MUY cortos
+# (GESTURE_WHEEL_SECONDS) para que sea un golpecito y no un viaje.
+GESTURE_WHEEL_SPEED = int(os.environ.get("GESTURE_WHEEL_SPEED", "100"))
+GESTURE_WHEEL_SECONDS = float(os.environ.get("GESTURE_WHEEL_SECONDS", "0.18"))
+# Velocidad con la que vuelve al punto de inicio (return_to_start).
+RETURN_SPEED = int(os.environ.get("RETURN_SPEED", "100"))
 # Duración (segundos) del arco de SUBIDA (y de bajada) del saludo. El equipo
 # lo pidió LENTO y amable: es el gesto que ve todo el que se acerca al stand.
 # Súbelo para un saludo aún más pausado; bájalo si se siente eterno.
@@ -64,6 +71,11 @@ ARM_WAVE_SECONDS = float(os.environ.get("ARM_WAVE_SECONDS", "2.2"))
 ARM_WAVE_HIGH = int(os.environ.get("ARM_WAVE_HIGH", "180"))
 ARM_WAVE_SWING = int(os.environ.get("ARM_WAVE_SWING", "65"))
 ARM_WAVE_REPEATS = int(os.environ.get("ARM_WAVE_REPEATS", "3"))
+# El saludo levanta LOS DOS brazos (el derecho agita, el izquierdo
+# acompaña). El equipo pidió que se moviera más al ver a alguien.
+ARM_WAVE_BOTH = os.environ.get("ARM_WAVE_BOTH", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 # Gestos MIENTRAS NARRA (proyectando):
 #   "simple" (default) = UN solo brazo, recorrido corto y lento. Los servos
 #                        gastan poco y la proyección no se llena de ruido
@@ -335,7 +347,10 @@ VISION_FOLLOW = _bool_env("VISION_FOLLOW", "false")
 # comportamiento y ya calibraste la distancia mínima.
 VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "false")
 # Velocidad máxima (0-100) de los movimientos autónomos de visión.
-VISION_MAX_SPEED = int(os.environ.get("VISION_MAX_SPEED", "35"))
+# POTENCIA MÁXIMA (sep 2026, pedido del equipo): TODO lo que mueve ruedas
+# va a 100. Con estos motores y el L298N, menos de 100 normalmente solo
+# zumba. Los BRAZOS son la excepción (van suaves, ver ARM_*).
+VISION_MAX_SPEED = int(os.environ.get("VISION_MAX_SPEED", "100"))
 
 
 def assert_required() -> None:

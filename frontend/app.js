@@ -550,6 +550,7 @@
       setSlider('set-wavehigh', 'wavehigh', L.ARM_WAVE_HIGH);
       setSlider('set-waveswing', 'waveswing', L.ARM_WAVE_SWING);
       setSlider('set-waverep', 'waverep', L.ARM_WAVE_REPEATS);
+      if ($('set-waveboth')) $('set-waveboth').checked = L.ARM_WAVE_BOTH !== false;
       setSlider('set-greetcd', 'greetcd', L.GREETING_COOLDOWN);
       // Calibración del giro de 180°
       setSlider('set-turnsec', 'turnsec', L.TURN_180_SECONDS);
@@ -602,6 +603,7 @@
         ARM_WAVE_HIGH: String(parseInt($('set-wavehigh').value)),
         ARM_WAVE_SWING: String(parseInt($('set-waveswing').value)),
         ARM_WAVE_REPEATS: String(parseInt($('set-waverep').value)),
+        ARM_WAVE_BOTH: $('set-waveboth').checked ? 'true' : 'false',
         GREETING_COOLDOWN: $('set-greetcd').value,
         TURN_180_SECONDS: $('set-turnsec').value,
         TURN_180_SPEED: String(parseInt($('set-turnvel').value)),

@@ -523,6 +523,10 @@ agitadas de arriba. Antes era 170° con UN vaivén de 20° y el equipo dijo que
 "casi no se notaba" (sep 2026).
 **El brazo solo sube (90 → 180). Por debajo de 90 choca con el cuerpo** — el
 código lo topa ahí; no bajes ese límite sin verlo en el robot.
+El saludo levanta **los DOS brazos** (`ARM_WAVE_BOTH`, default true): el
+derecho agita, el izquierdo sube y acompaña. Y **`ARM_GESTURE_MODE=subtle` ya
+no encoge el saludo** — solo `off` lo desactiva. Antes, un `.env` con
+`subtle` dejaba el saludo de bienvenida en un vaivén de 12° que no se veía.
 
 ### "Mira hacia afuera" / "Regresa a proyectar" (giro de 180°)
 
@@ -551,6 +555,12 @@ con estas dos órdenes se pone de cara al público y vuelve.
      el bucle de voz no toca el Arduino. Lo toman `maneuvers._WheelsHeld` y
      `return_to_start()`. `_WheelsHeld` además pone el modo en **AUTO**, que
      es el único que no frena los motores.
+- **TODO lo que mueve ruedas va a POTENCIA 100** (sep 2026, pedido del
+  equipo): giro, lateral, `VISION_MAX_SPEED` (acercarse), `RETURN_SPEED`
+  (`return_to_start`), `GESTURE_WHEEL_SPEED` (balanceo de gestos) y los
+  botones del panel. **Los BRAZOS son la excepción**: van lentos y suaves.
+  El balanceo de gestos, al ir a 100, dura muy poco (`GESTURE_WHEEL_SECONDS`,
+  0.18 s) para que sea un acento y no un desplazamiento.
 - **POTENCIA AL MÁXIMO por defecto.** `TURN_180_SPEED`/`TURN_LATERAL_SPEED`
   valían 55/45 y no movían nada: en el firmware la velocidad se escala a PWM
   (`v * 255 / 100`), así que 55 → 140/255. Con motores de mal material y el
@@ -872,22 +882,31 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     apagá "Interrumpir" (`VOICE_INTERRUPT_ENABLED=false`). Y si NO se deja
     interrumpir, revisá que el `.env` de la Pi no tenga
     `VOICE_INTERRUPT_PHRASES` con otra lista.
-19. **Si las ruedas "no se mueven", sospecha de `MODE:LISTEN` ANTES que del
+19. **Si «mira hacia afuera» solo produce `ACK:ARM` y ningún `ACK:MOVE`, la
+    Pi está corriendo el CÓDIGO VIEJO.** Sin el intercept de
+    `handle_movement_command`, la frase se la come Claude como un plan
+    `mode="movement"` → gesto `wave` → solo comandos `ARM`. Se verifica en el
+    arranque del server: si NO sale la línea `Movilidad v2 (sep 2026): ...`,
+    hicieron `git pull` pero no reiniciaron. Ver `MOVILIDAD_VERSION` en
+    server.py — **súbela cuando cambies algo de movimiento**.
+    Además, cada tramo de la maniobra loguea `Ruedas: MOVE:x:y:z durante N s`
+    en el panel, y avisa con `warn` si un tramo quedó en 0 s.
+20. **Si las ruedas "no se mueven", sospecha de `MODE:LISTEN` ANTES que del
     código de movimiento.** En el firmware ese comando llama a
     `stopAllMotors()`. Comprobación rápida: `MOVE:0:0:100` desde el panel
     (vista Arduino → comando crudo) con el bucle de voz APAGADO. Si ahí se
     mueve y con el bucle encendido no, es esto. Ver la sección del giro.
-20. **Velocidad ≠ potencia.** El firmware escala `v * 255 / 100`: velocidad
+21. **Velocidad ≠ potencia.** El firmware escala `v * 255 / 100`: velocidad
     50 son 127/255 de PWM, y con estos motores + L298N eso normalmente solo
     zumba. Para probar movimiento SIEMPRE usa 100.
-21. **El giro de 180° no tiene encoders: se mide por TIEMPO.** Si MECH se
+22. **El giro de 180° no tiene encoders: se mide por TIEMPO.** Si MECH se
     queda a 90° o se pasa, NO es un bug — hay que calibrar `TURN_180_SECONDS`
     en Ajustes (en vivo). Cambiar de batería, de suelo o de ruedas obliga a
     recalibrarlo. Si el giro sale al revés (gira hacia el lado equivocado),
     voltear el signo de `w` en `driveOmni()` del .ino, no en `maneuvers.py`.
-22. **`VOICE_OUTWARD_PHRASES` / `VOICE_PROJECT_PHRASES` en el `.env` de la Pi
+23. **`VOICE_OUTWARD_PHRASES` / `VOICE_PROJECT_PHRASES` en el `.env` de la Pi
     tapan el default**, igual que las de wake/sleep/interrupt.
-23. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
+24. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
 
 ---
 

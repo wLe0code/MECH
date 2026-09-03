@@ -266,6 +266,12 @@ def stop_voice_loop():
     app_state.emit("state", state=app_state.state)
 
 
+# Versión del subsistema de MOVILIDAD (giro de 180°, saludo, gestos). Se
+# loguea al arrancar para poder confirmar QUÉ código está corriendo en la Pi.
+# Súbela cuando cambies algo de movimiento.
+MOVILIDAD_VERSION = "v2 (sep 2026)"
+
+
 # -- FastAPI lifespan --------------------------------------------------------
 
 
@@ -275,6 +281,17 @@ async def lifespan(app: FastAPI):
     mech = get_app()
     mech.bind_loop(asyncio.get_running_loop())
     mech.log("Servidor MECH iniciado", "ok")
+    # Huella de la versión de MOVILIDAD. Sirve para saber de un vistazo si la
+    # Pi está corriendo el código nuevo: si esta línea NO sale en el arranque,
+    # hiciste `git pull` pero NO reiniciaste el server, y "mira hacia afuera"
+    # se la va a comer Claude como un plan de gestos (solo ACK:ARM, sin ruedas).
+    mech.log(
+        f"Movilidad {MOVILIDAD_VERSION}: 'mira hacia afuera' / 'regresa a "
+        f"proyectar' activas · giro {config.TURN_180_SECONDS} s a potencia "
+        f"{config.TURN_180_SPEED} (lateral {config.TURN_LATERAL_SECONDS} s a "
+        f"{config.TURN_LATERAL_SPEED})",
+        "ok",
+    )
     # Autostart en reposo: MECH queda escuchando solo "ok MECH".
     if config.VOICE_AUTOSTART:
         mech.log("Voz en reposo: di 'ok MECH' para activarlo.", "info")
@@ -644,6 +661,10 @@ _LIVE_KEYS = {
     "ARM_WAVE_REPEATS": int,
     "GREETING_COOLDOWN": float,
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
+    "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos
+    "RETURN_SPEED": int,
+    "GESTURE_WHEEL_SPEED": int,
+    "GESTURE_WHEEL_SECONDS": float,
     # Maniobra "mira hacia afuera" (se calibra EN EL ROBOT, sin encoders).
     "TURN_180_SPEED": int,
     "TURN_180_SECONDS": float,
@@ -692,6 +713,10 @@ async def get_config():
             "ARM_WAVE_REPEATS": config.ARM_WAVE_REPEATS,
             "GREETING_COOLDOWN": config.GREETING_COOLDOWN,
             "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,
+            "ARM_WAVE_BOTH": config.ARM_WAVE_BOTH,
+            "RETURN_SPEED": config.RETURN_SPEED,
+            "GESTURE_WHEEL_SPEED": config.GESTURE_WHEEL_SPEED,
+            "GESTURE_WHEEL_SECONDS": config.GESTURE_WHEEL_SECONDS,
             "TURN_180_SPEED": config.TURN_180_SPEED,
             "TURN_180_SECONDS": config.TURN_180_SECONDS,
             "TURN_LATERAL_SPEED": config.TURN_LATERAL_SPEED,

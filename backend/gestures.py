@@ -111,18 +111,25 @@ def _g_wave(link: ArduinoLink) -> None:
     alto = max(_NEUTRAL + 10, min(180, config.ARM_WAVE_HIGH))
     # El vaivén nunca baja del reposo (ahí choca con el cuerpo).
     bajo = max(_NEUTRAL, alto - max(10, config.ARM_WAVE_SWING))
-    _move_smooth(link, _NEUTRAL, alto, subida)   # sube en arco hasta arriba
+    # Brazo izquierdo: sube y se queda arriba acompañando (no agita, para que
+    # el gesto se lea claro). Con ARM_WAVE_BOTH=false vuelve a ser un brazo.
+    izq = alto if config.ARM_WAVE_BOTH else _NEUTRAL
+    _move_smooth(link, izq, alto, subida)   # suben en arco hasta arriba
     for _ in range(max(1, config.ARM_WAVE_REPEATS)):
-        _move_smooth(link, _NEUTRAL, bajo, vaiven)   # agita, amplio
-        _move_smooth(link, _NEUTRAL, alto, vaiven)
-    _move_smooth(link, _NEUTRAL, _NEUTRAL, subida)  # baja hasta el reposo
+        _move_smooth(link, izq, bajo, vaiven)   # el derecho agita, amplio
+        _move_smooth(link, izq, alto, vaiven)
+    _move_smooth(link, _NEUTRAL, _NEUTRAL, subida)  # bajan hasta el reposo
 
 
 def _g_excited(link: ArduinoLink) -> None:
     # Entusiasmo CONTENIDO (video 2): ambos brazos suben poco y rebotan
     # suave; balanceo corto adelante/atrás del cuerpo.
+    # Golpecito adelante/atrás a POTENCIA MÁXIMA (a media no se movía) pero
+    # muy corto, para que sea un acento y no un desplazamiento.
+    v = max(10, min(100, config.GESTURE_WHEEL_SPEED))
+    d = config.GESTURE_WHEEL_SECONDS
     threading.Thread(
-        target=_wheels, args=(link, [(14, 0.3), (-14, 0.3)]), daemon=True
+        target=_wheels, args=(link, [(v, d), (-v, d)]), daemon=True
     ).start()
     _move_smooth(link, 122, 122, 0.6)
     for _ in range(2):
@@ -240,7 +247,10 @@ def _perform(link: ArduinoLink, gesture: str, talking: bool) -> None:
                 link.arm("R", _NEUTRAL)
                 _current["L"] = _current["R"] = _NEUTRAL
                 return
-            if mode == "subtle":
+            # El SALUDO nunca se encoge: es el gesto que ve todo el que se
+            # acerca al stand, y con ARM_GESTURE_MODE=subtle quedaba en un
+            # vaivén de 12° que no se notaba. Solo "off" lo desactiva.
+            if mode == "subtle" and not (gesture == "wave" and not talking):
                 _g_subtle(link)
                 return
             if talking and config.NARRATION_GESTURE_MODE != "full":

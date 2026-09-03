@@ -184,7 +184,12 @@ class MechApp:
 
     def log(self, message: str, level: str = "info") -> None:
         """Emite un log y lo imprime en stdout."""
-        print(f"[{level}] {message}")
+        try:
+            print(f"[{level}] {message}")
+        except UnicodeEncodeError:
+            # Consolas cp1252 (Windows) con caracteres que no saben pintar.
+            # Nunca dejamos que un log rompa lo que estaba haciendo el robot.
+            print(f"[{level}] {message.encode('ascii', 'replace').decode()}")
         self.emit("log", message=message, level=level, ts=time.time())
 
     # Patrón del aro de LEDs (estilo Alexa) para cada fase de voz.
@@ -631,7 +636,9 @@ class MechApp:
         if abs(net) < 8:  # desplazamiento despreciable
             self.arduino.reset_odometer()
             return
-        speed = 40
+        # A fondo: a media potencia estos motores no arrancan. El odómetro
+        # está en unidades %vel·s, así que a más velocidad, menos tiempo.
+        speed = max(10, min(100, config.RETURN_SPEED))
         secs = min(abs(net) / speed, 6.0)
         self.log(
             f"Volviendo al punto de inicio ({secs:.1f} s hacia "

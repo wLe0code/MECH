@@ -210,6 +210,37 @@ calibró en julio. Se comprobó reproduciendo `driveOmni()` en la simulación.
 **El saludo también se agrandó**: llegaba a 170° con UN vaivén de 20°; ahora
 llega a 180° y agita 65° tres veces (`ARM_WAVE_HIGH`/`SWING`/`REPEATS`).
 
+### Tercera pasada: "solo sale ACK:ARM"
+
+El equipo probó y **la orden no producía ningún comando de ruedas, solo
+`ACK:ARM`**. Ese síntoma es exactamente lo que hace el CÓDIGO VIEJO: sin el
+intercept de `handle_movement_command`, «mira hacia afuera» se la come Claude
+como un plan `mode="movement"` → gesto `wave` → solo comandos `ARM`. Se
+comprobó que el matcher reconoce todas las variantes reales de Whisper
+("Mira/Mire/Mirá hacia afuera/fuera", con y sin "MECH" delante), y que por la
+ruta real la maniobra emite `MOVE:0:100:0 · STOP · MOVE:0:0:100 · STOP` ANTES
+del `ARM`. O sea: la Pi tenía `git pull` pero **sin reiniciar el server**.
+
+Para que no vuelva a pasar a ciegas:
+- El server loguea al arrancar **`Movilidad v2 (sep 2026): ...`** con los
+  parámetros del giro. Si esa línea no sale, está corriendo código viejo.
+  (`MOVILIDAD_VERSION` en server.py — subirla al tocar movimiento.)
+- Cada tramo loguea **`Ruedas: MOVE:x:y:z durante N s`** en el panel, y avisa
+  con `warn` si un tramo quedó en 0 s.
+
+También en esta pasada:
+- **Potencia 100 en TODO lo que mueve ruedas** (antes solo el giro): visión
+  al acercarse, `return_to_start`, balanceo de gestos y los botones del
+  panel. Los brazos siguen suaves.
+- **El saludo usa los DOS brazos** (`ARM_WAVE_BOTH`) y **ya no lo encoge un
+  `.env` con `ARM_GESTURE_MODE=subtle`** — eso dejaba el saludo de bienvenida
+  en un vaivén de 12°, que es probablemente por qué "movía muy poco los
+  brazos al ver a alguien". **Vale la pena revisar esa clave en el `.env` de
+  la Pi.**
+- `mech_app.log()` ya no puede tumbar una maniobra: un carácter que la
+  consola no sepa pintar reventaba el `print` y se perdía el movimiento
+  entero (pasa en Windows/cp1252, no en la Pi).
+
 ### ⚠️ Lo que HAY QUE CALIBRAR en el robot
 
 **El giro se mide por TIEMPO (no hay encoders).** Con el robot en el suelo
