@@ -11,7 +11,8 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (sep 2026, §3.ter) es el **slot de MARKETING**: videos promocionales
+> Lo último (sep 2026, §3.quater): la **VR ya va sincronizada** con el audio y
+> el **saludo da menos vueltas**. Antes de eso (§3.ter), el **slot de MARKETING**: videos promocionales
 > que se proyectan enteros y con su propio audio con «proyecta marketing».
 > Sin probar en la Pi; ojo con el flag de autoplay de Chromium (§3.ter).
 >
@@ -326,6 +327,36 @@ ffmpeg -i original.mov -c:v libx264 -crf 23 -c:a aac -b:a 192k seg01.mp4
 
 ---
 
+## 3.quater Sincronía de la VR y saludo más corto (sep 2026)
+
+Dos arreglos pedidos tras probar el robot (ya se mueve bien):
+
+**1. El video de la VR no iba sincronizado con el audio.** El audio sale por
+el parlante de la Pi, al ritmo de `/projector`; el visor del teléfono
+empezaba el video DESDE CERO cada vez que se entraba. Ahora `/projector`
+reporta por qué segundo va (`POST /api/playback`, cada 2 s y al cambiar de
+archivo) y el visor salta a ese punto.
+
+Detalle que importa: se manda la posición **+ la antigüedad del dato**
+(`age`), NO una hora absoluta — el reloj del teléfono no tiene por qué
+coincidir con el de la Pi. El visor solo suma `position + age`. `/api/state`
+recalcula `age` al responder, que es de donde se alimenta el sondeo del
+móvil. Tolerancia de 0.6 s y máximo un salto cada 1.5 s, porque buscar
+posición en un móvil parpadea. Con clips en bucle se usa el módulo de la
+duración. En la playlist promo el visor sigue además el `index` que reporta
+la pantalla, en vez de asumir que va por el primer archivo.
+
+Si vuelve a salir descuadrado: revisar que `/projector` esté abierto (es
+quien reporta) y que `state["playback"]` traiga datos. Sin reporte el visor
+no se rompe, solo pierde la sincronía.
+
+**2. El saludo daba demasiadas vueltas.** `ARM_WAVE_REPEATS` ahora cuenta las
+subidas TOTALES (contando la inicial), que es lo que uno ve: antes el valor 3
+producía 4 subidas. Con el default 3 hace "sube, agita, agita, baja". Mínimo
+2, tanto en el código como en el slider del panel.
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:
@@ -351,7 +382,10 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
 5. **Marketing (§3.ter, recién hecho)**: subir un par de videos en `/library`
    → «Proyectar ahora» → ¿se ven enteros, uno tras otro, **y se oyen**? Si se
    ven mudos, es el flag de autoplay de Chromium.
-6. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
+6. **VR sincronizada (§3.quater)**: poner algo a proyectar, esperar unos
+   segundos y ENTRAR al visor — el video tiene que aparecer por donde va el
+   audio, no desde el principio.
+7. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
    siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
    vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el
    normal).

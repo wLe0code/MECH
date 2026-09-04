@@ -70,7 +70,11 @@ ARM_WAVE_SECONDS = float(os.environ.get("ARM_WAVE_SECONDS", "2.2"))
 # cuerpo del robot.
 ARM_WAVE_HIGH = int(os.environ.get("ARM_WAVE_HIGH", "180"))
 ARM_WAVE_SWING = int(os.environ.get("ARM_WAVE_SWING", "65"))
-ARM_WAVE_REPEATS = int(os.environ.get("ARM_WAVE_REPEATS", "3"))
+# Cuántas veces sube y baja el brazo EN TOTAL durante el saludo, contando la
+# subida inicial. 3 = sube, agita dos veces y baja. El equipo pidió bajarlo
+# ("daba demasiadas revoluciones") pero que quedara en más de 2, sep 2026.
+# El mínimo es 2: con 1 no se leería como saludo.
+ARM_WAVE_REPEATS = max(2, int(os.environ.get("ARM_WAVE_REPEATS", "3")))
 # El saludo levanta LOS DOS brazos (el derecho agita, el izquierdo
 # acompaña). El equipo pidió que se moviera más al ver a alguien.
 ARM_WAVE_BOTH = os.environ.get("ARM_WAVE_BOTH", "true").strip().lower() in (

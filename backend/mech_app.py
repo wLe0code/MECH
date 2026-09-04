@@ -84,6 +84,10 @@ class MechApp:
         # Se marca cuando la pantalla avisa que terminó el último video de la
         # playlist promo (POST /api/playlist/ended), o al cortarla.
         self._playlist_done = threading.Event()
+        # Dónde va la reproducción en la pantalla principal (/projector), para
+        # que el visor VR del teléfono se enganche en el mismo segundo en vez
+        # de empezar el video desde cero. Lo reporta el propio <video>.
+        self._playback: dict | None = None
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -113,6 +117,9 @@ class MechApp:
             # Es el texto del segmento que MECH está narrando.
             "current_subtitle": None,
             "subtitle_lang": lang.current(),
+            # Por qué segundo va el video en la pantalla principal, para que
+            # el visor VR se enganche ahí en vez de empezar de cero.
+            "playback": None,
             # Playlist promo en curso (marketing): los videos se reproducen
             # ENTEROS, en fila y con su propio audio. None = no hay ninguna.
             # {slug, title, items:[{n,url,kind}], audio: bool}
@@ -268,6 +275,63 @@ class MechApp:
     # ------------------------------------------------------------------
     # Subtítulos de la proyección (estilo cine: abajo, centrados)
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Posición de reproducción (para sincronizar el visor VR)
+    # ------------------------------------------------------------------
+
+    def report_playback(
+        self, url: str | None, position: float,
+        index: int | None = None, slug: str | None = None,
+    ) -> None:
+        """La pantalla principal dice por qué segundo va el video que muestra.
+
+        Sirve para que el visor VR del teléfono NO empiece el video desde
+        cero: se engancha en el mismo punto que el proyector, que es el que
+        va con el audio. Lo llama `POST /api/playback` cada pocos segundos.
+        """
+        if not url:
+            self._playback = None
+            self.state["playback"] = None
+            return
+        self._playback = {
+            "url": url,
+            "position": max(0.0, float(position)),
+            "index": index,
+            "slug": slug,
+            "at": time.monotonic(),
+        }
+        snap = self.playback_snapshot()
+        self.state["playback"] = snap
+        # Por WebSocket llega al instante (age ~0); el sondeo HTTP del
+        # teléfono recalcula la antigüedad al leerlo.
+        self.emit("playback", **(snap or {}))
+
+    def playback_snapshot(self) -> dict | None:
+        """El último reporte + cuántos segundos han pasado desde entonces.
+
+        Se manda `age` en vez de una marca de tiempo absoluta a propósito: el
+        reloj del teléfono no tiene por qué coincidir con el de la Pi, y así
+        el visor solo tiene que sumar (`position + age`).
+        """
+        p = self._playback
+        if not p:
+            return None
+        return {
+            "url": p["url"],
+            "position": p["position"],
+            "index": p["index"],
+            "slug": p["slug"],
+            "age": round(time.monotonic() - p["at"], 3),
+        }
+
+    def refresh_playback(self) -> None:
+        """Actualiza `state["playback"]` con la antigüedad de AHORA.
+
+        Lo llama `/api/state` antes de responder: el visor se alimenta de ese
+        sondeo y necesita la antigüedad fresca, no la de cuando se reportó.
+        """
+        self.state["playback"] = self.playback_snapshot()
 
     def set_subtitle(self, text: str | None) -> None:
         """Publica (o borra con None) el subtítulo que se ve en la pantalla.
@@ -575,9 +639,12 @@ class MechApp:
         self.state["current_image"] = None
         self.state["current_video"] = None
         self.state["current_playlist"] = None
+        self._playback = None
+        self.state["playback"] = None
         self.emit("image", url=None)
         self.emit("video", url=None)
         self.emit("playlist", playlist=None)
+        self.emit("playback", url=None)
 
     def show_library_segment(self, slug: str, segment: int) -> None:
         """Muestra el material de un segmento de la biblioteca, que puede ser

@@ -604,6 +604,26 @@ async def marketing_stop():
     return {"ok": True}
 
 
+class PlaybackPos(BaseModel):
+    url: str | None = None
+    position: float = 0.0
+    index: int | None = None
+    slug: str | None = None
+
+
+@app.post("/api/playback")
+async def playback_report(p: PlaybackPos):
+    """La pantalla principal reporta por qué segundo va el video que muestra.
+
+    Es lo que permite que el visor VR del teléfono **no empiece el video
+    desde cero**: se engancha en el mismo punto que el proyector, que es el
+    que va sincronizado con el audio. Lo manda `/projector` cada pocos
+    segundos y cada vez que cambia de archivo.
+    """
+    get_app().report_playback(p.url, p.position, p.index, p.slug)
+    return {"ok": True}
+
+
 class PlaylistEnded(BaseModel):
     slug: str | None = None
 
@@ -687,7 +707,12 @@ async def emergency_stop():
 
 @app.get("/api/state")
 async def api_state():
-    return get_app().state
+    mech = get_app()
+    # El visor VR se alimenta de este sondeo: necesita saber cuántos segundos
+    # han pasado desde el último reporte de la pantalla principal AHORA, no
+    # cuando se reportó. Ver mech_app.report_playback().
+    mech.refresh_playback()
+    return mech.state
 
 
 # -- Configuración en vivo (vista Ajustes del panel) -------------------------

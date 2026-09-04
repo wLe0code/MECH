@@ -809,6 +809,22 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     Por eso NO hace falta el QR del visor (ese solo lo usan apps con SDK de
     Cardboard; para estéreo plano la separación ajustable lo resuelve). WebXR
     se descartó porque exige HTTPS.
+  - **SINCRONIZADO con la pantalla principal** (sep 2026). Antes, al entrar al
+    visor el video empezaba DESDE CERO mientras el audio (que sale por el
+    parlante de la Pi, al ritmo de `/projector`) ya iba por la mitad: se veía
+    descuadrado siempre. Ahora `/projector` reporta por qué segundo va
+    (`POST /api/playback` cada 2 s y al cambiar de archivo) y el visor salta
+    a ese punto. **Se manda la posición + la ANTIGÜEDAD del dato (`age`), no
+    una hora absoluta**: el reloj del teléfono no tiene por qué coincidir con
+    el de la Pi, así que el visor solo suma `position + age`. `/api/state`
+    recalcula `age` al responder (`mech_app.refresh_playback()`), que es de
+    donde se alimenta el sondeo del móvil. Con un clip en bucle se usa el
+    módulo de la duración. Tolerancia de 0.6 s y como mucho un salto cada
+    1.5 s: buscar posición en un móvil parpadea, y no vale la pena por unas
+    décimas.
+  - En la playlist promo el visor sigue el `index` que reporta la pantalla
+    (no asume que va por el primero) y NO pone `loop` (esos videos se ven
+    enteros).
   - Estéreo "plano" (sin corrección de distorsión de lente). Aviso de girar el
     teléfono en portrait.
 - **Vista Arduino del panel actualizada**: se quitó la tarjeta CABEZA (el
@@ -962,7 +978,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     `--autoplay-policy=no-user-gesture-required`, o tocá la pantalla cuando
     salga el aviso. Los mp4 también tienen que traer pista de audio (al
     convertir con ffmpeg, NO uses `-an`).
-26. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
+26. **El visor VR no lleva su propio reloj: se engancha al de `/projector`.**
+    Si el video de la VR vuelve a salir descuadrado, mirá que `/projector`
+    esté abierto (es quien reporta la posición) y que `state["playback"]`
+    tenga datos. Sin reporte, el visor simplemente reproduce desde el
+    principio — no se rompe, solo pierde la sincronía.
+27. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
 
 ---
 

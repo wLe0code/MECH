@@ -188,10 +188,18 @@ function setStatus(t) {
   if (b) b.textContent = t;
 }
 
-function makeEl(url, isVideo) {
+function makeEl(url, isVideo, enBucle) {
   const el = document.createElement(isVideo ? 'video' : 'img');
   el.src = url;
-  if (isVideo) { el.autoplay = true; el.loop = true; el.muted = true; el.playsInline = true; el.setAttribute('playsinline', ''); }
+  if (isVideo) {
+    el.autoplay = true;
+    // Los videos de las obras son clips cortos que se repiten bajo la
+    // narración; los de la playlist promo se ven ENTEROS una vez.
+    el.loop = enBucle !== false;
+    el.muted = true;   // el sonido sale por el parlante de la Pi
+    el.playsInline = true;
+    el.setAttribute('playsinline', '');
+  }
   return el;
 }
 
@@ -203,22 +211,64 @@ function clearMedia() {
   setIdle(true);
 }
 
-function show(url, isVideo) {
+/* ─── Enganche con la pantalla principal ──────────────────────────────
+ *
+ * El AUDIO sale por el parlante de la Pi, al ritmo de /projector. Antes, al
+ * entrar al visor, el video empezaba DESDE CERO mientras el audio ya iba por
+ * la mitad: se veía descuadrado siempre.
+ *
+ * Ahora /projector reporta por qué segundo va (POST /api/playback) y el
+ * backend nos lo pasa con la ANTIGÜEDAD de ese dato (`age`), no con una hora
+ * absoluta — así no importa que el reloj del teléfono vaya distinto. El
+ * punto al que hay que ir es simplemente `position + age`.
+ *
+ * Solo se corrige si la diferencia pasa de TOLERANCIA: buscar posición en un
+ * móvil produce un parpadeo, y no vale la pena por unas décimas.
+ */
+const SYNC_TOLERANCE = 0.6;   // segundos de desfase que damos por buenos
+let lastSeek = 0;
+
+function syncTo(playback) {
+  if (!playback || !playback.url || playback.url !== currentUrl) return;
+  const v = contentL.querySelector('video');
+  if (!v || !v.duration || !isFinite(v.duration)) return;
+  let target = (playback.position || 0) + (playback.age || 0);
+  // Si el clip está en bucle, el proyector ya habrá dado la vuelta: nos
+  // quedamos con el punto equivalente dentro de la duración.
+  if (v.loop && target > v.duration) target = target % v.duration;
+  if (target >= v.duration) return;   // ya casi terminó: no vale la pena
+  const diff = Math.abs((v.currentTime || 0) - target);
+  if (diff <= SYNC_TOLERANCE) return;
+  const ahora = Date.now();
+  if (ahora - lastSeek < 1500) return;   // no saltar sin parar
+  lastSeek = ahora;
+  const r = contentR.querySelector('video');
+  v.currentTime = target;
+  if (r) r.currentTime = target;
+  setStatus(`sincronizado con la pantalla (${target.toFixed(1)} s)`);
+}
+
+function show(url, isVideo, opts) {
   if (!url) { clearMedia(); return; }
   setIdle(false);              // aunque ya lo mostremos, nunca dejes el idle encima
   if (url === currentUrl) return;  // ya mostrando esto
   clearInterval(syncTimer);
   currentUrl = url;
+  lastSeek = 0;
   contentL.innerHTML = '';
   contentR.innerHTML = '';
-  const l = makeEl(url, isVideo);
-  const r = makeEl(url, isVideo);
+  const enBucle = !(opts && opts.loop === false);
+  const l = makeEl(url, isVideo, enBucle);
+  const r = makeEl(url, isVideo, enBucle);
   contentL.appendChild(l);
   contentR.appendChild(r);
   setIdle(false);
   setStatus((isVideo ? 'video: ' : 'imagen: ') + url);
   if (isVideo) {
     l.play().catch(() => {}); r.play().catch(() => {});
+    // Al cargar los metadatos ya sabemos la duración: es el primer momento
+    // en el que se puede saltar al punto correcto.
+    l.addEventListener('loadedmetadata', () => syncTo(window._mechPlayback), { once: true });
     syncTimer = setInterval(() => {
       if (Math.abs((l.currentTime || 0) - (r.currentTime || 0)) > 0.15) r.currentTime = l.currentTime;
     }, 3000);
@@ -227,15 +277,21 @@ function show(url, isVideo) {
 
 function applyState(s) {
   subs.set(s.current_subtitle, s.subtitle_lang);
+  window._mechPlayback = s.playback || null;
   // Playlist promo (marketing): en el visor se ve, pero SIN audio — el
-  // sonido sale por el parlante de la Pi, no por el teléfono. Aquí solo
-  // mostramos el archivo que toca; el ritmo lo lleva /projector.
-  if (s.current_playlist && s.current_playlist.items && s.current_playlist.items.length) {
-    const it = s.current_playlist.items[0];
-    show(it.url, it.kind !== 'image');
+  // sonido sale por el parlante de la Pi, no por el teléfono.
+  const pl = s.current_playlist;
+  if (pl && pl.items && pl.items.length) {
+    // Cuál toca AHORA lo dice la pantalla principal (playback.index); si
+    // todavía no ha reportado, empezamos por el primero.
+    const idx = (s.playback && typeof s.playback.index === 'number')
+      ? Math.min(s.playback.index, pl.items.length - 1) : 0;
+    const it = pl.items[idx];
+    show(it.url, it.kind !== 'image', { loop: false });
+    syncTo(s.playback);
     return;
   }
-  if (s.current_video) { show(s.current_video, true); return; }
+  if (s.current_video) { show(s.current_video, true); syncTo(s.playback); return; }
   if (s.current_image) { show(s.current_image, false); return; }
   const imm = s.projectors?.imm;
   if (imm?.on && imm.file) { show(imm.file, detectVideo(imm.file)); return; }
@@ -271,6 +327,11 @@ function connect() {
     if (msg.type === 'state') applyState(msg.state);
     else if (msg.type === 'image') { msg.url ? show(msg.url, false) : clearMedia(); }
     else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clearMedia(); }
+    else if (msg.type === 'playback') {
+      // Dónde va la pantalla principal: nos enganchamos ahí.
+      window._mechPlayback = msg.url ? msg : null;
+      syncTo(window._mechPlayback);
+    }
     else if (msg.type === 'subtitle') { subs.set(msg.text, msg.lang); }
     else if (msg.type === 'projector') { pollState(); }
   };

@@ -79,14 +79,50 @@ let ws = null;
 function show(url, isVideo) {
   stopPlaylist();
   stage.innerHTML = '';
-  if (!url) return;
+  if (!url) { reportPlayback(null); return; }
   const el = document.createElement(isVideo ? 'video' : 'img');
   el.src = url;
   if (isVideo) { el.autoplay = true; el.loop = true; el.muted = true; el.playsInline = true; }
   stage.appendChild(el);
+  reportPlayback(isVideo ? url : null);
 }
 
-function clear() { stopPlaylist(); stage.innerHTML = ''; }
+function clear() { stopPlaylist(); stage.innerHTML = ''; reportPlayback(null); }
+
+/* ─── Reporte de posición (para que el visor VR vaya sincronizado) ────
+ *
+ * Esta pantalla es la que va con el audio. El teléfono, al entrar a la vista
+ * VR, empezaba el video DESDE CERO mientras el audio ya iba por la mitad.
+ * Para evitarlo, aquí decimos cada pocos segundos por qué segundo vamos, y
+ * el visor se engancha en ese punto.
+ *
+ * Se manda la posición, no una marca de reloj: los relojes del teléfono y de
+ * la Pi no tienen por qué coincidir. El backend añade la antigüedad.
+ */
+let reportUrl = null;
+let reportTimer = null;
+
+function reportPlayback(url) {
+  reportUrl = url;
+  if (reportTimer) { clearInterval(reportTimer); reportTimer = null; }
+  if (!url) { sendPlayback(null, 0); return; }
+  sendPlayback(url, 0);
+  reportTimer = setInterval(() => {
+    const v = stage.querySelector('video');
+    if (!v || !reportUrl) return;
+    sendPlayback(reportUrl, v.currentTime || 0);
+  }, 2000);
+}
+
+function sendPlayback(url, position) {
+  const body = { url, position };
+  if (pl) { body.slug = pl.slug; body.index = pl.i; }
+  fetch('/api/playback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
 
 /* ─── Playlist promo (marketing) ──────────────────────────────────────
  *
@@ -116,6 +152,11 @@ function stopPlaylist() {
   hideAudioHint();
 }
 
+function finishReporting() {
+  if (reportTimer) { clearInterval(reportTimer); reportTimer = null; }
+  reportUrl = null;
+}
+
 function startPlaylist(playlist) {
   stopPlaylist();
   stage.innerHTML = '';
@@ -134,6 +175,7 @@ function playCurrent() {
     const img = document.createElement('img');
     img.src = item.url;
     stage.appendChild(img);
+    reportPlayback(null);   // una imagen fija no hay que sincronizarla
     plTimer = setTimeout(nextInPlaylist, IMAGE_SECONDS * 1000);
     return;
   }
@@ -149,6 +191,7 @@ function playCurrent() {
   v.addEventListener('error', nextInPlaylist);
   stage.appendChild(v);
 
+  reportPlayback(item.url);
   v.play().then(hideAudioHint).catch(() => {
     // Bloqueado por la política de autoplay: seguimos en silencio para no
     // dejar la pantalla en negro, y avisamos de que se puede tocar.
@@ -168,6 +211,8 @@ function nextInPlaylist() {
 function finishPlaylist() {
   const slug = pl ? pl.slug : null;
   stopPlaylist();
+  finishReporting();
+  sendPlayback(null, 0);
   stage.innerHTML = '';
   // Avisamos al backend: es lo único que sabe cuándo terminó de verdad.
   fetch('/api/playlist/ended', {

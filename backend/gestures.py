@@ -101,8 +101,11 @@ def _g_wave(link: ArduinoLink) -> None:
       - `ARM_WAVE_SECONDS` (2.2): lo que tarda en subir y en bajar. El equipo
         lo pidió lento (ago 2026): rápido se veía nervioso.
       - `ARM_WAVE_HIGH` (180): hasta dónde sube. Antes eran 170.
-      - `ARM_WAVE_SWING` (65) y `ARM_WAVE_REPEATS` (3): los vaivenes de
-        arriba. Antes eran 20° y uno solo — "casi no se notaba" (sep 2026).
+      - `ARM_WAVE_SWING` (65): cuánto baja y sube en cada agitada.
+      - `ARM_WAVE_REPEATS` (3): cuántas veces sube y baja EN TOTAL, contando
+        la subida inicial. O sea: sube, agita 2 veces más, y baja. El equipo
+        lo bajó de 4 a 3 ("daba demasiadas revoluciones", sep 2026) pero
+        pidió que quedara en más de 2. El mínimo es 2.
 
     Solo se mueve HACIA ARRIBA (90 → 180). Por debajo de 90 el brazo choca
     con el cuerpo del robot: no bajar de ahí."""
@@ -114,8 +117,12 @@ def _g_wave(link: ArduinoLink) -> None:
     # Brazo izquierdo: sube y se queda arriba acompañando (no agita, para que
     # el gesto se lea claro). Con ARM_WAVE_BOTH=false vuelve a ser un brazo.
     izq = alto if config.ARM_WAVE_BOTH else _NEUTRAL
+    # ARM_WAVE_REPEATS cuenta las subidas TOTALES: la primera es este arco,
+    # así que arriba quedan REPEATS-1 agitadas. Con 3 se ve "sube, agita,
+    # agita, baja" — que es lo que pidió el equipo.
+    agitadas = max(1, config.ARM_WAVE_REPEATS - 1)
     _move_smooth(link, izq, alto, subida)   # suben en arco hasta arriba
-    for _ in range(max(1, config.ARM_WAVE_REPEATS)):
+    for _ in range(agitadas):
         _move_smooth(link, izq, bajo, vaiven)   # el derecho agita, amplio
         _move_smooth(link, izq, alto, vaiven)
     _move_smooth(link, _NEUTRAL, _NEUTRAL, subida)  # bajan hasta el reposo
