@@ -577,10 +577,21 @@ con estas dos órdenes se pone de cara al público y vuelve.
   las intercepta al principio de `handle_text_command`, así que responden al
   instante y no gastan crédito de API. Frases en `config.VOICE_OUTWARD_PHRASES`
   / `VOICE_PROJECT_PHRASES` (+ `_EN`), detección en `voice_phrases`.
-- **La maniobra**: primero un tramo **lateral** (`vy`, para apartarse de la
-  mesa/pared antes de rotar) y luego el **giro** (`w`). La vuelta hace lo
-  mismo al revés y con el signo cambiado, así que termina donde empezó.
-  Nunca usa `vx` (eso lo lleva el odómetro de `return_to_start`).
+- **La maniobra es UN SOLO tramo LATERAL** (`vy`), el mismo movimiento del
+  botón «LATERAL» del panel, sostenido hasta quedar de espaldas. La vuelta es
+  ese tramo con el signo cambiado, así que termina donde empezó. Nunca usa
+  `vx` (eso lo lleva el odómetro de `return_to_start`).
+  ⚠️ **NO se usa `w` (rotación) — a propósito** (sep 2026). Con estas ruedas
+  el patrón de rotación hacía "un movimiento raro y muy corto"; el que gira
+  de verdad es el lateral. Es coherente con el resto del proyecto: la
+  cinemática está calibrada a mano y no coincide con la mecanum de libro. Si
+  alguien vuelve a meter `w` aquí, repite el mismo problema.
+- **Sentido**: `TURN_180_INVERT` (en vivo desde Ajustes) lo cambia de lado
+  sin tocar el firmware ni recablear.
+- **Los brazos al girar hacia afuera van a MEDIO gas**: `gestures.wave_outward()`
+  (145°, 30° de vaivén, UN brazo), entre el saludo de bienvenida (180°, 65°,
+  dos brazos) y el gesto de narrar (115°). El equipo pidió que se notara pero
+  "no tanto" como la bienvenida.
 - ⚠️ **`MODE:LISTEN` FRENA LOS MOTORES.** En el firmware, `applyMode()` llama
   a `stopAllMotors()` para LISTEN/SPEAK/STOP. El bucle de voz mandaba
   `MODE:LISTEN` en CADA vuelta (cada 0.3 s mientras narra), así que cualquier
@@ -809,7 +820,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     Por eso NO hace falta el QR del visor (ese solo lo usan apps con SDK de
     Cardboard; para estéreo plano la separación ajustable lo resuelve). WebXR
     se descartó porque exige HTTPS.
-  - **SINCRONIZADO con la pantalla principal** (sep 2026). Antes, al entrar al
+  - **SINCRONIZADO con la pantalla principal, y de forma CONTINUA** (sep 2026). Antes, al entrar al
     visor el video empezaba DESDE CERO mientras el audio (que sale por el
     parlante de la Pi, al ritmo de `/projector`) ya iba por la mitad: se veía
     descuadrado siempre. Ahora `/projector` reporta por qué segundo va
@@ -822,6 +833,20 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     módulo de la duración. Tolerancia de 0.6 s y como mucho un salto cada
     1.5 s: buscar posición en un móvil parpadea, y no vale la pena por unas
     décimas.
+  - **La corrección es continua, no de una sola vez.** Sincronizar solo al
+    cargar el video no bastaba: el móvil PAUSA el video al salir de la
+    página, y al volver arrancaba desde cero (se notaba sobre todo en la
+    playlist de marketing, donde los videos son largos y no van en bucle).
+    Ahora hay un tic cada segundo, y `visibilitychange` / `pageshow` /
+    `focus` fuerzan un reenganche inmediato saltándose el antirrebote.
+  - El reporte se guarda **con la hora local en que llegó**
+    (`playbackAt`), y el objetivo se recalcula como
+    `position + age + (ahora − playbackAt)`. Sin eso, reusar el mismo
+    reporte apuntaba a un punto cada vez más viejo.
+  - ⚠️ **`play()` sobre un video terminado lo REINICIA desde cero.** Por eso
+    todos los `play()` de reanudación van con `if (v.paused && !v.ended)`.
+    Es fácil volver a meter este bug al "arreglar" que el video se quede
+    pausado.
   - En la playlist promo el visor sigue el `index` que reporta la pantalla
     (no asume que va por el primero) y NO pone `loop` (esos videos se ven
     enteros).

@@ -15,18 +15,24 @@ por detrás, "mira hacia afuera" lo pone de cara al público, saluda con el
 brazo, y "regresa a proyectar" deshace la maniobra EXACTA para que el
 proyector vuelva a apuntar a donde estaba calibrado.
 
-La maniobra tiene dos tramos, en este orden:
+La maniobra es **UN SOLO tramo LATERAL** (`vy`), exactamente el mismo
+movimiento del botón «LATERAL» del panel, mantenido hasta que el robot queda
+de espaldas.
 
-  1. **Lateral** (`vy`): se aparta de la pared/mesa antes de girar, para no
-     rozarla al rotar. Las mecanum lo permiten sin cambiar de orientación.
-  2. **Giro** (`w`): rota sobre sí mismo hasta quedar de espaldas.
+⚠️ **No se usa `w` (rotación) — y es a propósito** (sep 2026). Sobre el suelo
+del stand, con estas ruedas, el patrón de rotación hacía "un movimiento raro y
+muy corto"; el que de verdad hace girar al robot es el LATERAL. Es coherente
+con el resto del proyecto: la cinemática de este robot está calibrada a mano
+y no coincide con la mecanum de libro (ver `driveOmni` en el .ino). Si alguien
+vuelve a meter `w` aquí, va a repetir el mismo problema.
 
-La vuelta hace lo mismo al revés y con el signo cambiado (giro y luego
-lateral), así que termina donde empezó.
+La vuelta es el MISMO tramo con el signo cambiado, así que termina justo donde
+empezó.
 
 ⚠️ **No hay encoders: el giro se mide POR TIEMPO.** `TURN_180_SECONDS` HAY
 QUE CALIBRARLO en el robot real — se ajusta en vivo desde Ajustes del panel
-hasta que 180° queden 180°. Lo mismo con `TURN_LATERAL_SECONDS`.
+hasta que la media vuelta quede en media vuelta. Si gira hacia el lado
+equivocado, `TURN_180_INVERT` le cambia el sentido (también en vivo).
 
 El estado ("¿estoy mirando a la proyección o al público?") vive en
 `mech_app.state["facing"]`, para que:
@@ -103,22 +109,25 @@ def _drive(app, vx: int, vy: int, w: int, seconds: float) -> None:
         app.arduino.stop_motors()
 
 
-def _turn(app, direction: int) -> None:
-    """Media vuelta. `direction` +1 = horario, −1 = antihorario.
+def _side() -> int:
+    """+1 o −1: hacia qué lado desliza para darse la vuelta.
 
-    Tramo lateral primero (apartarse) y luego el giro, tal como se pidió."""
+    Si en el robot gira al revés, se cambia con `TURN_180_INVERT` desde
+    Ajustes (en vivo), sin tocar código ni reflashear el Arduino."""
+    return -1 if config.TURN_180_INVERT else 1
+
+
+def _turn(app, direction: int) -> None:
+    """Media vuelta: UN solo tramo LATERAL, igual que el botón del panel.
+
+    `direction` +1 = ida (mirar hacia afuera), −1 = vuelta."""
     speed = max(10, min(100, config.TURN_180_SPEED))
-    lateral = max(10, min(100, config.TURN_LATERAL_SPEED))
-    _drive(app, 0, lateral * direction, 0, config.TURN_LATERAL_SECONDS)
-    _drive(app, 0, 0, speed * direction, config.TURN_180_SECONDS)
+    _drive(app, 0, speed * direction * _side(), 0, config.TURN_180_SECONDS)
 
 
 def _unturn(app, direction: int) -> None:
-    """Deshace `_turn`: mismo recorrido, orden inverso y signo contrario."""
-    speed = max(10, min(100, config.TURN_180_SPEED))
-    lateral = max(10, min(100, config.TURN_LATERAL_SPEED))
-    _drive(app, 0, 0, -speed * direction, config.TURN_180_SECONDS)
-    _drive(app, 0, -lateral * direction, 0, config.TURN_LATERAL_SECONDS)
+    """Deshace `_turn`: el mismo tramo lateral con el signo cambiado."""
+    _turn(app, -direction)
 
 
 class _WheelsHeld:
@@ -176,9 +185,10 @@ def look_outward(app, greet: bool = True) -> bool:
             _turn(app, +1)
         app.state["facing"] = "outward"
         app.emit("facing", facing="outward")
-        # Saludo COMPLETO (el arco lento del video del equipo), no el gesto
-        # pequeño de narrar: aquí es justo lo que queremos que se vea.
-        gestures.perform(app.arduino, "wave")
+        # Saludo CONTENIDO: se tiene que notar que saluda, pero el equipo
+        # pidió que aquí moviera los brazos menos que en la bienvenida por
+        # cámara (sep 2026). Ver gestures.wave_outward().
+        gestures.wave_outward(app.arduino)
         if greet:
             # Ventana anti-eco: el bucle de voz descarta lo que transcriba
             # mientras MECH habla, para no oírse a sí mismo por el parlante.

@@ -11,8 +11,9 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (sep 2026, §3.quater): la **VR ya va sincronizada** con el audio y
-> el **saludo da menos vueltas**. Antes de eso (§3.ter), el **slot de MARKETING**: videos promocionales
+> Lo último (sep 2026, §3.quinquies): el **giro es solo lateral** (se quitó la
+> rotación, que hacía un movimiento raro), la **VR ya no reinicia el video** al
+> salir y volver de la página, y los **brazos al girar afuera van a medio gas**. Antes de eso (§3.ter), el **slot de MARKETING**: videos promocionales
 > que se proyectan enteros y con su propio audio con «proyecta marketing».
 > Sin probar en la Pi; ojo con el flag de autoplay de Chromium (§3.ter).
 >
@@ -254,7 +255,8 @@ donde vaya a trabajar:
 0. **Primero, sin el bucle de voz**: apagá la voz desde el panel y probá
    `MOVE:0:0:100` en Arduino → comando crudo. Si ahí gira y con la voz
    encendida no, quedó algún resto del bug de `MODE:LISTEN`.
-1. Panel → **Arduino** → «MIRA HACIA AFUERA».
+1. Panel → **Arduino** → «MIRA HACIA AFUERA». Ahora es un tramo lateral
+   sostenido; si gira al revés, activá «Sentido» en Ajustes.
 2. Panel → **Ajustes** → «GIRO DE 180° — CALIBRACIÓN» → subir/bajar **Giro**
    (segundos) hasta que quede justo de espaldas. Se aplica en vivo.
 3. **Lateral** = cuánto se aparta antes de rotar. Ponlo en 0 s si no hace
@@ -357,6 +359,44 @@ producía 4 subidas. Con el default 3 hace "sube, agita, agita, baja". Mínimo
 
 ---
 
+## 3.quinquies Segunda pasada del giro y de la VR (sep 2026)
+
+Tras probarlo en el robot:
+
+**1. El giro hacía "un movimiento raro y muy corto".** Ahora la media vuelta
+es **UN SOLO tramo LATERAL** — literalmente el mismo movimiento del botón
+«LATERAL» del panel — sostenido hasta que queda de espaldas. **Se quitó el
+tramo de rotación (`w`)**: con estas ruedas ese patrón no gira bien. Encaja
+con lo que ya sabíamos: la cinemática de este robot está calibrada a mano y
+no coincide con la mecanum de libro.
+- Solo hay que calibrar **una** cosa: los segundos (Ajustes → «Media vuelta»).
+- Si gira hacia el lado contrario: **`TURN_180_INVERT`**, en vivo, sin tocar
+  el firmware.
+- Los sliders «Lateral» y «Vel. lateral» desaparecieron del panel (ya no
+  existe ese tramo); las claves siguen en config para no romper `.env`.
+
+**2. Los brazos al girar hacia afuera van a medio gas.** `gestures.wave_outward()`:
+145°, vaivén de 30°, UN brazo. Quedan tres tamaños bien diferenciados:
+bienvenida por cámara (180°, 65°, dos brazos) > girar hacia afuera (145°, 30°,
+un brazo) > al narrar (115°, un brazo).
+
+**3. La VR se sincronizaba solo al entrar.** Al salir de la página el móvil
+PAUSA el video, y al volver arrancaba desde cero (se notaba sobre todo en
+marketing: videos largos y sin bucle). Tres arreglos:
+- **Corrección continua**: un tic cada segundo, no solo al cargar el video.
+- **`visibilitychange` / `pageshow` / `focus`** fuerzan un reenganche
+  inmediato saltándose el antirrebote.
+- El reporte se guarda **con la hora local en que llegó**, y el objetivo se
+  recalcula como `position + age + (ahora − llegada)`. Sin eso, reusar el
+  mismo reporte apuntaba a un punto cada vez más viejo.
+
+⚠️ Y un detalle que es fácil volver a romper: **`play()` sobre un video
+TERMINADO lo reinicia desde cero**. Todos los `play()` de reanudación llevan
+`if (v.paused && !v.ended)`. Si alguien "arregla" que el video se quede
+pausado sin esa guarda, vuelve el bug del video que empieza de nuevo.
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:
@@ -382,9 +422,10 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
 5. **Marketing (§3.ter, recién hecho)**: subir un par de videos en `/library`
    → «Proyectar ahora» → ¿se ven enteros, uno tras otro, **y se oyen**? Si se
    ven mudos, es el flag de autoplay de Chromium.
-6. **VR sincronizada (§3.quater)**: poner algo a proyectar, esperar unos
-   segundos y ENTRAR al visor — el video tiene que aparecer por donde va el
-   audio, no desde el principio.
+6. **VR sincronizada (§3.quater y §3.quinquies)**: poner marketing a
+   proyectar, esperar, ENTRAR al visor (tiene que aparecer por donde va el
+   audio), SALIR de la página y VOLVER — no debe empezar de nuevo.
+   El estado de abajo del visor dice a qué segundo se enganchó.
 7. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
    siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
    vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el

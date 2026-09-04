@@ -273,6 +273,47 @@ def _perform(link: ArduinoLink, gesture: str, talking: bool) -> None:
     threading.Thread(target=_run, daemon=True).start()
 
 
+# Saludo INTERMEDIO, para cuando MECH se da la vuelta hacia el público
+# (sep 2026): el equipo quiso que moviera los brazos, "pero no tanto" como el
+# saludo de bienvenida. Queda entre los dos tamaños:
+#   - bienvenida por cámara: 180°, 65° de vaivén, dos brazos.
+#   - éste:                  145°, 30° de vaivén, UN brazo.
+#   - al narrar:             115°, un brazo, casi imperceptible.
+_OUTWARD_HIGH = 145
+_OUTWARD_SWING = 30
+_OUTWARD_REPEATS = 2
+
+
+def _g_wave_outward(link: ArduinoLink) -> None:
+    """Saludo contenido: un brazo, arco medio, dos subidas."""
+    subida = max(0.4, config.ARM_WAVE_SECONDS * 0.8)
+    vaiven = max(0.25, subida * 0.35)
+    alto = _OUTWARD_HIGH
+    bajo = max(_NEUTRAL, alto - _OUTWARD_SWING)
+    _move_smooth(link, _NEUTRAL, alto, subida)
+    for _ in range(max(1, _OUTWARD_REPEATS - 1)):
+        _move_smooth(link, _NEUTRAL, bajo, vaiven)
+        _move_smooth(link, _NEUTRAL, alto, vaiven)
+    _move_smooth(link, _NEUTRAL, _NEUTRAL, subida)
+
+
+def wave_outward(link: ArduinoLink) -> None:
+    """Saludo al darse la vuelta hacia el público (más discreto que el de
+    bienvenida). Respeta `ARM_GESTURE_MODE=off`."""
+
+    def _run():
+        if not _gesture_lock.acquire(blocking=False):
+            return
+        try:
+            if config.ARM_GESTURE_MODE == "off":
+                return
+            _g_wave_outward(link)
+        finally:
+            _gesture_lock.release()
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def perform(link: ArduinoLink, gesture: str, user_x: float | None = None) -> None:
     """Ejecuta el gesto COMPLETO en segundo plano (no bloquea a quien llama).
 

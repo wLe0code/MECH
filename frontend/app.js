@@ -568,8 +568,7 @@
       // Calibración del giro de 180°
       setSlider('set-turnsec', 'turnsec', L.TURN_180_SECONDS);
       setSlider('set-turnvel', 'turnvel', L.TURN_180_SPEED);
-      setSlider('set-latsec', 'latsec', L.TURN_LATERAL_SECONDS);
-      setSlider('set-latvel', 'latvel', L.TURN_LATERAL_SPEED);
+      if ($('set-turninv')) $('set-turninv').checked = !!L.TURN_180_INVERT;
       setSlider('set-kick', 'kick', L.MOTOR_KICK_SECONDS);
       // Visión
       if ($('set-vision')) $('set-vision').checked = !!L.VISION_ENABLED;
@@ -620,8 +619,7 @@
         GREETING_COOLDOWN: $('set-greetcd').value,
         TURN_180_SECONDS: $('set-turnsec').value,
         TURN_180_SPEED: String(parseInt($('set-turnvel').value)),
-        TURN_LATERAL_SECONDS: $('set-latsec').value,
-        TURN_LATERAL_SPEED: String(parseInt($('set-latvel').value)),
+        TURN_180_INVERT: $('set-turninv').checked ? 'true' : 'false',
         MOTOR_KICK_SECONDS: $('set-kick').value,
         VISION_MIN_DISTANCE: $('set-dist').value,
         VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',

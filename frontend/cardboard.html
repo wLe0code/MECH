@@ -228,11 +228,43 @@ function clearMedia() {
 const SYNC_TOLERANCE = 0.6;   // segundos de desfase que damos por buenos
 let lastSeek = 0;
 
-function syncTo(playback) {
-  if (!playback || !playback.url || playback.url !== currentUrl) return;
+/* Último reporte de la pantalla, CON la hora local en que nos llegó.
+ *
+ * Guardar cuándo llegó es lo que hace que la sincronía siga siendo válida
+ * después: si nos quedáramos con el `age` que traía el dato, cada vez que
+ * volviéramos a usar ese mismo reporte estaríamos apuntando a un punto cada
+ * vez más viejo — que es justo por qué el video "se sincronizaba solo al
+ * principio". Aquí sumamos lo que ha pasado desde que lo recibimos. */
+let playback = null;      // { url, position, index, slug, age }
+let playbackAt = 0;       // Date.now() de cuando lo recibimos
+
+function setPlayback(p) {
+  playback = (p && p.url) ? p : null;
+  playbackAt = Date.now();
+}
+
+/* El punto donde va la pantalla AHORA MISMO. */
+function playbackNow() {
+  if (!playback) return null;
+  const extra = (Date.now() - playbackAt) / 1000;
+  return {
+    url: playback.url,
+    index: playback.index,
+    position: (playback.position || 0) + (playback.age || 0) + extra,
+  };
+}
+
+function syncTo(force) {
+  const p = playbackNow();
+  if (!p || p.url !== currentUrl) return;
   const v = contentL.querySelector('video');
   if (!v || !v.duration || !isFinite(v.duration)) return;
-  let target = (playback.position || 0) + (playback.age || 0);
+  // Si se quedó pausado (el móvil pausa el video al salir de la página),
+  // volvemos a arrancarlo: si no, por mucho que saltemos no avanza.
+  // OJO con `ended`: llamar play() en un video terminado lo REINICIA desde
+  // cero, que es exactamente lo que estamos tratando de evitar.
+  if (v.paused && !v.ended) { v.play().catch(() => {}); }
+  let target = p.position;
   // Si el clip está en bucle, el proyector ya habrá dado la vuelta: nos
   // quedamos con el punto equivalente dentro de la duración.
   if (v.loop && target > v.duration) target = target % v.duration;
@@ -240,13 +272,35 @@ function syncTo(playback) {
   const diff = Math.abs((v.currentTime || 0) - target);
   if (diff <= SYNC_TOLERANCE) return;
   const ahora = Date.now();
-  if (ahora - lastSeek < 1500) return;   // no saltar sin parar
+  if (!force && ahora - lastSeek < 1500) return;   // no saltar sin parar
   lastSeek = ahora;
   const r = contentR.querySelector('video');
   v.currentTime = target;
   if (r) r.currentTime = target;
-  setStatus(`sincronizado con la pantalla (${target.toFixed(1)} s)`);
+  setStatus(`sincronizado: ${target.toFixed(1)} s (iba ${diff.toFixed(1)} s desfasado)`);
 }
+
+/* Corrección CONTINUA. No basta con sincronizar al cargar el video: el móvil
+ * pausa la reproducción al salir de la página, y al volver hay que reengancharse.
+ * Es barato (una comparación por segundo) y solo salta si hace falta. */
+setInterval(() => syncTo(false), 1000);
+
+/* Al volver a la página (cambiar de app, apagar la pantalla, bfcache) hay que
+ * reengancharse YA, sin esperar al siguiente sondeo ni al antirrebote. */
+function resync() {
+  lastSeek = 0;
+  // `!v.ended` a propósito: play() sobre un video terminado lo reinicia.
+  document.querySelectorAll('video').forEach(v => {
+    if (v.paused && !v.ended) v.play().catch(() => {});
+  });
+  pollState();          // trae la posición fresca de la pantalla
+  setTimeout(() => syncTo(true), 250);
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) resync();
+});
+window.addEventListener('pageshow', resync);
+window.addEventListener('focus', resync);
 
 function show(url, isVideo, opts) {
   if (!url) { clearMedia(); return; }
@@ -268,7 +322,9 @@ function show(url, isVideo, opts) {
     l.play().catch(() => {}); r.play().catch(() => {});
     // Al cargar los metadatos ya sabemos la duración: es el primer momento
     // en el que se puede saltar al punto correcto.
-    l.addEventListener('loadedmetadata', () => syncTo(window._mechPlayback), { once: true });
+    // En cuanto se sabe la duración ya se puede saltar al punto correcto.
+    l.addEventListener('loadedmetadata', () => syncTo(true), { once: true });
+    l.addEventListener('canplay', () => syncTo(false), { once: true });
     syncTimer = setInterval(() => {
       if (Math.abs((l.currentTime || 0) - (r.currentTime || 0)) > 0.15) r.currentTime = l.currentTime;
     }, 3000);
@@ -277,7 +333,7 @@ function show(url, isVideo, opts) {
 
 function applyState(s) {
   subs.set(s.current_subtitle, s.subtitle_lang);
-  window._mechPlayback = s.playback || null;
+  setPlayback(s.playback);
   // Playlist promo (marketing): en el visor se ve, pero SIN audio — el
   // sonido sale por el parlante de la Pi, no por el teléfono.
   const pl = s.current_playlist;
@@ -288,10 +344,10 @@ function applyState(s) {
       ? Math.min(s.playback.index, pl.items.length - 1) : 0;
     const it = pl.items[idx];
     show(it.url, it.kind !== 'image', { loop: false });
-    syncTo(s.playback);
+    syncTo(false);
     return;
   }
-  if (s.current_video) { show(s.current_video, true); syncTo(s.playback); return; }
+  if (s.current_video) { show(s.current_video, true); syncTo(false); return; }
   if (s.current_image) { show(s.current_image, false); return; }
   const imm = s.projectors?.imm;
   if (imm?.on && imm.file) { show(imm.file, detectVideo(imm.file)); return; }
@@ -329,8 +385,8 @@ function connect() {
     else if (msg.type === 'video') { msg.url ? show(msg.url, true) : clearMedia(); }
     else if (msg.type === 'playback') {
       // Dónde va la pantalla principal: nos enganchamos ahí.
-      window._mechPlayback = msg.url ? msg : null;
-      syncTo(window._mechPlayback);
+      setPlayback(msg);
+      syncTo(false);
     }
     else if (msg.type === 'subtitle') { subs.set(msg.text, msg.lang); }
     else if (msg.type === 'projector') { pollState(); }
@@ -392,7 +448,11 @@ document.body.addEventListener('click', async () => {
   }
   try { await screen.orientation.lock('landscape'); } catch (e) {}
   keepAwake();
-  document.querySelectorAll('video').forEach(v => v.play().catch(() => {}));
+  // `!v.ended`: play() sobre un video terminado lo reinicia desde cero.
+  document.querySelectorAll('video').forEach(v => {
+    if (v.paused && !v.ended) v.play().catch(() => {});
+  });
+  syncTo(true);   // el toque es buen momento para reengancharse
 });
 
 // Init

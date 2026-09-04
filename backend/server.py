@@ -269,7 +269,7 @@ def stop_voice_loop():
 # Versión del subsistema de MOVILIDAD (giro de 180°, saludo, gestos). Se
 # loguea al arrancar para poder confirmar QUÉ código está corriendo en la Pi.
 # Súbela cuando cambies algo de movimiento.
-MOVILIDAD_VERSION = "v2 (sep 2026)"
+MOVILIDAD_VERSION = "v3 (sep 2026)"
 
 
 # -- FastAPI lifespan --------------------------------------------------------
@@ -287,9 +287,9 @@ async def lifespan(app: FastAPI):
     # se la va a comer Claude como un plan de gestos (solo ACK:ARM, sin ruedas).
     mech.log(
         f"Movilidad {MOVILIDAD_VERSION}: 'mira hacia afuera' / 'regresa a "
-        f"proyectar' activas · giro {config.TURN_180_SECONDS} s a potencia "
-        f"{config.TURN_180_SPEED} (lateral {config.TURN_LATERAL_SECONDS} s a "
-        f"{config.TURN_LATERAL_SPEED})",
+        f"proyectar' activas · media vuelta = lateral "
+        f"{config.TURN_180_SECONDS} s a potencia {config.TURN_180_SPEED}"
+        f"{' (invertido)' if config.TURN_180_INVERT else ''}",
         "ok",
     )
     # Autostart en reposo: MECH queda escuchando solo "ok MECH".
@@ -755,6 +755,7 @@ _LIVE_KEYS = {
     # Maniobra "mira hacia afuera" (se calibra EN EL ROBOT, sin encoders).
     "TURN_180_SPEED": int,
     "TURN_180_SECONDS": float,
+    "TURN_180_INVERT": _to_bool,   # hacia qué lado se da la vuelta
     "TURN_LATERAL_SPEED": int,
     "TURN_LATERAL_SECONDS": float,
 }
@@ -806,6 +807,7 @@ async def get_config():
             "GESTURE_WHEEL_SECONDS": config.GESTURE_WHEEL_SECONDS,
             "TURN_180_SPEED": config.TURN_180_SPEED,
             "TURN_180_SECONDS": config.TURN_180_SECONDS,
+            "TURN_180_INVERT": config.TURN_180_INVERT,
             "TURN_LATERAL_SPEED": config.TURN_LATERAL_SPEED,
             "TURN_LATERAL_SECONDS": config.TURN_LATERAL_SECONDS,
         },

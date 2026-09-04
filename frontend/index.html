@@ -285,7 +285,8 @@
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
             Ahora mira a: <b id="facing-val" style="color:var(--text)">la proyección</b>.
             Lo mismo que decirle «mira hacia afuera» / «regresa a proyectar».
-            El giro se mide por TIEMPO — calíbralo en Ajustes.
+            La media vuelta es el mismo movimiento del botón LATERAL de arriba,
+            sostenido — se mide por TIEMPO, calíbralo en Ajustes.
           </div>
         </div>
 
@@ -499,29 +500,28 @@
             <i class="ti ti-rotate-360"></i> GIRO DE 180° — CALIBRACIÓN
           </div>
           <div class="section-sub" style="margin-bottom:10px">
-            MECH no tiene encoders: el giro se mide <b>por tiempo</b>. Pulsa
-            «MIRA HACIA AFUERA» en la vista Arduino y sube o baja los segundos
-            hasta que quede justo de espaldas. Se aplica en vivo.
+            La media vuelta es <b>el mismo movimiento del botón «LATERAL»</b>
+            de la vista Arduino, sostenido hasta que MECH queda de espaldas.
+            Sin encoders se mide <b>por tiempo</b>: pulsa «MIRA HACIA AFUERA»
+            y sube o baja los segundos hasta que quede mirando al público.
+            Se aplica en vivo.
           </div>
           <div class="slider-row">
-            <label title="Cuánto dura el giro sobre sí mismo. Es LO PRIMERO que hay que calibrar.">Giro</label>
-            <input type="range" min="0.4" max="6" step="0.1" value="2.0" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
+            <label title="Cuánto tiempo se desliza de lado. Es LO ÚNICO que hay que calibrar: súbelo si se queda corto, bájalo si se pasa.">Media vuelta</label>
+            <input type="range" min="0.4" max="8" step="0.1" value="2.0" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
             <span class="val" id="set-turnsec-val">2.0 s</span>
           </div>
           <div class="slider-row">
-            <label title="Velocidad del giro (0-100). Más lento = más preciso y menos derrape.">Velocidad</label>
+            <label title="Potencia del desplazamiento lateral (0-100). Con estos motores, por debajo de 100 normalmente solo zumban.">Velocidad</label>
             <input type="range" min="20" max="100" step="5" value="100" id="set-turnvel" oninput="UI.settingLabel('set-turnvel','turnvel')">
             <span class="val" id="set-turnvel-val">100</span>
           </div>
           <div class="slider-row">
-            <label title="Se aparta de lado antes de girar, para no rozar la mesa o la pared. 0 = giro puro.">Lateral</label>
-            <input type="range" min="0" max="3" step="0.1" value="0.5" id="set-latsec" oninput="UI.settingLabel('set-latsec','latsec')">
-            <span class="val" id="set-latsec-val">0.5 s</span>
-          </div>
-          <div class="slider-row">
-            <label title="Velocidad del desplazamiento lateral (0-100).">Vel. lateral</label>
-            <input type="range" min="20" max="100" step="5" value="100" id="set-latvel" oninput="UI.settingLabel('set-latvel','latvel')">
-            <span class="val" id="set-latvel-val">100</span>
+            <label title="Si se da la vuelta hacia el lado contrario del que quieres, activa esto. No hay que tocar el firmware.">Sentido</label>
+            <label class="switch">
+              <input type="checkbox" id="set-turninv">
+              <span class="switch-text">Girar hacia el otro lado</span>
+            </label>
           </div>
           <div class="slider-row">
             <label title="Pulso inicial a potencia MÁXIMA para romper la fricción. Súbelo si los motores zumban pero no arrancan. 0 = desactivado.">Arranque</label>

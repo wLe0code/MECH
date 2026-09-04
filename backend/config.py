@@ -103,12 +103,19 @@ GREETING_COOLDOWN = float(os.environ.get("GREETING_COOLDOWN", "45"))
 # los motores zumban y no rompen la fricción estática, sobre todo girando
 # (las mecanum arrastran los rodillos de lado). 100 = PWM 255. Si el giro
 # sale demasiado brusco, baja PRIMERO los segundos, no la velocidad.
+# La media vuelta es UN SOLO tramo LATERAL (el mismo movimiento del botón
+# "LATERAL" del panel) sostenido hasta que el robot queda de espaldas. NO se
+# usa rotación (`w`): en el suelo del stand hacía "un movimiento raro y muy
+# corto" — con estas ruedas el que gira de verdad es el lateral (sep 2026).
 TURN_180_SPEED = int(os.environ.get("TURN_180_SPEED", "100"))
 TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "2.0"))
-# Desplazamiento LATERAL que acompaña al giro (las mecanum lo permiten): se
-# aparta de la pared/mesa de proyección antes de girar sobre sí mismo, y al
-# volver deshace exactamente el mismo tramo. 0 s = giro puro, sin lateral
-# (útil para aislar el problema si algo no se mueve).
+# Si gira hacia el lado contrario del que querés, ponelo en true (en vivo
+# desde Ajustes). No hay que tocar el firmware ni recablear.
+TURN_180_INVERT = os.environ.get("TURN_180_INVERT", "false").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+# OBSOLETAS desde sep 2026 (la maniobra ya no tiene tramo de rotación
+# aparte). Se conservan para no romper .env existentes; no hacen nada.
 TURN_LATERAL_SPEED = int(os.environ.get("TURN_LATERAL_SPEED", "100"))
 TURN_LATERAL_SECONDS = float(os.environ.get("TURN_LATERAL_SECONDS", "0.5"))
 # Arranque a fondo: cada tramo empieza con un pulso a potencia MÁXIMA para
