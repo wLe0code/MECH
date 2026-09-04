@@ -401,9 +401,11 @@ pausado sin esa guarda, vuelve el bug del video que empieza de nuevo.
 
 ## 3.sexies Listo para la competencia (sep 2026)
 
-**1. El giro se quedaba corto.** Con 2.0 s giraba "un poquito menos de la
-mitad" (~80°), así que el default pasó a **4.5 s** y el slider llega ahora a
-14 s. Botón nuevo **«PROBAR MEDIA VUELTA»** en la vista Arduino: repite el
+**1. El giro se quedaba corto.** Calibrado en dos pasadas sobre el robot:
+2.0 s daba ~80° ("un poquito menos de la mitad"), 4.5 s daba 165-170°, y el
+default quedó en **4.85 s**. El slider llega a 14 s.
+La regla para reajustarlo: si con S segundos gira X grados, los que necesitás
+son **S × 180 / X**. Botón nuevo **«PROBAR MEDIA VUELTA»** en la vista Arduino: repite el
 tramo *sin* cambiar la orientación guardada, para poder calibrar pulsando
 varias veces seguidas (con «mira hacia afuera» había que alternar con
 «regresa a proyectar» y se acumulaba el error de los dos tramos).

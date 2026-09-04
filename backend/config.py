@@ -108,11 +108,13 @@ GREETING_COOLDOWN = float(os.environ.get("GREETING_COOLDOWN", "45"))
 # usa rotación (`w`): en el suelo del stand hacía "un movimiento raro y muy
 # corto" — con estas ruedas el que gira de verdad es el lateral (sep 2026).
 TURN_180_SPEED = int(os.environ.get("TURN_180_SPEED", "100"))
-# CALIBRADO EN EL ROBOT (sep 2026): con 2.0 s giraba "un poquito menos de la
-# mitad" (~80°), así que la media vuelta pide algo más del doble. Sigue siendo
-# un punto de partida: cambiar de suelo, de batería o de ruedas obliga a
-# reajustarlo desde Ajustes → "Media vuelta" (en vivo).
-TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "4.5"))
+# CALIBRADO EN EL ROBOT (sep 2026), en dos pasadas:
+#   2.0 s  -> giraba "un poquito menos de la mitad" (~80°)
+#   4.5 s  -> 165-170°, casi los 180
+#   4.85 s -> valor actual (regla de tres sobre la medición anterior)
+# Sigue siendo un punto de partida: cambiar de suelo, de batería o de ruedas
+# obliga a reajustarlo desde Ajustes → "Media vuelta" (en vivo).
+TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "4.85"))
 # Si gira hacia el lado contrario del que querés, ponelo en true (en vivo
 # desde Ajustes). No hay que tocar el firmware ni recablear.
 TURN_180_INVERT = os.environ.get("TURN_180_INVERT", "false").strip().lower() in (
