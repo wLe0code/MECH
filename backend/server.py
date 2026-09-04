@@ -563,6 +563,28 @@ async def move_projection():
     return {"ok": True}
 
 
+class AdvanceCmd(BaseModel):
+    seconds: float | None = None
+    backwards: bool = False
+
+
+@app.post("/api/move/advance")
+async def move_advance(c: AdvanceCmd):
+    """Avanza (o retrocede) unos segundos, a potencia máxima.
+
+    Sin `seconds` usa el valor de Ajustes. Es lo mismo que decirle
+    "avanza diez segundos" por voz."""
+    mech = get_app()
+    if mech.state.get("voice_phase") in ("speaking", "thinking"):
+        return {"ok": False, "reason": "MECH está narrando; espera o interrúmpelo"}
+    threading.Thread(
+        target=maneuvers.advance, args=(mech, c.seconds),
+        kwargs={"backwards": c.backwards}, daemon=True,
+    ).start()
+    return {"ok": True, "seconds": c.seconds or config.ADVANCE_SECONDS,
+            "backwards": c.backwards}
+
+
 @app.post("/api/move/testturn")
 async def move_test_turn():
     """Repite el tramo de media vuelta SIN cambiar la orientación guardada.
@@ -788,6 +810,9 @@ _LIVE_KEYS = {
     "TURN_180_SPEED": int,
     "TURN_180_SECONDS": float,
     "TURN_180_INVERT": _to_bool,   # hacia qué lado se da la vuelta
+    "ADVANCE_SECONDS": float,      # "avanza diez segundos"
+    "ADVANCE_SPEED": int,
+    "ADVANCE_MAX_SECONDS": float,
     "TURN_LATERAL_SPEED": int,
     "TURN_LATERAL_SECONDS": float,
 }
@@ -840,6 +865,9 @@ async def get_config():
             "TURN_180_SPEED": config.TURN_180_SPEED,
             "TURN_180_SECONDS": config.TURN_180_SECONDS,
             "TURN_180_INVERT": config.TURN_180_INVERT,
+            "ADVANCE_SECONDS": config.ADVANCE_SECONDS,
+            "ADVANCE_SPEED": config.ADVANCE_SPEED,
+            "ADVANCE_MAX_SECONDS": config.ADVANCE_MAX_SECONDS,
             "TURN_LATERAL_SPEED": config.TURN_LATERAL_SPEED,
             "TURN_LATERAL_SECONDS": config.TURN_LATERAL_SECONDS,
         },

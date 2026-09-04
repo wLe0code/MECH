@@ -493,6 +493,12 @@
       else if (res) log(res.reason || 'No hay nada proyectándose.', 'warn');
     },
 
+    async advance(backwards) {
+      const res = await fetchJSON('/api/move/advance', { json: { backwards: !!backwards } });
+      if (res && res.ok) log(`${backwards ? 'Retrocediendo' : 'Avanzando'} ${res.seconds} s.`, 'ok');
+      else if (res) log(res.reason || 'No pude moverme ahora.', 'warn');
+    },
+
     async testTurn() {
       const res = await fetchJSON('/api/move/testturn');
       if (res && res.ok) log(`Probando media vuelta: ${res.seconds} s a potencia ${res.speed}. ` +
@@ -576,6 +582,9 @@
       setSlider('set-turnsec', 'turnsec', L.TURN_180_SECONDS);
       setSlider('set-turnvel', 'turnvel', L.TURN_180_SPEED);
       if ($('set-turninv')) $('set-turninv').checked = !!L.TURN_180_INVERT;
+      setSlider('set-advsec', 'advsec', L.ADVANCE_SECONDS);
+      setSlider('set-advvel', 'advvel', L.ADVANCE_SPEED);
+      setSlider('set-advmax', 'advmax', L.ADVANCE_MAX_SECONDS);
       setSlider('set-kick', 'kick', L.MOTOR_KICK_SECONDS);
       // Visión
       if ($('set-vision')) $('set-vision').checked = !!L.VISION_ENABLED;
@@ -627,6 +636,9 @@
         TURN_180_SECONDS: $('set-turnsec').value,
         TURN_180_SPEED: String(parseInt($('set-turnvel').value)),
         TURN_180_INVERT: $('set-turninv').checked ? 'true' : 'false',
+        ADVANCE_SECONDS: $('set-advsec').value,
+        ADVANCE_SPEED: String(parseInt($('set-advvel').value)),
+        ADVANCE_MAX_SECONDS: $('set-advmax').value,
         MOTOR_KICK_SECONDS: $('set-kick').value,
         VISION_MIN_DISTANCE: $('set-dist').value,
         VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',
@@ -674,7 +686,8 @@
   // Helpers de sliders de ajustes (texto con unidad).
   const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', ienergy: '×', dist: ' m',
                           wave: ' s', greetcd: ' s', turnsec: ' s', latsec: ' s', turnvel: '', latvel: '',
-                          wavehigh: '°', waveswing: '°', waverep: '', kick: ' s' };
+                          wavehigh: '°', waveswing: '°', waverep: '', kick: ' s',
+                          advsec: ' s', advvel: '', advmax: ' s' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

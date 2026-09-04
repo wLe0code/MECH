@@ -594,6 +594,11 @@ el SALUDO siga siendo el arco amplio del video. Por eso hay dos entradas:
 coreografías completas también al narrar. `ARM_GESTURE_MODE` (full/subtle/off)
 sigue mandando por encima de las dos.
 
+**Las repeticiones son las MISMAS para el saludo y para el giro hacia
+afuera** (`ARM_WAVE_REPEATS`, default 2 = sube, agita una vez y baja): una
+sola perilla en el panel, porque el equipo pidió el mismo criterio para los
+dos. Lo que cambia entre ellos es la amplitud del arco, no el número.
+
 **El saludo es lento y AMPLIO a propósito** (todo ajustable en vivo):
 `ARM_WAVE_SECONDS` (2.2 s) es lo que tarda en subir y bajar; `ARM_WAVE_HIGH`
 (180°) hasta dónde llega; `ARM_WAVE_SWING` (65°) y `ARM_WAVE_REPEATS` (3) las
@@ -674,7 +679,22 @@ con estas dos órdenes se pone de cara al público y vuelve.
   sabemos hacia dónde quedó, así que se asume "projection" y el operador lo
   recoloca a mano (igual que el reset del odómetro).
 - Botones en el panel (vista Arduino) y endpoints `POST /api/move/outward`,
-  `/api/move/projection`, `/api/move/greet`.
+  `/api/move/projection`, `/api/move/greet`, `/api/move/testturn`.
+
+### "Avanza diez segundos" / "retrocede cinco segundos"
+
+`maneuvers.advance()`. Orden directa, sin pasar por Claude, igual que el giro.
+
+- El número es **opcional**: sin él usa `ADVANCE_SECONDS` (Ajustes →
+  "Avanzar"). Con él, manda lo que digan —
+  `voice_phrases.extract_seconds()` entiende dígitos y letra ("diez"),
+  que es como lo transcribe Whisper.
+- Topa en `ADVANCE_MAX_SECONDS` (30 s): en un stand, un robot lanzado varios
+  metros es un problema, y una orden mal entendida no debería provocarlo.
+- **Resetea el odómetro al terminar.** Si alguien pide expresamente mover el
+  robot, esa pasa a ser su posición de trabajo; si no, `return_to_start()`
+  desharía el movimiento antes de la siguiente narración, que es justo lo
+  contrario de lo que se pidió.
 
 ### Protocolo Arduino (líneas terminadas en `\n` a 115200 baud)
 
@@ -1058,6 +1078,16 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 ---
 
 ## Cómo trabajar con este usuario
+
+- **Todo valor de movimiento va como CONFIGURACIÓN, nunca hardcodeado**
+  (pedido explícito del equipo, sep 2026). Cuando pidan "que avance diez
+  segundos", "que gire 4.8", "que agite el brazo dos veces": clave en
+  `config.py` con default sensato, entrada en `_LIVE_KEYS` y en `/api/config`
+  de `server.py`, y un slider en la vista Ajustes del panel. Así se recalibra
+  EN EL EVENTO, en vivo, sin tocar código ni reiniciar — que es lo único que
+  sirve cuando el suelo, la batería o las ruedas cambian.
+  Y si la orden admite un número hablado ("avanza CINCO segundos"), ese número
+  manda sobre el default: ver `voice_phrases.extract_seconds()`.
 
 - **Pasos pequeños y concretos.** "Pega esto, dime qué sale." No abrumes con explicación teórica.
 - **Cuando algo falla en su consola**, pídele el mensaje EXACTO antes de adivinar.

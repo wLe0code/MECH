@@ -1056,6 +1056,12 @@ class MechApp:
             "mira hacia afuera"   -> gira 180° y saluda al público.
             "regresa a proyectar" -> deshace el giro.
         """
+        # "avanza diez segundos" / "retrocede cinco segundos". El número es
+        # opcional: sin él se usa el configurado en Ajustes.
+        if voice_phrases.is_advance(text) or voice_phrases.is_retreat(text):
+            atras = voice_phrases.is_retreat(text)
+            maneuvers.advance(self, voice_phrases.extract_seconds(text), backwards=atras)
+            return True
         if voice_phrases.is_look_outward(text):
             maneuvers.look_outward(self)
             return True

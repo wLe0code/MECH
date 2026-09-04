@@ -234,6 +234,46 @@ def back_to_projection(app, announce: bool = True) -> bool:
         _lock.release()
 
 
+def advance(app, seconds: float | None = None, backwards: bool = False) -> bool:
+    """Avanza (o retrocede) durante unos segundos, a potencia máxima.
+
+    `seconds=None` usa `config.ADVANCE_SECONDS`. Se topa en
+    `ADVANCE_MAX_SECONDS`: en un stand, un robot lanzado varios metros es un
+    problema, y una orden mal entendida no debería poder provocarlo.
+
+    Al terminar se **resetea el odómetro**: si alguien pide expresamente
+    mover el robot, esa pasa a ser su nueva posición de trabajo. Si no,
+    `return_to_start()` desharía el movimiento antes de la siguiente
+    narración, que es justo lo contrario de lo que se pidió.
+    """
+    if seconds is None:
+        seconds = config.ADVANCE_SECONDS
+    seconds = max(0.1, min(float(seconds), config.ADVANCE_MAX_SECONDS))
+    velocidad = max(10, min(100, config.ADVANCE_SPEED))
+    if backwards:
+        velocidad = -velocidad
+
+    if not _lock.acquire(blocking=False):
+        app.log("Ya estoy en movimiento; espera a que termine.", "warn")
+        return False
+    try:
+        app.log(
+            f"{'Retrocedo' if backwards else 'Avanzo'} {seconds:g} s "
+            f"a potencia {abs(velocidad)}.",
+            "ok",
+        )
+        with _WheelsHeld(app):
+            _drive(app, velocidad, 0, 0, seconds)
+        # Nueva posición de partida (ver el docstring).
+        try:
+            app.arduino.reset_odometer()
+        except Exception:
+            pass
+        return True
+    finally:
+        _lock.release()
+
+
 def test_half_turn(app) -> None:
     """Ejecuta el tramo de media vuelta SIN cambiar hacia dónde mira.
 

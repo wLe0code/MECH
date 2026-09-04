@@ -129,6 +129,7 @@
             <div class="cmd-chip" onclick="API.testCmd('¿Qué eres y cómo funcionas?')"><i class="ti ti-info-circle"></i>Sobre MECH</div>
             <div class="cmd-chip" onclick="API.testCmd('Saluda al público')"><i class="ti ti-hand-stop"></i>Saludar</div>
             <div class="cmd-chip" onclick="API.testCmd('proyecta marketing')"><i class="ti ti-player-play"></i>Proyecta marketing</div>
+            <div class="cmd-chip" onclick="API.testCmd('avanza diez segundos')"><i class="ti ti-arrow-up"></i>Avanza diez segundos</div>
             <div class="cmd-chip" onclick="API.testCmd('mira hacia afuera')"><i class="ti ti-rotate-clockwise"></i>Mira hacia afuera</div>
             <div class="cmd-chip" onclick="API.testCmd('regresa a proyectar')"><i class="ti ti-rotate"></i>Regresa a proyectar</div>
           </div>
@@ -285,6 +286,8 @@
             <button class="arduino-btn" onclick="API.backToProjection()">↺ REGRESA A PROYECTAR</button>
             <button class="arduino-btn" onclick="API.greetNow()">👋 SALUDAR AHORA</button>
             <button class="arduino-btn" onclick="API.testTurn()">🔁 PROBAR MEDIA VUELTA</button>
+            <button class="arduino-btn" onclick="API.advance(false)">⇈ AVANZAR (config.)</button>
+            <button class="arduino-btn" onclick="API.advance(true)">⇊ RETROCEDER (config.)</button>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
             Ahora mira a: <b id="facing-val" style="color:var(--text)">la proyección</b>.
@@ -479,9 +482,9 @@
             <span class="val" id="set-waveswing-val">65°</span>
           </div>
           <div class="slider-row">
-            <label title="Cuántas veces sube y baja el brazo EN TOTAL, contando la subida inicial. 3 = sube, agita dos veces y baja. El mínimo es 2.">Saludo subidas</label>
-            <input type="range" min="2" max="6" step="1" value="3" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
-            <span class="val" id="set-waverep-val">3</span>
+            <label title="Cuántas veces sube y baja el brazo EN TOTAL, contando la subida inicial. 2 = sube, agita una vez y baja. Vale para el saludo y para mirar hacia afuera.">Saludo subidas</label>
+            <input type="range" min="1" max="6" step="1" value="2" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
+            <span class="val" id="set-waverep-val">2</span>
           </div>
           <div class="slider-row">
             <label title="El saludo levanta los DOS brazos (el derecho agita, el izquierdo acompaña).">Saludo brazos</label>
@@ -514,8 +517,8 @@
           </div>
           <div class="slider-row">
             <label title="Cuánto tiempo se desliza de lado. Es LO ÚNICO que hay que calibrar. Regla de tres: si con estos segundos gira X grados, los que necesitas son segundos × 180 / X.">Media vuelta</label>
-            <input type="range" min="0.4" max="14" step="0.1" value="5.0" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
-            <span class="val" id="set-turnsec-val">5.0 s</span>
+            <input type="range" min="0.4" max="14" step="0.1" value="4.8" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
+            <span class="val" id="set-turnsec-val">4.8 s</span>
           </div>
           <div class="slider-row">
             <label title="Potencia del desplazamiento lateral (0-100). Con estos motores, por debajo de 100 normalmente solo zumban.">Velocidad</label>
@@ -528,6 +531,21 @@
               <input type="checkbox" id="set-turninv">
               <span class="switch-text">Girar hacia el otro lado</span>
             </label>
+          </div>
+          <div class="slider-row">
+            <label title="Cuánto avanza (o retrocede) con «avanza» a secas o con el botón del panel. Diciendo «avanza cinco segundos» manda el número que digas.">Avanzar</label>
+            <input type="range" min="0.5" max="30" step="0.5" value="10" id="set-advsec" oninput="UI.settingLabel('set-advsec','advsec')">
+            <span class="val" id="set-advsec-val">10 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Potencia al avanzar (0-100). Con estos motores, por debajo de 100 normalmente solo zumban.">Vel. avanzar</label>
+            <input type="range" min="20" max="100" step="5" value="100" id="set-advvel" oninput="UI.settingLabel('set-advvel','advvel')">
+            <span class="val" id="set-advvel-val">100</span>
+          </div>
+          <div class="slider-row">
+            <label title="Tope de seguridad: por mucho que se le pida, nunca se mueve más que esto de una sola vez.">Tope avanzar</label>
+            <input type="range" min="2" max="60" step="1" value="30" id="set-advmax" oninput="UI.settingLabel('set-advmax','advmax')">
+            <span class="val" id="set-advmax-val">30 s</span>
           </div>
           <div class="slider-row">
             <label title="Pulso inicial a potencia MÁXIMA para romper la fricción. Súbelo si los motores zumban pero no arrancan. 0 = desactivado.">Arranque</label>

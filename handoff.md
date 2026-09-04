@@ -403,7 +403,7 @@ pausado sin esa guarda, vuelve el bug del video que empieza de nuevo.
 
 **1. El giro se quedaba corto.** Calibrado en tres pasadas sobre el robot:
 2.0 s daba ~80° ("un poquito menos de la mitad"), 4.5 s daba 165-170°, y el
-default quedó en **5.0 s**. El slider llega a 14 s.
+default quedó en **4.8 s**. El slider llega a 14 s.
 La regla para reajustarlo: si con S segundos gira X grados, los que necesitás
 son **S × 180 / X**. Botón nuevo **«PROBAR MEDIA VUELTA»** en la vista Arduino: repite el
 tramo *sin* cambiar la orientación guardada, para poder calibrar pulsando
@@ -439,6 +439,16 @@ Reconversión:
 ```bash
 ffmpeg -i original.mp4 -c:v libx264 -crf 23 -c:a aac -b:a 192k seg01.mp4
 ```
+
+**5. Todo valor de movimiento es CONFIGURACIÓN** (pedido explícito). Nada
+hardcodeado: clave en `config.py` + `_LIVE_KEYS` + slider en Ajustes, para
+poder recalibrar EN EL EVENTO sin tocar código ni reiniciar. Lo último que
+entró así: **«avanza diez segundos» / «retrocede cinco segundos»**
+(`maneuvers.advance`), con el número hablado opcional — sin él usa Ajustes →
+"Avanzar", y siempre topa en `ADVANCE_MAX_SECONDS`.
+
+Valores actuales tras calibrar en el robot: giro **4.8 s**, brazos **2**
+subidas (saludo y giro hacia afuera comparten esa perilla), avanzar **10 s**.
 
 ### Qué se cae si no hay wifi (lo dice el preflight)
 

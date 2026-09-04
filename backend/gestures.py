@@ -281,7 +281,9 @@ def _perform(link: ArduinoLink, gesture: str, talking: bool) -> None:
 #   - al narrar:             115°, un brazo, casi imperceptible.
 _OUTWARD_HIGH = 145
 _OUTWARD_SWING = 30
-_OUTWARD_REPEATS = 2
+# Las repeticiones NO son propias: usa las mismas que el saludo
+# (config.ARM_WAVE_REPEATS). El equipo pidió el mismo criterio para los dos
+# gestos, así que hay una sola perilla en el panel en vez de dos.
 
 
 def _g_wave_outward(link: ArduinoLink) -> None:
@@ -291,7 +293,7 @@ def _g_wave_outward(link: ArduinoLink) -> None:
     alto = _OUTWARD_HIGH
     bajo = max(_NEUTRAL, alto - _OUTWARD_SWING)
     _move_smooth(link, _NEUTRAL, alto, subida)
-    for _ in range(max(1, _OUTWARD_REPEATS - 1)):
+    for _ in range(max(1, config.ARM_WAVE_REPEATS - 1)):
         _move_smooth(link, _NEUTRAL, bajo, vaiven)
         _move_smooth(link, _NEUTRAL, alto, vaiven)
     _move_smooth(link, _NEUTRAL, _NEUTRAL, subida)

@@ -74,7 +74,12 @@ ARM_WAVE_SWING = int(os.environ.get("ARM_WAVE_SWING", "65"))
 # subida inicial. 3 = sube, agita dos veces y baja. El equipo pidió bajarlo
 # ("daba demasiadas revoluciones") pero que quedara en más de 2, sep 2026.
 # El mínimo es 2: con 1 no se leería como saludo.
-ARM_WAVE_REPEATS = max(2, int(os.environ.get("ARM_WAVE_REPEATS", "3")))
+# Cuántas veces sube y baja el brazo EN TOTAL al saludar, contando la
+# subida inicial. El equipo lo quiere "entre una y dos" (sep 2026), así
+# que el default es 2: sube, agita una vez y baja.
+# Vale para el saludo de bienvenida Y para el giro hacia afuera: es el
+# mismo número, cambia solo la amplitud del arco.
+ARM_WAVE_REPEATS = max(1, int(os.environ.get("ARM_WAVE_REPEATS", "2")))
 # El saludo levanta LOS DOS brazos (el derecho agita, el izquierdo
 # acompaña). El equipo pidió que se moviera más al ver a alguien.
 ARM_WAVE_BOTH = os.environ.get("ARM_WAVE_BOTH", "true").strip().lower() in (
@@ -111,10 +116,11 @@ TURN_180_SPEED = int(os.environ.get("TURN_180_SPEED", "100"))
 # CALIBRADO EN EL ROBOT (sep 2026), en dos pasadas:
 #   2.0 s  -> giraba "un poquito menos de la mitad" (~80°)
 #   4.5 s  -> 165-170°, casi los 180
-#   4.85 s -> valor actual (regla de tres sobre la medición anterior)
+#   5.0 s  -> se pasaba un poco
+#   4.8 s  -> valor actual
 # Sigue siendo un punto de partida: cambiar de suelo, de batería o de ruedas
 # obliga a reajustarlo desde Ajustes → "Media vuelta" (en vivo).
-TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "5.0"))
+TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "4.8"))
 # Si gira hacia el lado contrario del que querés, ponelo en true (en vivo
 # desde Ajustes). No hay que tocar el firmware ni recablear.
 TURN_180_INVERT = os.environ.get("TURN_180_INVERT", "false").strip().lower() in (
@@ -241,12 +247,47 @@ INTERRUPT_MAX_UTTERANCE = float(os.environ.get("INTERRUPT_MAX_UTTERANCE", "4.0")
 # hace que dispare antes (el disparo pide media ventana de voz).
 INTERRUPT_SILENCE_TIMEOUT = float(os.environ.get("INTERRUPT_SILENCE_TIMEOUT", "0.6"))
 
+# --- Avanzar / retroceder un rato ----------------------------------------
+# "avanza diez segundos" mueve a MECH hacia adelante ese tiempo. Si no se
+# dice ningún número ("avanza" a secas), se usa ADVANCE_SECONDS.
+# Como todo lo que mueve ruedas, va a potencia máxima: a media potencia estos
+# motores solo zumban.
+ADVANCE_SECONDS = float(os.environ.get("ADVANCE_SECONDS", "10"))
+ADVANCE_SPEED = int(os.environ.get("ADVANCE_SPEED", "100"))
+# Tope de seguridad: por mucho que le pidan, no se va a mover más que esto de
+# una sola vez (en un stand, un robot lanzado varios metros es un problema).
+ADVANCE_MAX_SECONDS = float(os.environ.get("ADVANCE_MAX_SECONDS", "30"))
+
 # --- Órdenes de movimiento por voz ---------------------------------------
 # Dos órdenes que NO pasan por Claude (son instantáneas y no gastan crédito):
 #   "mira hacia afuera"   -> gira 180° y saluda al público que pasa.
 #   "regresa a proyectar" -> deshace el giro y vuelve a su posición.
 # Ver backend/maneuvers.py. El match es por palabras en cualquier orden, así
 # que "MECH, mirá hacia afuera" o "mira afuera" también funcionan.
+VOICE_ADVANCE_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_ADVANCE_PHRASES",
+        "avanza,avanzá,adelante,ve adelante,camina adelante,muevete adelante",
+    ).split(",") if p.strip()
+]
+VOICE_ADVANCE_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_ADVANCE_PHRASES_EN",
+        "move forward,go forward,forward",
+    ).split(",") if p.strip()
+]
+VOICE_RETREAT_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_RETREAT_PHRASES",
+        "retrocede,retrocedé,atras,ve atras,camina atras,muevete atras",
+    ).split(",") if p.strip()
+]
+VOICE_RETREAT_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_RETREAT_PHRASES_EN",
+        "move back,go back,move backward,backward",
+    ).split(",") if p.strip()
+]
 VOICE_OUTWARD_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_OUTWARD_PHRASES",

@@ -126,6 +126,65 @@ def strip_interrupt(text: str) -> str:
 # si Whisper transcribió en el idioma equivocado igual queremos obedecer.
 
 
+# Números escritos con letra, para "avanza DIEZ segundos". Whisper los
+# transcribe casi siempre en letra, no en dígito.
+_NUMEROS = {
+    "medio": 0.5, "un": 1, "uno": 1, "una": 1, "dos": 2, "tres": 3,
+    "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9,
+    "diez": 10, "once": 11, "doce": 12, "trece": 13, "catorce": 14,
+    "quince": 15, "dieciseis": 16, "diecisiete": 17, "dieciocho": 18,
+    "diecinueve": 19, "veinte": 20, "veinticinco": 25, "treinta": 30,
+    # Los grandes también, aunque el tope de seguridad los recorte: es mejor
+    # entenderlos y toparlos que ignorarlos y hacer otra cosa distinta.
+    "cuarenta": 40, "cincuenta": 50, "sesenta": 60, "cien": 100,
+    # inglés, por si le hablan en modo EN
+    "half": 0.5, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+    "twelve": 12, "fifteen": 15, "twenty": 20, "thirty": 30,
+}
+
+
+def extract_seconds(text: str) -> float | None:
+    """Los segundos que pide una orden, o None si no dice ninguno.
+
+    Acepta dígitos ("avanza 10 segundos") y letra ("avanza diez segundos"),
+    que es como lo transcribe Whisper casi siempre. Si no hay número, quien
+    llame decide el valor por defecto.
+    """
+    tokens = normalize(text).split()
+    for i, tok in enumerate(tokens):
+        valor = None
+        if tok.isdigit():
+            valor = float(tok)
+        elif tok in _NUMEROS:
+            valor = float(_NUMEROS[tok])
+        if valor is None:
+            continue
+        # "diez segundos" sí; "diez" suelto también (si dijeron un número en
+        # una orden de movimiento, es el tiempo: no hay otra cosa que contar).
+        siguiente = tokens[i + 1] if i + 1 < len(tokens) else ""
+        if not siguiente or siguiente.startswith("segundo") or siguiente.startswith("second"):
+            return valor
+        return valor
+    return None
+
+
+def is_advance(text: str) -> bool:
+    """¿Piden avanzar? ("avanza diez segundos")"""
+    return matches_any(
+        text,
+        list(config.VOICE_ADVANCE_PHRASES) + list(config.VOICE_ADVANCE_PHRASES_EN),
+    )
+
+
+def is_retreat(text: str) -> bool:
+    """¿Piden retroceder? ("retrocede cinco segundos")"""
+    return matches_any(
+        text,
+        list(config.VOICE_RETREAT_PHRASES) + list(config.VOICE_RETREAT_PHRASES_EN),
+    )
+
+
 def is_look_outward(text: str) -> bool:
     """¿Le están pidiendo que gire 180° y salude hacia afuera?"""
     return matches_any(
