@@ -11,7 +11,11 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (sep 2026, §3.bis) es **movilidad**: giro de 180° con «mira hacia
+> Lo último (sep 2026, §3.ter) es el **slot de MARKETING**: videos promocionales
+> que se proyectan enteros y con su propio audio con «proyecta marketing».
+> Sin probar en la Pi; ojo con el flag de autoplay de Chromium (§3.ter).
+>
+> Antes (sep 2026, §3.bis), **movilidad**: giro de 180° con «mira hacia
 > afuera» / «regresa a proyectar», el saludo por cámara arreglado, saludo más
 > amplio y brazos mínimos al proyectar. En la primera prueba en el robot las
 > ruedas NO se movían: eran `MODE:LISTEN` frenando los motores + media
@@ -274,6 +278,54 @@ este código: batería, L298N o los propios motores.
 
 ---
 
+## 3.ter Slot de MARKETING (sep 2026) — sin probar en la Pi
+
+Pedido del equipo: un slot de videos promocionales que **proyecte aunque no
+tenga los 5**, se dispare con «proyecta marketing» y **conserve su audio**.
+
+Está en `WORKS` como `marketing` con la marca **`promo: True`**, que es lo que
+lo hace comportarse al revés que una obra cultural:
+
+| | Obra cultural | Slot `marketing` |
+|---|---|---|
+| Cómo se pide | lo decide Claude | «proyecta marketing» (orden directa, sin Claude) |
+| Reproducción | clip corto en bucle bajo la narración | video **entero**, uno tras otro |
+| Audio | **mudo** (MECH narra encima) | **su propio audio** — MECH se calla |
+| Si faltan archivos | la obra no se ofrece | **proyecta con los que haya** |
+
+- **12 espacios, ninguno obligatorio.** Con uno solo ya proyecta, y los huecos
+  del medio se saltan (si están el 1, el 3 y el 7, reproduce esos tres).
+- **No se le ofrece a Claude** (`system_prompt_section` filtra los promo): si
+  lo viera, lo narraría como una obra y taparía el audio del video.
+- Se corta con «oye MECH», con el botón «Cortar» de `/library` o con el paro.
+- **El final lo marca la PANTALLA, no el backend.** Python no sabe cuánto dura
+  cada mp4: `projector.html` avanza con el evento `ended` de cada `<video>` y
+  avisa con `POST /api/playlist/ended`. `MARKETING_MAX_SECONDS` es solo el
+  tope por si no hay ninguna pantalla abierta.
+- Subida en `/library`: la tarjeta de Marketing tiene su propio aviso y los
+  botones «Proyectar ahora» / «Cortar».
+
+### ⚠️ Para que se OIGA hay que abrir Chromium distinto
+
+Los navegadores no dejan reproducir con sonido sin un gesto del usuario:
+
+```bash
+chromium --kiosk --autoplay-policy=no-user-gesture-required http://localhost:8000/projector
+```
+
+Sin esa opción el video **se ve pero mudo**, y la pantalla muestra «Toca la
+pantalla para activar el sonido» (un toque lo activa y reinicia el video en
+curso). Conviene actualizar el lanzador de la Pi con ese flag. En el visor VR
+los videos van siempre mudos a propósito: el sonido sale por el parlante.
+
+Y al convertir los mp4, **NO uses `-an`** (eso quita el audio):
+
+```bash
+ffmpeg -i original.mov -c:v libx264 -crf 23 -c:a aac -b:a 192k seg01.mp4
+```
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:
@@ -296,7 +348,10 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
    - Encender la visión y pasar por delante: ¿saluda con brazo **y** voz a la
      vez? ¿Deja de agitar el brazo solo entre narraciones?
    - Poner a narrar algo: los brazos deben moverse **poco** y solo uno.
-5. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
+5. **Marketing (§3.ter, recién hecho)**: subir un par de videos en `/library`
+   → «Proyectar ahora» → ¿se ven enteros, uno tras otro, **y se oyen**? Si se
+   ven mudos, es el flag de autoplay de Chromium.
+6. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
    siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
    vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el
    normal).

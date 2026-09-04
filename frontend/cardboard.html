@@ -227,6 +227,14 @@ function show(url, isVideo) {
 
 function applyState(s) {
   subs.set(s.current_subtitle, s.subtitle_lang);
+  // Playlist promo (marketing): en el visor se ve, pero SIN audio — el
+  // sonido sale por el parlante de la Pi, no por el teléfono. Aquí solo
+  // mostramos el archivo que toca; el ritmo lo lleva /projector.
+  if (s.current_playlist && s.current_playlist.items && s.current_playlist.items.length) {
+    const it = s.current_playlist.items[0];
+    show(it.url, it.kind !== 'image');
+    return;
+  }
   if (s.current_video) { show(s.current_video, true); return; }
   if (s.current_image) { show(s.current_image, false); return; }
   const imm = s.projectors?.imm;

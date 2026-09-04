@@ -51,6 +51,17 @@ class WorkMeta(TypedDict, total=False):
     # humanos — NO se inyectan al prompt (no gastan tokens). Si corregís o
     # añadís un fact, anotá aquí de dónde lo sacaste.
     sources: list[str]
+    # Opcional: True = "slot abierto" tipo MARKETING. Se comporta distinto a
+    # una obra normal en cuatro cosas:
+    #   1. `segments` es un MÁXIMO de espacios, no una cantidad exigida: se
+    #      proyecta con los videos que haya, aunque falten (y aunque haya
+    #      huecos en el medio).
+    #   2. Los videos se reproducen ENTEROS y en fila (playlist), no en bucle
+    #      bajo la narración de MECH.
+    #   3. Suenan CON SU PROPIO AUDIO. MECH no narra encima.
+    #   4. NO se le ofrece a Claude: se dispara con una orden directa
+    #      ("proyecta marketing"), sin pasar por el modelo.
+    promo: bool
 
 
 # Catálogo de obras con video pre-renderizado.
@@ -61,6 +72,22 @@ class WorkMeta(TypedDict, total=False):
 #   3. Sube los archivos seg01.mp4, seg02.mp4, ... según `segments`.
 #   4. Reinicia el servidor (el system prompt se recompone al arrancar).
 WORKS: dict[str, WorkMeta] = {
+    # --- Slot abierto de MARKETING (promo) ---------------------------------
+    # No es una obra cultural: es el material promocional del equipo. Se
+    # proyecta entero y con su propio audio cuando alguien dice
+    # "proyecta marketing". Ver `promo` en WorkMeta.
+    "marketing": {
+        "title": "Marketing",
+        "author": "Equipo MECH",
+        "synopsis": (
+            "Videos promocionales del proyecto. Se proyectan enteros, en "
+            "orden y con su propio audio, uno tras otro. No hace falta "
+            "llenar todos los espacios: se reproduce lo que haya."
+        ),
+        # MÁXIMO de espacios disponibles (no hay que llenarlos todos).
+        "segments": 12,
+        "promo": True,
+    },
     "don_quijote": {
         "title": "Don Quijote de la Mancha",
         "author": "Miguel de Cervantes",
@@ -303,12 +330,54 @@ def supports_music(slug: str) -> bool:
     return bool(WORKS.get(slug, {}).get("music"))
 
 
+def is_promo(slug: str) -> bool:
+    """True si es un slot abierto tipo marketing (ver `promo` en WorkMeta)."""
+    return bool(WORKS.get(slug, {}).get("promo"))
+
+
 def work_is_complete(slug: str) -> bool:
-    """True si TODOS los segmentos definidos están físicamente presentes."""
+    """¿Está lista para proyectarse?
+
+    Obra normal: TODOS los segmentos definidos tienen que estar en disco (si
+    falta uno, la narración quedaría con un hueco visual).
+
+    Slot promo (marketing): basta con que haya AL MENOS UN video. `segments`
+    ahí es un máximo de espacios, no una cantidad exigida — el equipo pidió
+    expresamente que proyecte aunque no estén los 5.
+    """
     meta = WORKS.get(slug)
     if meta is None:
         return False
+    if meta.get("promo"):
+        return any(segment_exists(slug, i) for i in range(1, meta["segments"] + 1))
     return all(segment_exists(slug, i) for i in range(1, meta["segments"] + 1))
+
+
+def playlist(slug: str) -> list[dict]:
+    """Los archivos presentes de un slot, EN ORDEN y saltándose los huecos.
+
+    Es lo que se reproduce en el modo promo: si están cargados los espacios
+    1, 2 y 5, devuelve esos tres y se reproducen seguidos.
+
+    Cada entrada: {n, url, kind, name}.
+    """
+    meta = WORKS.get(slug)
+    if meta is None:
+        return []
+    items: list[dict] = []
+    for i in range(1, meta["segments"] + 1):
+        p = segment_file(slug, i)
+        if p is None:
+            continue
+        items.append(
+            {
+                "n": i,
+                "url": f"/videos/{slug}/{p.name}",
+                "kind": "video" if segment_is_video(p) else "image",
+                "name": p.name,
+            }
+        )
+    return items
 
 
 def available_works() -> list[dict]:
@@ -339,8 +408,11 @@ def available_works() -> list[dict]:
                 **meta,
                 "music": bool(meta.get("music")),
                 "music_present": background_audio_exists(slug),
+                "promo": bool(meta.get("promo")),
                 "present_segments": present,
-                "complete": present == total,
+                # En un slot promo "listo" = tiene al menos un video; en una
+                # obra normal = están todos.
+                "complete": work_is_complete(slug),
                 "segment_files": seg_files,
             }
         )
@@ -361,7 +433,10 @@ def system_prompt_section() -> str:
       2. Cuáles tienen video pre-renderizado (para usar video_slug/segment).
       3. Cuáles tienen música de fondo (para usar el campo background_music).
     """
-    works = available_works()
+    # Los slots promo (marketing) NO se le ofrecen a Claude: se disparan con
+    # una orden directa y se reproducen con su propio audio, sin narración.
+    # Si aparecieran aquí, el modelo intentaría contarlos como una obra.
+    works = [w for w in available_works() if not w.get("promo")]
     complete = [w for w in works if w["complete"]]
     music_works = [w for w in works if w.get("music") and w.get("music_present")]
 

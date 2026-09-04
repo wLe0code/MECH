@@ -296,6 +296,17 @@ async def lifespan(app: FastAPI):
     if config.VOICE_AUTOSTART:
         mech.log("Voz en reposo: di 'ok MECH' para activarlo.", "info")
         start_voice_loop(awake=False)
+    # Slots de proyección directa (marketing): decir cuántos videos hay, para
+    # que se vea de un vistazo si están subidos y si esta es la versión nueva.
+    for slug in (s for s in video_library.WORKS if video_library.is_promo(s)):
+        n = len(video_library.playlist(slug))
+        mech.log(
+            f"Slot '{slug}': {n} video(s) — decí 'proyecta {slug}' para "
+            f"reproducirlos enteros y con su audio."
+            if n else
+            f"Slot '{slug}': vacío. Subí videos en /library.",
+            "ok" if n else "info",
+        )
     # Visión (cámara C930e): arranca sola si está habilitada en .env.
     if config.VISION_ENABLED:
         vision.get_vision(mech).start()
@@ -556,6 +567,57 @@ async def move_greet():
         return {"ok": False, "reason": "MECH está narrando ahora mismo"}
     threading.Thread(target=mech.greet_now, daemon=True).start()
     return {"ok": True}
+
+
+# -- Playlist promo (marketing) ---------------------------------------------
+
+
+@app.post("/api/marketing/play")
+async def marketing_play(slug: str = "marketing"):
+    """Proyecta el slot promo entero, con su propio audio y sin narración.
+
+    Lo mismo que decirle "proyecta marketing" por voz. Corre en segundo plano
+    porque la reproducción dura minutos.
+    """
+    if not video_library.is_promo(slug):
+        raise HTTPException(404, f"'{slug}' no es un slot de proyección directa")
+    mech = get_app()
+    if mech.state.get("voice_phase") in ("speaking", "thinking"):
+        return {"ok": False, "reason": "MECH está ocupado; espera o interrúmpelo"}
+    items = video_library.playlist(slug)
+    if not items:
+        return {"ok": False, "reason": f"El slot '{slug}' no tiene videos todavía"}
+    threading.Thread(
+        target=mech.play_playlist, args=(slug,), daemon=True
+    ).start()
+    return {"ok": True, "items": len(items)}
+
+
+@app.post("/api/marketing/stop")
+async def marketing_stop():
+    """Corta la proyección promo en curso (botón de "ya está" del stand)."""
+    mech = get_app()
+    if not mech.state.get("current_playlist"):
+        return {"ok": False, "reason": "No hay ninguna proyección en curso"}
+    mech.log("Proyección cortada desde el panel.", "info")
+    mech.stop_presentation()
+    return {"ok": True}
+
+
+class PlaylistEnded(BaseModel):
+    slug: str | None = None
+
+
+@app.post("/api/playlist/ended")
+async def playlist_ended(p: PlaylistEnded):
+    """La PANTALLA avisa que terminó el último video de la playlist.
+
+    El backend no sabe cuánto dura cada mp4, así que el fin de la
+    reproducción lo marca quien de verdad lo sabe: el `<video>` del
+    proyector, cuando dispara su evento `ended` en el último archivo.
+    """
+    ok = get_app().playlist_finished(p.slug)
+    return {"ok": ok}
 
 
 @app.post("/api/vision/{onoff}")

@@ -34,6 +34,17 @@
     pointer-events: none;
   }
   #subs:empty { opacity: 0; }
+  /* Aviso cuando el navegador bloquea el audio de la playlist promo: el
+     video sigue viéndose (en silencio) y basta un toque para el sonido. */
+  #audio-hint {
+    display: none;
+    position: fixed; left: 50%; top: 24px; transform: translateX(-50%);
+    padding: 10px 18px; border-radius: 999px;
+    background: rgba(0,0,0,.72); border: 1px solid rgba(255,255,255,.28);
+    color: #fff; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: clamp(13px, 1.5vw, 20px); letter-spacing: .3px;
+    pointer-events: none; z-index: 10;
+  }
   /* Permite forzar fullscreen al hacer click. */
 </style>
 </head>
@@ -66,6 +77,7 @@ const subs = window.MechSubs
 let ws = null;
 
 function show(url, isVideo) {
+  stopPlaylist();
   stage.innerHTML = '';
   if (!url) return;
   const el = document.createElement(isVideo ? 'video' : 'img');
@@ -74,7 +86,112 @@ function show(url, isVideo) {
   stage.appendChild(el);
 }
 
-function clear() { stage.innerHTML = ''; }
+function clear() { stopPlaylist(); stage.innerHTML = ''; }
+
+/* ─── Playlist promo (marketing) ──────────────────────────────────────
+ *
+ * Es distinto a lo de arriba. Una obra normal es UN video corto en bucle
+ * mientras MECH narra encima. Aquí los videos son largos (~90 s), se
+ * reproducen ENTEROS, en fila, y CON SU PROPIO AUDIO — MECH se calla.
+ *
+ * El backend no sabe cuánto dura cada mp4, así que el ritmo lo lleva esta
+ * página: avanza con el evento `ended` de cada <video> y, al terminar el
+ * último, avisa con POST /api/playlist/ended.
+ *
+ * ⚠️ AUDIO: los navegadores no dejan reproducir CON SONIDO sin un gesto del
+ * usuario. En la Pi hay que abrir Chromium así:
+ *     chromium --kiosk --autoplay-policy=no-user-gesture-required  *              http://localhost:8000/projector
+ * Si aun así lo bloquea, esta página lo detecta, sigue en silencio y muestra
+ * un aviso; al tocar la pantalla se activa el sonido y vuelve a empezar el
+ * video en curso.
+ */
+let pl = null;          // { slug, items, i }
+let plTimer = null;     // temporizador de las imágenes intercaladas
+
+const IMAGE_SECONDS = 8;   // cuánto se queda una imagen dentro de la playlist
+
+function stopPlaylist() {
+  if (plTimer) { clearTimeout(plTimer); plTimer = null; }
+  pl = null;
+  hideAudioHint();
+}
+
+function startPlaylist(playlist) {
+  stopPlaylist();
+  stage.innerHTML = '';
+  if (!playlist || !playlist.items || !playlist.items.length) return;
+  pl = { slug: playlist.slug, items: playlist.items, i: 0, audio: playlist.audio !== false };
+  playCurrent();
+}
+
+function playCurrent() {
+  if (!pl) return;
+  if (pl.i >= pl.items.length) { finishPlaylist(); return; }
+  const item = pl.items[pl.i];
+  stage.innerHTML = '';
+
+  if (item.kind === 'image') {
+    const img = document.createElement('img');
+    img.src = item.url;
+    stage.appendChild(img);
+    plTimer = setTimeout(nextInPlaylist, IMAGE_SECONDS * 1000);
+    return;
+  }
+
+  const v = document.createElement('video');
+  v.src = item.url;
+  v.playsInline = true;
+  v.loop = false;                 // se reproduce ENTERO, una vez
+  v.muted = !pl.audio;            // con su propio audio
+  v.volume = 1;
+  v.addEventListener('ended', nextInPlaylist);
+  // Si el archivo está roto o falta, no dejamos la pantalla colgada.
+  v.addEventListener('error', nextInPlaylist);
+  stage.appendChild(v);
+
+  v.play().then(hideAudioHint).catch(() => {
+    // Bloqueado por la política de autoplay: seguimos en silencio para no
+    // dejar la pantalla en negro, y avisamos de que se puede tocar.
+    v.muted = true;
+    showAudioHint();
+    v.play().catch(() => nextInPlaylist());
+  });
+}
+
+function nextInPlaylist() {
+  if (!pl) return;
+  if (plTimer) { clearTimeout(plTimer); plTimer = null; }
+  pl.i += 1;
+  playCurrent();
+}
+
+function finishPlaylist() {
+  const slug = pl ? pl.slug : null;
+  stopPlaylist();
+  stage.innerHTML = '';
+  // Avisamos al backend: es lo único que sabe cuándo terminó de verdad.
+  fetch('/api/playlist/ended', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug }),
+  }).catch(() => {});
+}
+
+function showAudioHint() {
+  let el = document.getElementById('audio-hint');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'audio-hint';
+    el.textContent = 'Toca la pantalla para activar el sonido';
+    document.body.appendChild(el);
+  }
+  el.style.display = 'block';
+}
+
+function hideAudioHint() {
+  const el = document.getElementById('audio-hint');
+  if (el) el.style.display = 'none';
+}
 
 function detectVideo(url) {
   return /\.(mp4|webm|mov|m4v)$/i.test(url || '');
@@ -82,6 +199,13 @@ function detectVideo(url) {
 
 function applyState(s) {
   subs.set(s.current_subtitle, s.subtitle_lang);
+  // La playlist promo (marketing) manda sobre todo lo demás.
+  if (s.current_playlist) {
+    // Si ya la estamos reproduciendo, no la reiniciamos (esto se llama en
+    // cada `state`, y volver a empezar cortaría el video a la mitad).
+    if (!pl || pl.slug !== s.current_playlist.slug) startPlaylist(s.current_playlist);
+    return;
+  }
   // Prioridad: video AI (biblioteca) > imagen AI > proyector inmersivo > stand 1 > stand 2
   if (s.current_video) { show(s.current_video, true); return; }
   if (s.current_image) { show(s.current_image, false); return; }
@@ -106,6 +230,10 @@ function connect() {
       // Video pre-renderizado de la biblioteca (Opción B).
       if (msg.url) show(msg.url, true);
       else clear();
+    } else if (msg.type === 'playlist') {
+      // Playlist promo (marketing): videos enteros, en fila y con su audio.
+      if (msg.playlist) startPlaylist(msg.playlist);
+      else clear();
     } else if (msg.type === 'subtitle') {
       // El guion del segmento que MECH está narrando (o null al terminar).
       subs.set(msg.text, msg.lang);
@@ -117,9 +245,19 @@ function connect() {
   ws.onclose = () => setTimeout(connect, 2000);
 }
 
-// Click sobre la pantalla → fullscreen real (algunos browsers requieren gesto del usuario)
+// Click sobre la pantalla → fullscreen real (algunos browsers requieren gesto
+// del usuario) y, de paso, activa el sonido si el navegador lo había
+// bloqueado: ese click ES el gesto que estaba esperando.
 document.body.addEventListener('click', () => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+  if (pl && pl.audio) {
+    const v = stage.querySelector('video');
+    if (v && v.muted) {
+      v.muted = false;
+      v.currentTime = 0;   // que no se pierdan los primeros segundos
+      v.play().then(hideAudioHint).catch(() => {});
+    }
+  }
 });
 
 connect();

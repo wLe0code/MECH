@@ -258,6 +258,30 @@ VOICE_PROJECT_PHRASES_EN = [
     ).split(",") if p.strip()
 ]
 
+# --- Proyectar el slot de MARKETING --------------------------------------
+# "proyecta marketing" reproduce los videos del slot promo enteros, en fila y
+# CON SU PROPIO AUDIO (MECH no narra encima). No pasa por Claude.
+VOICE_MARKETING_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_MARKETING_PHRASES",
+        "proyecta marketing,proyecta el marketing,pon marketing,"
+        "pon el marketing,reproduce marketing,muestra marketing,"
+        "video de marketing,videos de marketing",
+    ).split(",") if p.strip()
+]
+VOICE_MARKETING_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_MARKETING_PHRASES_EN",
+        "play marketing,play the marketing,show marketing,"
+        "marketing video,marketing videos",
+    ).split(",") if p.strip()
+]
+# Tope de seguridad de la reproducción (segundos). El fin normal lo avisa el
+# propio proyector cuando termina el último video; esto solo evita que MECH
+# se quede colgado si NO hay ninguna pantalla abierta. Con videos de ~90 s,
+# 12 espacios serían ~18 min: el default deja margen de sobra.
+MARKETING_MAX_SECONDS = float(os.environ.get("MARKETING_MAX_SECONDS", "1500"))
+
 # --- Modo inglés (opcional) ----------------------------------------------
 # MECH vive en español. El INGLÉS se activa SI Y SOLO SI se le despierta con
 # "wake up MECH"; a partir de ahí entiende, narra y subtitula en inglés hasta

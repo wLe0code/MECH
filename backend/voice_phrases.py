@@ -142,6 +142,18 @@ def is_back_to_projection(text: str) -> bool:
     )
 
 
+def is_play_marketing(text: str) -> bool:
+    """¿Piden proyectar el slot de marketing? ("proyecta marketing")
+
+    Se aceptan las listas de los dos idiomas: "marketing" es la misma palabra
+    en español y en inglés, así que no hay ambigüedad posible.
+    """
+    return matches_any(
+        text,
+        list(config.VOICE_MARKETING_PHRASES) + list(config.VOICE_MARKETING_PHRASES_EN),
+    )
+
+
 def is_sleep(text: str) -> bool:
     """Frase de reposo en español."""
     return matches_any(text, config.VOICE_SLEEP_PHRASES)

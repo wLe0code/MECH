@@ -288,7 +288,9 @@ cp backend/.env.example backend/.env       # rellenar API keys
 python -m backend.server
 
 # Visor de proyección en la misma Pi (Chromium kiosko)
-chromium --kiosk http://localhost:8000/projector
+chromium --kiosk --autoplay-policy=no-user-gesture-required          http://localhost:8000/projector
+# El flag de autoplay es OBLIGATORIO para que suene el audio de los videos del
+# slot de marketing; sin él el navegador los reproduce MUDOS.
 # En Bookworm el binario también está como chromium-browser; ambos funcionan.
 
 # Testing headless (sin web, sin panel — solo voz → Claude → TTS)
@@ -494,6 +496,44 @@ navegador los paceaba a ~15 car/s y se adelantaban en cada pausa de MECH):
 Por eso **NO devuelvas el pacing al navegador**: la página no sabe cuánto dura
 el audio ni dónde respira MECH. Interruptor: `SUBTITLES_ENABLED`
 (Ajustes → "Subtítulos", en vivo).
+
+### Slot de MARKETING — proyección directa con audio (sep 2026)
+
+`marketing` en `WORKS` **no es una obra cultural**: lleva `promo: True` y se
+comporta al revés que las demás en cuatro cosas.
+
+| | Obra cultural | Slot `marketing` |
+|---|---|---|
+| Cómo se pide | lo decide Claude | «**proyecta marketing**» — orden directa, **sin pasar por Claude** |
+| Reproducción | clip corto **en bucle** bajo la narración | video **entero**, uno tras otro |
+| Audio | **mudo** (MECH narra encima) | **su propio audio** — MECH se calla |
+| Si faltan archivos | la obra no se ofrece a Claude | **proyecta con los que haya**; los huecos se saltan |
+
+- 12 espacios, ninguno obligatorio: con UNO ya proyecta (`work_is_complete()`
+  usa `any()` en lugar de `all()` para los promo). Los videos son largos
+  (~90 s) y se ven completos.
+- `video_library.playlist(slug)` devuelve los presentes en orden.
+- **Se excluye del system prompt** (`system_prompt_section` filtra los promo):
+  si Claude lo viera, lo contaría como una obra y hablaría encima.
+- `mech_app.play_playlist()` emite el evento WS `playlist` con la lista y
+  `audio: True`, pone la fase en `speaking` (el bucle de voz no abre el
+  micrófono) y **espera**. Se corta con «oye MECH», con
+  `POST /api/marketing/stop` o con el paro de emergencia.
+- **Quién marca el final: la PANTALLA, no el backend.** Python no sabe cuánto
+  dura cada mp4, así que `frontend/projector.html` avanza con el evento
+  `ended` de cada `<video>` y avisa con `POST /api/playlist/ended` al acabar
+  el último. `MARKETING_MAX_SECONDS` (1500) es solo el tope por si NO hay
+  ninguna pantalla abierta.
+- ⚠️ **El audio necesita la política de autoplay relajada en la Pi**:
+  `chromium --kiosk --autoplay-policy=no-user-gesture-required
+  http://localhost:8000/projector`. Sin eso el video se ve pero MUDO, y la
+  página muestra «Toca la pantalla para activar el sonido» (un toque lo
+  activa y reinicia el video en curso). En `/projector/vr` van siempre mudos
+  a propósito: el sonido sale por el parlante de la Pi, no por el teléfono.
+- Endpoints: `POST /api/marketing/play`, `/api/marketing/stop`,
+  `/api/playlist/ended`. Botones «Proyectar ahora» / «Cortar» en `/library`.
+- Para añadir OTRO slot así: una entrada con `promo: True` y su `segments`
+  (máximo de espacios), y una lista de frases en `config` para dispararlo.
 
 ### Gestos disponibles
 
@@ -815,6 +855,13 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   ~15 car/s y se adelantaban en cada pausa de MECH. Respaldo automático
   (reparto proporcional) si la API no devuelve las marcas.
 
+- **Slot de MARKETING con audio propio (sep 2026)** — «proyecta marketing»
+  reproduce los videos del slot `promo` ENTEROS, en fila y con su propio
+  audio, sin que MECH narre encima. Proyecta aunque falten videos (12
+  espacios, ninguno obligatorio) y se salta los huecos. No pasa por Claude.
+  El fin de cada video lo marca la pantalla (`POST /api/playlist/ended`).
+  ⚠️ Chromium necesita `--autoplay-policy=no-user-gesture-required` para que
+  se oiga.
 - **Movilidad al día (ago/sep 2026)** — cuatro cosas:
   1. **Giro de 180°** con `maneuvers.py`: «mira hacia afuera» gira (lateral +
      rotación), saluda al público y lo anuncia; «regresa a proyectar» deshace
@@ -906,7 +953,16 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     voltear el signo de `w` en `driveOmni()` del .ino, no en `maneuvers.py`.
 23. **`VOICE_OUTWARD_PHRASES` / `VOICE_PROJECT_PHRASES` en el `.env` de la Pi
     tapan el default**, igual que las de wake/sleep/interrupt.
-24. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
+24. **El slot `marketing` NO va al system prompt, y es a propósito.**
+    `system_prompt_section()` filtra los `promo`. Si lo metés, Claude lo
+    tratará como una obra: narrará encima de los videos y se perderá el audio
+    original. Se dispara solo por la orden directa.
+25. **Si el video de marketing se ve pero no se oye**, es la política de
+    autoplay del navegador, no el código: abrí Chromium con
+    `--autoplay-policy=no-user-gesture-required`, o tocá la pantalla cuando
+    salga el aviso. Los mp4 también tienen que traer pista de audio (al
+    convertir con ffmpeg, NO uses `-an`).
+26. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
 
 ---
 

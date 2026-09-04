@@ -365,7 +365,9 @@ python -m backend.server
 
 ```bash
 # Terminal 2 — proyector kiosko (en la Pi)
-chromium-browser --kiosk http://localhost:8000/projector
+# El flag de autoplay es OBLIGATORIO para que suene el audio de los videos
+# de marketing: sin él, el navegador los reproduce MUDOS.
+chromium-browser --kiosk --autoplay-policy=no-user-gesture-required                  http://localhost:8000/projector
 ```
 
 ```

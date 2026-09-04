@@ -81,6 +81,9 @@ class MechApp:
         # tocar el modo del Arduino en ese rato: `MODE:LISTEN` ejecuta
         # `stopAllMotors()` en el firmware y cortaría el movimiento.
         self.wheels_busy = threading.Event()
+        # Se marca cuando la pantalla avisa que terminó el último video de la
+        # playlist promo (POST /api/playlist/ended), o al cortarla.
+        self._playlist_done = threading.Event()
 
         self.state: dict[str, Any] = {
             "voice_loop_active": False,
@@ -110,6 +113,10 @@ class MechApp:
             # Es el texto del segmento que MECH está narrando.
             "current_subtitle": None,
             "subtitle_lang": lang.current(),
+            # Playlist promo en curso (marketing): los videos se reproducen
+            # ENTEROS, en fila y con su propio audio. None = no hay ninguna.
+            # {slug, title, items:[{n,url,kind}], audio: bool}
+            "current_playlist": None,
             # Hacia dónde mira el robot: "projection" (a la superficie
             # donde proyecta, que es su sitio de trabajo) u "outward" (de
             # espaldas, saludando al público). Lo cambia backend/maneuvers.py
@@ -296,6 +303,10 @@ class MechApp:
             pass
         self.stop_subtitles()
         self.clear_visual()  # el proyector deja de mostrar la obra
+        # Si había una playlist promo sonando, `play_playlist` está esperando
+        # a que la pantalla avise que terminó: lo soltamos aquí para que no
+        # se quede colgado hasta el tope de tiempo.
+        self._playlist_done.set()
         try:
             self.arduino.stop_motors()
         except Exception:
@@ -521,8 +532,11 @@ class MechApp:
         # Proyección
         self.state["current_image"] = None
         self.state["current_video"] = None
+        self.state["current_playlist"] = None
         self.emit("image", url=None)
         self.emit("video", url=None)
+        self.emit("playlist", playlist=None)
+        self._playlist_done.set()
         self.stop_subtitles()
         try:
             self.interrupts.stop()
@@ -560,8 +574,10 @@ class MechApp:
         """
         self.state["current_image"] = None
         self.state["current_video"] = None
+        self.state["current_playlist"] = None
         self.emit("image", url=None)
         self.emit("video", url=None)
+        self.emit("playlist", playlist=None)
 
     def show_library_segment(self, slug: str, segment: int) -> None:
         """Muestra el material de un segmento de la biblioteca, que puede ser
@@ -625,6 +641,114 @@ class MechApp:
                 self.show_ai_image(img)
             except Exception as e:
                 self.log(f"Imagen falló: {e}", "err")
+
+    # ------------------------------------------------------------------
+    # Playlist promo (marketing): videos enteros, en fila y CON SU AUDIO
+    # ------------------------------------------------------------------
+
+    def play_playlist(self, slug: str) -> bool:
+        """Reproduce un slot promo (ej. "marketing") de principio a fin.
+
+        A diferencia de una historia normal, aquí MECH **no narra**: los
+        videos traen su propio audio y se reproducen ENTEROS, uno tras otro,
+        saltándose los espacios vacíos. MECH se calla y deja que suenen.
+
+        Quién manda el tiempo: la PANTALLA. El backend no sabe cuánto dura
+        cada mp4, así que manda la lista entera al proyector y este avisa por
+        `POST /api/playlist/ended` cuando termina el último. Solo si no hay
+        ninguna pantalla abierta entra el tope de `MARKETING_MAX_SECONDS`.
+
+        Devuelve True si llegó a reproducir algo.
+        """
+        items = video_library.playlist(slug)
+        meta = video_library.WORKS.get(slug, {})
+        titulo = meta.get("title", slug)
+        if not items:
+            self.log(
+                f"El slot '{titulo}' no tiene ningún video todavía. "
+                f"Subilos en /library.",
+                "warn",
+            )
+            tts.speak(lang.say("empty_playlist"), blocking=True)
+            return False
+
+        # Igual que una narración: si quedó de espaldas o desplazado, vuelve a
+        # su sitio para que la proyección apunte a donde está calibrada.
+        try:
+            if maneuvers.facing(self) == "outward":
+                maneuvers.back_to_projection(self, announce=False)
+            self.return_to_start()
+        except Exception as e:
+            self.log(f"No pude recolocarme antes de proyectar: {e}", "warn")
+
+        videos = sum(1 for i in items if i["kind"] == "video")
+        self.log(
+            f"Proyectando '{titulo}': {len(items)} archivos "
+            f"({videos} con audio propio). MECH se queda callado.",
+            "ok",
+        )
+        if not self._subscribers:
+            self.log(
+                "OJO: no hay ninguna pantalla conectada (/projector). "
+                "Abrí el proyector para verlo.",
+                "warn",
+            )
+
+        self.arduino.set_mode("SPEAK")
+        self.set_voice_phase("speaking")  # el bucle de voz no abre el micrófono
+        tts.clear_stop()
+        self.clear_visual()
+        self._narration_interrupted = False
+        self.pending_command = None
+        self._playlist_done.clear()
+
+        payload = {
+            "slug": slug,
+            "title": titulo,
+            "items": items,
+            "audio": True,   # la pantalla NO debe silenciarlos
+        }
+        self.state["current_playlist"] = payload
+        self.emit("playlist", playlist=payload)
+
+        # Se puede cortar con "oye MECH" como cualquier presentación.
+        if self.interrupts.start():
+            self.log("Podés decir 'oye MECH' para cortar el video.", "info")
+        try:
+            terminado = self._playlist_done.wait(timeout=config.MARKETING_MAX_SECONDS)
+            if not terminado and not self._narration_interrupted:
+                self.log(
+                    "Se acabó el tiempo máximo de la proyección "
+                    "(¿había alguna pantalla abierta?).",
+                    "warn",
+                )
+        finally:
+            self.interrupts.stop()
+            self.state["current_playlist"] = None
+            self.emit("playlist", playlist=None)
+            self.clear_visual()
+            self.arduino.set_mode("IDLE")
+            if self._narration_interrupted:
+                self.stop_presentation()
+                tts.clear_stop()
+                if not self.pending_command:
+                    time.sleep(0.4)
+                    tts.speak(lang.say("interrupted"), blocking=True)
+                    time.sleep(0.5)
+                    self.chime_pending = True
+            else:
+                self.log(f"'{titulo}' terminó.", "ok")
+        return True
+
+    def playlist_finished(self, slug: str | None = None) -> bool:
+        """La pantalla avisa que terminó el último video de la playlist."""
+        actual = self.state.get("current_playlist")
+        if not actual:
+            return False
+        if slug and slug != actual.get("slug"):
+            return False
+        self._playlist_done.set()
+        return True
 
     def return_to_start(self) -> None:
         """Vuelve al punto donde el robot empezó (odómetro adelante/atrás),
@@ -806,6 +930,12 @@ class MechApp:
             return True
         if voice_phrases.is_back_to_projection(text):
             maneuvers.back_to_projection(self)
+            return True
+        # "proyecta marketing": la playlist promo, con su propio audio y sin
+        # narración. Va aquí (y no por Claude) porque el modelo la contaría
+        # como una obra: hablaría encima de los videos.
+        if voice_phrases.is_play_marketing(text):
+            self.play_playlist("marketing")
             return True
         return False
 

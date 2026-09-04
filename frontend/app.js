@@ -480,6 +480,19 @@
       else if (res) log(res.reason || 'No pude girar ahora.', 'warn');
     },
 
+    // ─── Playlist promo (marketing) ─────────────────────────────────
+    async playMarketing() {
+      const res = await fetchJSON('/api/marketing/play');
+      if (res && res.ok) log(`Proyectando marketing (${res.items} archivos, con audio).`, 'ok');
+      else if (res) log(res.reason || 'No se pudo proyectar.', 'warn');
+    },
+
+    async stopMarketing() {
+      const res = await fetchJSON('/api/marketing/stop');
+      if (res && res.ok) log('Proyección cortada.', 'ok');
+      else if (res) log(res.reason || 'No hay nada proyectándose.', 'warn');
+    },
+
     async greetNow() {
       const res = await fetchJSON('/api/move/greet');
       if (res && res.ok) log('Saludo disparado a mano.', 'ok');

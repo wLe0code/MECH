@@ -139,17 +139,31 @@
     const pct = Math.round((w.present_segments / w.segments) * 100);
     const details = w.segment_files || [];
     const segs = details.map(d => segmentCard(w, d));
+    // El slot promo (marketing) NO exige llenar todos los espacios: se
+    // proyecta con lo que haya. Por eso su etiqueta y su texto son distintos.
+    const badge = w.promo
+      ? (w.complete
+          ? '<span class="seg-status ok" style="margin-left:8px;vertical-align:middle">LISTO PARA PROYECTAR</span>'
+          : '<span class="seg-status no" style="margin-left:8px;vertical-align:middle">SIN VIDEOS</span>')
+      : (w.complete
+          ? '<span class="seg-status ok" style="margin-left:8px;vertical-align:middle">COMPLETA</span>'
+          : '');
+    const label = w.promo
+      ? `${w.present_segments} video${w.present_segments === 1 ? '' : 's'} cargado${w.present_segments === 1 ? '' : 's'} ` +
+        `(hasta ${w.segments}) — se proyecta con los que haya, no hace falta llenarlos todos`
+      : `${w.present_segments} de ${w.segments} segmentos cargados (${pct}%)`;
     return `
       <div class="work-card" data-slug="${w.slug}">
         <div class="work-head">
           <div>
-            <div class="work-title">${escape(w.title)} ${w.complete ? '<span class="seg-status ok" style="margin-left:8px;vertical-align:middle">COMPLETA</span>' : ''}</div>
+            <div class="work-title">${escape(w.title)} ${badge}</div>
             <div class="work-author">${escape(w.author)}</div>
           </div>
           <div class="work-slug">slug: ${escape(w.slug)}</div>
         </div>
         <div class="work-synopsis">${escape(w.synopsis)}</div>
-        <div class="progress-label">${w.present_segments} de ${w.segments} segmentos cargados (${pct}%)</div>
+        ${w.promo ? promoBanner(w) : ''}
+        <div class="progress-label">${label}</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
         <div class="seg-grid">
           ${segs.join('')}
@@ -157,6 +171,54 @@
         ${w.music ? musicSlot(w) : ''}
       </div>
     `;
+  }
+
+  function promoBanner(w) {
+    // Explica en el sitio las tres cosas que hacen distinto a este slot, y
+    // deja probarlo sin tener que hablarle al robot.
+    return `
+      <div style="margin:12px 0;padding:12px 14px;border-radius:10px;
+                  background:rgba(229,165,75,.10);border:1px solid rgba(229,165,75,.35)">
+        <div style="font-size:12px;color:#E5A54B;letter-spacing:1px;margin-bottom:6px">
+          <i class="ti ti-volume"></i> SLOT DE PROYECCIÓN DIRECTA
+        </div>
+        <div style="font-size:13px;color:#b8b8c4;line-height:1.5">
+          Decile a MECH <b>«proyecta marketing»</b> y reproduce estos videos
+          <b>enteros, en orden y con su propio audio</b>. No narra encima.
+          Los espacios vacíos se saltan. Se corta con «oye MECH».
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="playPromo('${w.slug}')">
+            <i class="ti ti-player-play"></i> Proyectar ahora
+          </button>
+          <button class="btn btn-danger" onclick="stopPromo()">
+            <i class="ti ti-player-stop"></i> Cortar
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  async function playPromo(slug) {
+    try {
+      const res = await fetch('/api/marketing/play', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) toast(`Proyectando ${data.items} archivo(s) de ${slug}.`, 'ok');
+      else toast(data.reason || 'No se pudo proyectar.', 'err');
+    } catch (e) {
+      toast(`Error: ${e.message}`, 'err');
+    }
+  }
+
+  async function stopPromo() {
+    try {
+      const res = await fetch('/api/marketing/stop', { method: 'POST' });
+      const data = await res.json();
+      toast(data.ok ? 'Proyección cortada.' : (data.reason || 'Nada que cortar.'),
+            data.ok ? 'ok' : 'err');
+    } catch (e) {
+      toast(`Error: ${e.message}`, 'err');
+    }
   }
 
   function musicSlot(w) {
@@ -296,6 +358,8 @@
     }
   }
 
+  window.playPromo = playPromo;
+  window.stopPromo = stopPromo;
   window.pickFile = pickFile;
   window.uploadFile = uploadFile;
   window.delSegment = delSegment;

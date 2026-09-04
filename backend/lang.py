@@ -86,6 +86,11 @@ _PHRASES: dict[str, dict[str, str]] = {
         "es": "Claro, ¿de qué quieres que hable?",
         "en": "Of course, what would you like me to talk about?",
     },
+    # Cuando piden proyectar un slot que todavía no tiene videos subidos.
+    "empty_playlist": {
+        "es": "Todavía no tengo videos en ese espacio.",
+        "en": "I don't have any videos in that slot yet.",
+    },
     "switched": {
         "es": "Listo, sigo en español.",
         "en": "All right, I'll continue in English.",
