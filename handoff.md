@@ -11,7 +11,9 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (sep 2026, §3.quinquies): el **giro es solo lateral** (se quitó la
+> Lo último (sep 2026, §3.sexies): **giro recalibrado a 4.5 s**, **chequeo
+> previo** (`python -m backend.preflight`) y el **panel ya no depende de
+> internet**. Antes (§3.quinquies): el **giro es solo lateral** (se quitó la
 > rotación, que hacía un movimiento raro), la **VR ya no reinicia el video** al
 > salir y volver de la página, y los **brazos al girar afuera van a medio gas**. Antes de eso (§3.ter), el **slot de MARKETING**: videos promocionales
 > que se proyectan enteros y con su propio audio con «proyecta marketing».
@@ -394,6 +396,40 @@ marketing: videos largos y sin bucle). Tres arreglos:
 TERMINADO lo reinicia desde cero**. Todos los `play()` de reanudación llevan
 `if (v.paused && !v.ended)`. Si alguien "arregla" que el video se quede
 pausado sin esa guarda, vuelve el bug del video que empieza de nuevo.
+
+---
+
+## 3.sexies Listo para la competencia (sep 2026)
+
+**1. El giro se quedaba corto.** Con 2.0 s giraba "un poquito menos de la
+mitad" (~80°), así que el default pasó a **4.5 s** y el slider llega ahora a
+14 s. Botón nuevo **«PROBAR MEDIA VUELTA»** en la vista Arduino: repite el
+tramo *sin* cambiar la orientación guardada, para poder calibrar pulsando
+varias veces seguidas (con «mira hacia afuera» había que alternar con
+«regresa a proyectar» y se acumulaba el error de los dos tramos).
+
+**2. Chequeo previo:** `python -m backend.preflight` (o `--sin-red`).
+Verifica de una pasada dependencias, Whisper cargando **del disco**, claves,
+micrófono (lo abre de verdad), reproductores de audio, Arduino, biblioteca,
+frontend offline y las claves del `.env` que tapan defaults. **Correrlo con
+el server apagado.**
+
+**3. El panel ya no depende de internet.** Los iconos venían de un CDN y las
+fuentes de Google Fonts: sin wifi, los botones que son **solo icono** (subir
+video, borrar) salían **EN BLANCO**. Ahora todo en `frontend/vendor/`.
+De paso: `ti-brand-arduino` no existe en Tabler, así que esos tres iconos ya
+estaban rotos incluso con internet.
+
+### Qué se cae si no hay wifi (lo dice el preflight)
+
+**Sigue funcionando:** micrófono y Whisper (local), «ok MECH», «mira hacia
+afuera», «proyecta marketing» y los videos de biblioteca **con su audio**,
+saludo por cámara, motores, panel, proyector y VR.
+
+**No funciona:** narrar una obra (el guion lo escribe Claude) y hablar (la voz
+la genera ElevenLabs). No hay sustituto local. **Plan B: hotspot del celular.**
+Si tampoco hay datos, lo que queda en pie es la proyección de marketing y los
+videos de biblioteca, que son archivos locales.
 
 ---
 

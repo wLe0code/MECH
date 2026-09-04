@@ -306,6 +306,37 @@ arduino-cli upload  --fqbn arduino:avr:uno -p <PUERTO> arduino/mech_controller
 
 Desarrollado y probado con **Python 3.11** (el que trae Raspberry Pi OS Bookworm por defecto). `requirements.txt` no fija versión mínima — si surgen incompatibilidades de paquetes, sospechar primero de versión de intérprete.
 
+### Chequeo previo al evento
+
+```bash
+python -m backend.preflight            # todo
+python -m backend.preflight --sin-red  # simulando que NO hay internet
+```
+
+Revisa en un solo paso: dependencias, que **Whisper cargue del disco sin
+red**, claves de API, qué servicios se caen sin wifi (y qué sigue en pie),
+micrófono (lo abre de verdad al sample rate configurado), reproductores de
+audio, Arduino, biblioteca de videos, que el panel no cargue **nada** de
+internet, y las claves del `.env` que tapan los defaults. Sale 1 si hay
+fallos. **Correrlo con el server apagado** (usa el micrófono y el Arduino).
+
+### El frontend NO carga nada de internet — mantenelo así
+
+Los iconos venían de un CDN y las fuentes de Google Fonts. Sin wifi, los
+botones del panel que son **solo icono** salían **en blanco** (subir video,
+borrar…). Ahora todo está en `frontend/vendor/`, servido en `/vendor` y
+referenciado con ruta **relativa** (así funciona igual servido que abriendo
+el HTML con doble click).
+
+- `mech-icons.css` = solo los 42 iconos que usa el panel (2 KB en vez de los
+  200 KB del paquete completo), regenerable con `python scripts/mkicons.py`.
+  **Si añadís un icono nuevo, hay que regenerarlo** o ese botón sale vacío —
+  el preflight lo detecta.
+- `mech-fonts.css` + `vendor/fonts/` = Sora y Space Mono (subsets latin),
+  regenerable con `python scripts/mkfonts.py`.
+- `ti-brand-arduino` **no existe en Tabler**: esos tres iconos ya estaban
+  rotos incluso con internet. Se cambiaron por `ti-cpu-2`.
+
 ### Tests y lint
 
 Este repo **no tiene suite de tests ni linter configurado**. La validación es manual extremo-a-extremo: voz → STT → Plan de Claude → imagen → proyección → comandos Arduino. No inventes `pytest`/`ruff`/`black` — si crees que hace falta uno, propónselo al usuario antes de añadirlo.

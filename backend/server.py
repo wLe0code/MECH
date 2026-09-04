@@ -324,6 +324,13 @@ app = FastAPI(title="MECH Control", lifespan=lifespan)
 app.mount("/generated", StaticFiles(directory=str(config.IMAGE_OUTPUT_DIR)), name="generated")
 # Archivos subidos desde el panel (stand projectors).
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+# Iconos y fuentes del panel, servidos EN LOCAL. Van montados aparte de
+# /static y con ruta RELATIVA en el HTML para que las páginas funcionen igual
+# servidas por el server (/ y /library) que abiertas con doble click.
+_VENDOR_DIR = FRONTEND_DIR / "vendor"
+if _VENDOR_DIR.exists():
+    app.mount("/vendor", StaticFiles(directory=str(_VENDOR_DIR)), name="vendor")
+
 # Biblioteca de videos pre-renderizados (Opción B).
 app.mount("/videos", StaticFiles(directory=str(config.VIDEO_LIBRARY_DIR)), name="videos")
 # Frontend.
@@ -554,6 +561,22 @@ async def move_projection():
         target=maneuvers.back_to_projection, args=(mech,), daemon=True
     ).start()
     return {"ok": True}
+
+
+@app.post("/api/move/testturn")
+async def move_test_turn():
+    """Repite el tramo de media vuelta SIN cambiar la orientación guardada.
+
+    Es el botón de calibración: pulsar, mirar cuánto giró, ajustar los
+    segundos en Ajustes, volver a pulsar."""
+    mech = get_app()
+    if mech.state.get("voice_phase") in ("speaking", "thinking"):
+        return {"ok": False, "reason": "MECH está narrando; espera o interrúmpelo"}
+    threading.Thread(
+        target=maneuvers.test_half_turn, args=(mech,), daemon=True
+    ).start()
+    return {"ok": True, "seconds": config.TURN_180_SECONDS,
+            "speed": config.TURN_180_SPEED}
 
 
 @app.post("/api/move/greet")

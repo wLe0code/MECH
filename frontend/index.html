@@ -6,7 +6,10 @@
 <title>MECH · Control System</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0e0e12">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<!-- Iconos y fuentes EN LOCAL: sin internet, el CDN dejaba los botones
+     sin icono (varios son solo icono = botones en blanco). -->
+<link rel="stylesheet" href="vendor/mech-icons.css">
+<link rel="stylesheet" href="vendor/mech-fonts.css">
 <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -47,7 +50,7 @@
       <div class="sidebar-label">Hardware</div>
       <div class="nav-item"        data-view="firmware"  onclick="UI.showView('firmware', this)"><i class="ti ti-cpu"></i>Firmware</div>
       <div class="nav-item"        data-view="sensors"   onclick="UI.showView('sensors', this)"><i class="ti ti-radar"></i>Sensores</div>
-      <div class="nav-item"        data-view="arduino"   onclick="UI.showView('arduino', this)"><i class="ti ti-brand-arduino"></i>Arduino <span class="nav-badge-yellow">CTRL</span></div>
+      <div class="nav-item"        data-view="arduino"   onclick="UI.showView('arduino', this)"><i class="ti ti-cpu-2"></i>Arduino <span class="nav-badge-yellow">CTRL</span></div>
       <div class="nav-item"        data-view="settings"  onclick="UI.showView('settings', this)"><i class="ti ti-settings"></i>Ajustes</div>
     </div>
 
@@ -232,7 +235,7 @@
           <div class="sensor-item"><span class="sensor-name"><i class="ti ti-device-projector"></i>Proyector 1</span><span class="sensor-val val-off" id="sen-s1">APAGADO</span></div>
           <div class="sensor-item"><span class="sensor-name"><i class="ti ti-device-projector"></i>Proyector 2</span><span class="sensor-val val-off" id="sen-s2">APAGADO</span></div>
           <div class="sensor-item"><span class="sensor-name"><i class="ti ti-360"></i>Proj. Inmersivo</span><span class="sensor-val val-off" id="sen-imm">APAGADO</span></div>
-          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-brand-arduino"></i>Arduino (Serial)</span><span class="sensor-val val-off" id="sen-ard">DESCONECTADO</span></div>
+          <div class="sensor-item"><span class="sensor-name"><i class="ti ti-cpu-2"></i>Arduino (Serial)</span><span class="sensor-val val-off" id="sen-ard">DESCONECTADO</span></div>
           <div class="sensor-item"><span class="sensor-name"><i class="ti ti-camera"></i>Cámara (C930e)</span><span class="sensor-val val-off" id="sen-cam">SIN DATOS</span></div>
           <div class="sensor-item" style="border:none"><span class="sensor-name"><i class="ti ti-wifi"></i>WebSocket</span><span class="sensor-val val-off" id="sen-ws">DESCONECTADO</span></div>
         </div>
@@ -240,7 +243,7 @@
 
       <!-- ARDUINO VIEW -->
       <div class="view" id="view-arduino">
-        <div class="view-title"><i class="ti ti-brand-arduino" style="color:var(--amber)"></i>Control directo de Arduino</div>
+        <div class="view-title"><i class="ti ti-cpu-2" style="color:var(--amber)"></i>Control directo de Arduino</div>
         <div class="section-sub">
           Botones que envían comandos directamente al Arduino vía serial.
           Coincide con el protocolo de <code>mech_controller.ino</code>.
@@ -281,12 +284,15 @@
             <button class="arduino-btn" onclick="API.lookOutward()">↻ MIRA HACIA AFUERA</button>
             <button class="arduino-btn" onclick="API.backToProjection()">↺ REGRESA A PROYECTAR</button>
             <button class="arduino-btn" onclick="API.greetNow()">👋 SALUDAR AHORA</button>
+            <button class="arduino-btn" onclick="API.testTurn()">🔁 PROBAR MEDIA VUELTA</button>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
             Ahora mira a: <b id="facing-val" style="color:var(--text)">la proyección</b>.
             Lo mismo que decirle «mira hacia afuera» / «regresa a proyectar».
             La media vuelta es el mismo movimiento del botón LATERAL de arriba,
             sostenido — se mide por TIEMPO, calíbralo en Ajustes.
+            «PROBAR MEDIA VUELTA» la repite sin cambiar la orientación: pulsa,
+            mira cuánto giró, ajusta los segundos y vuelve a pulsar.
           </div>
         </div>
 
@@ -507,9 +513,9 @@
             Se aplica en vivo.
           </div>
           <div class="slider-row">
-            <label title="Cuánto tiempo se desliza de lado. Es LO ÚNICO que hay que calibrar: súbelo si se queda corto, bájalo si se pasa.">Media vuelta</label>
-            <input type="range" min="0.4" max="8" step="0.1" value="2.0" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
-            <span class="val" id="set-turnsec-val">2.0 s</span>
+            <label title="Cuánto tiempo se desliza de lado. Es LO ÚNICO que hay que calibrar. Regla rápida: si con 4.5 s gira 90 grados, necesitas el doble.">Media vuelta</label>
+            <input type="range" min="0.4" max="14" step="0.1" value="4.5" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
+            <span class="val" id="set-turnsec-val">4.5 s</span>
           </div>
           <div class="slider-row">
             <label title="Potencia del desplazamiento lateral (0-100). Con estos motores, por debajo de 100 normalmente solo zumban.">Velocidad</label>

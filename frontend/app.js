@@ -493,6 +493,13 @@
       else if (res) log(res.reason || 'No hay nada proyectándose.', 'warn');
     },
 
+    async testTurn() {
+      const res = await fetchJSON('/api/move/testturn');
+      if (res && res.ok) log(`Probando media vuelta: ${res.seconds} s a potencia ${res.speed}. ` +
+                             `¿Se quedó corto? Sube los segundos en Ajustes.`, 'ok');
+      else if (res) log(res.reason || 'No pude probar el giro ahora.', 'warn');
+    },
+
     async greetNow() {
       const res = await fetchJSON('/api/move/greet');
       if (res && res.ok) log('Saludo disparado a mano.', 'ok');

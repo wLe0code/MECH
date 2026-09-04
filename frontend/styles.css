@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap');
+/* Las fuentes se cargan desde /static/vendor/mech-fonts.css (local).
+   Antes había un @import a Google Fonts aquí: sin internet el panel
+   caía a las fuentes del sistema. En la competencia nada puede
+   depender del wifi del recinto. */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

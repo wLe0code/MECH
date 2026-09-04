@@ -234,6 +234,30 @@ def back_to_projection(app, announce: bool = True) -> bool:
         _lock.release()
 
 
+def test_half_turn(app) -> None:
+    """Ejecuta el tramo de media vuelta SIN cambiar hacia dónde mira.
+
+    Es para calibrar: se pulsa, se mira cuánto giró, se ajustan los segundos
+    y se vuelve a pulsar. Con «mira hacia afuera» no se puede hacer eso — a
+    la segunda vez ya está de espaldas y no se mueve, y habría que alternar
+    con «regresa a proyectar», acumulando el error de los dos tramos.
+    """
+    if not _lock.acquire(blocking=False):
+        app.log("Ya estoy girando; espera a que termine.", "warn")
+        return
+    try:
+        app.log(
+            f"PRUEBA de media vuelta: lateral a {config.TURN_180_SPEED} "
+            f"durante {config.TURN_180_SECONDS} s. Mirá cuánto gira y ajustá "
+            f"los segundos en Ajustes.",
+            "info",
+        )
+        with _WheelsHeld(app):
+            _turn(app, +1)
+    finally:
+        _lock.release()
+
+
 def assume_projection(app) -> None:
     """Declara que MECH está en posición de proyectar, SIN moverlo.
 
