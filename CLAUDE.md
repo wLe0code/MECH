@@ -561,6 +561,13 @@ comporta al revés que las demás en cuatro cosas.
   página muestra «Toca la pantalla para activar el sonido» (un toque lo
   activa y reinicia el video en curso). En `/projector/vr` van siempre mudos
   a propósito: el sonido sale por el parlante de la Pi, no por el teléfono.
+- ⚠️ **Si la proyección "termina" en menos de un segundo, es el CODEC.** El
+  `<video>` dispara `error` con un archivo que no sabe decodificar y se salta
+  al siguiente; con todos fallando, la playlist acaba en milisegundos.
+  Chromium NO lee **H.265/HEVC**, aunque el archivo se vea perfecto en VLC o
+  en el móvil. La pantalla ahora **reporta qué archivos fallaron** en
+  `/api/playlist/ended` y el panel lo dice con el comando de ffmpeg para
+  reconvertir. `python -m backend.preflight` lo detecta antes con ffprobe.
 - Endpoints: `POST /api/marketing/play`, `/api/marketing/stop`,
   `/api/playlist/ended`. Botones «Proyectar ahora» / «Cortar» en `/library`.
 - Para añadir OTRO slot así: una entrada con `promo: True` y su `segments`
@@ -1032,7 +1039,11 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     `system_prompt_section()` filtra los `promo`. Si lo metés, Claude lo
     tratará como una obra: narrará encima de los videos y se perderá el audio
     original. Se dispara solo por la orden directa.
-25. **Si el video de marketing se ve pero no se oye**, es la política de
+25. **Si «proyecta marketing» termina al instante, NO es el backend: son
+    los archivos.** El navegador salta los que no puede decodificar (H.265 es
+    el caso típico) y la playlist acaba en milisegundos. Mirá el panel: ahora
+    nombra los archivos que fallaron. Prevención: `python -m backend.preflight`.
+26. **Si el video de marketing se ve pero no se oye**, es la política de
     autoplay del navegador, no el código: abrí Chromium con
     `--autoplay-policy=no-user-gesture-required`, o tocá la pantalla cuando
     salga el aviso. Los mp4 también tienen que traer pista de audio (al

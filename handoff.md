@@ -401,9 +401,9 @@ pausado sin esa guarda, vuelve el bug del video que empieza de nuevo.
 
 ## 3.sexies Listo para la competencia (sep 2026)
 
-**1. El giro se quedaba corto.** Calibrado en dos pasadas sobre el robot:
+**1. El giro se quedaba corto.** Calibrado en tres pasadas sobre el robot:
 2.0 s daba ~80° ("un poquito menos de la mitad"), 4.5 s daba 165-170°, y el
-default quedó en **4.85 s**. El slider llega a 14 s.
+default quedó en **5.0 s**. El slider llega a 14 s.
 La regla para reajustarlo: si con S segundos gira X grados, los que necesitás
 son **S × 180 / X**. Botón nuevo **«PROBAR MEDIA VUELTA»** en la vista Arduino: repite el
 tramo *sin* cambiar la orientación guardada, para poder calibrar pulsando
@@ -421,6 +421,24 @@ fuentes de Google Fonts: sin wifi, los botones que son **solo icono** (subir
 video, borrar) salían **EN BLANCO**. Ahora todo en `frontend/vendor/`.
 De paso: `ti-brand-arduino` no existe en Tabler, así que esos tres iconos ya
 estaban rotos incluso con internet.
+
+**4. «Proyecta marketing» terminaba en menos de un segundo.** No era el
+backend: el `<video>` de la pantalla dispara `error` con los archivos que no
+sabe decodificar y se salta al siguiente — con todos fallando, la playlist
+acaba en milisegundos. **Chromium no lee H.265/HEVC**, aunque el archivo se
+vea perfecto en VLC o en el móvil.
+
+Ahora la pantalla **reporta qué archivos falló** (`played` y `failed` en
+`/api/playlist/ended`) y el panel lo dice con nombre y motivo, más el comando
+de ffmpeg para reconvertir. También avisa si termina en menos de 3 s aunque
+no haya reportes. Y `python -m backend.preflight` lo detecta ANTES, con
+ffprobe: marca cualquier video de la biblioteca cuyo codec no lea el
+navegador.
+
+Reconversión:
+```bash
+ffmpeg -i original.mp4 -c:v libx264 -crf 23 -c:a aac -b:a 192k seg01.mp4
+```
 
 ### Qué se cae si no hay wifi (lo dice el preflight)
 

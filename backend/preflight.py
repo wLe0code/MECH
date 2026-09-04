@@ -405,6 +405,66 @@ def check_biblioteca() -> None:
             _di(_WARN, f"Slot de proyección directa VACÍO: {etiqueta}",
                 "-> Subí los videos en /library si lo vas a usar mañana.")
 
+    _check_codecs()
+
+
+# Códecs de video que Chromium en la Pi reproduce sin problema. El clásico
+# que NO entra es H.265/HEVC: el archivo se ve perfecto en el móvil o en VLC,
+# pero en el navegador falla al decodificar y el video se salta al instante.
+_CODECS_OK = {"h264", "vp8", "vp9", "av1", "theora"}
+
+
+def _check_codecs() -> None:
+    """Revisa con ffprobe que los videos se puedan reproducir EN EL NAVEGADOR.
+
+    Es la causa número uno de "pongo marketing y termina en un segundo": el
+    archivo existe y pesa, pero Chromium no sabe decodificarlo y lo salta.
+    """
+    import subprocess
+    import video_library
+
+    if not shutil.which("ffprobe"):
+        _di(_WARN, "Sin ffprobe: no puedo revisar los códecs",
+            "-> sudo apt install ffmpeg\n"
+            "Sin esta comprobación, un video con codec raro (H.265) se ve\n"
+            "bien en VLC pero el navegador lo salta y la proyección\n"
+            "'termina' al instante.")
+        return
+
+    malos, revisados = [], 0
+    for slug in video_library.WORKS:
+        for item in video_library.playlist(slug):
+            if item["kind"] != "video":
+                continue
+            ruta = config.VIDEO_LIBRARY_DIR / slug / item["name"]
+            revisados += 1
+            try:
+                salida = subprocess.run(
+                    ["ffprobe", "-v", "error", "-select_streams", "v:0",
+                     "-show_entries", "stream=codec_name",
+                     "-of", "default=nw=1:nk=1", str(ruta)],
+                    capture_output=True, text=True, timeout=20,
+                )
+                codec = (salida.stdout or "").strip().lower()
+            except Exception as e:
+                malos.append(f"{slug}/{item['name']}: no pude leerlo ({e})")
+                continue
+            if codec and codec not in _CODECS_OK:
+                malos.append(f"{slug}/{item['name']}: codec {codec}")
+
+    if not revisados:
+        return
+    if malos:
+        _di(_FAIL, f"{len(malos)} video(s) que el navegador NO va a reproducir",
+            "\n".join(malos) + "\n"
+            "-> El archivo se ve bien en VLC pero Chromium no lo decodifica:\n"
+            "   se salta al instante y la proyección 'termina' enseguida.\n"
+            "-> Reconvertí a H.264 (con audio, que el marketing lo usa):\n"
+            "   ffmpeg -i original.mp4 -c:v libx264 -crf 23 -c:a aac "
+            "-b:a 192k seg01.mp4")
+    else:
+        _di(_OK, f"Los {revisados} video(s) usan códecs que el navegador lee")
+
 
 # ---------------------------------------------------------------------------
 # 8. Frontend sin internet

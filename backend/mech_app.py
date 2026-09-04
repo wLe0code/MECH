@@ -781,14 +781,31 @@ class MechApp:
         # Se puede cortar con "oye MECH" como cualquier presentación.
         if self.interrupts.start():
             self.log("Podés decir 'oye MECH' para cortar el video.", "info")
+        self._playlist_failures = []
+        self._playlist_played = 0
+        t0 = time.monotonic()
         try:
             terminado = self._playlist_done.wait(timeout=config.MARKETING_MAX_SECONDS)
+            transcurrido = time.monotonic() - t0
             if not terminado and not self._narration_interrupted:
                 self.log(
                     "Se acabó el tiempo máximo de la proyección "
                     "(¿había alguna pantalla abierta?).",
                     "warn",
                 )
+            elif not self._narration_interrupted:
+                self._report_playlist_failures(titulo, transcurrido)
+                # Terminar casi al instante nunca es normal con videos de
+                # verdad: si la pantalla no reportó fallos, el aviso genérico
+                # al menos deja rastro de que algo raro pasó.
+                if transcurrido < 3 and not self._playlist_failures:
+                    self.log(
+                        f"OJO: '{titulo}' terminó en {transcurrido:.1f} s. "
+                        "Con videos reales eso no es normal — revisá que los "
+                        "archivos se abran en el navegador "
+                        "(http://<pi>:8000/videos/marketing/seg01.mp4).",
+                        "warn",
+                    )
         finally:
             self.interrupts.stop()
             self.state["current_playlist"] = None
@@ -803,19 +820,66 @@ class MechApp:
                     tts.speak(lang.say("interrupted"), blocking=True)
                     time.sleep(0.5)
                     self.chime_pending = True
-            else:
-                self.log(f"'{titulo}' terminó.", "ok")
+            # (el resumen de cómo terminó ya se logueó arriba, con detalle
+            # de los archivos que la pantalla no pudo reproducir)
         return True
 
-    def playlist_finished(self, slug: str | None = None) -> bool:
-        """La pantalla avisa que terminó el último video de la playlist."""
+    # Códigos de error de <video> (HTML MediaError), en cristiano.
+    _MEDIA_ERR = {
+        1: "cancelado",
+        2: "error de red al descargarlo",
+        3: "el navegador no pudo DECODIFICARLO (¿codec raro?)",
+        4: "formato no soportado por el navegador",
+    }
+
+    def playlist_finished(
+        self, slug: str | None = None,
+        played: int = 0, failed: list | None = None,
+    ) -> bool:
+        """La pantalla avisa que terminó el último video de la playlist.
+
+        `failed` son los archivos que NO pudo reproducir. Importa mucho: si
+        el navegador no sabe decodificarlos, la playlist "termina" en
+        milisegundos y sin esto parecería que la proyección salió bien.
+        """
         actual = self.state.get("current_playlist")
         if not actual:
             return False
         if slug and slug != actual.get("slug"):
             return False
+        self._playlist_failures = list(failed or [])
+        self._playlist_played = int(played)
         self._playlist_done.set()
         return True
+
+    def _report_playlist_failures(self, titulo: str, segundos: float) -> None:
+        """Explica en el panel por qué una proyección no salió como debía."""
+        fallos = getattr(self, "_playlist_failures", []) or []
+        reproducidos = getattr(self, "_playlist_played", 0)
+
+        if not fallos:
+            self.log(f"'{titulo}' terminó ({reproducidos} archivo(s), "
+                     f"{segundos:.0f} s).", "ok")
+            return
+
+        detalle = []
+        for f in fallos:
+            nombre = str(f.get("url", "?")).rsplit("/", 1)[-1]
+            motivo = self._MEDIA_ERR.get(f.get("code"), "no se pudo reproducir")
+            detalle.append(f"{nombre}: {motivo}")
+        self.log(
+            f"LA PANTALLA NO PUDO REPRODUCIR {len(fallos)} archivo(s) de "
+            f"'{titulo}' — " + " · ".join(detalle),
+            "err",
+        )
+        if reproducidos == 0:
+            self.log(
+                "No se reprodujo NINGUNO, por eso terminó al instante. Casi "
+                "siempre es el CODEC: Chromium no lee H.265/HEVC. Reconvertí "
+                "los videos a H.264 con: ffmpeg -i original.mp4 -c:v libx264 "
+                "-crf 23 -c:a aac -b:a 192k seg01.mp4",
+                "err",
+            )
 
     def return_to_start(self) -> None:
         """Vuelve al punto donde el robot empezó (odómetro adelante/atrás),

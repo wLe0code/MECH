@@ -161,7 +161,12 @@ function startPlaylist(playlist) {
   stopPlaylist();
   stage.innerHTML = '';
   if (!playlist || !playlist.items || !playlist.items.length) return;
-  pl = { slug: playlist.slug, items: playlist.items, i: 0, audio: playlist.audio !== false };
+  pl = {
+    slug: playlist.slug, items: playlist.items, i: 0,
+    audio: playlist.audio !== false,
+    reproducidos: 0,   // cuántos llegaron al final de verdad
+    fallos: [],        // los que el navegador no pudo reproducir
+  };
   playCurrent();
 }
 
@@ -186,9 +191,29 @@ function playCurrent() {
   v.loop = false;                 // se reproduce ENTERO, una vez
   v.muted = !pl.audio;            // con su propio audio
   v.volume = 1;
-  v.addEventListener('ended', nextInPlaylist);
-  // Si el archivo está roto o falta, no dejamos la pantalla colgada.
-  v.addEventListener('error', nextInPlaylist);
+
+  // Cada elemento avanza UNA sola vez. Sin esto, un archivo que falla dispara
+  // 'error' Y hace que play() rechace: se saltarían DOS videos de golpe.
+  let avanzado = false;
+  const avanzar = (motivo, detalle) => {
+    if (avanzado) return;
+    avanzado = true;
+    if (motivo === 'error') {
+      const cod = (v.error && v.error.code) || 0;
+      pl.fallos.push({ url: item.url, code: cod, detalle: detalle || '' });
+    } else {
+      pl.reproducidos += 1;
+    }
+    nextInPlaylist();
+  };
+
+  v.addEventListener('ended', () => avanzar('ended'));
+  // Si el archivo falta o el navegador no sabe decodificarlo (pasa con H.265
+  // y otros codecs raros), no dejamos la pantalla colgada: saltamos al
+  // siguiente PERO lo apuntamos, para poder decirlo en el panel. Antes esto
+  // era silencioso y la playlist "terminaba" en milisegundos sin explicar
+  // por qué.
+  v.addEventListener('error', () => avanzar('error'));
   stage.appendChild(v);
 
   reportPlayback(item.url);
@@ -197,7 +222,7 @@ function playCurrent() {
     // dejar la pantalla en negro, y avisamos de que se puede tocar.
     v.muted = true;
     showAudioHint();
-    v.play().catch(() => nextInPlaylist());
+    v.play().catch(() => avanzar('error', 'no se pudo reproducir'));
   });
 }
 
@@ -210,15 +235,20 @@ function nextInPlaylist() {
 
 function finishPlaylist() {
   const slug = pl ? pl.slug : null;
+  const reproducidos = pl ? pl.reproducidos : 0;
+  const fallos = pl ? pl.fallos : [];
   stopPlaylist();
   finishReporting();
   sendPlayback(null, 0);
   stage.innerHTML = '';
   // Avisamos al backend: es lo único que sabe cuándo terminó de verdad.
+  // Le mandamos también CUÁNTOS se reprodujeron y cuáles fallaron, para que
+  // el panel pueda decir "no se pudo reproducir ninguno" en vez de dar la
+  // proyección por buena.
   fetch('/api/playlist/ended', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ slug }),
+    body: JSON.stringify({ slug, played: reproducidos, failed: fallos }),
   }).catch(() => {});
 }
 

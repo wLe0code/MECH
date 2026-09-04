@@ -114,7 +114,7 @@ TURN_180_SPEED = int(os.environ.get("TURN_180_SPEED", "100"))
 #   4.85 s -> valor actual (regla de tres sobre la medición anterior)
 # Sigue siendo un punto de partida: cambiar de suelo, de batería o de ruedas
 # obliga a reajustarlo desde Ajustes → "Media vuelta" (en vivo).
-TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "4.85"))
+TURN_180_SECONDS = float(os.environ.get("TURN_180_SECONDS", "5.0"))
 # Si gira hacia el lado contrario del que querés, ponelo en true (en vivo
 # desde Ajustes). No hay que tocar el firmware ni recablear.
 TURN_180_INVERT = os.environ.get("TURN_180_INVERT", "false").strip().lower() in (

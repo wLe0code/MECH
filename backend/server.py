@@ -649,6 +649,11 @@ async def playback_report(p: PlaybackPos):
 
 class PlaylistEnded(BaseModel):
     slug: str | None = None
+    # Cuántos archivos llegaron al final de verdad, y cuáles no se pudieron
+    # reproducir. Sin esto, una playlist entera que falla se veía igual que
+    # una que terminó bien.
+    played: int = 0
+    failed: list[dict] = []
 
 
 @app.post("/api/playlist/ended")
@@ -658,8 +663,12 @@ async def playlist_ended(p: PlaylistEnded):
     El backend no sabe cuánto dura cada mp4, así que el fin de la
     reproducción lo marca quien de verdad lo sabe: el `<video>` del
     proyector, cuando dispara su evento `ended` en el último archivo.
+
+    También nos dice cuáles NO pudo reproducir: si el navegador no sabe
+    decodificar el archivo, la playlist "termina" en milisegundos y hay que
+    poder distinguir eso de una proyección que salió bien.
     """
-    ok = get_app().playlist_finished(p.slug)
+    ok = get_app().playlist_finished(p.slug, played=p.played, failed=p.failed)
     return {"ok": ok}
 
 
