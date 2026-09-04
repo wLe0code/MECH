@@ -699,7 +699,10 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   en execute_plan, fallback a NanoBanana, UI `/library` para subir mp4s,
   endpoints REST `GET/POST/DELETE /api/library/...`. Obras actuales:
   `don_quijote`, `campana_1856`, `jimenez_deredia`, `malpais`,
-  `isidro_con_wong` (4 segmentos c/u).
+  `isidro_con_wong` (4 segmentos c/u) e `isaac_newton` (5 segmentos:
+  contexto, vida, annus mirabilis, Principia, legado; 17 `facts`
+  verificados). Guiones para generar sus videos en
+  [`docs/GUIONES_NEWTON.md`](docs/GUIONES_NEWTON.md).
 - **Música de fondo bajo la narración** (`backend/background_audio.py`): obras
   marcadas con `music: True` en `WORKS` (solo `malpais`) admiten un sample
   `video_library/<slug>/music.<ext>` que suena en bucle a bajo volumen

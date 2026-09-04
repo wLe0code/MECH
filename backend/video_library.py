@@ -200,6 +200,83 @@ WORKS: dict[str, WorkMeta] = {
         "segments": 4,
         "music": True,  # admite sample de música de fondo bajo la narración
     },
+    "isaac_newton": {
+        "title": "Isaac Newton",
+        "author": "Isaac Newton (1642-1727), físico y matemático inglés",
+        "synopsis": (
+            "Vida, logros y contexto de Isaac Newton: el niño de Woolsthorpe "
+            "que quedó huérfano de padre antes de nacer, el joven que durante "
+            "la peste de 1665 formuló el cálculo, descompuso la luz y "
+            "concibió la gravitación universal, el autor de los 'Principia' "
+            "que explicó con las mismas leyes la caída de una manzana y el "
+            "giro de los planetas, y el hombre que terminó dirigiendo la Casa "
+            "de la Moneda y enterrado entre reyes en la Abadía de "
+            "Westminster."
+        ),
+        "facts": [
+            "Isaac Newton nació el 25 de diciembre de 1642 según el "
+            "calendario juliano que usaba Inglaterra entonces, que equivale "
+            "al 4 de enero de 1643 del calendario actual. Murió el 20 de "
+            "marzo de 1727 (juliano), o 31 de marzo de 1727 en el actual. "
+            "Las dos fechas son correctas: depende del calendario.",
+            "Nació en Woolsthorpe Manor, en Lincolnshire, Inglaterra. Su "
+            "padre murió unos meses ANTES de que él naciera, y su madre lo "
+            "dejó al cuidado de su abuela cuando se volvió a casar.",
+            "Estudió en el Trinity College de Cambridge, donde ingresó en "
+            "1661.",
+            "Entre 1665 y 1667 la Universidad de Cambridge cerró por la Gran "
+            "Peste y Newton volvió a Woolsthorpe. En ese retiro forzado "
+            "sentó las bases del cálculo, de su teoría de la luz y de la "
+            "gravitación universal. Ese periodo se conoce como su 'annus "
+            "mirabilis' (año maravilloso).",
+            "Lo de la manzana lo contó el propio Newton en su vejez: vio "
+            "caer una manzana y se preguntó por qué caía siempre hacia el "
+            "centro de la Tierra. NO le cayó en la cabeza — eso es un adorno "
+            "posterior.",
+            "Con un prisma demostró que la luz blanca no es simple: está "
+            "compuesta por los colores del arcoíris, y el prisma los separa "
+            "en vez de teñirla. Lo publicó en 'Opticks' (1704).",
+            "Construyó el primer telescopio reflector práctico, que usa un "
+            "espejo en lugar de lentes. Los grandes telescopios de hoy "
+            "siguen ese principio.",
+            "Fue profesor lucasiano de matemáticas en Cambridge desde 1669.",
+            "Su obra cumbre es 'Philosophiae Naturalis Principia "
+            "Mathematica' (los 'Principia'), publicada en 1687 gracias al "
+            "empeño y al dinero del astrónomo Edmond Halley. Ahí enuncia las "
+            "tres leyes del movimiento y la ley de gravitación universal.",
+            "La idea revolucionaria de los 'Principia' es que las MISMAS "
+            "leyes explican la caída de una manzana y el giro de la Luna "
+            "alrededor de la Tierra: el cielo y la Tierra obedecen la misma "
+            "física.",
+            "En 1696 entró en la Real Casa de la Moneda como Warden "
+            "(guardián) y en 1699 llegó a Master (director), cargo que "
+            "mantuvo hasta su muerte. Persiguió a los falsificadores de "
+            "moneda en persona.",
+            "Fue presidente de la Royal Society desde 1703 hasta su muerte.",
+            "La reina Ana lo nombró caballero (Sir Isaac Newton) en abril de "
+            "1705, durante una visita real al Trinity College.",
+            "Mantuvo una agria disputa con Gottfried Leibniz sobre quién "
+            "inventó primero el cálculo. Hoy se acepta que lo desarrollaron "
+            "de forma independiente, y la notación que usamos en clase es la "
+            "de Leibniz.",
+            "Dedicó muchísimo tiempo a la alquimia y a estudios religiosos y "
+            "de cronología bíblica: escribió más sobre eso que sobre física.",
+            "Nunca se casó. Murió en Kensington y está enterrado en la "
+            "Abadía de Westminster, un honor reservado a reyes y grandes "
+            "figuras de Inglaterra.",
+            "La frase 'si he visto más lejos, es por estar de pie sobre "
+            "hombros de gigantes' es suya, de una carta a Robert Hooke "
+            "en 1675.",
+        ],
+        "sources": [
+            "https://en.wikipedia.org/wiki/Isaac_Newton",
+            "https://www.britannica.com/biography/Isaac-Newton",
+            "https://www.newton.ac.uk/about/isaac-newton/isaac-newtons-life/",
+            "https://www.westminster-abbey.org/abbey-commemorations/commemorations/sir-isaac-newton",
+            "https://www.royalsocietypublishing.org/doi/10.1098/rsnr.1998.0053",
+        ],
+        "segments": 5,
+    },
     "isidro_con_wong": {
         "title": "Cuadros de Isidro Con Wong",
         "author": "Isidro Con Wong (pintor costarricense)",
