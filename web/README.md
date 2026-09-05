@@ -17,10 +17,26 @@ web/
   404.html            ← Página de error (Vercel la sirve automáticamente)
   css/styles.css      ← Toda la hoja de estilos
   js/main.js          ← Nav, menú móvil, animaciones de entrada, typing
+  js/i18n.js          ← Interruptor de idioma ES/EN + diccionario completo
+  site.webmanifest    ← Para instalarlo como app en el celular
   assets/             ← Imágenes
     logos/            ← Logos de patrocinadores (generados, ver abajo)
+    equipo/           ← Retratos del equipo (generados, ver abajo)
+    figuras/          ← Figuras del trabajo escrito (generadas, ver abajo)
   vercel.json         ← Configuración de despliegue
 ```
+
+## Idioma (ES / EN)
+
+El sitio se escribe **en español**; el inglés vive en `js/i18n.js`. El botón
+`ES | EN` de la barra superior cambia todo el sitio y **recuerda la elección**
+(se guarda en el navegador), así que se mantiene al pasar de página.
+
+Para **cambiar o añadir un texto**: edita el HTML en español como siempre y
+luego actualiza su pareja en el diccionario de `js/i18n.js`. La clave es el
+texto en español **sin etiquetas**; el valor es el HTML en inglés (así se
+conservan las negritas). Si una frase no está en el diccionario simplemente se
+queda en español — nunca se rompe nada.
 
 ## Ver el sitio en local
 
@@ -62,6 +78,22 @@ pon su logo en `branding/patrocinadores/`, añádelo al diccionario `NAMES` del
 script, ejecútalo, y agrega su `<li>` en la barra de `index.html` y
 `contacto.html` (recuerda: la barra tiene **dos filas idénticas** para que el
 bucle sea continuo — hay que añadirlo en las dos).
+
+## Que se vea bien en el celular
+
+Esto **no se configura en Vercel** — lo controla el propio sitio, y ya está
+resuelto:
+
+- La etiqueta `viewport` de cada página (con `viewport-fit=cover` para los
+  celulares con notch).
+- El CSS es responsive: a partir de 1024 px y de 760 px las rejillas se van
+  reacomodando hasta quedar en una sola columna, y el menú pasa a hamburguesa.
+- `theme-color` pinta la barra del navegador del color de la marca, y
+  `site.webmanifest` permite instalarlo como app.
+
+Verificado sin desbordes horizontales a **390 px y 360 px** en las 8 páginas.
+Si en el futuro añades una tabla o una imagen ancha, mételas dentro de un
+contenedor con `overflow-x:auto` (como `.table-wrap`) para no romper esto.
 
 ## Detalles de diseño
 

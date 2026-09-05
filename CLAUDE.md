@@ -870,6 +870,21 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   el retrato oficial (26) en `empresa.html` y el BMC en `aplicaciones.html`.
   Sustituyeron a los `build-0*.jpg`/`robot-final.jpg`/`canvas-negocio.png`
   del PDF viejo, que ya se borraron.
+  **Interruptor de idioma ES/EN** (`web/js/i18n.js`): el sitio se escribe en
+  español y el inglés vive en un diccionario `{texto español: HTML inglés}`.
+  El botón va en la barra de navegación (inyectado por JS, así aparece en las
+  8 páginas) y la elección se guarda en `localStorage`; también cambia
+  `<html lang>` y el `<title>`. Al añadir texto nuevo hay que meter su pareja
+  en el diccionario; si falta, esa frase se queda en español (no rompe).
+  ⚠️ La clave se calcula quitando etiquetas **por un espacio** (si no, un
+  `<br>` pega las palabras: "interésen"), decodificando entidades (`&amp;` →
+  `&`) y volviendo a pegar la puntuación (`<b>x</b>.` dejaría " ."). Si una
+  cadena "no traduce", casi siempre es una de esas tres cosas.
+  **Móvil**: no se configura en Vercel — es el `viewport` + el CSS responsive.
+  Verificado sin desbordes a 390 px y 360 px en las 8 páginas; hay
+  `theme-color`, `viewport-fit=cover` y `site.webmanifest`. Ojo: los hijos de
+  `.grid` llevan `min-width:0` porque si no una tabla ancha desborda la
+  pantalla.
 - **Sitio web de presentación (`web/`) — historial**: antes era one-page con la
   estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial en SVG).
   FUENTE DE CONTENIDO previa: el trabajo escrito `Documentación/Proyecto
