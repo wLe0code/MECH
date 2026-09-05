@@ -235,16 +235,23 @@ branding/             ← Identidad y figuras para el trabajo escrito (IEEE).
                         + Sora.ttf; ver su README).
 
 web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
-  index.html          ← One-page en 2 capítulos: 01·empresa (lateral sticky) y
-                        02·robot (banner MECH-1, showcase scroll estilo Apple,
-                        pipeline, hardware, obras y construcción en tiras).
-  styles.css          ← Estética heredada del panel (mismo dark + acentos).
-  app.js              ← Scroll showcase + typing + reveals. Sin dependencias;
-                        funciona abriendo index.html con doble click (file://).
-  assets/             ← Logo oficial, favicon, fotos del PDF del trabajo
-                        escrito. El showcase busca robot-01.jpg/robot-02.jpg
-                        (fotos del robot terminado); si faltan usa un render SVG.
-  README.md           ← Cómo verla y cómo publicar en GitHub Pages.
+                        MULTIPÁGINA (sep 2026): un .html por sección, pensado
+                        para desplegar en Vercel con Root Directory = web.
+  index.html          ← Inicio: hero + barra de patrocinadores + cifras clave.
+  empresa.html        ← 01 · M.E.C.H, propuesta de valor, equipo, colaboradores.
+  problema.html       ← 02 · Indiferencia, crisis educativa de CR, escuelas
+                        unidocentes, neurociencia de la atención + referencias.
+  robot.html          ← 03 · Cómo funciona, hardware por capas, construcción,
+                        mecanismo, código, retos y bitácora de fotos.
+  evolucion.html      ← 04 · MECH-1 → MECH-2 → MECH-3 (actual) → MECH-4.
+  aplicaciones.html   ← 05 · Áreas de uso + modelo de negocio (costos/ingresos).
+  contacto.html       ← 06 · Contacto + patrocinadores (rejilla + marquesina).
+  404.html            ← Página de error (Vercel la sirve sola).
+  css/styles.css      ← Toda la hoja de estilos (una sola, compartida).
+  js/main.js          ← Nav, menú móvil, reveals con stagger, typing.
+  assets/             ← Imágenes; assets/logos/ = patrocinadores procesados.
+  vercel.json         ← cleanUrls + cache headers.
+  README.md           ← Cómo verlo en local y cómo desplegar en Vercel.
 
 windows/              ← Control desde laptop Windows
   MECH Control.bat    ← Doble click → Edge --app, ventana sin barras.
@@ -820,9 +827,28 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   colisiones con palabras comunes): TÓTEM, ORFEO, CÓDICE, MORFEO. NO proponer
   nombres a 1 edición de palabras comunes (la tolerancia lev≤1 del matcher los
   dispararía solos: musa→mesa, mito→moto, domo→como, faro→paro, fotón→foto…).
-- **Sitio web de presentación (`web/`)**: one-page estático en español con la
+- **Sitio web MULTIPÁGINA para Vercel (sep 2026)** — se rehízo por completo:
+  7 páginas HTML independientes (ver mapa de archivos), CSS y JS compartidos en
+  `web/css/` y `web/js/`, `vercel.json` con `cleanUrls`. **Para desplegar:
+  Vercel → Root Directory = `web`, framework "Other", sin build command.**
+  FUENTE DE CONTENIDO: `Documentación/MECH/MECH Nacional/MECH-3 Final.pdf`
+  (IEEE, sep 2026) + `branding/Business Model Canvas MECH.pdf`. Novedades que
+  trajo ese documento y que YA están en la web: **MECH-3 en desarrollo** y
+  MECH-4 planeado (antes el último era MECH-2); batería de **8 h**; toda la
+  **crisis educativa de Costa Rica** (PIB 5,3%→4,9%, PISA 2022, 96% en mates
+  insuficiente, 63%→¼ en lectura); **escuelas unidocentes** (35% de las
+  públicas, mitad con <10 alumnos, inglés 89% vs 26%, 1 de cada 3 deserta) y el
+  caso Flor de Islita; estudios nuevos (DCMS 60% vs 73%, Karolinska/Todorov
+  sobre novedad y dopamina); el partner **360 Health & Value**; y el modelo de
+  negocio (costo $756,91 · venta $1000 · servicio $50).
+  **Barra de patrocinadores**: marquesina infinita en CSS (dos filas
+  duplicadas + `translateX(-50%)`, 38 s lineal), **fondo CLARO a propósito**
+  porque los logos son de tinta oscura. Los logos se generan con
+  `branding/scripts/prep_logos.py` desde `branding/patrocinadores/` →
+  `web/assets/logos/`. Si se añade uno, hay que meterlo en LAS DOS filas.
+- **Sitio web de presentación (`web/`) — historial**: antes era one-page con la
   estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial en SVG).
-  FUENTE DE CONTENIDO: el trabajo escrito nuevo `Documentación/Proyecto
+  FUENTE DE CONTENIDO previa: el trabajo escrito `Documentación/Proyecto
   MECH.pdf` (IEEE, jul 2026), que amplió la misión de solo cultura a
   **generar interés en cultura, educación, salud, economía e historia**
   (eslogan «si es inmersivo, es MECH»). Estructurado en DOS capítulos:

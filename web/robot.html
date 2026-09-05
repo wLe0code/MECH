@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El robot — MECH</title>
+<meta name="description" content="Cómo funciona el robot MECH: voz local, IA, proyección y movimiento. Hardware por capas, construcción en coroplast y PVC, y el código que lo orquesta.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Saltar al contenido</a>
+
+<nav class="nav" id="nav">
+  <a class="nav-logo" href="index.html" aria-label="MECH — inicio">
+    <svg class="wordmark" viewBox="0 0 300 120" aria-hidden="true"><g transform="translate(150,60)"><g transform="skewX(-8)"><rect x="-132" y="-48" width="264" height="96" rx="22" fill="none" stroke="currentColor" stroke-width="11"/></g><text x="0" y="1" text-anchor="middle" dominant-baseline="central" font-family="Sora,sans-serif" font-style="italic" font-weight="800" font-size="56" letter-spacing="2" fill="currentColor">MECH</text></g></svg>
+  </a>
+  <button class="nav-burger" id="navBurger" aria-label="Abrir menú" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
+  <div class="nav-links" id="navLinks">
+    <a href="index.html">Inicio</a>
+    <a href="empresa.html">Empresa</a>
+    <a href="problema.html">Problema</a>
+    <a href="robot.html" aria-current="page">Robot</a>
+    <a href="evolucion.html">Evolución</a>
+    <a href="aplicaciones.html">Aplicaciones</a>
+    <a class="nav-cta" href="contacto.html">Contacto</a>
+  </div>
+</nav>
+
+<main id="main">
+
+<header class="page-head">
+  <div class="container">
+    <div class="page-eyebrow">
+      <span class="page-num">03</span><span class="rule"></span><span class="tag">EL ROBOT</span>
+    </div>
+    <h1>Un expositor humanoide<br>construido desde cero.</h1>
+    <p class="lead">
+      Proyecta, escucha, piensa, narra y se mueve. Cuerpo cilíndrico de
+      <b>52 × 66 cm</b>, cabeza proyectora y una franja de píxeles como firma visual.
+    </p>
+  </div>
+</header>
+
+<!-- Presentación -->
+<section class="section">
+  <div class="container">
+    <div class="grid g2" style="gap:48px; align-items:center">
+      <div>
+        <p class="section-kicker reveal">EN NÚMEROS</p>
+        <h2 class="reveal">La ficha técnica.</h2>
+        <div class="grid g2 stagger" style="margin-top:26px; gap:14px">
+          <div class="stat reveal"><b class="grad">8 h</b><span>de autonomía — un día escolar completo</span></div>
+          <div class="stat reveal"><b>1</b><span>consulta de IA por historia completa</span></div>
+          <div class="stat reveal"><b>100%</b><span>de la voz a texto procesada localmente</span></div>
+          <div class="stat reveal"><b>360°</b><span>movimiento con ruedas omnidireccionales</span></div>
+        </div>
+      </div>
+      <div class="reveal" style="display:flex; justify-content:center">
+        <img src="assets/render-mech.png" alt="Render del robot MECH" style="max-height:460px; width:auto" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Cómo funciona -->
+<section class="section section-alt">
+  <div class="container">
+    <p class="section-kicker reveal">CÓMO FUNCIONA</p>
+    <h2 class="reveal">De tu voz a un mundo<br>proyectado en segundos.</h2>
+    <p class="section-lead reveal">
+      Todo el flujo lo orquesta una Raspberry Pi 5 dentro del robot. La IA recibe
+      <b>una sola consulta</b> y devuelve el guion completo de la exposición:
+      rápido, económico y predecible.
+    </p>
+
+    <ol class="grid g4 stagger" style="list-style:none">
+      <li class="card card-accent reveal" style="--tint: var(--amber)">
+        <span class="mono" style="font-size:12px;color:var(--amber);font-weight:700;letter-spacing:2px">01</span>
+        <h3 style="margin-top:8px">Escucha</h3>
+        <p>El micrófono capta tu voz y se transcribe <b>100% local</b>, sin depender de internet. Un sistema detecta cuándo baja la longitud de onda para cerrar la recepción — así funciona <b>incluso con ruido</b>.</p>
+      </li>
+      <li class="card card-accent reveal" style="--tint: var(--purple-mid)">
+        <span class="mono" style="font-size:12px;color:var(--purple-mid);font-weight:700;letter-spacing:2px">02</span>
+        <h3 style="margin-top:8px">Piensa</h3>
+        <p>El orquestador de IA recibe la petición y devuelve un <b>plan estructurado</b>: narración por escenas, visuales y gestos.</p>
+      </li>
+      <li class="card card-accent reveal" style="--tint: var(--red)">
+        <span class="mono" style="font-size:12px;color:var(--red);font-weight:700;letter-spacing:2px">03</span>
+        <h3 style="margin-top:8px">Narra y proyecta</h3>
+        <p>La voz se sintetiza en español y el proyector despliega el <b>espacio inmersivo</b>: videos por escena o imágenes generadas al vuelo.</p>
+      </li>
+      <li class="card card-accent reveal" style="--tint: var(--teal)">
+        <span class="mono" style="font-size:12px;color:var(--teal);font-weight:700;letter-spacing:2px">04</span>
+        <h3 style="margin-top:8px">Se mueve</h3>
+        <p>Un <b>Arduino</b> ejecuta gestos con los brazos y desplazamientos con las ruedas, dando el aspecto humano que capta la atención.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- Hardware -->
+<section class="section">
+  <div class="container">
+    <p class="section-kicker reveal">HARDWARE</p>
+    <h2 class="reveal">Tres capas,<br>un solo organismo.</h2>
+
+    <div class="grid" style="grid-template-columns: minmax(280px, 440px) 1fr; gap:40px; align-items:start; margin-top:30px">
+      <div class="reveal" style="background:#fff; border-radius:20px; padding:18px; border:1px solid var(--border)">
+        <img src="assets/diagrama-capas.png" alt="Diagrama de las tres capas físicas del robot: superior (webcam y proyector), central (brazos, Raspberry Pi, micrófono y parlante) y mecánica (Arduino, ruedas, motores y fuente de poder)" style="border-radius:10px" loading="lazy">
+      </div>
+      <div class="grid stagger" style="gap:16px">
+        <div class="card reveal" style="--tint: var(--purple-mid); border-left:3px solid var(--purple-mid)">
+          <h3 class="mono" style="font-size:13px;letter-spacing:3px;color:var(--purple-mid)">CAPA SUPERIOR</h3>
+          <ul class="ticks" style="--tint: var(--purple-mid); margin-top:10px">
+            <li><b>Proyector</b> — el corazón del espacio inmersivo</li>
+            <li><b>Webcam Logitech</b> — comprensión del entorno y detección de usuarios</li>
+          </ul>
+        </div>
+        <div class="card reveal" style="--tint: var(--red); border-left:3px solid var(--red)">
+          <h3 class="mono" style="font-size:13px;letter-spacing:3px;color:var(--red)">CAPA CENTRAL</h3>
+          <ul class="ticks" style="--tint: var(--red); margin-top:10px">
+            <li><b>Raspberry Pi 5 (8 GB)</b> — el cerebro del robot</li>
+            <li><b>Micrófono</b> — interpretación de lenguaje a texto</li>
+            <li><b>Parlante JBL Charge</b> — la voz del robot</li>
+            <li><b>Servomotores</b> — los brazos y sus gestos</li>
+          </ul>
+        </div>
+        <div class="card reveal" style="--tint: var(--teal); border-left:3px solid var(--teal)">
+          <h3 class="mono" style="font-size:13px;letter-spacing:3px;color:var(--teal)">CAPA MECÁNICA</h3>
+          <ul class="ticks" style="--tint: var(--teal); margin-top:10px">
+            <li><b>Arduino</b> — orquestación del movimiento, en comunicación con la Pi</li>
+            <li><b>2× driver L298N + motores DC</b> — movilidad terrestre</li>
+            <li><b>Ruedas multidireccionales</b> — desplazamiento en cualquier dirección</li>
+            <li><b>Batería 12 V</b> — regulada a 9 V para los motores</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Construcción y mecanismo -->
+<section class="section section-alt">
+  <div class="container">
+    <div class="grid g2" style="gap:44px; align-items:start">
+      <div>
+        <p class="section-kicker reveal">CONSTRUCCIÓN</p>
+        <h2 class="reveal">De qué está hecho.</h2>
+        <ul class="ticks reveal" style="--tint: var(--amber); margin-top:22px">
+          <li>Estructura metálica de <b>aluminio</b>, ensamblada con soportes y tornillos.</li>
+          <li><b>4 ruedas</b> reaprovechadas de una silla, para movilidad y estabilidad.</li>
+          <li>Cuerpo de <b>tubo PVC de 52 cm de diámetro y 66 cm de altura</b>.</li>
+          <li>Forrado en <b>coroplast</b>: flexible, muy resistente, 100% reciclable y no tóxico — y mucho más ligero que usar solo PVC.</li>
+          <li>Cabeza de cartón y coroplast con <b>rejilla de ventilación</b>, para que el calor no degrade el material.</li>
+          <li>Estructura interna de madera para sostener los componentes.</li>
+        </ul>
+      </div>
+      <div>
+        <p class="section-kicker reveal">MECANISMO</p>
+        <h2 class="reveal">Cómo se mueve.</h2>
+        <ul class="ticks reveal" style="--tint: var(--teal); margin-top:22px">
+          <li>Los motores de brazos y ruedas se conectan a la <b>Raspberry Pi mediante una tarjeta Arduino</b>.</li>
+          <li>Los <b>motores de dirección continua</b> se encargan de la movilidad terrestre.</li>
+          <li><b>2 drivers L298N</b> coordinan los motores con el Arduino desde una protoboard.</li>
+          <li>Cada motor recibe corriente directamente de la batería, <b>bajando de 12 V a 9 V</b> con un regulador.</li>
+          <li>Los <b>servomotores de los brazos no necesitan driver</b>: no son de dirección continua, así que van en un circuito sencillo alimentado por la batería.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Código -->
+<section class="section">
+  <div class="container">
+    <p class="section-kicker reveal">EL CÓDIGO</p>
+    <h2 class="reveal">Cuatro piezas de software.</h2>
+    <p class="section-lead reveal">
+      Todo el proyecto es de código abierto y está publicado en GitHub.
+    </p>
+    <div class="grid g4 stagger">
+      <article class="card reveal" style="--tint: var(--teal)">
+        <span class="card-icon">C</span>
+        <h3>Arduino</h3>
+        <p>Un archivo en lenguaje <b>C</b> con los modos de movimiento: automático (solo brazos), escucha (quieto) y habla (gestos). Orquesta cómo recibe información de la Raspberry Pi.</p>
+      </article>
+      <article class="card reveal" style="--tint: var(--purple-mid)">
+        <span class="card-icon">Py</span>
+        <h3>Backend</h3>
+        <p>El <b>orquestador en Python</b>: recepción de voz, conversión a texto y de vuelta a voz, proyección, videos y comunicación con el Arduino. Se eligió Python por su facilidad para orquestar IA.</p>
+      </article>
+      <article class="card reveal" style="--tint: var(--amber)">
+        <span class="card-icon">JS</span>
+        <h3>Frontend</h3>
+        <p>El <b>portal de control técnico</b> en HTML, CSS y JavaScript: paro de emergencia, estado del firmware, sensores, proyector y cámaras. Funciona como respaldo ante problemas técnicos.</p>
+      </article>
+      <article class="card reveal" style="--tint: var(--red)">
+        <span class="card-icon">Doc</span>
+        <h3>Guías</h3>
+        <p>Documentación de <b>ensamblaje y uso</b>: cómo armar el robot, los pines exactos del Arduino, cómo iniciar el servidor en la Pi y los requerimientos de hardware y energía.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- Retos -->
+<section class="section section-alt">
+  <div class="container">
+    <p class="section-kicker reveal">RETOS AFRONTADOS</p>
+    <h2 class="reveal">Lo que costó llegar aquí.</h2>
+    <div class="grid g2 stagger" style="margin-top:30px">
+      <div class="card reveal" style="--tint: var(--red)"><h3>Materiales limitados</h3><p>Al inicio no se tenían los componentes necesarios, así que hubo que optar por piezas disponibles y conseguir los elementos estrictamente necesarios.</p></div>
+      <div class="card reveal" style="--tint: var(--amber)"><h3>El tiempo</h3><p>La exigencia académica del colegio científico obligó a priorizar evaluaciones. El plazo para la magnitud del trabajo fue limitado y hubo que aprovecharlo al máximo.</p></div>
+      <div class="card reveal" style="--tint: var(--purple-mid)"><h3>Unir dos sistemas</h3><p>El equipo no había trabajado antes con Arduino y Raspberry Pi: hubo que aprender y formular métodos para unificar su funcionamiento.</p></div>
+      <div class="card reveal" style="--tint: var(--teal)"><h3>La energía del proyector</h3><p>El primer proyector consumía 25 V y habría drenado la batería de 12 V en poco tiempo. Hubo que buscar uno cuyo bulbo no superara ese umbral.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Bitácora -->
+<section class="section">
+  <div class="container">
+    <p class="section-kicker reveal">BITÁCORA DE CONSTRUCCIÓN</p>
+    <h2 class="reveal">Del esqueleto de aluminio<br>al robot con identidad.</h2>
+    <p class="section-lead reveal">Desliza para ver la evolución →</p>
+  </div>
+  <div class="strip stagger">
+    <figure class="reveal"><img src="assets/build-01.jpg" alt="Estructura metálica inicial en perfiles de aluminio" loading="lazy"><figcaption><span class="mono">ETAPA 01</span> Primera estructura</figcaption></figure>
+    <figure class="reveal"><img src="assets/build-02.jpg" alt="Primer ensamblaje de PVC en la estructura metálica" loading="lazy"><figcaption><span class="mono">ETAPA 02</span> Ensamblaje de PVC</figcaption></figure>
+    <figure class="reveal"><img src="assets/build-03.jpg" alt="Prototipo recubierto por coroplast" loading="lazy"><figcaption><span class="mono">ETAPA 03</span> Recubrimiento en coroplast</figcaption></figure>
+    <figure class="reveal"><img src="assets/build-04.jpg" alt="Estructura interna reforzada para sostener componentes" loading="lazy"><figcaption><span class="mono">ETAPA 04</span> Estructura interna reforzada</figcaption></figure>
+    <figure class="reveal"><img src="assets/build-05.jpg" alt="Montaje de la cabeza del robot" loading="lazy"><figcaption><span class="mono">ETAPA 05</span> Montaje de la cabeza</figcaption></figure>
+    <figure class="reveal"><img src="assets/build-06.jpg" alt="Sistema de ventilación en la cabeza del prototipo" loading="lazy"><figcaption><span class="mono">ETAPA 06</span> Sistema de ventilación</figcaption></figure>
+    <figure class="reveal"><img src="assets/robot-final.jpg" alt="Prototipo completo del robot MECH" loading="lazy"><figcaption><span class="mono">ETAPA 07</span> Prototipo completo</figcaption></figure>
+  </div>
+</section>
+
+<section class="section-sm">
+  <div class="container">
+    <nav class="pager" aria-label="Navegación entre secciones">
+      <a href="problema.html"><span class="dir">← ANTERIOR</span><span class="ttl">El problema</span></a>
+      <a class="next" href="evolucion.html"><span class="dir">SIGUIENTE →</span><span class="ttl">La evolución</span></a>
+    </nav>
+  </div>
+</section>
+
+</main>
+
+<div class="pixel-band" aria-hidden="true"></div>
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-about">
+      <svg class="footer-mark" viewBox="0 0 300 120" role="img" aria-label="MECH"><g transform="translate(150,60)"><g transform="skewX(-8)"><rect x="-132" y="-48" width="264" height="96" rx="22" fill="none" stroke="currentColor" stroke-width="10"/></g><text x="0" y="1" text-anchor="middle" dominant-baseline="central" font-family="Sora,sans-serif" font-style="italic" font-weight="800" font-size="56" letter-spacing="2" fill="currentColor">MECH</text></g></svg>
+      <p>Multisensory Engineering Cyberphysical Humanized. Espacios inmersivos que despiertan el interés en las áreas que sostienen a la sociedad.</p>
+    </div>
+    <div class="footer-col">
+      <h4>PROYECTO</h4>
+      <ul>
+        <li><a href="empresa.html">La empresa</a></li>
+        <li><a href="problema.html">El problema</a></li>
+        <li><a href="robot.html">El robot</a></li>
+        <li><a href="evolucion.html">Evolución</a></li>
+        <li><a href="aplicaciones.html">Aplicaciones</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>CONTACTO</h4>
+      <ul>
+        <li><a href="mailto:wromech@gmail.com">wromech@gmail.com</a></li>
+        <li><a href="https://instagram.com/wr0mech" target="_blank" rel="noopener">Instagram @wr0mech ↗</a></li>
+        <li><a href="https://github.com/wLe0code/MECH" target="_blank" rel="noopener">GitHub ↗</a></li>
+        <li><a href="contacto.html">Patrocinadores</a></li>
+      </ul>
+    </div>
+  </div>
+  <p class="footer-bottom">COLEGIO CIENTÍFICO DE ALAJUELA · COSTA RICA 🇨🇷 · WRO 2026 — ROBOTS AND CULTURE · <span class="year"></span></p>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
