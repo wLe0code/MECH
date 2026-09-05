@@ -846,6 +846,21 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   porque los logos son de tinta oscura. Los logos se generan con
   `branding/scripts/prep_logos.py` desde `branding/patrocinadores/` →
   `web/assets/logos/`. Si se añade uno, hay que meterlo en LAS DOS filas.
+  **Perfiles del equipo** (`empresa.html`): estilo editorial pedido por el
+  equipo — nombre enorme en **Playfair Display** (serif) con un punto del color
+  de acento, rol en mono itálico y foto circular difuminada al fondo, con el
+  lado alternando por persona. ⚠️ Las reglas van anidadas como
+  `.profile .profile-name` porque si no `.section h3` (más específica) impone
+  20 px. Retratos generados con `branding/scripts/prep_equipo.py` desde
+  `branding/equipo/{Leo,Ale,Jimmy}/` (detecta el rostro con OpenCV, encuadra
+  cabeza+torso, desatura, oscurece y aplica viñeta) → `web/assets/equipo/`.
+  **NO hay sección de colaboradores** (el equipo pidió quitar esos nombres).
+  **NADA de barras de color arriba de las tarjetas**: se ven poco
+  profesionales. El acento es `.card-accent` = borde fino del color del tint
+  rodeando la tarjeta + glow tenue (`box-shadow`).
+  **Diagramas**: se usan los de `branding/` (arquitectura, caso de uso y los
+  dos de flujo, generados con `branding/scripts/diag_*.py`), NO el
+  `diagrama-capas.png` viejo que salía del PDF — ese ya se borró.
 - **Sitio web de presentación (`web/`) — historial**: antes era one-page con la
   estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial en SVG).
   FUENTE DE CONTENIDO previa: el trabajo escrito `Documentación/Proyecto

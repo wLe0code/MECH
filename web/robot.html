@@ -109,18 +109,19 @@
     <h2 class="reveal">Tres capas,<br>un solo organismo.</h2>
 
     <div class="grid" style="grid-template-columns: minmax(280px, 440px) 1fr; gap:40px; align-items:start; margin-top:30px">
-      <div class="reveal" style="background:#fff; border-radius:20px; padding:18px; border:1px solid var(--border)">
-        <img src="assets/diagrama-capas.png" alt="Diagrama de las tres capas físicas del robot: superior (webcam y proyector), central (brazos, Raspberry Pi, micrófono y parlante) y mecánica (Arduino, ruedas, motores y fuente de poder)" style="border-radius:10px" loading="lazy">
-      </div>
+      <figure class="diagram reveal">
+        <img src="assets/diagrama-arquitectura.png" alt="Diagrama de arquitectura: las tres capas físicas señaladas sobre el cuerpo del robot — superior (webcam y proyector), central (brazos, Raspberry Pi, micrófono y parlante) y mecánica (Arduino, ruedas, motores y drivers)" loading="lazy">
+        <figcaption class="mono">FIGURA 1 · DIAGRAMA DE ARQUITECTURA</figcaption>
+      </figure>
       <div class="grid stagger" style="gap:16px">
-        <div class="card reveal" style="--tint: var(--purple-mid); border-left:3px solid var(--purple-mid)">
+        <div class="card card-accent reveal" style="--tint: var(--purple-mid)">
           <h3 class="mono" style="font-size:13px;letter-spacing:3px;color:var(--purple-mid)">CAPA SUPERIOR</h3>
           <ul class="ticks" style="--tint: var(--purple-mid); margin-top:10px">
             <li><b>Proyector</b> — el corazón del espacio inmersivo</li>
             <li><b>Webcam Logitech</b> — comprensión del entorno y detección de usuarios</li>
           </ul>
         </div>
-        <div class="card reveal" style="--tint: var(--red); border-left:3px solid var(--red)">
+        <div class="card card-accent reveal" style="--tint: var(--red)">
           <h3 class="mono" style="font-size:13px;letter-spacing:3px;color:var(--red)">CAPA CENTRAL</h3>
           <ul class="ticks" style="--tint: var(--red); margin-top:10px">
             <li><b>Raspberry Pi 5 (8 GB)</b> — el cerebro del robot</li>
@@ -129,7 +130,7 @@
             <li><b>Servomotores</b> — los brazos y sus gestos</li>
           </ul>
         </div>
-        <div class="card reveal" style="--tint: var(--teal); border-left:3px solid var(--teal)">
+        <div class="card card-accent reveal" style="--tint: var(--teal)">
           <h3 class="mono" style="font-size:13px;letter-spacing:3px;color:var(--teal)">CAPA MECÁNICA</h3>
           <ul class="ticks" style="--tint: var(--teal); margin-top:10px">
             <li><b>Arduino</b> — orquestación del movimiento, en comunicación con la Pi</li>
@@ -143,8 +144,36 @@
   </div>
 </section>
 
-<!-- Construcción y mecanismo -->
+<!-- Diagramas -->
 <section class="section section-alt">
+  <div class="container">
+    <p class="section-kicker reveal">DIAGRAMAS DEL SISTEMA</p>
+    <h2 class="reveal">Cómo se planificó.</h2>
+    <p class="section-lead reveal">
+      El proyecto arrancó con diagramas que definieron las funciones e ideas
+      principales del robot antes de construir nada.
+    </p>
+
+    <div class="grid g2 stagger" style="align-items:start">
+      <figure class="diagram reveal">
+        <img src="assets/diagrama-flujo-hardware.png" alt="Diagrama de flujo del hardware: desde el encendido del equipo hasta la evasión de obstáculos, pasando por la inicialización del firmware, los proyectores, los sensores y el sistema de movilidad" loading="lazy">
+        <figcaption class="mono">FIGURA 2 · FLUJO DE HARDWARE</figcaption>
+      </figure>
+      <figure class="diagram reveal">
+        <img src="assets/diagrama-flujo-software.png" alt="Diagrama de flujo del software: selección por voz, proyección de stand, espacio inmersivo, movimiento y preguntas del público" loading="lazy">
+        <figcaption class="mono">FIGURA 3 · FLUJO DE SOFTWARE</figcaption>
+      </figure>
+    </div>
+
+    <figure class="diagram reveal" style="margin-top:20px">
+      <img src="assets/diagrama-caso-uso.png" alt="Diagrama de caso de uso: el usuario y el equipo MECH interactuando con el sistema — selección por voz, proyección de stand, espacio inmersivo, movimiento, preguntas y supervisión de firmware" loading="lazy">
+      <figcaption class="mono">FIGURA 4 · DIAGRAMA DE CASO DE USO</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- Construcción y mecanismo -->
+<section class="section">
   <div class="container">
     <div class="grid g2" style="gap:44px; align-items:start">
       <div>
@@ -175,7 +204,7 @@
 </section>
 
 <!-- Código -->
-<section class="section">
+<section class="section section-alt">
   <div class="container">
     <p class="section-kicker reveal">EL CÓDIGO</p>
     <h2 class="reveal">Cuatro piezas de software.</h2>
@@ -208,7 +237,7 @@
 </section>
 
 <!-- Retos -->
-<section class="section section-alt">
+<section class="section">
   <div class="container">
     <p class="section-kicker reveal">RETOS AFRONTADOS</p>
     <h2 class="reveal">Lo que costó llegar aquí.</h2>

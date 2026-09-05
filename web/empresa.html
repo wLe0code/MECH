@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -119,49 +119,70 @@
     <h2 class="reveal">Tres estudiantes, un robot.</h2>
     <p class="section-lead reveal">Colegio Científico de Alajuela · Alajuela, Costa Rica</p>
 
-    <div class="grid g3 stagger">
-      <article class="team-card reveal">
-        <div class="team-photo"><img src="assets/team-leo.jpg" alt="Leonardo Ramírez" loading="lazy"></div>
-        <h3>Leonardo Ramírez</h3>
-        <p class="team-role">ENCARGADO EN MECATRÓNICA</p>
-        <p>Responsable del diseño de los sistemas mecatrónicos y de todo el desarrollo neuronal robótico: cada orden y tarea que el prototipo ejecuta nació de sus instrucciones, esquemas y diagramas de orquestación.</p>
+    <div class="profiles">
+
+      <article class="profile reveal" style="--tint: var(--purple-mid)">
+        <div class="profile-text">
+          <p class="profile-kicker">MECATRÓNICA</p>
+          <h3 class="profile-name">Leonardo<br>Ramírez<span class="dot">.</span></h3>
+          <p class="profile-role">DISEÑO<span>·</span>FIRMWARE<span>·</span>ORQUESTACIÓN</p>
+          <p class="profile-bio">
+            Responsable del diseño de los sistemas mecatrónicos y de todo el
+            <b>desarrollo neuronal robótico</b>: cada orden y tarea que el prototipo
+            ejecuta nació de sus instrucciones. También produjo los esquemas y
+            diagramas que perfeccionan el proceso de orquestación.
+          </p>
+        </div>
+        <div class="profile-photo">
+          <img src="assets/equipo/leo.jpg" alt="Leonardo Ramírez" loading="lazy">
+        </div>
       </article>
-      <article class="team-card reveal">
-        <div class="team-photo"><img src="assets/team-ale.jpg" alt="Alejandro Ramírez" loading="lazy"></div>
-        <h3>Alejandro Ramírez</h3>
-        <p class="team-role">ENCARGADO EN MECÁNICA</p>
-        <p>Especialista de la parte mecánica. Supervisó la producción y materialización del robot cuidando que cada componente fuera amigable con el diseño, y fue clave para iterar prototipos hacia un ecosistema inmersivo funcional y estético.</p>
+
+      <article class="profile reveal" style="--tint: var(--red)">
+        <div class="profile-text">
+          <p class="profile-kicker">MECÁNICA</p>
+          <h3 class="profile-name">Alejandro<br>Ramírez<span class="dot">.</span></h3>
+          <p class="profile-role">ESTRUCTURA<span>·</span>PROTOTIPADO<span>·</span>DISEÑO</p>
+          <p class="profile-bio">
+            Especialista de la parte mecánica. Supervisó cada etapa de la
+            <b>producción y materialización del robot</b>, asegurando que cada
+            componente fuera amigable con el diseño, y fue clave para iterar
+            prototipos hacia un ecosistema inmersivo funcional y estético.
+          </p>
+        </div>
+        <div class="profile-photo">
+          <img src="assets/equipo/ale.jpg" alt="Alejandro Ramírez" loading="lazy">
+        </div>
       </article>
-      <article class="team-card reveal">
-        <div class="team-photo"><img src="assets/team-jimmy.jpg" alt="Jimmy Jara" loading="lazy"></div>
-        <h3>Jimmy Jara</h3>
-        <p class="team-role">ENCARGADO EN CIRCUITOS</p>
-        <p>El puente entre la estructura y el cerebro del robot. Desarrolló los sistemas de movimiento, energía, comunicación, sonido y visión, elementos clave para el funcionamiento y la sincronización del prototipo.</p>
+
+      <article class="profile reveal" style="--tint: var(--teal)">
+        <div class="profile-text">
+          <p class="profile-kicker">CIRCUITOS</p>
+          <h3 class="profile-name">Jimmy<br>Jara<span class="dot">.</span></h3>
+          <p class="profile-role">ENERGÍA<span>·</span>VISIÓN<span>·</span>SONIDO</p>
+          <p class="profile-bio">
+            El <b>puente entre la estructura y el cerebro</b> del robot. Desarrolló
+            los sistemas de movimiento, energía, comunicación, sonido y visión,
+            elementos clave para el correcto funcionamiento y la sincronización
+            del prototipo.
+          </p>
+        </div>
+        <div class="profile-photo">
+          <img src="assets/equipo/jimmy.jpg" alt="Jimmy Jara" loading="lazy">
+        </div>
       </article>
+
     </div>
   </div>
 </section>
 
-<!-- Colaboradores -->
+<!-- Foto de equipo -->
 <section class="section section-alt">
   <div class="container">
-    <p class="section-kicker reveal">COLABORADORES CLAVE</p>
-    <h2 class="reveal">Nadie construye un robot solo.</h2>
-    <p class="section-lead reveal">
-      Personas que aportaron componentes, conocimiento, tiempo de lección o ideas
-      en momentos decisivos del proyecto.
-    </p>
-    <div class="grid g3 stagger">
-      <div class="card reveal" style="--tint: var(--purple-mid)"><h3>Jeffry Luque</h3><p class="mono" style="font-size:11px;letter-spacing:1.5px;color:var(--dim)">PROFESOR</p><p>Clave para la adquisición de componentes.</p></div>
-      <div class="card reveal" style="--tint: var(--purple-mid)"><h3>Johanna Salazar</h3><p class="mono" style="font-size:11px;letter-spacing:1.5px;color:var(--dim)">PROFESORA</p><p>Clave para la obtención del proyector, webcam y otros componentes esenciales.</p></div>
-      <div class="card reveal" style="--tint: var(--teal)"><h3>Max Buhrs</h3><p class="mono" style="font-size:11px;letter-spacing:1.5px;color:var(--dim)">COLABORADOR EXTERNO</p><p>Clave para el ordenamiento del circuito del sistema de movilidad.</p></div>
-      <div class="card reveal" style="--tint: var(--teal)"><h3>Allan Bolaños</h3><p class="mono" style="font-size:11px;letter-spacing:1.5px;color:var(--dim)">COLABORADOR EXTERNO</p><p>Clave para la manipulación de código.</p></div>
-      <div class="card reveal" style="--tint: var(--teal)"><h3>Cristina Ulate</h3><p class="mono" style="font-size:11px;letter-spacing:1.5px;color:var(--dim)">COLABORADORA EXTERNA</p><p>Clave por sus recomendaciones sobre Arduino y Raspberry Pi.</p></div>
-      <div class="card reveal" style="--tint: var(--amber)"><h3>Fernanda Corella y Aarón Mora</h3><p class="mono" style="font-size:11px;letter-spacing:1.5px;color:var(--dim)">PROFESORES</p><p>Cedieron lecciones para que se pudiera trabajar en el proyecto.</p></div>
-    </div>
-    <p style="margin-top:20px;font-size:14px;color:var(--muted);font-weight:300">
-      También <b>Mariana Murillo</b> (compañera), que aportó ideas para la decoración del robot.
-    </p>
+    <figure class="reveal team-shot">
+      <img src="assets/equipo/grupo.jpg" alt="El equipo de MECH: Leonardo Ramírez, Jimmy Jara y Alejandro Ramírez" loading="lazy">
+      <figcaption class="mono">MECH · ALAJUELA, COSTA RICA</figcaption>
+    </figure>
   </div>
 </section>
 

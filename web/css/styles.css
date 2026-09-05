@@ -18,6 +18,7 @@
   --border-strong: rgba(255, 255, 255, 0.16);
   --mono: 'Space Mono', ui-monospace, monospace;
   --sans: 'Sora', system-ui, -apple-system, sans-serif;
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --maxw: 1180px;
   --nav-h: 68px;
   /* curvas fuertes: las nativas son demasiado débiles */
@@ -319,7 +320,20 @@ a { color: inherit; }
   border: 1px solid color-mix(in srgb, var(--tint, var(--purple-mid)) 32%, transparent);
   color: var(--tint, var(--purple-mid)); font-weight: 700; font-family: var(--mono);
 }
-.card-accent { border-top: 3px solid var(--tint); }
+/* Antes era una barra de color arriba; ahora es un borde fino que rodea la
+   tarjeta entera con un glow tenue del color de acento. */
+.card-accent {
+  border-color: color-mix(in srgb, var(--tint) 40%, transparent);
+  box-shadow: 0 0 18px -8px color-mix(in srgb, var(--tint) 85%, transparent),
+              inset 0 0 26px -20px var(--tint);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-accent:hover {
+    border-color: color-mix(in srgb, var(--tint) 68%, transparent);
+    box-shadow: 0 0 30px -8px color-mix(in srgb, var(--tint) 95%, transparent),
+                inset 0 0 30px -20px var(--tint);
+  }
+}
 
 /* Estadísticas */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
@@ -405,17 +419,78 @@ blockquote.pull cite {
 .strip figcaption .mono { font-size: 10px; letter-spacing: 2px; color: var(--red); font-weight: 700; }
 @media (hover: hover) and (pointer: fine) { .strip figure:hover { transform: translateY(-5px); border-color: var(--purple-mid); } }
 
-/* Equipo */
-.team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; padding-bottom: 22px; transition: transform .3s var(--ease-out), border-color .3s ease; }
-.team-photo { position: relative; aspect-ratio: 4/5; overflow: hidden; background: linear-gradient(180deg, #e9e8ee, #cfcede); }
-.team-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; transition: transform .5s var(--ease-out); }
-.team-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 58%, rgba(22,22,29,.4)); }
-.team-card h3 { font-size: 19px; margin: 17px 22px 3px; }
-.team-role { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--red); margin: 0 22px 11px; }
-.team-card p:last-child { font-size: 13.5px; color: var(--muted); font-weight: 300; margin: 0 22px; }
+/* ═══ PERFILES DEL EQUIPO ═══════════════════════════════════════════ */
+.profiles { display: flex; flex-direction: column; }
+.profile {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
+  align-items: center; padding: 60px 0;
+  border-top: 1px solid var(--border);
+}
+.profile:first-child { border-top: 0; }
+/* alterna el lado de la foto */
+.profile:nth-child(even) .profile-photo { order: -1; }
+
+/* nota: se anida bajo .profile para ganarle en especificidad a `.section h3`
+   y `.section p`, que si no imponen sus tamaños. */
+.profile .profile-kicker {
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 4px;
+  color: var(--muted); margin-bottom: 20px;
+}
+.profile .profile-name {
+  font-family: var(--serif); font-weight: 500;
+  font-size: clamp(44px, 6.4vw, 86px); line-height: .96;
+  letter-spacing: -.015em; margin-bottom: 22px; color: var(--text);
+}
+.profile .profile-name .dot { color: var(--tint, var(--red)); }
+.profile .profile-role {
+  font-family: var(--mono); font-style: italic; font-size: clamp(11px, 1.4vw, 13.5px);
+  letter-spacing: 3px; color: var(--muted); margin-bottom: 22px;
+}
+.profile .profile-role span { color: var(--tint, var(--red)); font-style: normal; margin: 0 4px; }
+.profile .profile-bio { font-size: 15.5px; color: var(--muted); font-weight: 300; max-width: 430px; }
+.profile .profile-bio b { color: var(--text); font-weight: 600; }
+
+.profile-photo { position: relative; display: flex; justify-content: center; }
+.profile-photo img {
+  width: min(100%, 430px); aspect-ratio: 1; object-fit: cover; border-radius: 50%;
+  /* se funde con el fondo, como en la plantilla */
+  mask-image: radial-gradient(circle at 50% 48%, #000 58%, transparent 76%);
+  -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 58%, transparent 76%);
+  transition: transform .6s var(--ease-out);
+}
+.profile-photo::before {
+  content: ''; position: absolute; inset: 50% auto auto 50%;
+  width: min(100%, 430px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--tint, var(--red)) 22%, transparent);
+  box-shadow: 0 0 60px -20px color-mix(in srgb, var(--tint, var(--red)) 65%, transparent);
+}
 @media (hover: hover) and (pointer: fine) {
-  .team-card:hover { transform: translateY(-5px); border-color: var(--border-strong); }
-  .team-card:hover .team-photo img { transform: scale(1.04); }
+  .profile-photo img:hover { transform: scale(1.03); }
+}
+
+/* Foto de equipo */
+.team-shot { position: relative; border-radius: 22px; overflow: hidden; border: 1px solid var(--border); }
+.team-shot img { width: 100%; display: block; }
+.team-shot figcaption {
+  position: absolute; left: 22px; bottom: 18px;
+  font-size: 11px; letter-spacing: 3px; color: var(--text);
+  text-shadow: 0 2px 12px rgba(0,0,0,.9);
+}
+
+/* Diagramas (vienen sobre fondo blanco: se enmarcan) */
+.diagram {
+  background: #fff; border: 1px solid var(--border); border-radius: 20px;
+  padding: 16px; overflow: hidden;
+  transition: transform .3s var(--ease-out), box-shadow .3s ease;
+}
+.diagram img { width: 100%; border-radius: 12px; }
+.diagram figcaption {
+  font-size: 10px; letter-spacing: 2px; color: #6a6a7c;
+  padding: 12px 6px 4px; text-align: center;
+}
+@media (hover: hover) and (pointer: fine) {
+  .diagram:hover { transform: translateY(-4px); box-shadow: 0 24px 50px -28px rgba(0,0,0,.9); }
 }
 
 /* Tabla de datos */
@@ -485,6 +560,14 @@ details.box img { border-radius: 12px; }
   .g3, .g4, .stats, .timeline, .sponsor-grid { grid-template-columns: repeat(2, 1fr); }
   .footer-inner { grid-template-columns: 1fr 1fr; }
 }
+@media (max-width: 900px) {
+  .profile { grid-template-columns: 1fr; gap: 30px; text-align: center; padding: 46px 0; }
+  .profile:nth-child(even) .profile-photo { order: 0; }
+  .profile-photo { order: -1 !important; }
+  .profile-bio { margin: 0 auto; }
+  .profile-photo img, .profile-photo::before { width: min(78%, 320px); }
+}
+
 @media (max-width: 760px) {
   .nav { padding: 0 18px; }
   .nav-burger { display: flex; }
