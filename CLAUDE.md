@@ -861,6 +861,15 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   **Diagramas**: se usan los de `branding/` (arquitectura, caso de uso y los
   dos de flujo, generados con `branding/scripts/diag_*.py`), NO el
   `diagrama-capas.png` viejo que salía del PDF — ese ya se borró.
+  **Figuras del anexo** (`web/assets/figuras/`): las 24 imágenes reales del
+  trabajo escrito (figuras 3–26 + el BMC actualizado), extraídas con
+  `branding/scripts/prep_figuras.py`, que lleva el mapeo
+  `(página, índice) → figura` verificado a mano contra los pies de foto.
+  Se usan en la bitácora de `robot.html` (figs 3–14), en las galerías de
+  MECH-2 (15–20) y los diseños 3D de MECH-3 (21–25) en `evolucion.html`,
+  el retrato oficial (26) en `empresa.html` y el BMC en `aplicaciones.html`.
+  Sustituyeron a los `build-0*.jpg`/`robot-final.jpg`/`canvas-negocio.png`
+  del PDF viejo, que ya se borraron.
 - **Sitio web de presentación (`web/`) — historial**: antes era one-page con la
   estética del proyecto (dark `#0e0e12`, Sora/Space Mono, logo oficial en SVG).
   FUENTE DE CONTENIDO previa: el trabajo escrito `Documentación/Proyecto
