@@ -234,6 +234,15 @@ branding/             ← Identidad y figuras para el trabajo escrito (IEEE).
                         Scripts regenerables en branding/scripts/ (diag_*.py
                         + Sora.ttf; ver su README).
 
+branding/stand/       ← Assets para el STAND físico (PNG TRANSPARENTES, alta
+                        resolución, para montar sobre el fondo negro): el lema
+                        "We spark interest in what truly matters" en ES/EN
+                        (frase-*.png), la franja de píxeles como divisor
+                        (divisor.png), tres cifras clave (datos-*.png) y una
+                        guía de colocación. Se regeneran con
+                        branding/scripts/stand_assets.py (Sora + Space Mono).
+                        Ver branding/stand/README.md.
+
 web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
                         MULTIPÁGINA (sep 2026): un .html por sección, pensado
                         para desplegar en Vercel con Root Directory = web.
