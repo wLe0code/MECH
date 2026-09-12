@@ -1,5 +1,5 @@
 # MECH
-Proyecto de WRO 2026 (Robots and Culture) enfocado en inmersiones y experiencias involucrando ingeniería y firmware. Encargados de la construcción de ART (A Real Immersion). Somos Multisensory Engineering Cyberphysical Humanized, somos MECH.
+Proyecto de WRO 2026 | Futuros Innovadores (Robots and Culture) enfocado en inmersiones y experiencias involucrando ingeniería y firmware. Encargados de la construcción de MECH. Somos Multisensory Engineering Cyberphysical Humanized, y si es inmersivo, es MECH.
 
 ## Estructura del proyecto
 
