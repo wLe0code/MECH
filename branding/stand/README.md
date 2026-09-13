@@ -60,3 +60,5 @@ parece un error. Para añadir un patrocinador: su logo en
 
 El fondo es **claro a propósito**: AdmisiónCR y Team STEAM son azul marino y
 en una barra oscura desaparecerían.
+- `ficha-usos-en.png` — ficha de usos en inglés (lista editorial numerada, sin MECH al centro). Script: `branding/scripts/ficha_usos_en.py`.
+- `render-2d-mech3.png` — render 2D plano de MECH-3, fondo transparente. Script: `branding/scripts/render_2d_mech3.py`.
