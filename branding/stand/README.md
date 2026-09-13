@@ -22,6 +22,8 @@ python stand_assets.py
 | `patrocinadores-azul.png` | **Barra de patrocinadores** estilo web, fondo claro azulado + glow tenue (recomendada) | 6033 × 764 |
 | `patrocinadores-blanco.png` | La misma barra con el fondo claro neutro de la web | 6002 × 606 |
 | `patrocinadores-azul-sin-fade.png` | Pastilla completa, sin desvanecer los extremos | 6164 × 764 |
+| `voz-wake-up-mech.png` | Chip de voz de la web con «wake up MECH» (aro LED + cursor) | 5248 × 2112 |
+| `voz-ok-mech.png` | El mismo chip con «ok MECH» | 4513 × 2112 |
 
 ## Orden recomendado (de arriba a abajo)
 
