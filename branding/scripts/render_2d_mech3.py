@@ -1,5 +1,5 @@
 # Render 2D (ilustracion plana) de MECH-3, basado en el render 3D del equipo:
-# cuerpo negro, plataforma y brazos blanco-menta, cabeza con cara (ojo grande,
+# cuerpo negro (sin brazos), plataforma blanco-menta, cabeza con cara (ojo grande,
 # guino con la webcam, sonrisa), panuelo rojo, botones, logo MECH y la franja
 # de la bandera de Costa Rica. FONDO TRANSPARENTE.
 # El negro lleva un borde de luz tenue para que no desaparezca sobre fondo negro.
@@ -32,35 +32,23 @@ def ell(cx, cy, rx, ry, fill):
 
 # sombra en el suelo
 sh = Image.new('RGBA', cv.size, (0, 0, 0, 0))
-ImageDraw.Draw(sh).ellipse([S(430), S(1935), S(1230), S(2010)], fill=(0, 0, 0, 110))
+ImageDraw.Draw(sh).ellipse([S(430), S(1535), S(1230), S(1610)], fill=(0, 0, 0, 110))
 cv.alpha_composite(sh.filter(ImageFilter.GaussianBlur(S(22))))
 
 # ruedas
 for cx in (620, 1040):
-    rect(cx - 95, 1860, cx + 95, 1968, BLACK, r=46, outline=RIM, w=2)
-
-# brazo izquierdo (colgando, mano escalonada)
-poly([(392, 740), (340, 740), (340, 1090), (316, 1090), (316, 1300), (392, 1300)], MINT)
-poly([(340, 740), (352, 740), (352, 1090), (340, 1090)], MINT_L)
-poly([(316, 1090), (330, 1090), (330, 1300), (316, 1300)], MINT_D)
-
-# brazo derecho (saludando: bloque vertical + mano hacia afuera)
-poly([(1255, 745), (1318, 745), (1318, 1290), (1255, 1290)], MINT)
-poly([(1300, 745), (1318, 745), (1318, 1290), (1300, 1290)], MINT_D)
-poly([(1292, 790), (1420, 790), (1420, 1065), (1356, 1065), (1356, 1015), (1292, 1015)], MINT)
-poly([(1404, 790), (1420, 790), (1420, 1065), (1404, 1065)], MINT_D)
-poly([(1292, 790), (1420, 790), (1420, 802), (1292, 802)], MINT_L)
+    d.ellipse([S(cx - 100), S(1443), S(cx + 100), S(1567)], fill=BLACK, outline=RIM, width=S(2))
 
 # cuerpo (degradado vertical sutil)
-ys = np.linspace(0, 1, S(1890 - 612))[:, None]
+ys = np.linspace(0, 1, S(1490 - 612))[:, None]
 g = (np.array(BLACK2) * (1 - ys) + np.array(BLACK) * ys)
 g = np.repeat(g[:, None, :], S(1258 - 386), axis=1).astype(np.uint8)
 cv.paste(Image.fromarray(g, 'RGB'), (S(386), S(612)))
 d = ImageDraw.Draw(cv)
-rect(386, 612, 1258, 1890, None, outline=RIM, w=2)
+rect(386, 612, 1258, 1490, None, r=4, outline=RIM, w=2)
 
 # franja bandera de Costa Rica (azul, blanco, rojo, blanco, azul)
-y = 1800
+y = 1400
 for h_, col in [(10, NAVY), (14, WHITE), (26, CR_RED), (14, WHITE), (12, NAVY)]:
     rect(386, y, 1258, y + h_, col); y += h_
 
@@ -74,8 +62,8 @@ rect(676, 426, 986, 575, MINT)
 rect(676, 426, 700, 575, MINT_L)
 
 # cabeza
-rect(386, 44, 1274, 434, BLACK, r=6, outline=RIM, w=2)
-rect(390, 44, 1270, 52, (70, 74, 80))
+rect(386, 10, 1274, 150, MINT_L, r=34, outline=BLACK, w=6)
+rect(386, 44, 1274, 434, BLACK, r=34, outline=RIM, w=2)
 
 # ojo grande: anillo blanco con el borde de abajo recto (como en el 3D)
 ex, ey = 590, 245
@@ -143,16 +131,16 @@ cv.alpha_composite(band)
 d = ImageDraw.Draw(cv)
 
 # botones
-ell(835, 712, 30, 30, WHITE)
-ell(835, 797, 30, 30, WHITE)
+ell(835, 740, 18, 18, WHITE)
+ell(835, 800, 18, 18, WHITE)
 
 # logo MECH (marco inclinado + texto en italica sintetica)
-lx, ly, lw, lh = 975, 1692, 258, 90
+lx, ly, lw, lh = 975, 1292, 258, 90
 cy0 = S(ly + lh / 2)
 logo = Image.new('RGBA', cv.size, (0, 0, 0, 0))
 ImageDraw.Draw(logo).rounded_rectangle([S(lx), S(ly), S(lx + lw), S(ly + lh)],
                                        radius=S(24), outline=WHITE, width=S(8))
-t = math.tan(math.radians(-8))
+t = math.tan(math.radians(8))
 cv.alpha_composite(logo.transform(logo.size, Image.AFFINE, (1, t, -t * cy0, 0, 1, 0), resample=Image.BICUBIC))
 tl = Image.new('RGBA', cv.size, (0, 0, 0, 0))
 fl = ImageFont.truetype('Sora.ttf', S(52)); fl.set_variation_by_axes([800])
