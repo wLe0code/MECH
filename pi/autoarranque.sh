@@ -13,6 +13,9 @@
 # querés que el robot cambie de comportamiento al encenderlo solo porque
 # alguien subió algo. Actualizar sigue siendo un acto deliberado (el icono
 # "Iniciar MECH").
+#
+# Y `--sin-panel` porque la pantalla de la Pi ES la superficie de proyección:
+# abrir el panel ahí al encender taparía la proyección.
 
 set -u
 
@@ -38,7 +41,7 @@ Type=Application
 Version=1.0
 Name=MECH
 Comment=Arranca el servidor de MECH al iniciar la sesion
-Exec="$REPO/pi/iniciar-mech.sh" --sin-actualizar
+Exec="$REPO/pi/iniciar-mech.sh" --sin-actualizar --sin-panel
 Path=$REPO
 Terminal=true
 X-GNOME-Autostart-enabled=true

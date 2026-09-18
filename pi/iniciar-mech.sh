@@ -7,6 +7,8 @@
 #
 #     cd ~/MECH && git pull && python -m backend.server
 #
+# ...y además abre el PANEL DE CONTROL solo, en cuanto el servidor responde.
+#
 # Con dos diferencias que importan en un evento:
 #   - Si NO hay internet, avisa y arranca igual con el código que ya está en
 #     la Pi. Quedarse sin robot porque falló el wifi del recinto sería lo peor.
@@ -23,9 +25,13 @@
 set -u
 
 ACTUALIZAR=1
-case "${1:-}" in
-    --sin-actualizar|--no-update) ACTUALIZAR=0 ;;
-esac
+ABRIR_PANEL=1
+for arg in "$@"; do
+    case "$arg" in
+        --sin-actualizar|--no-update) ACTUALIZAR=0 ;;
+        --sin-panel)                  ABRIR_PANEL=0 ;;
+    esac
+done
 
 # La carpeta del repo es la de arriba de este script, venga de donde venga
 # el acceso directo.
@@ -101,6 +107,13 @@ echo "════════════════════════�
 echo
 
 # ── 5. Arrancar ─────────────────────────────────────────────────────────
+# El panel se abre en SEGUNDO PLANO: `panel-mech.sh` espera a que el servidor
+# responda y entonces lo abre. Tiene que lanzarse ANTES del servidor porque
+# éste se queda en primer plano ocupando la ventana.
+if [ "$ABRIR_PANEL" -eq 1 ]; then
+    ( "$REPO/pi/panel-mech.sh" --silencioso < /dev/null > /dev/null 2>&1 & )
+fi
+
 python3 -m backend.server
 
 # Si llegamos aquí, el servidor terminó (Ctrl+C o un error). Dejamos la

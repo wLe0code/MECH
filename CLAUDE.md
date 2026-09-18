@@ -267,24 +267,29 @@ web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
   vercel.json         ← cleanUrls + cache headers.
   README.md           ← Cómo verlo en local y cómo desplegar en Vercel.
 
-pi/                   ← Accesos de ESCRITORIO en la Raspberry Pi, para
-                        usar MECH sin terminal. `instalar-accesos.sh` se
-                        corre UNA vez y deja dos iconos:
-  iniciar-mech.sh     ← "Iniciar MECH": git pull + arranca el server. Cierra
-                        el server anterior si lo había, y **arranca igual si
-                        no hay internet** (avisa y sigue con el código local).
-  panel-mech.sh       ← "Panel MECH": abre el panel de control en la Pi
-                        (modo app, NO kiosko: hay que poder usar los botones).
-  proyector-mech.sh   ← "Proyector MECH": Chromium kiosko en /projector CON
+pi/                   ← TRES accesos de ESCRITORIO en la Raspberry Pi,
+                        para usar MECH sin terminal. `instalar-accesos.sh`
+                        se corre UNA vez (doble click desde el explorador) y
+                        deja los tres; también BORRA los de versiones
+                        anteriores para no dejar botones sueltos.
+  iniciar-mech.sh     ← "Iniciar MECH": git pull + arranca el server + ABRE
+                        EL PANEL solo (en segundo plano, cuando el server
+                        responde). Cierra el server anterior si lo había, y
+                        **arranca igual si no hay internet** (avisa y sigue
+                        con el código local). Banderas: `--sin-actualizar`
+                        (salta el pull) y `--sin-panel`.
+  proyector-mech.sh   ← "Proyectar MECH": Chromium kiosko en /projector CON
                         el flag de autoplay (sin él los videos van MUDOS).
   apagar-mech.sh      ← "Apagar MECH": para el servidor con margen para que
                         cierre bien, y solo lo fuerza si no cierra. Cierra
                         también la proyección en kiosko (SOLO esa).
-  autoarranque.sh     ← "MECH al encender": interruptor del arranque
-                        automático al prender la Pi (crea/borra
-                        ~/.config/autostart/mech.desktop). Arranca con
-                        `--sin-actualizar`: en un evento el robot no debe
-                        cambiar de código solo por encenderlo.
+  panel-mech.sh       ← Abre el panel de control. NO tiene icono propio: lo
+                        llama `iniciar-mech.sh` con `--silencioso`.
+  autoarranque.sh     ← Arranque automático al encender la Pi (crea/borra
+                        ~/.config/autostart/mech.desktop). SIN icono a
+                        propósito (el equipo quiere solo 3): se lanza con
+                        doble click desde el explorador. Usa
+                        `--sin-actualizar --sin-panel`.
   instalar-accesos.sh ← Genera los .desktop con la ruta real del repo.
 
 windows/              ← Control desde laptop Windows

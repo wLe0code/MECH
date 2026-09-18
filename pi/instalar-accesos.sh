@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 #
-# Pone los iconos de MECH en el escritorio de la Pi.
+# Pone los TRES iconos de MECH en el escritorio de la Pi.
 #
-# Se corre UNA sola vez (es la única vez que hace falta la terminal):
+# Se corre UNA sola vez. Desde el explorador de archivos: doble click en este
+# archivo → «Ejecutar en terminal». O desde la terminal:
 #
 #     bash ~/MECH/pi/instalar-accesos.sh
 #
 # Después ya se usa todo con doble click. Se puede volver a correr sin
-# problema: simplemente reescribe los iconos.
+# problema: reescribe los iconos y limpia los de versiones anteriores.
 
 set -u
 
@@ -24,11 +25,23 @@ echo "  Escritorio: $DESK"
 echo
 
 # Los scripts tienen que ser ejecutables para que el .desktop los pueda
-# lanzar (al clonar desde Windows se pierde el permiso).
-chmod +x "$REPO"/pi/*.sh
+# lanzar (al clonar desde Windows se puede perder el permiso).
+chmod +x "$REPO"/pi/*.sh 2>/dev/null
 
 ICONO="$REPO/frontend/icon.svg"
 [ -f "$ICONO" ] || ICONO="utilities-terminal"
+
+# Iconos de versiones anteriores del instalador: se borran para no dejar
+# botones sueltos en el escritorio que ya no corresponden a nada.
+#   - "Panel MECH"       -> ahora lo abre solo «Iniciar MECH»
+#   - "MECH al encender" -> sigue existiendo, pero en pi/autoarranque.sh
+#   - "Proyector MECH"   -> se renombró a «Proyectar MECH»
+for viejo in "Panel MECH" "MECH al encender" "Proyector MECH"; do
+    if [ -f "$DESK/$viejo.desktop" ]; then
+        rm -f "$DESK/$viejo.desktop"
+        echo "  [quitado] $viejo"
+    fi
+done
 
 crear_acceso() {
     nombre="$1"; comentario="$2"; script="$3"
@@ -53,30 +66,27 @@ FIN
 }
 
 crear_acceso "Iniciar MECH" \
-    "Actualiza el codigo y arranca el servidor de MECH" \
+    "Actualiza, arranca el servidor y abre el panel de control" \
     "iniciar-mech.sh"
 
-crear_acceso "Panel MECH" \
-    "Abre el panel de control (fase de voz, idiomas, ajustes)" \
-    "panel-mech.sh"
-
-crear_acceso "Proyector MECH" \
-    "Abre la proyeccion a pantalla completa, con sonido" \
+crear_acceso "Proyectar MECH" \
+    "Abre la ventana con lo que MECH proyecta, a pantalla completa" \
     "proyector-mech.sh"
 
 crear_acceso "Apagar MECH" \
     "Para el servidor de MECH (no apaga la Raspberry Pi)" \
     "apagar-mech.sh"
 
-crear_acceso "MECH al encender" \
-    "Enciende o apaga el arranque automatico de MECH al prender la Pi" \
-    "autoarranque.sh"
-
 echo
-echo "  Listo. Ya tenés los cinco iconos en el escritorio."
+echo "  Listo. Ya tenés los TRES iconos en el escritorio:"
 echo
-echo "  Si querés que MECH arranque SOLO al encender la Pi (sin tocar"
-echo "  nada), doble click en «MECH al encender». Se apaga igual."
+echo "    Iniciar MECH     -> actualiza, arranca y abre el panel"
+echo "    Proyectar MECH   -> la ventana de lo que MECH proyecta"
+echo "    Apagar MECH      -> para el servidor"
 echo
 echo "  Si al hacer doble click el sistema pregunta qué hacer, elegí"
 echo "  «Ejecutar» (o «Ejecutar en terminal»). Solo pregunta la 1ª vez."
+echo
+echo "  EXTRA (sin icono, para no llenar el escritorio): si querés que MECH"
+echo "  arranque SOLO al encender la Pi, doble click en pi/autoarranque.sh"
+echo "  desde el explorador de archivos. Se apaga igual."
