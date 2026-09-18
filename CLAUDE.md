@@ -267,6 +267,16 @@ web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
   vercel.json         ← cleanUrls + cache headers.
   README.md           ← Cómo verlo en local y cómo desplegar en Vercel.
 
+pi/                   ← Accesos de ESCRITORIO en la Raspberry Pi, para
+                        usar MECH sin terminal. `instalar-accesos.sh` se
+                        corre UNA vez y deja dos iconos:
+  iniciar-mech.sh     ← "Iniciar MECH": git pull + arranca el server. Cierra
+                        el server anterior si lo había, y **arranca igual si
+                        no hay internet** (avisa y sigue con el código local).
+  proyector-mech.sh   ← "Proyector MECH": Chromium kiosko en /projector CON
+                        el flag de autoplay (sin él los videos van MUDOS).
+  instalar-accesos.sh ← Genera los .desktop con la ruta real del repo.
+
 windows/              ← Control desde laptop Windows
   MECH Control.bat    ← Doble click → Edge --app, ventana sin barras.
   MECH Kiosko.bat     ← Pantalla completa kiosko.
@@ -309,6 +319,9 @@ cp backend/.env.example backend/.env       # rellenar API keys
 
 # Operación normal (backend + panel + WS, todo en uno)
 python -m backend.server
+
+# ...o desde el escritorio de la Pi, sin terminal: icono «Iniciar MECH»
+# (se instala UNA vez con `bash ~/MECH/pi/instalar-accesos.sh`). Ver pi/README.md.
 
 # Visor de proyección en la misma Pi (Chromium kiosko)
 chromium --kiosk --autoplay-policy=no-user-gesture-required          http://localhost:8000/projector

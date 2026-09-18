@@ -1,0 +1,6 @@
+# Los scripts que corren en la Pi TIENEN que llegar con finales de línea LF.
+# Si git los entrega con CRLF (el default en Windows, que es donde se
+# desarrolla), Linux falla con "bad interpreter: /bin/bash^M" y el acceso de
+# escritorio no arranca — sin ninguna pista de por qué.
+*.sh       text eol=lf
+*.desktop  text eol=lf

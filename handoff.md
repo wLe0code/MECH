@@ -887,7 +887,11 @@ mueve bien. Lo conversado:
   `VOICE_WAKE_PHRASES`. Si una frase nueva no funciona, revisar si esa clave
   está escrita a mano en el `.env`.
 - **`git pull` en la Pi + reiniciar el server** para aplicar cambios de
-  backend/frontend. El firmware se flashea aparte. El `.bat` de Windows es solo
+  backend/frontend. Desde sep 2026 hay un icono **«Iniciar MECH»** en el
+  escritorio de la Pi que hace las dos cosas (ver `pi/README.md`); se
+  instala una sola vez con `bash ~/MECH/pi/instalar-accesos.sh`.
+  El frontend NO necesita reinicio (el server lo sirve del disco), pero sí
+  **Ctrl+Shift+R** en el navegador o se queda el `app.js` cacheado. El firmware se flashea aparte. El `.bat` de Windows es solo
   un lanzador del navegador.
 - **VR en el teléfono:** recargar con caché limpia; la pantalla de carga
   muestra el estado de conexión para diagnosticar. El sondeo HTTP (no el WS) es
