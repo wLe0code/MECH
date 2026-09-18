@@ -70,12 +70,15 @@
           <div class="voice-status" id="voice-status">Bucle de voz apagado</div>
 
           <!-- Idioma activo. En el stand lo decide la voz: "ok MECH" = español,
-               "wake up MECH" = inglés. Estos botones son para probar sin micro. -->
+               "wake up MECH" = inglés, "bonjour MECH" = francés, "bom dia MECH"
+               = portugués. Estos botones son para probar sin micro. -->
           <div class="lang-row">
             <span class="lang-label">IDIOMA</span>
             <button class="lang-chip active" id="lang-es" onclick="API.setLanguage('es')" title="Despertar por voz: «ok MECH»">ES · ESPAÑOL</button>
             <button class="lang-chip" id="lang-en" onclick="API.setLanguage('en')" title="Despertar por voz: «wake up MECH»">EN · ENGLISH</button>
-            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «oye MECH» corta la narración</span>
+            <button class="lang-chip" id="lang-fr" onclick="API.setLanguage('fr')" title="Despertar por voz: «bonjour MECH» o «réveille MECH»">FR · FRANÇAIS</button>
+            <button class="lang-chip" id="lang-pt" onclick="API.setLanguage('pt')" title="Despertar por voz: «bom dia MECH» o «acorda MECH»">PT · PORTUGUÊS</button>
+            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «oye MECH» corta la narración</span>
           </div>
 
           <div class="wave-bars" id="wave-bars">
@@ -105,6 +108,40 @@
                   title="Corta la narración igual que decir «oye MECH». Sirve para probar la interrupción sin micrófono.">
             <i class="ti ti-hand-stop"></i>Interrumpir narración («oye MECH»)
           </button>
+
+          <!-- Modo traductor, por TURNOS: «traduce MECH» -> pregunta qué
+               traducir -> escucha UNA frase -> la dice -> se calla. El par de
+               idiomas se recuerda; aquí se elige a mano para probar sin voz. -->
+          <div class="translator-box" id="translator-box">
+            <div class="translator-head">
+              <span class="translator-label"><i class="ti ti-sphere"></i> TRADUCTOR</span>
+              <span class="translator-state" id="translator-state">APAGADO</span>
+            </div>
+            <div class="translator-row">
+              <select class="translator-select" id="tr-src" title="Idioma de quien habla primero">
+                <option value="es">ESPAÑOL</option>
+                <option value="en">INGLÉS</option>
+                <option value="fr">FRANCÉS</option>
+                <option value="pt">PORTUGUÉS</option>
+              </select>
+              <i class="ti ti-arrows-horizontal" title="Traduce en los dos sentidos"></i>
+              <select class="translator-select" id="tr-dst" title="Idioma del otro interlocutor">
+                <option value="en">INGLÉS</option>
+                <option value="es">ESPAÑOL</option>
+                <option value="fr">FRANCÉS</option>
+                <option value="pt">PORTUGUÉS</option>
+              </select>
+              <button class="btn btn-purple" id="tr-start" onclick="API.translateStart()"
+                      title="Un turno de traducción con este par: pregunta qué traducir, escucha una frase y la dice.">
+                <i class="ti ti-player-play"></i>Traducir una
+              </button>
+              <button class="btn" id="tr-stop" onclick="API.translateStop()"
+                      title="Sale del traductor y olvida el par de idiomas («deja de traducir»).">
+                <i class="ti ti-player-stop"></i>Olvidar
+              </button>
+            </div>
+            <span class="translator-hint">«traduce MECH» → pregunta qué traducir → traduce UNA frase → se calla. Para la siguiente, repetí el comando (el par de idiomas se recuerda) · «deja de traducir» lo olvida</span>
+          </div>
 
           <div class="text-input-row">
             <input class="text-input" id="text-cmd" type="text"
@@ -409,6 +446,21 @@
             <span class="val" id="set-energy-val">2.5×</span>
           </div>
           <div class="slider-row">
+            <label title="Pasa-altos antes de transcribir: quita la continua y el retumbe (zumbido de red, roce de la ropa contra el micrófono de solapa, golpes de mesa). 0 = apagado. Es lo primero que hace la cadena de audio de un teléfono.">Quita retumbe</label>
+            <input type="range" min="0" max="200" step="10" value="80" id="set-hpf" oninput="UI.settingLabel('set-hpf','hpf')">
+            <span class="val" id="set-hpf-val">80 Hz</span>
+          </div>
+          <div class="slider-row">
+            <label title="Nivel al que se lleva la voz antes de transcribirla (el «AGC» del teléfono). Whisper entiende peor lo que entra muy bajito, y cada visitante habla a distinta distancia. -16 dBFS es lo recomendado; 0 = apagado.">Nivel de voz</label>
+            <input type="range" min="-30" max="0" step="1" value="-16" id="set-agc" oninput="UI.settingLabel('set-agc','agc')">
+            <span class="val" id="set-agc-val">-16 dBFS</span>
+          </div>
+          <div class="slider-row">
+            <label title="Cuántas hipótesis explora Whisper. 1 = lo más rápido; 5 acierta bastante más en frases cortas con ruido, a cambio de unas décimas. Bájalo si la respuesta se siente lenta en el evento.">Precisión STT</label>
+            <input type="range" min="1" max="5" step="1" value="5" id="set-beam" oninput="UI.settingLabel('set-beam','beam')">
+            <span class="val" id="set-beam-val">5</span>
+          </div>
+          <div class="slider-row">
             <label title="Silencio antes de hablar. Súbelo si el parlante Bluetooth corta la 1ª palabra.">Silencio inicio</label>
             <input type="range" min="0" max="2.5" step="0.1" value="1.0" id="set-lead" oninput="UI.settingLabel('set-lead','lead')">
             <span class="val" id="set-lead-val">1.0 s</span>
@@ -497,6 +549,18 @@
             <label title="Segundos entre saludos a la cámara. Bajo = saluda a cada visitante nuevo.">Repetir saludo</label>
             <input type="range" min="5" max="120" step="5" value="45" id="set-greetcd" oninput="UI.settingLabel('set-greetcd','greetcd')">
             <span class="val" id="set-greetcd-val">45 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Cuánto tiene que estar VACÍA la cámara para que el siguiente que aparezca cuente como visitante nuevo y se le salude. Sube esto si MECH repite el saludo sin que haya nadie (el detector parpadea y cuenta como una llegada nueva).">Visitante nuevo</label>
+            <input type="range" min="3" max="120" step="1" value="20" id="set-greetrearm" oninput="UI.settingLabel('set-greetrearm','greetrearm')">
+            <span class="val" id="set-greetrearm-val">20 s</span>
+          </div>
+          <div class="slider-row">
+            <label title="Con esto activado, el saludo por cámara solo se dispara con MECH EN REPOSO. Despierto está narrando, conversando o traduciendo, y saludar encima corta la experiencia del visitante que ya está atendiendo. El botón «SALUDAR AHORA» funciona igual en los dos casos.">Saludo</label>
+            <label class="switch">
+              <input type="checkbox" id="set-greetdormant">
+              <span class="switch-text">Saludar por cámara solo en reposo</span>
+            </label>
           </div>
           <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar

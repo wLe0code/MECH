@@ -61,18 +61,26 @@ _SAY = {
     "outward": {
         "es": "¡Hola! Miren hacia acá.",
         "en": "Hello there! Look over here.",
+        "fr": "Bonjour ! Regardez par ici.",
+        "pt": "Olá! Olhem para cá.",
     },
     "back": {
         "es": "Vuelvo a la proyección.",
         "en": "Back to the projection.",
+        "fr": "Je retourne à la projection.",
+        "pt": "Volto para a projeção.",
     },
     "already_outward": {
         "es": "Ya estoy mirando hacia afuera.",
         "en": "I'm already facing outside.",
+        "fr": "Je regarde déjà vers l'extérieur.",
+        "pt": "Já estou olhando para fora.",
     },
     "already_projecting": {
         "es": "Ya estoy en posición de proyectar.",
         "en": "I'm already in projecting position.",
+        "fr": "Je suis déjà en position de projection.",
+        "pt": "Já estou na posição de projetar.",
     },
 }
 

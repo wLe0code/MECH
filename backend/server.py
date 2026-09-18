@@ -23,7 +23,9 @@ Endpoints REST:
     POST /api/arduino/head              → HEAD:pan:tilt
     POST /api/arduino/arm               → ARM:L/R:angle
     POST /api/arduino/mode/{mode}       → MODE:...
-    POST /api/language/{es|en}          → cambia el idioma (voz + subtítulos)
+    POST /api/language/{es|en|fr|pt}    → cambia el idioma (voz + subtítulos)
+    POST /api/translate/start           → modo traductor (?src=&dst= opcional)
+    POST /api/translate/stop            → sale del modo traductor
     POST /api/emergency/stop            → PARO DE EMERGENCIA
     GET  /api/state                     → estado completo (JSON)
 
@@ -58,6 +60,7 @@ import config
 import lang
 import maneuvers
 import stt
+import translator
 import tts
 import video_library
 import vision
@@ -89,10 +92,11 @@ def _voice_loop_worker():
     backend/interrupt_listener.py). Si dijo "oye MECH, <otra cosa>", esa
     petición se atiende enseguida.
 
-    IDIOMA: con "ok MECH" / "despierta MECH" despierta en español; con
-    "wake up MECH" despierta en INGLÉS y a partir de ahí todo (lo que
-    entiende, lo que narra y los subtítulos) va en inglés hasta que se
-    duerme. Ver backend/lang.py.
+    IDIOMA: el despertar decide el idioma — "ok MECH" (español),
+    "wake up MECH" (inglés), "bonjour MECH" (francés), "bom dia MECH"
+    (portugués). A partir de ahí todo (lo que entiende, lo que narra y los
+    subtítulos) va en ese idioma hasta que se duerme, y al dormirse vuelve
+    solo a español. Ver backend/lang.py.
     """
     app_state = get_app()
     app_state.log("Bucle de voz iniciado", "ok")
@@ -152,7 +156,8 @@ def _voice_loop_worker():
             # así que cortamos rápido y revisamos enseguida (despertar ágil).
             # Grabamos y transcribimos en dos pasos (en vez de listen_once)
             # porque en reposo puede hacer falta re-transcribir el MISMO audio
-            # en inglés para reconocer "wake up MECH".
+            # con detección de idioma, para reconocer "wake up MECH",
+            # "bonjour MECH" o "bom dia MECH".
             audio = stt.record_until_silence(
                 max_seconds=config.LISTEN_MAX_SECONDS,
                 on_phase=app_state.set_voice_phase if awake else None,
@@ -169,7 +174,22 @@ def _voice_loop_worker():
                 continue
             if awake:
                 app_state.set_voice_phase("transcribing")
-            text = stt.transcribe(audio)
+            # En modo traductor el idioma de CADA turno no es el activo de
+            # MECH: es uno de los dos del par. Con detección automática
+            # (bidireccional) dejamos que Whisper diga en cuál habló; si no
+            # reconoce ninguno de los dos, se repite forzando el de ORIGEN,
+            # que es la dirección que pidió el usuario.
+            detected: str | None = None
+            if translator.is_awaiting_phrase():
+                src, dst = translator.pair()
+                if config.TRANSLATOR_AUTO_DETECT:
+                    text, detected = stt.transcribe_any(audio)
+                    if detected not in (src, dst):
+                        text, detected = stt.transcribe(audio, language=src), src
+                else:
+                    text, detected = stt.transcribe(audio, language=src), src
+            else:
+                text = stt.transcribe(audio)
 
             if text is None or not text.strip():
                 app_state.set_voice_phase(
@@ -193,27 +213,58 @@ def _voice_loop_worker():
                 # En reposo: solo reacciona a la palabra de despertar, y de
                 # paso decide el IDIOMA con el que despierta.
                 wake_lang = voice_phrases.wake_language(text)
-                if wake_lang is None and config.WAKE_ENGLISH_ENABLED:
-                    # Estábamos escuchando en un idioma, así que la frase del
-                    # OTRO pudo salir deformada (lo normal: oímos en español y
-                    # dijeron "wake up MECH"). Reintentamos el MISMO audio en
-                    # el otro idioma; es corto (máx. WAKE_MAX_UTTERANCE s).
-                    otro = "es" if lang.current() == "en" else "en"
+                if wake_lang is None and len(lang.enabled_languages()) > 1:
+                    # En reposo escuchamos en español, así que un despertar en
+                    # otro idioma ("wake up MECH", "bonjour MECH", "bom dia
+                    # MECH") pudo salir deformado. Reintentamos el MISMO audio
+                    # UNA vez dejando que Whisper detecte el idioma solo: con
+                    # cuatro idiomas, probarlos uno a uno dejaría la Pi varios
+                    # segundos sin escuchar. El clip es corto (máx.
+                    # WAKE_MAX_UTTERANCE s).
                     try:
-                        text_otro = stt.transcribe(audio, language=otro)
+                        text_auto, detectado = stt.transcribe_any(audio)
                     except Exception as e:
-                        app_state.log(f"Reintento en {otro} falló: {e}", "warn")
-                        text_otro = ""
-                    if text_otro and voice_phrases.wake_language(text_otro) == otro:
+                        app_state.log(f"Reintento multi-idioma falló: {e}", "warn")
+                        text_auto, detectado = "", None
+                    otro = voice_phrases.wake_language(text_auto) if text_auto else None
+                    if otro:
+                        app_state.log(
+                            f"Despertar en {lang.label(otro)} reconocido al "
+                            f"reintentar (Whisper oyó '{detectado or '?'}').",
+                            "info",
+                        )
                         wake_lang = otro
-                        text = text_otro
+                        text = text_auto
                 if wake_lang:
                     app_state.go_awake(language=wake_lang)
                 else:
                     app_state.set_voice_phase("dormant")
                 continue
 
-            # Despierto: ¿pidió reposo? (se aceptan las frases de los dos idiomas)
+            # MODO TRADUCTOR: MECH acaba de preguntar y esto es la
+            # respuesta — o el par de idiomas, o LA frase a traducir. Se
+            # reconocen además salir del modo, dormirse y repetir el comando
+            # (por si se arrepiente a medias). Cualquier otra cosa se traduce:
+            # es lo correcto, un intérprete no obedece lo que traduce (si no,
+            # "mira hacia afuera" giraría el robot en vez de traducirse).
+            if translator.is_active():
+                if voice_phrases.is_translate_stop(text):
+                    app_state.stop_translator()
+                    app_state.set_voice_phase("waiting")
+                elif voice_phrases.is_sleep_any(text):
+                    app_state.go_dormant()
+                elif voice_phrases.is_translate(text):
+                    # Volvió a decir "traduce MECH": vuelve a preguntar (y si
+                    # nombró idiomas, cambia el par sin salir del modo).
+                    src, dst = voice_phrases.extract_language_pair(text)
+                    app_state.start_translator(src, dst)
+                elif translator.is_awaiting_pair():
+                    app_state.handle_translator_pair(text)
+                else:
+                    app_state.handle_translation(text, detected)
+                continue
+
+            # Despierto: ¿pidió reposo? (se aceptan las frases de los 4 idiomas)
             if voice_phrases.is_sleep_any(text):
                 app_state.go_dormant()
                 continue
@@ -292,6 +343,23 @@ async def lifespan(app: FastAPI):
         f"{' (invertido)' if config.TURN_180_INVERT else ''}",
         "ok",
     )
+    # Idiomas activos. Misma idea que la línea de arriba: si en la Pi solo
+    # aparece "español · inglés", está corriendo el código viejo (o alguien
+    # apagó francés/portugués en el .env).
+    mech.log(
+        "Idiomas: " + " · ".join(lang.label(c) for c in lang.enabled_languages())
+        + " — «ok MECH» (es) · «wake up MECH» (en) · «bonjour MECH» (fr) · "
+          "«bom dia MECH» (pt)",
+        "ok",
+    )
+    if config.TRANSLATOR_ENABLED:
+        mech.log(
+            "Modo traductor: decí «traduce MECH», te pregunta qué traducir, "
+            "traduce UNA frase y se calla (para otra, repetí el comando)"
+            + (" (traduce en los dos sentidos)." if config.TRANSLATOR_AUTO_DETECT
+               else " (sentido fijo: origen → destino)."),
+            "ok",
+        )
     # Autostart en reposo: MECH queda escuchando solo "ok MECH".
     if config.VOICE_AUTOSTART:
         mech.log("Voz en reposo: di 'ok MECH' para activarlo.", "info")
@@ -736,15 +804,56 @@ async def set_language(code: str):
     """Cambia el idioma a mano desde el panel (sin usar la palabra clave).
 
     En el stand el idioma lo decide la voz: "ok MECH" = español,
-    "wake up MECH" = inglés. Este endpoint existe para probar sin micrófono
-    y para corregir sobre la marcha si Whisper entendió mal.
+    "wake up MECH" = inglés, "bonjour MECH" = francés, "bom dia MECH" =
+    portugués. Este endpoint existe para probar sin micrófono y para
+    corregir sobre la marcha si Whisper entendió mal.
     """
     code = code.strip().lower()
     if code not in lang.SUPPORTED:
-        raise HTTPException(400, f"Idioma inválido: {code}. Usa 'es' o 'en'.")
+        raise HTTPException(
+            400, f"Idioma inválido: {code}. Usa {' / '.join(lang.SUPPORTED)}."
+        )
     mech = get_app()
     mech.set_language(code)
     return {"ok": True, "language": lang.current()}
+
+
+# -- Modo traductor ("traduce MECH") -----------------------------------------
+
+
+@app.post("/api/translate/start")
+async def translate_start(src: str | None = None, dst: str | None = None):
+    """Arranca UN turno de traducción (lo mismo que decir «traduce MECH»).
+
+    MECH pregunta qué hay que traducir, escucha una frase, la dice en el otro
+    idioma y se calla. Sin `src`/`dst` reutiliza el par de la vez anterior y,
+    si no hay ninguno, pregunta por los idiomas en voz alta.
+    """
+    if not config.TRANSLATOR_ENABLED:
+        raise HTTPException(400, "El modo traductor está desactivado (TRANSLATOR_ENABLED).")
+    for code in (src, dst):
+        if code and code not in lang.SUPPORTED:
+            raise HTTPException(
+                400, f"Idioma inválido: {code}. Usa {' / '.join(lang.SUPPORTED)}."
+            )
+    if src and dst and src == dst:
+        raise HTTPException(400, "El origen y el destino no pueden ser el mismo idioma.")
+    mech = get_app()
+    # En un hilo: habla (bloqueante) y no queremos colgar la petición HTTP.
+    threading.Thread(
+        target=mech.start_translator, args=(src, dst), daemon=True
+    ).start()
+    return {"ok": True}
+
+
+@app.post("/api/translate/stop")
+async def translate_stop():
+    """Sale del traductor Y olvida el par de idiomas («deja de traducir»)."""
+    mech = get_app()
+    if not (translator.is_active() or translator.has_pair()):
+        return {"ok": False, "reason": "El modo traductor no está activo."}
+    threading.Thread(target=mech.stop_translator, daemon=True).start()
+    return {"ok": True}
 
 
 @app.post("/api/emergency/stop")
@@ -780,6 +889,10 @@ _LIVE_KEYS = {
     "VAD_AGGRESSIVENESS": int,
     "VAD_SILENCE_TIMEOUT": float,
     "VAD_ENERGY_FACTOR": float,  # umbral de voz sobre el ruido ambiente
+    # Cadena de audio antes de Whisper (ver docs/AUDIO.md).
+    "AUDIO_HIGHPASS_HZ": float,   # quita continua y retumbe
+    "AUDIO_TARGET_DBFS": float,   # nivel objetivo ("AGC")
+    "WHISPER_BEAM_SIZE": int,     # hipótesis que explora Whisper
     "AUDIO_LEAD_SILENCE": float,
     "AUDIO_LISTEN_MAX_SECONDS": float,  # se guarda en config.LISTEN_MAX_SECONDS
     "WHISPER_LANGUAGE": str,
@@ -801,6 +914,8 @@ _LIVE_KEYS = {
     "ARM_WAVE_SWING": int,          # amplitud de las agitadas de arriba
     "ARM_WAVE_REPEATS": int,
     "GREETING_COOLDOWN": float,
+    "GREETING_ONLY_DORMANT": _to_bool,  # saludar solo con MECH en reposo
+    "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
     "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos
     "RETURN_SPEED": int,
@@ -840,6 +955,9 @@ async def get_config():
             "AUDIO_LEAD_SILENCE": config.AUDIO_LEAD_SILENCE,
             "AUDIO_LISTEN_MAX_SECONDS": config.LISTEN_MAX_SECONDS,
             "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
+            "AUDIO_HIGHPASS_HZ": config.AUDIO_HIGHPASS_HZ,
+            "AUDIO_TARGET_DBFS": config.AUDIO_TARGET_DBFS,
+            "WHISPER_BEAM_SIZE": config.WHISPER_BEAM_SIZE,
             "TTS_DRY_RUN": config.TTS_DRY_RUN,
             "SUBTITLES_ENABLED": config.SUBTITLES_ENABLED,
             "VOICE_INTERRUPT_ENABLED": config.VOICE_INTERRUPT_ENABLED,
@@ -857,6 +975,8 @@ async def get_config():
             "ARM_WAVE_SWING": config.ARM_WAVE_SWING,
             "ARM_WAVE_REPEATS": config.ARM_WAVE_REPEATS,
             "GREETING_COOLDOWN": config.GREETING_COOLDOWN,
+            "GREETING_ONLY_DORMANT": config.GREETING_ONLY_DORMANT,
+            "GREETING_REARM_SECONDS": config.GREETING_REARM_SECONDS,
             "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,
             "ARM_WAVE_BOTH": config.ARM_WAVE_BOTH,
             "RETURN_SPEED": config.RETURN_SPEED,

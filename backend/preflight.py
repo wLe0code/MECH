@@ -548,11 +548,15 @@ def check_env_sombra() -> None:
     vigiladas = {
         "VOICE_WAKE_PHRASES": "si no está 'ok mech' en tu lista, no despierta",
         "VOICE_WAKE_PHRASES_EN": "afecta a 'wake up MECH'",
+        "VOICE_WAKE_PHRASES_FR": "afecta a 'bonjour MECH'",
+        "VOICE_WAKE_PHRASES_PT": "afecta a 'bom dia MECH'",
         "VOICE_SLEEP_PHRASES": "afecta a dormirlo",
         "VOICE_INTERRUPT_PHRASES": "afecta a 'oye MECH'",
         "VOICE_OUTWARD_PHRASES": "afecta a 'mira hacia afuera'",
         "VOICE_PROJECT_PHRASES": "afecta a 'regresa a proyectar'",
         "VOICE_MARKETING_PHRASES": "afecta a 'proyecta marketing'",
+        "VOICE_TRANSLATE_PHRASES": "afecta a 'traduce MECH'",
+        "VOICE_TRANSLATE_STOP_PHRASES": "afecta a 'deja de traducir'",
         "ARM_GESTURE_MODE": "en 'subtle' los gestos casi no se ven",
     }
     encontradas = []

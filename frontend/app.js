@@ -212,23 +212,74 @@
     setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
   }
 
+  // Cómo se despierta a MECH en cada idioma (para el log del panel).
+  const LANGS = {
+    es: { nombre: 'ESPAÑOL', wake: 'ok MECH' },
+    en: { nombre: 'INGLÉS', wake: 'wake up MECH' },
+    fr: { nombre: 'FRANCÉS', wake: 'bonjour MECH' },
+    pt: { nombre: 'PORTUGUÉS', wake: 'bom dia MECH' },
+  };
+
+  // Estado de la tarjeta del modo traductor (vista Voz).
+  // El traductor va por TURNOS: «traduce MECH» -> pregunta -> escucha UNA
+  // frase -> la dice -> se calla. El par de idiomas se recuerda entre turnos,
+  // así que "APAGADO" con par recordado se muestra como "LISTO".
+  function updateTranslator(t) {
+    t = t || {};
+    const badge = $('translator-state');
+    const box = $('translator-box');
+    if (!badge || !box) return;
+    const nombre = (c) => (LANGS[c] ? LANGS[c].nombre : (c || '?'));
+    const par = () => `${nombre(t.src)} ${t.auto_detect ? '↔' : '→'} ${nombre(t.dst)}`;
+    const tienePar = !!(t.src && t.dst);
+
+    let texto = 'APAGADO', clase = '';
+    if (t.awaiting_pair) {
+      texto = 'ESPERANDO IDIOMAS';
+      clase = 'tr-waiting';
+    } else if (t.awaiting_phrase) {
+      texto = `ESCUCHANDO · ${par()}`;
+      clase = 'tr-on';
+    } else if (tienePar) {
+      texto = `LISTO · ${par()}`;   // recuerda el par, esperando el comando
+      clase = 'tr-idle';
+    }
+    badge.textContent = texto;
+    badge.className = 'translator-state ' + clase;
+    box.classList.toggle('active', !!t.active);
+    // Los selectores reflejan el par en curso, para no perderlo de vista.
+    if (tienePar) {
+      if ($('tr-src')) $('tr-src').value = t.src;
+      if ($('tr-dst')) $('tr-dst').value = t.dst;
+    }
+    if (state.translatorActive !== !!t.active) {
+      if (state.translatorActive !== undefined) {
+        log(t.active ? `Traductor escuchando (${texto}).`
+                     : 'Traductor: turno terminado.', 'ok');
+      }
+      state.translatorActive = !!t.active;
+    }
+  }
+
   // Marca qué idioma está activo en los chips de la vista Voz.
   function updateLanguage(code) {
     if (state.language === code) return;
-    if (state.language) {
-      log(code === 'en' ? 'MECH pasó a INGLÉS (wake up MECH).'
-                        : 'MECH pasó a ESPAÑOL (ok MECH).', 'ok');
-    }
+    const info = LANGS[code] || LANGS.es;
+    if (state.language) log(`MECH pasó a ${info.nombre} (${info.wake}).`, 'ok');
     state.language = code;
-    const es = $('lang-es'), en = $('lang-en');
-    if (es) es.classList.toggle('active', code === 'es');
-    if (en) en.classList.toggle('active', code === 'en');
+    Object.keys(LANGS).forEach((c) => {
+      const chip = $('lang-' + c);
+      if (chip) chip.classList.toggle('active', c === code);
+    });
   }
 
   function applyState(s) {
     state.backend = s;
-    // Idioma activo (español por defecto; inglés solo con "wake up MECH").
+    // Idioma activo (español por defecto; los demás solo si lo despiertan
+    // en ese idioma: "wake up MECH", "bonjour MECH", "bom dia MECH").
     updateLanguage(s.language || 'es');
+    // Modo traductor ("traduce MECH"): par de idiomas y si está encendido.
+    updateTranslator(s.translator);
     // Bucle de voz
     state.voiceLoopActive = !!s.voice_loop_active;
     // Fase detallada: off|waiting|listening|transcribing|thinking|speaking.
@@ -432,6 +483,21 @@
       if (res && res.ok) updateLanguage(res.language);
     },
 
+    // Modo traductor: un turno por pulsación, igual que «traduce MECH».
+    // Desde el panel se manda el par ya elegido, así no pregunta los idiomas.
+    async translateStart() {
+      const src = $('tr-src') ? $('tr-src').value : 'es';
+      const dst = $('tr-dst') ? $('tr-dst').value : 'en';
+      if (src === dst) { log('Elegí dos idiomas distintos para traducir.', 'warn'); return; }
+      const res = await fetchJSON(`/api/translate/start?src=${src}&dst=${dst}`);
+      if (res && res.ok) log(`Traductor: preguntando qué traducir (${src} ↔ ${dst}).`, 'ok');
+    },
+
+    async translateStop() {
+      const res = await fetchJSON('/api/translate/stop');
+      if (res && !res.ok) log(res.reason || 'El traductor no estaba activo.', 'warn');
+    },
+
     async interrupt() {
       const res = await fetchJSON('/api/voice/interrupt');
       if (res && res.ok) log('Narración interrumpida desde el panel.', 'ok');
@@ -577,7 +643,12 @@
       setSlider('set-waveswing', 'waveswing', L.ARM_WAVE_SWING);
       setSlider('set-waverep', 'waverep', L.ARM_WAVE_REPEATS);
       if ($('set-waveboth')) $('set-waveboth').checked = L.ARM_WAVE_BOTH !== false;
+      setSlider('set-hpf', 'hpf', L.AUDIO_HIGHPASS_HZ);
+      setSlider('set-agc', 'agc', L.AUDIO_TARGET_DBFS);
+      setSlider('set-beam', 'beam', L.WHISPER_BEAM_SIZE);
       setSlider('set-greetcd', 'greetcd', L.GREETING_COOLDOWN);
+      setSlider('set-greetrearm', 'greetrearm', L.GREETING_REARM_SECONDS);
+      if ($('set-greetdormant')) $('set-greetdormant').checked = !!L.GREETING_ONLY_DORMANT;
       // Calibración del giro de 180°
       setSlider('set-turnsec', 'turnsec', L.TURN_180_SECONDS);
       setSlider('set-turnvel', 'turnvel', L.TURN_180_SPEED);
@@ -632,7 +703,12 @@
         ARM_WAVE_SWING: String(parseInt($('set-waveswing').value)),
         ARM_WAVE_REPEATS: String(parseInt($('set-waverep').value)),
         ARM_WAVE_BOTH: $('set-waveboth').checked ? 'true' : 'false',
+        AUDIO_HIGHPASS_HZ: $('set-hpf').value,
+        AUDIO_TARGET_DBFS: $('set-agc').value,
+        WHISPER_BEAM_SIZE: String(parseInt($('set-beam').value)),
         GREETING_COOLDOWN: $('set-greetcd').value,
+        GREETING_REARM_SECONDS: $('set-greetrearm').value,
+        GREETING_ONLY_DORMANT: $('set-greetdormant').checked ? 'true' : 'false',
         TURN_180_SECONDS: $('set-turnsec').value,
         TURN_180_SPEED: String(parseInt($('set-turnvel').value)),
         TURN_180_INVERT: $('set-turninv').checked ? 'true' : 'false',
@@ -687,7 +763,8 @@
   const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', ienergy: '×', dist: ' m',
                           wave: ' s', greetcd: ' s', turnsec: ' s', latsec: ' s', turnvel: '', latvel: '',
                           wavehigh: '°', waveswing: '°', waverep: '', kick: ' s',
-                          advsec: ' s', advvel: '', advmax: ' s' };
+                          advsec: ' s', advvel: '', advmax: ' s',
+                          hpf: ' Hz', agc: ' dBFS', beam: '', greetrearm: ' s' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

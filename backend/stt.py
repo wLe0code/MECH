@@ -47,13 +47,30 @@ WHISPER_SAMPLE_RATE = 16000
 # en este prompt; si listáramos las obras, respondería esas obras sin que el
 # usuario las haya pedido.
 INITIAL_PROMPT = "Conversación en español con un robot llamado MECH."
-# Equivalente para el modo inglés (se activa con "wake up MECH"). Mismo
-# criterio: solo el nombre y el contexto, NADA de títulos de obras.
+# Equivalentes para los idiomas extra (se activan al despertarlo en ellos).
+# Mismo criterio: solo el nombre y el contexto, NADA de títulos de obras.
 INITIAL_PROMPT_EN = "A conversation in English with a robot named MECH."
+INITIAL_PROMPT_FR = "Une conversation en français avec un robot appelé MECH."
+INITIAL_PROMPT_PT = "Uma conversa em português com um robô chamado MECH."
+
+_INITIAL_PROMPTS = {
+    "es": INITIAL_PROMPT,
+    "en": INITIAL_PROMPT_EN,
+    "fr": INITIAL_PROMPT_FR,
+    "pt": INITIAL_PROMPT_PT,
+}
 
 
-def _initial_prompt(language: str) -> str:
-    return INITIAL_PROMPT_EN if language == "en" else INITIAL_PROMPT
+def _initial_prompt(language: str | None) -> str | None:
+    """Prompt de contexto para Whisper, o None si transcribimos "a ciegas".
+
+    Con detección automática de idioma (`language=None`) NO se pasa prompt:
+    el texto del prompt sesga la detección hacia el idioma en que está
+    escrito, que es justo lo contrario de lo que queremos ahí.
+    """
+    if not language:
+        return None
+    return _INITIAL_PROMPTS.get(language, INITIAL_PROMPT)
 
 
 _model: WhisperModel | None = None
@@ -75,12 +92,46 @@ def _resolve_input_device() -> int | str | None:
         return dev  # nombre (sounddevice acepta coincidencia parcial)
 
 
+# Filtro anti-aliasing para bajar de la tasa de captura a los 16 kHz de
+# Whisper. 63 coeficientes es el punto dulce medido: cuesta ~10 ms por cada
+# 3 s de audio en un laptop (~40 ms en la Pi, nada al lado de Whisper) y
+# rechaza 30-45 dB MÁS que el filtro de caja que había antes.
+#
+# Por qué importa: al pasar de 48000 a 16000 Hz, todo lo que esté por encima
+# de 8 kHz se PLIEGA dentro de la banda de la voz si no se filtra primero.
+# Con el filtro de caja de 3 muestras, un tono de 8.5 kHz (siseo de sala,
+# zumbido eléctrico, roce de ropa en el micrófono de solapa) solo perdía 7 dB
+# y reaparecía a 7.5 kHz ensuciando la señal. Medido:
+#
+#     Entrada   Reaparece a   caja (antes)   FIR (ahora)
+#      8.5 kHz     7.5 kHz        -7 dB        -18 dB
+#     10   kHz     6   kHz        -9 dB        -48 dB
+#     12   kHz     4   kHz       -13 dB        -52 dB
+#     15   kHz     1   kHz       -25 dB        -56 dB
+#
+# La banda de la voz (100-5000 Hz) pasa intacta en los dos casos.
+_FIR_TAPS = 63
+_fir_cache: dict[int, np.ndarray] = {}
+
+
+def _decimation_fir(factor: int) -> np.ndarray:
+    """Pasa-bajos ventaneado para decimar por `factor`, cacheado."""
+    h = _fir_cache.get(factor)
+    if h is None:
+        # Corte en la mitad de la nueva tasa (Nyquist del destino).
+        fc = 0.5 / factor
+        n = np.arange(_FIR_TAPS) - (_FIR_TAPS - 1) / 2
+        h = (np.sinc(2 * fc * n) * np.hamming(_FIR_TAPS)).astype(np.float32)
+        h /= h.sum()  # ganancia 1 en continua: no cambia el volumen
+        _fir_cache[factor] = h
+    return h
+
+
 def _resample(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
     """Resamplea audio mono float32 de `src_rate` a `dst_rate`.
 
     Sin dependencias extra (no usamos scipy). Para factores enteros
-    (ej. 48000 -> 16000 = 3x) hace decimación con un filtro de caja simple
-    que evita aliasing lo suficiente para reconocimiento de voz. Para
+    (ej. 48000 -> 16000 = 3x) filtra con `_decimation_fir` y decima. Para
     factores no enteros cae a interpolación lineal.
     """
     if src_rate == dst_rate or audio.size == 0:
@@ -88,11 +139,10 @@ def _resample(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
     # Caso entero (el habitual: 48000/16000 = 3, 32000/16000 = 2).
     if src_rate % dst_rate == 0:
         factor = src_rate // dst_rate
-        n = (len(audio) // factor) * factor
-        if n == 0:
+        if len(audio) < factor:
             return audio[:0]
-        # Promedio de cada bloque de `factor` muestras = filtro anti-alias + decimación.
-        return audio[:n].reshape(-1, factor).mean(axis=1).astype(np.float32)
+        h = _decimation_fir(factor)
+        return np.convolve(audio, h, mode="same")[::factor].astype(np.float32)
     # Fallback general: interpolación lineal.
     dst_len = int(round(len(audio) * dst_rate / src_rate))
     if dst_len <= 0:
@@ -100,6 +150,77 @@ def _resample(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
     x_old = np.linspace(0.0, 1.0, num=len(audio), endpoint=False)
     x_new = np.linspace(0.0, 1.0, num=dst_len, endpoint=False)
     return np.interp(x_new, x_old, audio).astype(np.float32)
+
+
+def _dc_block(audio: np.ndarray, sample_rate: int, cutoff_hz: float) -> np.ndarray:
+    """Quita la continua y el retumbe por debajo de `cutoff_hz`.
+
+    Restar una media móvil = pasa-altos. No es un filtro fino, pero para
+    matar offset de continua, zumbido de red y roce de ropa (el micrófono es
+    de SOLAPA: va pegado a la camisa) sobra, y con `cumsum` es instantáneo.
+
+    Importa por dos motivos: Whisper trabaja mejor sin continua, y sobre todo
+    el piso de ruido del detector de voz se mide con el RMS — una continua
+    constante lo infla y deja a MECH sordo para el "ok MECH".
+    """
+    if cutoff_hz <= 0 or audio.size == 0:
+        return audio
+    ventana = max(3, int(sample_rate / cutoff_hz))
+    if audio.size <= ventana:
+        return (audio - float(audio.mean())).astype(np.float32)
+    # Media móvil con relleno en los bordes (si no, se comería el principio
+    # y el final de la frase, que es justo donde está la primera palabra).
+    pad = ventana // 2
+    ext = np.pad(audio, (pad, ventana - 1 - pad), mode="edge")
+    acum = np.cumsum(np.concatenate(([0.0], ext.astype(np.float64))))
+    media = (acum[ventana:] - acum[:-ventana]) / ventana
+    return (audio - media[: audio.size]).astype(np.float32)
+
+
+def _normalize(audio: np.ndarray, target_dbfs: float) -> np.ndarray:
+    """Sube (o baja) el audio a un volumen objetivo, sin saturar.
+
+    Es el "AGC" de los teléfonos, en versión simple: Whisper se entrenó con
+    audio a un nivel razonable y transcribe peor lo que entra muy bajito. En
+    un stand la distancia y el volumen de cada visitante cambian mucho.
+
+    Se mide sobre el percentil 90 de la envolvente, no sobre el total: si se
+    midiera el total, una frase con pausas largas quedaría sobre-amplificada.
+    Y el resultado se topa para que ningún pico sature.
+    """
+    if target_dbfs >= 0 or audio.size == 0:
+        return audio
+    picos = np.abs(audio)
+    pico = float(picos.max())
+    if pico < 1e-5:
+        return audio  # silencio: amplificarlo solo subiría el ruido
+    # Nivel de referencia: percentil 90 de la envolvente, que representa la
+    # parte sonora y no las pausas.
+    ref = float(np.percentile(picos, 90))
+    if ref < 1e-5:
+        return audio
+    objetivo = 10.0 ** (target_dbfs / 20.0)
+    ganancia = objetivo / ref
+    # Tope 1: no saturar. Tope 2: no amplificar x30 un susurro (sería subir
+    # el ruido de sala y regalarle alucinaciones a Whisper).
+    ganancia = min(ganancia, 0.97 / pico, 8.0)
+    if 0.95 < ganancia < 1.05:
+        return audio  # ya estaba bien: no lo tocamos
+    return (audio * ganancia).astype(np.float32)
+
+
+def prepare_for_whisper(audio: np.ndarray, src_rate: int) -> np.ndarray:
+    """Deja el audio como Whisper lo quiere: 16 kHz, sin retumbe y a nivel.
+
+    Es la versión mínima de lo que hace la cadena de audio de un teléfono
+    (ver docs/AUDIO.md): pasa-altos, remuestreo con anti-aliasing y control
+    automático de ganancia. El orden importa: primero se quita el retumbe (si
+    no, el normalizador contaría esa energía como señal), después se baja a
+    16 kHz y por último se ajusta el nivel.
+    """
+    audio = _dc_block(audio, src_rate, config.AUDIO_HIGHPASS_HZ)
+    audio = _resample(audio, src_rate, WHISPER_SAMPLE_RATE)
+    return _normalize(audio, config.AUDIO_TARGET_DBFS)
 
 
 def get_model() -> WhisperModel:
@@ -193,10 +314,19 @@ def _frame_generator(audio_queue: queue.Queue) -> Iterator[bytes]:
 
 
 def _frame_rms(frame: bytes) -> float:
-    """RMS normalizado (0..1) de un frame int16."""
+    """RMS normalizado (0..1) de un frame int16, SIN la componente continua.
+
+    Restar la media del frame es un pasa-altos pobre pero gratis, y aquí es
+    justo lo que hace falta: si el micrófono trae offset de continua (los
+    receptores USB baratos suelen traerlo), el RMS crudo lo cuenta como
+    "ruido ambiente", el piso sube y MECH se queda sordo para el "ok MECH".
+    Es el mismo síntoma que el equipo peleó en la olimpiada subiendo el
+    umbral a mano.
+    """
     samples = np.frombuffer(frame, dtype=np.int16).astype(np.float32)
     if samples.size == 0:
         return 0.0
+    samples = samples - samples.mean()
     return float(np.sqrt(np.mean(samples * samples)) / 32768.0)
 
 
@@ -383,9 +513,9 @@ def record_until_silence(
     pcm_bytes = b"".join(voiced_frames)
     audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
     audio_f32 = audio_int16.astype(np.float32) / 32768.0
-    # Bajamos de la tasa de captura (ej. 48000) a la que Whisper exige (16000).
-    # Sin esto, Whisper malinterpreta el audio y transcribe basura.
-    return _resample(audio_f32, config.AUDIO_SAMPLE_RATE, WHISPER_SAMPLE_RATE)
+    # Pasa-altos + bajada a 16 kHz (la tasa que Whisper EXIGE; sin esto
+    # malinterpreta el audio y transcribe basura) + nivel. Ver docs/AUDIO.md.
+    return prepare_for_whisper(audio_f32, config.AUDIO_SAMPLE_RATE)
 
 
 def transcribe(
@@ -395,28 +525,63 @@ def transcribe(
 ) -> str:
     """Transcribe audio mono float32 a texto.
 
-    `language`: código ISO ("es", "en"). Si es None usa el idioma ACTIVO de
-    MECH (`lang.whisper_language()`), que es español salvo que lo hayan
-    despertado con "wake up MECH". Se pasa explícito en el bucle de voz para
-    reintentar en inglés la frase de despertar.
+    `language`: código ISO ("es", "en", "fr", "pt"). Si es None usa el idioma
+    ACTIVO de MECH (`lang.whisper_language()`), que es español salvo que lo
+    hayan despertado en otro idioma.
 
     `model`: instancia de Whisper a usar. None = la principal. El listener de
     interrupción pasa la suya (limitada en CPU) para no entrecortar la voz.
     """
-    lang_code = language or lang.whisper_language()
-    model = model or get_model()
-    segments, _ = model.transcribe(
+    texto, _ = _transcribe(audio, language or lang.whisper_language(), model)
+    return texto
+
+
+def transcribe_any(
+    audio: np.ndarray,
+    model: WhisperModel | None = None,
+) -> tuple[str, str | None]:
+    """Transcribe dejando que Whisper DETECTE el idioma solo.
+
+    Se usa para el despertar: en reposo escuchamos en español, así que
+    «bonjour MECH» o «bom dia MECH» pueden salir deformados. En vez de
+    reintentar idioma por idioma (con cuatro idiomas serían 3 pasadas más y
+    la Pi tardaría ~10 s en volver a escuchar), se re-transcribe UNA sola vez
+    a ciegas y se compara el texto contra las listas de despertar de todos.
+
+    Devuelve `(texto, idioma detectado)`; el idioma es informativo — quien
+    decide es el matcher de `voice_phrases`.
+    """
+    return _transcribe(audio, None, model)
+
+
+def _transcribe(
+    audio: np.ndarray,
+    language: str | None,
+    model: WhisperModel | None = None,
+) -> tuple[str, str | None]:
+    """Motor común de transcripción. `language=None` = detección automática."""
+    principal = get_model()
+    model = model or principal
+    # El modelo de interrupciones va a beam 1 (ahí manda el retardo); el
+    # principal explora más hipótesis, que es lo que sube el acierto en las
+    # frases cortas con ruido de un stand.
+    beam = (
+        config.WHISPER_BEAM_SIZE if model is principal
+        else config.WHISPER_INTERRUPT_BEAM_SIZE
+    )
+    segments, info = model.transcribe(
         audio,
-        language=lang_code,
-        beam_size=1,  # más rápido; suficiente para frases cortas
+        language=language,
+        beam_size=max(1, beam),
         vad_filter=False,  # ya pre-filtramos con webrtcvad
-        initial_prompt=_initial_prompt(lang_code),  # ayuda a reconocer "MECH"
+        initial_prompt=_initial_prompt(language),  # ayuda a reconocer "MECH"
         # Defensas contra alucinaciones cuando el audio entra con ruido:
         condition_on_previous_text=False,  # no arrastrar contexto entre turnos
         no_speech_threshold=0.6,  # descarta tramos sin habla clara
         log_prob_threshold=-1.0,  # descarta transcripciones de baja confianza
     )
-    return " ".join(seg.text.strip() for seg in segments).strip()
+    texto = " ".join(seg.text.strip() for seg in segments).strip()
+    return texto, getattr(info, "language", None)
 
 
 def listen_once(

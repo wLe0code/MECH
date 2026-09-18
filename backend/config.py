@@ -97,6 +97,25 @@ NARRATION_GESTURE_MODE = os.environ.get(
 # Segundos entre saludos a la cámara. Bajo = saluda a cada visitante nuevo;
 # alto = no repite el saludo a quien lleva rato enfrente.
 GREETING_COOLDOWN = float(os.environ.get("GREETING_COOLDOWN", "45"))
+# Cuánto tiene que estar AUSENTE alguien para que MECH vuelva a saludar
+# (segundos). Es la diferencia entre "otro visitante" y "el mismo de antes".
+#
+# Sin esto, MECH saludaba en bucle cada GREETING_COOLDOWN aunque no hubiera
+# nadie: `vision.LOST_AFTER_S` son 1.5 s, así que un parpadeo del detector
+# (alguien que gira la cabeza, un falso positivo con la luz de la proyección)
+# ya contaba como "se fue y volvió", y el cooldown era lo único que lo
+# frenaba. Ahora el reloj se REINICIA con cada pérdida: si el detector
+# parpadea, nunca llega a esta cuenta y MECH no repite el saludo.
+GREETING_REARM_SECONDS = float(os.environ.get("GREETING_REARM_SECONDS", "20"))
+# El saludo por cámara SOLO se dispara con MECH EN REPOSO (decisión del
+# equipo, sep 2026). Despierto está narrando, conversando o traduciendo, y
+# soltar "¡Hola! Soy MECH" encima de eso corta la experiencia del visitante
+# que ya está atendiendo. En reposo, en cambio, es justo lo que se quiere:
+# alguien se acerca al stand y MECH lo recibe.
+# El botón «SALUDAR AHORA» del panel NO se ve afectado (es para probarlo).
+GREETING_ONLY_DORMANT = os.environ.get(
+    "GREETING_ONLY_DORMANT", "true"
+).strip().lower() in ("1", "true", "yes", "on", "si", "sí")
 
 # --- Maniobra "mira hacia afuera" / "regresa a proyectar" ------------------
 # MECH gira 180° para saludar al público que pasa y luego vuelve a quedar
@@ -161,9 +180,34 @@ WHISPER_OFFLINE = os.environ.get("WHISPER_OFFLINE", "true").strip().lower() in (
 # Poner "tiny" lo hace aún más ligero y rápido (hay que descargarlo una vez).
 WHISPER_INTERRUPT_MODEL = os.environ.get("WHISPER_INTERRUPT_MODEL", "").strip()
 WHISPER_INTERRUPT_THREADS = int(os.environ.get("WHISPER_INTERRUPT_THREADS", "2"))
+# Cuántas hipótesis explora Whisper al decodificar. 1 = lo más rápido, pero
+# se queda con la primera opción; 5 (el default de faster-whisper) acierta
+# notablemente más en frases cortas con ruido, a cambio de unas décimas.
+# Bájalo a 1 si en el evento la respuesta se siente lenta.
+WHISPER_BEAM_SIZE = int(os.environ.get("WHISPER_BEAM_SIZE", "5"))
+# El de las interrupciones va SIEMPRE a 1: ahí manda el retardo (MECH sigue
+# hablando mientras tanto) y solo hay que reconocer dos palabras conocidas.
+WHISPER_INTERRUPT_BEAM_SIZE = int(os.environ.get("WHISPER_INTERRUPT_BEAM_SIZE", "1"))
 
 # Audio
 AUDIO_SAMPLE_RATE = int(os.environ.get("AUDIO_SAMPLE_RATE", "48000"))
+
+# --- Cadena de audio antes de Whisper (ver docs/AUDIO.md) ----------------
+# Lo mínimo que hace cualquier teléfono con el micrófono antes de pasárselo
+# al reconocedor. Los dos se aplican en `stt.prepare_for_whisper()`.
+#
+# Pasa-altos (Hz): quita la continua y el retumbe (zumbido de red, roce de la
+# ropa contra el micrófono de solapa, golpes de mesa). 0 = desactivado.
+# Importa el doble: además de limpiar lo que oye Whisper, evita que una
+# continua infle el piso de ruido del detector y deje a MECH sordo.
+AUDIO_HIGHPASS_HZ = float(os.environ.get("AUDIO_HIGHPASS_HZ", "80"))
+# Nivel objetivo (dBFS, negativo) al que se lleva la voz antes de
+# transcribirla — el "AGC" del teléfono. Whisper transcribe peor lo que entra
+# muy bajito, y en un stand cada visitante habla a distinta distancia y
+# volumen. -16 dBFS es lo que recomienda la documentación de Whisper.
+# 0 = desactivado (deja el audio como entró).
+AUDIO_TARGET_DBFS = float(os.environ.get("AUDIO_TARGET_DBFS", "-16"))
+
 VAD_AGGRESSIVENESS = int(os.environ.get("VAD_AGGRESSIVENESS", "2"))
 VAD_SILENCE_TIMEOUT = float(os.environ.get("VAD_SILENCE_TIMEOUT", "1.2"))
 # Cuánto más fuerte que el ruido de fondo debe sonar la voz para que MECH
@@ -226,6 +270,21 @@ VOICE_INTERRUPT_PHRASES_EN = [
         "hey mech,excuse me mech,sorry mech",
     ).split(",") if p.strip()
 ]
+# OJO con las frases de interrupción en francés/portugués: "pardon" y
+# "desculpa" ya caen solas en las españolas "perdon"/"disculpa" por la
+# tolerancia de una letra, así que aquí van las que NO se parecen a ninguna.
+VOICE_INTERRUPT_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_INTERRUPT_PHRASES_FR",
+        "excusez moi mech,pardon mech,attends mech",
+    ).split(",") if p.strip()
+]
+VOICE_INTERRUPT_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_INTERRUPT_PHRASES_PT",
+        "escuta mech,desculpa mech,com licenca mech",
+    ).split(",") if p.strip()
+]
 # Cuánto MÁS FUERTE que el ruido de fondo tiene que sonar una voz para que
 # MECH la grabe MIENTRAS ÉL HABLA. Es más alto que el normal a propósito: su
 # propio parlante dispara el detector todo el rato, y transcribir cada frase
@@ -276,6 +335,18 @@ VOICE_ADVANCE_PHRASES_EN = [
         "move forward,go forward,forward",
     ).split(",") if p.strip()
 ]
+VOICE_ADVANCE_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_ADVANCE_PHRASES_FR",
+        "avance,avancer,va tout droit,en avant",
+    ).split(",") if p.strip()
+]
+VOICE_ADVANCE_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_ADVANCE_PHRASES_PT",
+        "avanca,va em frente,para frente,anda para frente",
+    ).split(",") if p.strip()
+]
 VOICE_RETREAT_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_RETREAT_PHRASES",
@@ -286,6 +357,18 @@ VOICE_RETREAT_PHRASES_EN = [
     p.strip() for p in os.environ.get(
         "VOICE_RETREAT_PHRASES_EN",
         "move back,go back,move backward,backward",
+    ).split(",") if p.strip()
+]
+VOICE_RETREAT_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_RETREAT_PHRASES_FR",
+        "recule,reculer,en arriere,va en arriere",
+    ).split(",") if p.strip()
+]
+VOICE_RETREAT_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_RETREAT_PHRASES_PT",
+        "recua,recuar,para tras,anda para tras",
     ).split(",") if p.strip()
 ]
 VOICE_OUTWARD_PHRASES = [
@@ -301,6 +384,20 @@ VOICE_OUTWARD_PHRASES_EN = [
         "look outside,look outward,turn around,face the crowd,greet the people",
     ).split(",") if p.strip()
 ]
+VOICE_OUTWARD_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_OUTWARD_PHRASES_FR",
+        "regarde dehors,regarde vers l exterieur,tourne toi,"
+        "salue le public,salue les gens",
+    ).split(",") if p.strip()
+]
+VOICE_OUTWARD_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_OUTWARD_PHRASES_PT",
+        "olha para fora,vira para fora,da a volta,"
+        "cumprimenta o publico,cumprimenta as pessoas",
+    ).split(",") if p.strip()
+]
 VOICE_PROJECT_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_PROJECT_PHRASES",
@@ -313,6 +410,20 @@ VOICE_PROJECT_PHRASES_EN = [
         "VOICE_PROJECT_PHRASES_EN",
         "back to projecting,go back to projecting,turn back,"
         "back to your position,face the screen",
+    ).split(",") if p.strip()
+]
+VOICE_PROJECT_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_PROJECT_PHRASES_FR",
+        "retourne projeter,reviens projeter,retourne a ta place,"
+        "reviens a ta position,regarde l ecran",
+    ).split(",") if p.strip()
+]
+VOICE_PROJECT_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_PROJECT_PHRASES_PT",
+        "volta a projetar,volta para a projecao,volta para o teu lugar,"
+        "volta para a tua posicao,olha para a tela",
     ).split(",") if p.strip()
 ]
 
@@ -334,19 +445,128 @@ VOICE_MARKETING_PHRASES_EN = [
         "marketing video,marketing videos",
     ).split(",") if p.strip()
 ]
+VOICE_MARKETING_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_MARKETING_PHRASES_FR",
+        "lance le marketing,joue le marketing,montre le marketing,"
+        "video marketing,videos marketing",
+    ).split(",") if p.strip()
+]
+VOICE_MARKETING_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_MARKETING_PHRASES_PT",
+        "toca marketing,passa o marketing,mostra marketing,"
+        "video de marketing,videos de marketing",
+    ).split(",") if p.strip()
+]
 # Tope de seguridad de la reproducción (segundos). El fin normal lo avisa el
 # propio proyector cuando termina el último video; esto solo evita que MECH
 # se quede colgado si NO hay ninguna pantalla abierta. Con videos de ~90 s,
 # 12 espacios serían ~18 min: el default deja margen de sobra.
 MARKETING_MAX_SECONDS = float(os.environ.get("MARKETING_MAX_SECONDS", "1500"))
 
-# --- Modo inglés (opcional) ----------------------------------------------
-# MECH vive en español. El INGLÉS se activa SI Y SOLO SI se le despierta con
-# "wake up MECH"; a partir de ahí entiende, narra y subtitula en inglés hasta
-# que se duerme (ahí vuelve solo a español). Ver backend/lang.py.
+# --- Modo TRADUCTOR (ver backend/translator.py) --------------------------
+# "traduce MECH" pone a MECH a traducir una conversación entre dos personas:
+# pregunta el par de idiomas y, a partir de ahí, todo lo que oye lo repite en
+# el otro idioma. NO pasa por el flujo normal de Claude (nada de obras, ni
+# gestos, ni proyección): es una llamada corta y directa de traducción.
+TRANSLATOR_ENABLED = os.environ.get("TRANSLATOR_ENABLED", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+# OJO: nada de "traduce" o "traductor" a secas. Con la palabra sola, una
+# pregunta normal del stand ("¿cómo se traduce Quijote al francés?") entraría
+# en modo traductor en vez de responderse. Por eso todas las frases piden dos
+# palabras.
+VOICE_TRANSLATE_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_PHRASES",
+        "traduce mech,traduci mech,modo traductor,activa el traductor,"
+        "quiero traducir,ponte a traducir,traductor mech",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_PHRASES_EN",
+        "translate mech,translation mode,translator mode,start translating",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_PHRASES_FR",
+        "traduis mech,mode traducteur,traduire mech,active le traducteur",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_PHRASES_PT",
+        "traduz mech,modo tradutor,traduzir mech,ativa o tradutor",
+    ).split(",") if p.strip()
+]
+# Frases para SALIR del modo traductor. Dormirlo también lo saca.
+VOICE_TRANSLATE_STOP_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_STOP_PHRASES",
+        "deja de traducir,para de traducir,termina la traduccion,"
+        "sal del traductor,sal del modo traductor,fin de la traduccion",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_STOP_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_STOP_PHRASES_EN",
+        "stop translating,stop the translation,exit translator,end translation",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_STOP_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_STOP_PHRASES_FR",
+        "arrete de traduire,fin de la traduction,quitte le traducteur",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_STOP_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_STOP_PHRASES_PT",
+        "para de traduzir,fim da traducao,sai do tradutor",
+    ).split(",") if p.strip()
+]
+# Traduce en LOS DOS SENTIDOS: Whisper detecta en cuál de los dos idiomas del
+# par habló cada persona y MECH responde en el otro. Es lo que hace que sirva
+# para una conversación de verdad (no solo para dictarle a MECH).
+# Ponlo en false para fijar el sentido (siempre origen -> destino): es menos
+# cómodo, pero no se equivoca nunca de dirección. Útil si el par es
+# español/portugués, que Whisper confunde en frases muy cortas.
+TRANSLATOR_AUTO_DETECT = os.environ.get(
+    "TRANSLATOR_AUTO_DETECT", "true"
+).strip().lower() in ("1", "true", "yes", "on", "si", "sí")
+# Modelo para traducir. Por defecto el mismo de siempre; si en el evento se
+# nota lento, aquí se puede poner uno más rápido sin tocar el resto.
+CLAUDE_TRANSLATE_MODEL = os.environ.get("CLAUDE_TRANSLATE_MODEL", "") or CLAUDE_MODEL
+# Segundos de espera tras cada traducción, para que el parlante (Bluetooth,
+# con buffer propio) termine de sonar ANTES de volver a abrir el micrófono.
+# Sin esto MECH se oye a sí mismo y traduce su propia traducción en bucle.
+TRANSLATOR_DRAIN_SECONDS = float(os.environ.get("TRANSLATOR_DRAIN_SECONDS", "0.8"))
+
+# --- Idiomas extra: inglés, francés y portugués (opcionales) -------------
+# MECH vive en español. Los demás idiomas se activan SI Y SOLO SI se le
+# despierta en ese idioma; a partir de ahí entiende, narra y subtitula en él
+# hasta que se duerme (ahí vuelve solo a español). Ver backend/lang.py.
+#
+#   "wake up MECH"                    -> inglés
+#   "bonjour MECH" / "réveille MECH"  -> francés
+#   "bom dia MECH" / "acorda MECH"    -> portugués
+#
+# OJO al inventar frases nuevas: el matcher tolera UNA letra de error en
+# palabras de 4+ letras, así que el portugués "desperta" chocaría con el
+# español "despierta" y despertaría en el idioma equivocado. Por eso el
+# portugués usa "acorda" y "bom dia".
 WAKE_ENGLISH_ENABLED = os.environ.get("WAKE_ENGLISH_ENABLED", "true").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
+WAKE_FRENCH_ENABLED = os.environ.get("WAKE_FRENCH_ENABLED", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+WAKE_PORTUGUESE_ENABLED = os.environ.get(
+    "WAKE_PORTUGUESE_ENABLED", "true"
+).strip().lower() in ("1", "true", "yes", "on", "si", "sí")
 # Frases que despiertan a MECH EN INGLÉS. Se incluyen las variantes de cómo
 # suele transcribir Whisper esas palabras cuando todavía está escuchando en
 # español ("weik ap mech", "gueik ap mech").
@@ -361,6 +581,42 @@ VOICE_SLEEP_PHRASES_EN = [
     p.strip() for p in os.environ.get(
         "VOICE_SLEEP_PHRASES_EN",
         "stop listening,go to sleep,sleep mech,stop mech,goodbye mech",
+    ).split(",") if p.strip()
+]
+# Frases que despiertan a MECH EN FRANCÉS. "bonjour" y "salut" están a
+# propósito: son las que un francófono suelta primero, y Whisper las
+# reconoce aunque esté escuchando en español (se incluyen las variantes de
+# cómo suele escribirlas en ese caso).
+VOICE_WAKE_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_WAKE_PHRASES_FR",
+        "bonjour mech,bon jour mech,bonyur mech,salut mech,"
+        "reveille mech,reveille toi mech,reveil mech",
+    ).split(",") if p.strip()
+]
+# Frases que ponen a MECH en reposo estando en modo francés.
+# NO uses "dors mech" a secas: "dors" queda a una letra de "dos" y cualquier
+# frase con un "dos" ("avanza dos segundos, MECH") lo dormiría.
+VOICE_SLEEP_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_SLEEP_PHRASES_FR",
+        "arrete d ecouter,arrete mech,au revoir mech,bonne nuit mech,endors toi",
+    ).split(",") if p.strip()
+]
+# Frases que despiertan a MECH EN PORTUGUÉS. Nada de "olá MECH": "ola" cae
+# dentro de "hola" y el saludo español despertaría en portugués.
+VOICE_WAKE_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_WAKE_PHRASES_PT",
+        "bom dia mech,bon dia mech,boa tarde mech,acorda mech,"
+        "acorde mech,acordar mech",
+    ).split(",") if p.strip()
+]
+# Frases que ponen a MECH en reposo estando en modo portugués.
+VOICE_SLEEP_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_SLEEP_PHRASES_PT",
+        "para de ouvir,deixa de ouvir,boa noite mech,dorme mech,vai dormir",
     ).split(",") if p.strip()
 ]
 

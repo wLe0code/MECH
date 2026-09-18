@@ -157,6 +157,9 @@ body {
 .lang-chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.15); }
 .lang-chip.active { color: #fff; border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.25); }
 .lang-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+/* Con cuatro idiomas la pista ya no cabe al lado de los chips: se la manda a
+   su propia línea para que los cuatro botones queden juntos y centrados. */
+.lang-row .lang-hint { flex-basis: 100%; text-align: center; line-height: 1.6; }
 
 .wave-bars { display: flex; align-items: center; gap: 3px; height: 32px; }
 .wave-bar { width: 4px; border-radius: 2px; background: var(--red); opacity: 0.3; transition: height 0.1s; }
@@ -440,3 +443,37 @@ select:focus, input[type="text"]:focus { border-color: var(--purple-mid); }
   .sidebar-label { display: none; }
   .stand-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Modo traductor (vista Voz) ──────────────────────────────────────
+   MECH de intérprete entre dos personas. Por voz se activa con
+   «traduce MECH»; esta tarjeta permite elegir el par sin micrófono. */
+.translator-box {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; display: flex;
+  flex-direction: column; gap: 10px;
+}
+.translator-box.active { border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.12); }
+.translator-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.translator-label {
+  font-size: 10px; letter-spacing: 2px; color: var(--text-muted);
+  font-family: var(--font-mono); display: inline-flex; align-items: center; gap: 6px;
+}
+.translator-state {
+  font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
+}
+.translator-state.tr-on { color: #fff; border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.3); }
+.translator-state.tr-waiting { color: var(--amber); border-color: var(--amber); }
+/* Turno terminado pero con el par recordado: listo para otro
+   «traduce MECH» sin volver a preguntar los idiomas. */
+.translator-state.tr-idle { color: var(--text); border-color: rgba(255, 255, 255, 0.18); }
+.translator-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.translator-select {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--font-mono); font-size: 11px;
+  padding: 6px 10px; cursor: pointer;
+  /* La regla global de `select` los pone al 100%: aquí van en fila, así que
+     se les devuelve el ancho de su contenido. */
+  width: auto; min-width: 130px; flex: 0 0 auto;
+}
+.translator-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); line-height: 1.6; }

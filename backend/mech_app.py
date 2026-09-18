@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -31,6 +32,7 @@ import llm
 import maneuvers
 import background_audio
 import subtitles
+import translator
 import voice_phrases
 import tts
 import video_library
@@ -74,6 +76,13 @@ class MechApp:
         # de voz descarta lo que transcriba para no oírse a sí mismo).
         self._last_greeting: float = 0.0
         self.greeting_until: float = 0.0
+        # Desde cuándo NO hay nadie delante de la cámara (None = hay alguien,
+        # o nadie se ha ido desde el último saludo). Es lo que distingue a un
+        # visitante NUEVO del mismo de antes: ver `_greeting_rearmed()`.
+        self._user_gone_since: float | None = None
+        # Throttle del aviso "no saludo porque estoy despierto": la visión
+        # detecta a ~10 fps y si no llenaría el panel de logs iguales.
+        self._last_greeting_skip_log: float = 0.0
         # Subtítulos: hilo que va sacando las líneas al ritmo real de la voz.
         self._subs_cancel: threading.Event | None = None
         # Mientras esto está activo, las RUEDAS están en medio de una maniobra
@@ -129,6 +138,10 @@ class MechApp:
             # espaldas, saludando al público). Lo cambia backend/maneuvers.py
             # con las órdenes "mira hacia afuera" / "regresa a proyectar".
             "facing": "projection",
+            # Modo traductor: MECH de intérprete entre dos personas.
+            # {active, awaiting_pair, src, dst, auto_detect}. Ver
+            # backend/translator.py.
+            "translator": translator.snapshot(),
             # Estado de la visión (lo actualiza backend/vision.py).
             "vision": {
                 "enabled": False,
@@ -273,6 +286,210 @@ class MechApp:
             time.sleep(0.5)  # deja drenar el parlante antes de volver a oír
 
     # ------------------------------------------------------------------
+    # Modo traductor ("traduce MECH") — ver backend/translator.py
+    # ------------------------------------------------------------------
+
+    def _emit_translator(self) -> None:
+        self.state["translator"] = translator.snapshot()
+        self.emit("state", state=self.state)
+
+    @contextmanager
+    def _talking_alone(self):
+        """Mientras MECH habla aquí dentro, el bucle de voz suelta el micrófono.
+
+        Hace falta cuando esto se llama desde OTRO hilo (los endpoints del
+        panel): si no, el bucle sigue grabando y se transcribe a MECH
+        preguntando por los idiomas. Es la misma guarda que usa
+        `handle_text_command` para las narraciones lanzadas desde el panel.
+        """
+        self.mic_release.set()
+        self.set_voice_phase("speaking")
+        try:
+            yield
+        finally:
+            self.mic_release.clear()
+            self.set_voice_phase(
+                "waiting" if self.state.get("voice_awake", True) else "dormant"
+            )
+
+    def start_translator(self, src: str | None = None, dst: str | None = None) -> None:
+        """Arranca UN turno de traducción: pregunta y se queda escuchando.
+
+        Es un turno por comando a propósito (ver backend/translator.py): al
+        terminar de traducir una frase MECH se calla y hay que volver a
+        decirle «traduce MECH». Así el micrófono nunca está abierto justo
+        después de que él hable, que era lo que hacía que se tradujera a sí
+        mismo en bucle.
+
+        Si ya sabe el par de idiomas (de un «traduce MECH» anterior, o porque
+        lo eligieron en el panel / lo dijeron en el propio comando), va
+        directo a pedir la frase. Si no, pregunta primero por los idiomas.
+        """
+        src, dst = self._resolve_pair(src, dst)
+        etapa = translator.begin(src, dst)
+        with self._talking_alone():
+            if etapa == "phrase" and src and dst:
+                # Par nuevo: lo confirma y pide la frase de una vez.
+                self._announce_pair()
+            elif etapa == "phrase":
+                # Ya lo sabía de antes: al grano.
+                self._ask_phrase()
+            else:
+                self.log("Modo traductor: pregunto el par de idiomas.", "ok")
+                self._emit_translator()
+                tts.speak(lang.say("translate_ask"), blocking=True)
+                time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
+                self.chime_pending = True
+
+    def _resolve_pair(
+        self, src: str | None, dst: str | None
+    ) -> tuple[str | None, str | None]:
+        """Completa un par de idiomas a medias.
+
+        Si solo se nombró UNO («traduce MECH al francés», «al portugués»), ese
+        es el DESTINO y el origen es el idioma activo de MECH. Si no se nombró
+        ninguno, se devuelve vacío para que quien llame use el par recordado o
+        pregunte. Un par inválido (el mismo idioma dos veces) se descarta.
+        """
+        if dst and not src:
+            src = lang.current()
+        if src and dst and src == dst:
+            self.log(
+                f"Ignoro el par pedido: {lang.label(src)} a {lang.label(dst)} "
+                "es el mismo idioma.",
+                "warn",
+            )
+            return None, None
+        return src, dst
+
+    def _announce_pair(self) -> None:
+        """Confirma el par de idiomas Y pide la frase, en una sola frase."""
+        src, dst = translator.pair()
+        self.log(
+            f"Traduzco entre {lang.label(src)} y {lang.label(dst)}"
+            f"{' (los dos sentidos)' if config.TRANSLATOR_AUTO_DETECT else ''}.",
+            "ok",
+        )
+        self._emit_translator()
+        texto = lang.say(
+            "translate_ready",
+            src=lang.language_name(src),
+            dst=lang.language_name(dst),
+        )
+        self._say_and_listen(texto)
+
+    def _ask_phrase(self) -> None:
+        """Pide la frase a traducir (el par ya se sabe de antes)."""
+        src, dst = translator.pair()
+        self.log(f"Traductor listo ({lang.label(src)} / {lang.label(dst)}).", "ok")
+        self._emit_translator()
+        self._say_and_listen(lang.say("translate_ask_phrase"))
+
+    def _say_and_listen(self, texto: str) -> None:
+        """Dice una pregunta del traductor y deja el micrófono listo.
+
+        Guarda lo dicho para la guarda anti-eco: entre la pregunta y la frase
+        del visitante el micrófono SÍ está abierto, y el parlante Bluetooth
+        arrastra su buffer. Sin esto MECH acabaría traduciendo su propia
+        pregunta.
+        """
+        translator.remember_spoken(texto)
+        tts.speak(texto, blocking=True)
+        time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
+        # Chime de "puedes hablar", igual que tras "ok MECH".
+        self.chime_pending = True
+
+    def handle_translator_pair(self, text: str) -> None:
+        """Interpreta la respuesta a "¿de qué idioma a qué idioma?".
+
+        Acepta "de español a francés" y también un solo idioma ("al
+        francés"), en cuyo caso el origen es el idioma activo de MECH.
+        """
+        crudo_src, crudo_dst = voice_phrases.extract_language_pair(text)
+        src, dst = self._resolve_pair(crudo_src, crudo_dst)
+        problema = None
+        if not (src and dst):
+            # Distinguimos "no entendí ningún idioma" de "me dijiste el mismo
+            # dos veces": el aviso tiene que decirle qué arreglar.
+            problema = ("translate_same" if crudo_src and crudo_dst
+                        else "translate_pair_unknown")
+        if problema:
+            self._say_and_listen(lang.say(problema))
+            self.set_voice_phase("waiting")
+            return
+        translator.set_pair(src, dst)
+        self._announce_pair()
+        self.set_voice_phase("waiting")
+
+    def handle_translation(self, text: str, detected: str | None = None) -> None:
+        """Traduce UNA frase, la dice, y se calla hasta el próximo comando.
+
+        `detected` es el idioma que Whisper creyó oír; con él se decide el
+        sentido (ver `translator.direction`). El resultado se dice y se pinta
+        como subtítulo en la proyección, que en un stand es media función: el
+        visitante LEE la traducción además de oírla. El subtítulo se queda en
+        pantalla (no se borra al terminar) para que dé tiempo a leerlo.
+        """
+        text = (text or "").strip()
+        # Guarda anti-eco: si lo que oyó es casi lo último que él mismo dijo
+        # (la pregunta), es su propio parlante. Se vuelve a pedir la frase.
+        if text and translator.looks_like_own_echo(text, voice_phrases.normalize):
+            self.log(f"Ignoro mi propio eco: {text!r}", "info")
+            text = ""
+        if not text:
+            self.set_voice_phase("waiting")
+            return
+        origen, destino = translator.direction(detected)
+        self.state["last_transcript"] = text
+        self.emit("transcript", text=text)
+        self.set_voice_phase("thinking")
+        try:
+            traduccion = llm.translate(text, origen, destino)
+        except Exception as e:
+            self.log(f"No pude traducir: {e}", "err")
+            traduccion = ""
+        if not traduccion:
+            # Falló la traducción: lo dice y vuelve a quedarse escuchando,
+            # para no obligar a repetir el comando por un fallo suyo.
+            with self._talking_alone():
+                self._say_and_listen(lang.say("translate_error"))
+            return
+        self.log(f"{lang.label(origen)} → {lang.label(destino)}: {traduccion!r}", "ok")
+        self.state["last_ai_response"] = traduccion
+        self.emit("ai_response", text=traduccion)
+        self.set_subtitle(traduccion, destino)
+        self.set_voice_phase("speaking")
+        tts.speak(traduccion, blocking=True)
+        # Y aquí SE CALLA: el turno terminó. Para traducir otra frase hay que
+        # volver a decir «traduce MECH». El par de idiomas se recuerda.
+        translator.finish()
+        self._emit_translator()
+        self.log(
+            "Traducción lista. Decí «traduce MECH» otra vez para la siguiente.",
+            "info",
+        )
+        time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
+        self.set_voice_phase("waiting")
+
+    def stop_translator(self, announce: bool = True) -> None:
+        """Sale del modo traductor Y olvida el par de idiomas.
+
+        Ojo con la diferencia: `translator.finish()` (fin de UN turno) guarda
+        el par para el siguiente «traduce MECH»; esto lo borra, que es lo que
+        se quiere al decir «deja de traducir», al dormirlo o con el paro.
+        """
+        if not (translator.is_active() or translator.has_pair()):
+            return
+        translator.reset()
+        self.log("Modo traductor apagado.", "info")
+        self.set_subtitle(None)
+        self._emit_translator()
+        if announce:
+            with self._talking_alone():
+                tts.speak(lang.say("translate_off"), blocking=True)
+                time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
+
+    # ------------------------------------------------------------------
     # Subtítulos de la proyección (estilo cine: abajo, centrados)
     # ------------------------------------------------------------------
 
@@ -333,19 +550,24 @@ class MechApp:
         """
         self.state["playback"] = self.playback_snapshot()
 
-    def set_subtitle(self, text: str | None) -> None:
+    def set_subtitle(self, text: str | None, code: str | None = None) -> None:
         """Publica (o borra con None) el subtítulo que se ve en la pantalla.
 
         Va al `state` ADEMÁS de emitirse por WebSocket porque la vista VR del
         teléfono se alimenta del sondeo HTTP a /api/state cuando el WS no
         conecta — sin esto, en el visor no habría subtítulos.
+
+        `code` fuerza el idioma de la línea. Lo usa el modo traductor, que
+        pinta la traducción en el idioma DESTINO aunque el idioma activo de
+        MECH sea otro. Sin `code` se usa el activo, como siempre.
         """
         if text and not config.SUBTITLES_ENABLED:
             return  # apagados desde Ajustes (borrar SIEMPRE se permite)
         clean = (text or "").strip() or None
+        idioma = code or lang.current()
         self.state["current_subtitle"] = clean
-        self.state["subtitle_lang"] = lang.current()
-        self.emit("subtitle", text=clean, lang=lang.current())
+        self.state["subtitle_lang"] = idioma
+        self.emit("subtitle", text=clean, lang=idioma)
 
     def stop_presentation(self) -> float:
         """Para TODO lo que forma parte de la presentación, de golpe.
@@ -455,6 +677,9 @@ class MechApp:
         en reposo y, por el eco del parlante, captaría su propia voz diciendo
         "despierta MECH" y se despertaría solo."""
         self.state["voice_awake"] = False
+        # Dormirse también saca del modo traductor (sin anunciarlo: ya va a
+        # decir la frase de reposo justo aquí abajo).
+        self.stop_translator(announce=False)
         self.log(
             "MECH en reposo. Di 'ok MECH' (o 'wake up MECH' para inglés).",
             "info",
@@ -493,25 +718,81 @@ class MechApp:
 
     # Frase oficial de bienvenida (pedida por el equipo, jul 2026). En modo
     # inglés se dice su equivalente (ver backend/lang.py).
-    # El texto vive en lang.py (una sola fuente para los dos idiomas); esta
+    # El texto vive en lang.py (una sola fuente para los cuatro idiomas); esta
     # constante se conserva porque está documentada y se usa en pruebas.
     GREETING_TEXT = lang.say("greeting", "es")
 
-    def on_user_detected(self) -> None:
-        """Alguien entró al campo de la cámara: MECH hace el protocolo de
-        saludo (arco de brazo del video del equipo) y da la bienvenida por
-        voz. Con cooldown para no saludar en bucle a la misma persona.
+    # Fases en las que MECH está ocupado con alguien: no se le puede soltar
+    # un saludo encima. `listening` incluida: está GRABANDO a un visitante.
+    _BUSY_PHASES = ("speaking", "thinking", "transcribing", "listening")
 
-        El gesto y la voz van JUNTOS y bajo el MISMO cooldown (antes el brazo
-        se disparaba en cada detección, también dentro del cooldown: como la
-        visión se pausa mientras narra, al terminar cada narración volvía a
-        "detectar" y el brazo se movía solo, sin decir nada)."""
-        if self.state.get("voice_phase") in ("speaking", "thinking", "transcribing"):
-            return  # no interrumpir una narración
+    def on_user_detected(self) -> None:
+        """Alguien entró al campo de la cámara: MECH lo saluda.
+
+        **Solo saluda EN REPOSO** (`GREETING_ONLY_DORMANT`, decisión del
+        equipo de sep 2026). Despierto está narrando una obra, conversando o
+        traduciendo, y soltar "¡Hola! Soy MECH" encima de eso le corta la
+        experiencia al visitante que ya está atendiendo. En reposo es justo
+        lo contrario: alguien se acerca al stand y MECH lo recibe.
+
+        Con cooldown (`GREETING_COOLDOWN`) para no saludar en bucle a la
+        misma persona. El gesto y la voz van JUNTOS y bajo el MISMO cooldown
+        (antes el brazo se disparaba en cada detección, también dentro del
+        cooldown: como la visión se pausa mientras narra, al terminar cada
+        narración volvía a "detectar" y el brazo se movía solo, sin decir
+        nada).
+        """
+        if config.GREETING_ONLY_DORMANT and self.state.get("voice_awake", True):
+            self._log_greeting_skip(
+                "No saludo al visitante: MECH está despierto (atendiendo a "
+                "alguien). Se saluda solo en reposo."
+            )
+            return
+        if self.state.get("voice_phase") in self._BUSY_PHASES:
+            return  # no interrumpir una narración ni una grabación en curso
+        if not self._greeting_rearmed():
+            return  # es el mismo de antes, no un visitante nuevo
         now = time.time()
         if now - self._last_greeting < config.GREETING_COOLDOWN:
             return  # ya saludó hace poco
-        self._last_greeting = now
+        self._perform_greeting()
+
+    def _greeting_rearmed(self) -> bool:
+        """¿Hay delante un visitante NUEVO, o es el mismo de antes?
+
+        MECH saluda a quien llega, UNA vez. Para volver a saludar hace falta
+        que la cámara se quede sin nadie durante `GREETING_REARM_SECONDS`
+        seguidos — no basta con que el detector parpadee.
+
+        Esto es lo que quita el saludo repetido "cada minuto aunque no haya
+        nadie": `vision.LOST_AFTER_S` son 1.5 s, así que cualquier parpadeo
+        (una cabeza que gira, un falso positivo con la luz de la proyección)
+        contaba como una llegada nueva. El reloj de ausencia se REINICIA con
+        cada pérdida, así que un detector que parpadea nunca lo completa.
+        """
+        if self._last_greeting == 0.0:
+            return True  # todavía no ha saludado a nadie
+        if self._user_gone_since is None:
+            return False  # no se ha ido nadie desde el último saludo
+        return time.time() - self._user_gone_since >= config.GREETING_REARM_SECONDS
+
+    def _log_greeting_skip(self, mensaje: str) -> None:
+        """Avisa de por qué NO saludó, como mucho una vez por minuto.
+
+        La visión detecta a ~10 fps: sin el freno, esto llenaría el panel.
+        """
+        now = time.time()
+        if now - self._last_greeting_skip_log < 60:
+            return
+        self._last_greeting_skip_log = now
+        self.log(mensaje, "info")
+
+    def _perform_greeting(self) -> None:
+        """El saludo en sí: brazo + voz, a la vez. Sin comprobar nada."""
+        self._last_greeting = time.time()
+        # A partir de aquí, quien está delante ya está saludado: hasta que la
+        # cámara se quede vacía un buen rato, no hay "visitante nuevo".
+        self._user_gone_since = None
         self.log("Saludo al visitante que detectó la cámara.", "ok")
         # El arco lento del brazo (config.ARM_WAVE_SECONDS) corre en paralelo
         # a la voz: gestures.perform ya lanza su propio hilo.
@@ -535,16 +816,27 @@ class MechApp:
         threading.Thread(target=_greet, daemon=True).start()
 
     def greet_now(self) -> None:
-        """Fuerza el saludo AHORA, saltándose el cooldown (botón del panel).
+        """Fuerza el saludo AHORA (botón «SALUDAR AHORA» del panel).
 
-        Sirve para probar el saludo sin tener que salir y volver a entrar al
-        campo de la cámara."""
-        self._last_greeting = 0.0
-        self.on_user_detected()
+        Se salta el cooldown Y la regla de "solo en reposo": es el botón para
+        PROBAR el saludo, y tener que dormir a MECH para verlo no serviría de
+        nada. Lo único que respeta es no hablar encima de una narración.
+        """
+        if self.state.get("voice_phase") in self._BUSY_PHASES:
+            self.log("No saludo: MECH está hablando o grabando ahora mismo.", "warn")
+            return
+        self._perform_greeting()
 
     def on_user_lost(self) -> None:
-        """El usuario salió de cámara. (El propio módulo de visión ya detuvo
-        los motores; aquí solo queda el hook por si se quiere más lógica.)"""
+        """El usuario salió de cámara.
+
+        Los motores ya los paró el módulo de visión. Lo que hacemos aquí es
+        arrancar (o REINICIAR) el reloj de ausencia: cuando llegue a
+        `GREETING_REARM_SECONDS` seguidos sin nadie, el siguiente que aparezca
+        cuenta como visitante nuevo y se le saluda. Reiniciarlo en cada
+        pérdida es lo que hace que un detector que parpadea no acumule.
+        """
+        self._user_gone_since = time.time()
 
     def user_in_range(self) -> bool:
         """True si hay un usuario dentro de la distancia mínima configurada.
@@ -593,6 +885,11 @@ class MechApp:
             pass
         # Voz
         self.state["voice_loop_active"] = False
+        # Modo traductor: se apaga sin anunciarlo (el TTS acaba de cortarse).
+        try:
+            self.stop_translator(announce=False)
+        except Exception:
+            pass
         # Proyección
         self.state["current_image"] = None
         self.state["current_video"] = None
@@ -1083,6 +1380,15 @@ class MechApp:
         self.state["last_transcript"] = text
         self.emit("transcript", text=text)
         self.log(f"Comando: {text!r}", "info")
+        # "traduce MECH": arranca UN turno de traducción. Va ANTES que todo
+        # lo demás y no pasa por Claude. Si el comando nombra los idiomas
+        # ("traduce MECH del inglés al portugués"), se toman de ahí; si no,
+        # se reutiliza el par de la vez anterior y, si tampoco lo hay, MECH
+        # pregunta.
+        if config.TRANSLATOR_ENABLED and voice_phrases.is_translate(text):
+            src, dst = voice_phrases.extract_language_pair(text)
+            self.start_translator(src, dst)
+            return
         # Órdenes de movimiento: se atienden aquí mismo, sin llamar a Claude.
         if self.handle_movement_command(text):
             if self.state["voice_loop_active"]:

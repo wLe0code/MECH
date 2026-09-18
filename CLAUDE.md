@@ -161,10 +161,15 @@ backend/
   llm.py              ← Cliente Claude. System prompt + schema Pydantic del Plan.
                         Inyecta dinámicamente la lista de obras disponibles
                         desde video_library.
-  lang.py             ← Idioma activo (es/en). Español por defecto; inglés
-                        SOLO si despiertan a MECH con "wake up MECH". Guarda
-                        las frases fijas de los dos idiomas y la instrucción
-                        de idioma que se le añade a Claude.
+  translator.py       ← Modo TRADUCTOR: MECH de intérprete entre dos
+                        personas. Solo el ESTADO (activo, par de idiomas,
+                        guarda anti-eco); quien habla y pide la traducción
+                        es mech_app. Se dispara con «traduce MECH».
+  lang.py             ← Idioma activo (es/en/fr/pt). Español por defecto; los
+                        demás SOLO si despiertan a MECH en ese idioma
+                        ("wake up MECH", "bonjour MECH", "bom dia MECH").
+                        Guarda las frases fijas de los cuatro idiomas y la
+                        instrucción de idioma que se le añade a Claude.
   stt.py              ← faster-whisper local + VAD (webrtcvad). Transcribe en
                         el idioma activo (lang.whisper_language()).
   subtitles.py        ← Parte el guion en líneas y calcula EN QUÉ SEGUNDO va
@@ -270,6 +275,8 @@ windows/              ← Control desde laptop Windows
   README.md
 
 docs/
+  AUDIO.md            ← Cómo oye MECH: qué hacen los teléfonos con el
+                        micrófono, qué de eso hace MECH y qué falta.
   GUIA.md             ← Hardware y montaje en la Pi.
   FRONTEND.md         ← Servidor, panel, control desde Windows.
 
@@ -364,8 +371,9 @@ Este repo **no tiene suite de tests ni linter configurado**. La validación es m
 ### Idiomas
 
 - **Strings al usuario (UI, voz, logs)** → siempre español neutro. Las frases
-  que MECH DICE (saludo, despedida, error) tienen su par en inglés en
-  `backend/lang.py`: si añades una, añade las dos.
+  que MECH DICE (saludo, despedida, error) tienen su versión en los CUATRO
+  idiomas en `backend/lang.py`: si añades una, añade las cuatro (es/en/fr/pt).
+  Lo mismo con `_SAY` de `backend/maneuvers.py`.
 - **`image_prompt` para NanoBanana** → siempre inglés (Gemini rinde mejor).
 - **Comentarios y nombres de variables** → español está bien, ya lo usa el repo.
 - **Commits** → español también, sigue el estilo existente.
@@ -387,23 +395,117 @@ Segment:
 
 Prioridad de visual: `video_slug + video_segment` (si el archivo existe) > `image_prompt` > nada. Si Claude pide un video que no está en disco se loguea warning y se intenta el `image_prompt` del mismo segmento si lo trae.
 
-### Idioma (español / inglés)
+### Idiomas (español / inglés / francés / portugués)
 
-MECH **siempre arranca en español**. El **inglés se activa si y solo si** se
-le despierta con **«wake up MECH»**; con «ok MECH» / «despierta MECH» sigue en
-español. En inglés van: lo que Whisper transcribe (`language="en"`), lo que
-Claude narra (bloque de idioma en el system prompt), las frases fijas (saludo,
-despedida, error) y los subtítulos. **Al dormirse vuelve solo a español.**
+MECH **siempre arranca en español**. Los otros tres **se activan si y solo si**
+se le despierta EN ese idioma. **Lo decide el despertar, no la conversación**:
 
-- Idioma activo y textos fijos: [`backend/lang.py`](backend/lang.py).
-- Frases de despertar/reposo en inglés: `VOICE_WAKE_PHRASES_EN` /
-  `VOICE_SLEEP_PHRASES_EN` (`.env`), detección en `voice_phrases.wake_language()`.
+| Frase de despertar | Idioma |
+|---|---|
+| «ok MECH» · «despierta MECH» | español (`es`) |
+| «wake up MECH» | inglés (`en`) |
+| «bonjour MECH» · «salut MECH» · «réveille MECH» | francés (`fr`) |
+| «bom dia MECH» · «boa tarde MECH» · «acorda MECH» | portugués (`pt`) |
+
+En el idioma activo van: lo que Whisper transcribe (`language=<código>`), lo
+que Claude narra (bloque de idioma en el system prompt), las frases fijas
+(saludo, despedida, error, giro) y los subtítulos. El TTS de ElevenLabs ya era
+multilingüe. **Al dormirse vuelve solo a español.**
+
+- Idioma activo y textos fijos: [`backend/lang.py`](backend/lang.py). Para
+  añadir un idioma nuevo, la cabecera del módulo lista los 4 pasos.
+- Frases de despertar/reposo: `VOICE_WAKE_PHRASES_{EN,FR,PT}` /
+  `VOICE_SLEEP_PHRASES_{EN,FR,PT}` (`.env`), detección en
+  `voice_phrases.wake_language()` (los idiomas extra se comprueban ANTES que
+  el español, que tiene frases muy cortas).
+- Las órdenes de movimiento y de interrupción existen en los cuatro idiomas
+  (`VOICE_*_PHRASES_{EN,FR,PT}`) y **se aceptan todas siempre**, sin mirar el
+  idioma activo: son frases largas y distintivas.
 - En reposo, si la transcripción en español no coincide con ningún wake, el
-  bucle **re-transcribe el MISMO audio en inglés** (clip corto, ≤4 s) para
-  reconocer «wake up MECH» aunque Whisper lo hubiera deformado.
-- Se puede forzar desde el panel (chips ES/EN en la vista Voz →
-  `POST /api/language/{es|en}`), útil para probar sin micrófono.
-- Apagar el modo inglés: `WAKE_ENGLISH_ENABLED=false`.
+  bucle **re-transcribe el MISMO audio UNA vez con detección automática de
+  idioma** (`stt.transcribe_any`) y vuelve a comparar contra todas las listas.
+  ⚠️ **NO lo cambies a reintentar idioma por idioma**: con cuatro idiomas
+  serían 3 pasadas de Whisper por cada ruido, y la Pi tardaría ~10 s en volver
+  a escuchar.
+- Se puede forzar desde el panel (chips ES/EN/FR/PT en la vista Voz →
+  `POST /api/language/{es|en|fr|pt}`), útil para probar sin micrófono.
+- Apagar un idioma: `WAKE_ENGLISH_ENABLED`, `WAKE_FRENCH_ENABLED`,
+  `WAKE_PORTUGUESE_ENABLED` = `false`.
+
+⚠️ **Al inventar frases nuevas, ojo con las colisiones entre idiomas.** El
+matcher de `voice_phrases` tolera UNA letra de error en palabras de 4+ letras
+y hace substring en las cortas, así que palabras parecidas se pisan. Casos
+reales que ya se evitaron: el portugués «desperta» caía en el español
+«despierta»; «olá MECH» caía en «hola MECH»; el francés «dors» cae en «dos»,
+así que «avanza dos segundos, MECH» habría dormido al robot.
+
+### Modo TRADUCTOR — MECH de intérprete («traduce MECH»)
+
+Pedido del equipo (sep 2026): que MECH sirva para que dos personas que no
+hablan el mismo idioma se entiendan en el stand.
+
+**Va por TURNOS: un «traduce MECH» = UNA frase traducida.**
+
+```
+«ok MECH»               → despierta
+«traduce MECH»          → arranca un turno (NO pasa por Claude)
+MECH: «¿De qué idioma a qué idioma traduzco?»          (+ chime)
+«de español a francés»
+MECH: «Listo, traduzco entre español y francés. ¿Qué quieres que traduzca?»
+«Buenos días, ¿cómo está?»
+MECH: «Bonjour, comment allez-vous ?»   → y SE CALLA
+
+«traduce MECH»          → otro turno; ya sabe el par, va al grano
+MECH: «¿Qué quieres que traduzca?»                     (+ chime)
+«Très bien, merci»      (el otro, en francés)
+MECH: «Muy bien, gracias.»              → y se calla otra vez
+
+«deja de traducir»      → olvida el par (dormirlo o el paro, también)
+```
+
+- ⚠️ **Un turno por comando es LA solución al eco, no una limitación.** La
+  primera versión escuchaba en bucle y MECH acababa traduciendo su propia
+  traducción, y la de esa, sin fin. Con turnos el micrófono nunca está
+  abierto justo después de que él hable. **No lo vuelvas a hacer continuo**
+  sin resolver el eco de otra manera.
+- **El par de idiomas se RECUERDA** entre turnos (`translator.finish()` lo
+  conserva; `translator.reset()` lo borra). Repetirlo en cada frase sería
+  insufrible. Se cambia nombrándolo en el propio comando («traduce MECH del
+  inglés al portugués», «traduce MECH al francés» → origen = idioma activo);
+  se olvida con «deja de traducir», al dormirse y con el paro.
+- **Va en los DOS SENTIDOS** (`TRANSLATOR_AUTO_DETECT`, default sí): Whisper
+  detecta en cuál de los dos idiomas del par se dijo la frase
+  (`stt.transcribe_any`) y MECH la pasa al otro. Si detecta un idioma que no
+  es del par, re-transcribe forzando el de ORIGEN. Ponerlo en `false` fija el
+  sentido — útil con el par español/portugués, que Whisper confunde en
+  frases cortas.
+- **No pasa por el prompt grande.** `llm.translate()` es una llamada corta
+  (`messages.create`, system de ~700 caracteres, sin caché ni structured
+  output): en una conversación lo que importa es la latencia. Modelo en
+  `CLAUDE_TRANSLATE_MODEL` (vacío = `CLAUDE_MODEL`).
+- **Dentro de un turno NO se obedecen órdenes**, solo salir, dormirse y
+  repetir el comando. Es lo correcto: un intérprete no ejecuta lo que está
+  traduciendo (si no, «mira hacia afuera» giraría el robot).
+- La traducción se **dice y se pinta como subtítulo** en la proyección
+  (`set_subtitle(texto, idioma_destino)`), y el subtítulo **se queda** al
+  terminar el turno para que dé tiempo a leerlo.
+- ⚠️ **Sigue habiendo un hueco de eco**: entre la PREGUNTA de MECH y la frase
+  del visitante el micrófono sí está abierto. Lo tapan
+  `TRANSLATOR_DRAIN_SECONDS` (0.8 s tras hablar, por el buffer del parlante
+  Bluetooth) y `translator.looks_like_own_echo()`, que descarta lo que oye si
+  es casi lo último que dijo. Si el eco entra igual, MECH **no pierde el
+  turno**: vuelve a pedir la frase.
+- Si la traducción falla (API caída, respuesta vacía), tampoco pierde el
+  turno: lo dice y vuelve a pedir la frase.
+- Panel: tarjeta TRADUCTOR en la vista Voz con los dos selectores,
+  «Traducir una» (un turno con ese par) y «Olvidar». El badge muestra la
+  etapa: `APAGADO` · `ESPERANDO IDIOMAS` · `ESCUCHANDO · ES ↔ FR` ·
+  `LISTO · ES ↔ FR` (callado, con el par recordado). Endpoints
+  `POST /api/translate/start?src=&dst=` y `/api/translate/stop`.
+- Claves: `TRANSLATOR_ENABLED`, `TRANSLATOR_AUTO_DETECT`,
+  `TRANSLATOR_DRAIN_SECONDS`, `CLAUDE_TRANSLATE_MODEL`,
+  `VOICE_TRANSLATE_PHRASES{,_EN,_FR,_PT}`,
+  `VOICE_TRANSLATE_STOP_PHRASES{,_EN,_FR,_PT}`.
 
 ### Interrumpir a MECH mientras narra ("oye MECH" / "hey MECH")
 
@@ -789,6 +891,20 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   1 letra de error (levenshtein ≤1 en palabras de 4+ letras). OJO: si el
   `.env` de la Pi define `VOICE_WAKE_PHRASES` viejo, tapa el default — borrar
   la línea o añadir "ok mech".
+- **Cadena de audio antes de Whisper (sep 2026)** — `stt.prepare_for_whisper()`:
+  pasa-altos (quita continua y retumbe) → remuestreo a 16 kHz **con filtro
+  anti-aliasing de verdad** → nivel objetivo ("AGC"). Es la versión mínima de
+  lo que hace un teléfono; ver [`docs/AUDIO.md`](docs/AUDIO.md), que explica
+  el porqué de cada etapa y lo que falta.
+  ⚠️ **El remuestreo tenía un defecto real**: promediaba bloques de 3
+  muestras, y eso deja pasar los agudos de 8-16 kHz *plegados* dentro de la
+  banda de la voz (a 10 kHz solo los atenuaba 9 dB; ahora 48 dB). Solo aplica
+  si `AUDIO_SAMPLE_RATE` > 16000 — en la Pi debe ser **48000**.
+  `_frame_rms()` también resta la continua: un offset del receptor USB
+  inflaba el piso de ruido y dejaba a MECH sordo para el "ok MECH".
+  Claves en vivo (Ajustes): `AUDIO_HIGHPASS_HZ`, `AUDIO_TARGET_DBFS`,
+  `WHISPER_BEAM_SIZE` (5; el de interrupciones sigue en 1, ahí manda el
+  retardo).
 - **Detección de voz híbrida anti-ruido** (`stt.record_until_silence`): mide
   el piso de ruido ambiente (RMS adaptativo: baja rápido, sube lento, y NO se
   actualiza mientras graba) y solo dispara si webrtcvad dice voz Y la
@@ -1000,6 +1116,26 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   desplazamiento (tope 6 s) al inicio de CADA `execute_plan`, para que el
   proyector vuelva a su punto calibrado. Paro de emergencia = reset del
   odómetro. Girar es manual desde el panel (estilo carro).
+- **Saludo UNA VEZ por visitante (sep 2026)**: MECH saluda a quien llega y
+  **no vuelve a saludar hasta que la cámara se queda vacía
+  `GREETING_REARM_SECONDS` seguidos** (20 s, en vivo desde Ajustes →
+  «Visitante nuevo»).
+  ⚠️ **Por qué hacía falta**: `vision.LOST_AFTER_S` son 1.5 s, así que
+  cualquier parpadeo del detector (una cabeza que gira, un falso positivo con
+  la luz de la proyección) contaba como "se fue y volvió" → llegada nueva.
+  Lo único que lo frenaba era el cooldown, así que MECH **repetía el saludo
+  cada 45 s aunque no hubiera nadie delante**. El reloj de ausencia se
+  REINICIA en cada pérdida (`on_user_lost`), de modo que un detector que
+  parpadea nunca lo completa. `_greeting_rearmed()` en mech_app.
+- **Saludo SOLO EN REPOSO (sep 2026)**: el saludo por cámara se dispara
+  únicamente con MECH **en reposo** (`GREETING_ONLY_DORMANT`, default true,
+  en vivo desde Ajustes → «Saludar por cámara solo en reposo»). Despierto
+  está narrando, conversando o traduciendo, y soltar «¡Hola! Soy MECH»
+  encima de eso le corta la experiencia al visitante que ya está atendiendo.
+  El botón **«SALUDAR AHORA»** del panel se salta la regla Y el cooldown (es
+  para probarlo); lo único que respeta es no hablar encima de una narración.
+  El aviso «No saludo: MECH está despierto» sale como mucho **una vez por
+  minuto** — la visión detecta a ~10 fps y si no llenaría el panel.
 - **Saludo al detectar usuario (calibrado con videos del equipo, jul 2026)**:
   al ver a alguien, MECH dice «¡Hola! Soy MECH. Un gusto verte hoy aquí»
   (`mech_app.GREETING_TEXT`, cooldown 60 s, no interrumpe narraciones) y hace
@@ -1013,11 +1149,34 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   activo. «wake up MECH» despierta en INGLÉS (Whisper en `en`, narración de
   Claude en inglés, frases fijas y subtítulos en inglés); «ok MECH» /
   «despierta MECH» sigue en español. Al dormirse vuelve a español solo. En
-  reposo se re-transcribe el audio en el otro idioma si el primero no dio
-  wake, para no perder «wake up MECH» por un error de Whisper. Chips ES/EN en
-  la vista Voz del panel (`POST /api/language/{es|en}`) para probar sin voz.
-  Claves nuevas: `WAKE_ENGLISH_ENABLED`, `VOICE_WAKE_PHRASES_EN`,
+  reposo se re-transcribe el audio si el primero no dio wake, para no perder
+  «wake up MECH» por un error de Whisper. Chips en la vista Voz del panel
+  (`POST /api/language/{código}`) para probar sin voz.
+  Claves: `WAKE_ENGLISH_ENABLED`, `VOICE_WAKE_PHRASES_EN`,
   `VOICE_SLEEP_PHRASES_EN`.
+- **Francés y portugués (sep 2026)** — mismo mecanismo que el inglés, ahora
+  generalizado a CUATRO idiomas: «bonjour MECH» / «salut MECH» /
+  «réveille MECH» despiertan en FRANCÉS y «bom dia MECH» / «boa tarde MECH» /
+  «acorda MECH» en PORTUGUÉS. Tienen su juego completo de frases fijas,
+  frases de las maniobras (`maneuvers._SAY`), órdenes de movimiento, frases de
+  interrupción y de reposo, `initial_prompt` de Whisper y directiva de idioma
+  para Claude. Chips FR/PT en la vista Voz. Al arrancar, el server loguea
+  **«Idiomas: español · inglés · francés · portugués»** — si esa línea no
+  sale, la Pi está corriendo código viejo.
+  El reintento de despertar ya NO prueba idioma por idioma (serían 3 pasadas
+  de Whisper por cada ruido): re-transcribe UNA vez con **detección
+  automática** (`stt.transcribe_any`) y compara contra todas las listas.
+  Claves nuevas: `WAKE_FRENCH_ENABLED`, `WAKE_PORTUGUESE_ENABLED`,
+  `VOICE_*_PHRASES_FR`, `VOICE_*_PHRASES_PT`.
+- **Modo TRADUCTOR (sep 2026)** — «traduce MECH» convierte a MECH en
+  intérprete entre dos personas. Va **por turnos**: pregunta qué traducir,
+  escucha UNA frase, la dice en el otro idioma (con subtítulo) y se calla;
+  para la siguiente hay que repetir el comando. El par de idiomas se
+  recuerda entre turnos. Bidireccional (Whisper detecta en qué idioma se
+  dijo la frase). No pasa por Claude salvo una llamada corta de traducción
+  (`llm.translate`). Se olvida con «deja de traducir», durmiéndolo o con el
+  paro. Tarjeta nueva en el panel (vista Voz) para elegir el par a mano.
+  Módulo: [`backend/translator.py`](backend/translator.py).
 - **Subtítulos en la proyección (ago 2026)** — `frontend/subtitles.js` (compartido
   por `/projector` y `/projector/vr`) muestra el guion abajo, estilo cine, haya
   video, imagen o nada. Lo alimenta `mech_app.set_subtitle()` (evento WS
@@ -1093,13 +1252,38 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 14. **`VOICE_WAKE_PHRASES` en el `.env` de la Pi tapa el default.** Si "ok mech" no despierta a MECH, revisar si el `.env` tiene esa clave con la lista vieja ("despierta mech,...") y borrarla o añadirle "ok mech".
 15. **NeoPixel + servos**: `ring.show()` bloquea interrupciones un instante; por eso el patrón SPEAK es fijo (se pinta una vez) y las animaciones solo corren cuando los brazos están quietos. No añadir animaciones al estado SPEAK.
 16. **El idioma se decide en el DESPERTAR, no en medio de la conversación.**
-    Si alguien le habla en inglés a un MECH despierto en español, Whisper
+    Si alguien le habla en francés a un MECH despierto en español, Whisper
     transcribe con el modelo español y sale basura: hay que dormirlo y
-    despertarlo con «wake up MECH» (o decir «wake up MECH» estando despierto,
-    que cambia el idioma). Es a propósito: así el stand no cambia de idioma
-    por accidente.
-17. **`VOICE_WAKE_PHRASES_EN` en el `.env` de la Pi tapa el default**, igual
-    que la lista en español. Si «wake up MECH» no funciona, revisar esa clave.
+    despertarlo con la frase de ese idioma (o decirla estando despierto, que
+    cambia el idioma). Es a propósito: así el stand no cambia de idioma por
+    accidente.
+17. **`VOICE_WAKE_PHRASES_{EN,FR,PT}` en el `.env` de la Pi tapan el
+    default**, igual que la lista en español. Si «wake up MECH» /
+    «bonjour MECH» / «bom dia MECH» no funcionan, revisar esas claves.
+17e. **Si MECH saluda solo, sin nadie delante**, es el detector
+    parpadeando: subí `GREETING_REARM_SECONDS` (Ajustes → «Visitante
+    nuevo»). Y si NO saluda a un visitante nuevo, bajalo. Ojo: si la cámara
+    tiene un falso positivo PERMANENTE (un póster, un reflejo), MECH creerá
+    que nunca se fue nadie y no volverá a saludar — ahí el problema es la
+    cámara, no esto.
+17d. **Si MECH no saluda a nadie por cámara, mirá si está DESPIERTO.**
+    Desde sep 2026 el saludo por cámara solo va en reposo
+    (`GREETING_ONLY_DORMANT`). El panel lo dice una vez por minuto («No
+    saludo: MECH está despierto»). Para probar el saludo sin dormirlo está
+    el botón «SALUDAR AHORA» de la vista Arduino, que se salta la regla.
+17c. **Si el traductor traduce la PREGUNTA de MECH** («¿Qué quieres que
+    traduzca?»), es el eco del parlante en el único hueco que queda abierto:
+    subí `TRANSLATOR_DRAIN_SECONDS` (el Bluetooth tiene buffer propio) y/o
+    el "Umbral ruido" de Ajustes. La guarda de texto
+    (`translator.looks_like_own_echo`) solo pilla el eco que se transcribe
+    parecido a lo que dijo; si el parlante lo deforma mucho, no lo salva.
+    El bucle infinito de la primera versión ya no puede pasar: el modo va
+    por turnos y el micrófono no se abre justo después de que MECH hable.
+17b. **Frases nuevas: cuidado con las colisiones entre idiomas.** El matcher
+    tolera 1 letra de error en palabras de 4+ letras y hace substring en las
+    cortas. Ya pasó con «desperta» (pt) vs «despierta» (es), «olá» vs «hola»
+    y «dors» (fr) vs «dos». Antes de añadir una frase, probarla contra las
+    listas de los otros tres idiomas.
 18. **Si MECH se corta solo a media narración**, es el eco de su parlante
     disparando la frase de interrupción: subí el "Umbral ruido" en Ajustes o
     apagá "Interrumpir" (`VOICE_INTERRUPT_ENABLED=false`). Y si NO se deja
