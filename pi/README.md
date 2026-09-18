@@ -1,6 +1,6 @@
 # `pi/` — usar MECH sin la terminal
 
-Tres iconos en el escritorio de la Raspberry Pi para no tener que teclear
+Cinco iconos en el escritorio de la Raspberry Pi para no tener que teclear
 comandos cada vez que se enciende el robot. Con el arranque automático
 activado, ni siquiera hace falta el doble click: se enciende la Pi y MECH
 queda escuchando «ok MECH».
@@ -16,13 +16,13 @@ O, si preferís la terminal:
 bash ~/MECH/pi/instalar-accesos.sh
 ```
 
-Eso crea los tres iconos en el escritorio. A partir de ahí, todo con doble
+Eso crea los cinco iconos en el escritorio. A partir de ahí, todo con doble
 click.
 
 > Si al primer doble click el sistema pregunta qué hacer con el archivo,
 > elegí **«Ejecutar»** (o «Ejecutar en terminal»). Solo lo pregunta una vez.
 
-## Los tres iconos
+## Los cinco iconos
 
 ### 🟢 Iniciar MECH
 
@@ -47,6 +47,17 @@ Y además:
 La ventana se queda abierta con el log del servidor. Para parar MECH:
 **Ctrl+C** ahí, o cerrar la ventana.
 
+### 🖥️ Panel MECH
+
+Abre el **panel de control** en la Pi: la barra de fase de voz arriba
+(EN REPOSO / PUEDES HABLAR / GRABANDO / PENSANDO / HABLANDO), los chips de
+idioma, la tarjeta del traductor y los Ajustes.
+
+Se abre en modo aplicación (sin barra de direcciones ni pestañas) pero **no**
+en kiosko: hay que poder usar los botones y cambiar de vista.
+
+> Desde la **laptop** el equivalente es `windows\MECH Control.bat`.
+
 ### 📽️ Proyector MECH
 
 Abre `http://localhost:8000/projector` a pantalla completa (modo kiosko).
@@ -59,6 +70,18 @@ una prueba entera.
 
 Espera a que el servidor responda antes de abrir, así que se puede lanzar
 justo después de «Iniciar MECH» sin esperar a mano. Para salir: **Alt+F4**.
+
+### 🔴 Apagar MECH
+
+Para el servidor. Es lo mismo que Ctrl+C en la ventana de «Iniciar MECH»,
+pero sin tener que buscarla entre las ventanas abiertas.
+
+Le da unos segundos para cerrar bien (suelta el micrófono, manda STOP al
+Arduino) y solo si no cierra lo fuerza. También cierra la proyección en
+kiosko si estaba abierta — **solo esa**, no otros navegadores que tengas.
+
+⚠️ Apaga **el servidor, no la Raspberry Pi**. Para apagar la Pi: menú del
+sistema → Shutdown.
 
 ### ⚡ MECH al encender
 

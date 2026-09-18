@@ -273,8 +273,13 @@ pi/                   ← Accesos de ESCRITORIO en la Raspberry Pi, para
   iniciar-mech.sh     ← "Iniciar MECH": git pull + arranca el server. Cierra
                         el server anterior si lo había, y **arranca igual si
                         no hay internet** (avisa y sigue con el código local).
+  panel-mech.sh       ← "Panel MECH": abre el panel de control en la Pi
+                        (modo app, NO kiosko: hay que poder usar los botones).
   proyector-mech.sh   ← "Proyector MECH": Chromium kiosko en /projector CON
                         el flag de autoplay (sin él los videos van MUDOS).
+  apagar-mech.sh      ← "Apagar MECH": para el servidor con margen para que
+                        cierre bien, y solo lo fuerza si no cierra. Cierra
+                        también la proyección en kiosko (SOLO esa).
   autoarranque.sh     ← "MECH al encender": interruptor del arranque
                         automático al prender la Pi (crea/borra
                         ~/.config/autostart/mech.desktop). Arranca con
