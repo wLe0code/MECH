@@ -12,10 +12,26 @@ palabras aparecen en el texto (cada una como parte de algún token). Así
 lo que transcribe Whisper.
 
 Hay CUATRO idiomas (es/en/fr/pt). Cada lista de `config.py` tiene sus
-variantes `_EN`, `_FR` y `_PT`; `_todos_los_idiomas()` las junta. Ojo al
-añadir frases: el matcher tolera UNA letra de error en palabras de 4+ letras,
-así que palabras parecidas entre idiomas chocan (por eso el portugués no usa
-"desperta", que caería en el español "despierta").
+variantes `_EN`, `_FR` y `_PT`; `_todos_los_idiomas()` las junta.
+
+Cómo se compara cada palabra (`_word_matches`), de más barato a más caro:
+
+  1. igual;
+  2. **suena igual** en español (`_fonetica`) — Whisper escribe lo que oye, y
+     "olle"/"oye", "marqueting"/"marketing", "asia"/"hacia" o "mesh"/"mech"
+     son el mismo sonido escrito distinto;
+  3. el token empieza igual y trae como mucho una letra de más
+     ("mech" -> "mecha", "va" -> "vai");
+  4. está a pocas letras de distancia: 1 para palabras de 4-6 letras, 2 para
+     las de 7+ **si además empiezan igual**.
+
+El punto 4 con 2 errores es lo que hace falta para «trasluce» -> «traduce»,
+que es el fallo real que reportó el equipo. El "si empiezan igual" es lo que
+evita que «produce» active el traductor.
+
+⚠️ Al añadir frases, ojo con las colisiones entre idiomas: el portugués no
+usa "desperta" porque caería en el español "despierta", ni "olá" porque cae
+en "hola". Hay un corpus de prueba con casos reales de mala transcripción.
 """
 
 from __future__ import annotations
@@ -35,44 +51,125 @@ def normalize(text: str) -> str:
     return " ".join(t.split())
 
 
-def _lev_leq1(a: str, b: str) -> bool:
-    """True si la distancia de edición entre a y b es 0 o 1.
+# --- Cómo suena una palabra en español -----------------------------------
+# Whisper escribe lo que OYE, y en español hay sonidos que se escriben de
+# varias formas. Comparando el SONIDO en vez de las letras, muchos errores de
+# transcripción dejan de serlo:
+#
+#     "olle mech"        -> "oye mech"        (yeísmo: ll = y)
+#     "proyecta marqueting" -> "...marketing" (qu = k)
+#     "mira asia afuera" -> "mira hacia..."   (h muda)
+#     "traduse"          -> "traduce"         (seseo: c/z/s)
+#     "boy"              -> "voy"             (b = v)
+#
+# No es fonética de verdad, es una reducción rápida y suficiente. El objetivo
+# no es transcribir bien, es que dos formas de escribir el MISMO sonido
+#     "mesh"             -> "mech"            (sh = ch al oído español)
+_DIGRAFOS = (("ll", "y"), ("qu", "k"), ("ch", "\x01"), ("sh", "\x01"),
+             ("rr", "r"))
 
-    Whisper a veces transcribe "mech" como "mec", "mek" o "meche"; con una
-    edición de tolerancia el wake word sigue funcionando sin abrir la puerta
-    a falsos positivos graves.
+
+def _fonetica(palabra: str) -> str:
+    """Reduce una palabra a un esqueleto de cómo SUENA en español."""
+    p = palabra
+    for viejo_, nuevo_ in _DIGRAFOS:
+        p = p.replace(viejo_, nuevo_)
+    p = p.replace("h", "")  # muda: "hacia" y "asia" acaban igual
+    salida = []
+    for i, ch in enumerate(p):
+        sig = p[i + 1] if i + 1 < len(p) else ""
+        if ch == "c":
+            salida.append("s" if sig and sig in "ei" else "k")   # seseo / c fuerte
+        elif ch == "g":
+            salida.append("j" if sig and sig in "ei" else "g")   # "gente" = "jente"
+        elif ch in "zx":
+            salida.append("s")
+        elif ch == "v":
+            salida.append("b")                            # b y v suenan igual
+        else:
+            salida.append(ch)
+    p = "".join(salida).replace("\x01", "ch")
+    # Letras repetidas seguidas: en español casi nunca cambian el sonido.
+    fuera = []
+    for ch in p:
+        if not fuera or fuera[-1] != ch:
+            fuera.append(ch)
+    return "".join(fuera)
+
+
+def _lev(a: str, b: str, tope: int) -> int:
+    """Distancia de edición entre a y b, cortando en cuanto supera `tope`.
+
+    Devuelve `tope + 1` si se pasa (no interesa el valor exacto).
     """
     if a == b:
-        return True
+        return 0
     la, lb = len(a), len(b)
-    if abs(la - lb) > 1:
-        return False
-    if la > lb:
-        a, b, la, lb = b, a, lb, la
-    # la <= lb, diferencia 0 o 1.
-    i = j = 0
-    edited = False
-    while i < la and j < lb:
-        if a[i] == b[j]:
-            i += 1
-            j += 1
-            continue
-        if edited:
-            return False
-        edited = True
-        if la == lb:
-            i += 1  # sustitución
-        j += 1  # inserción en b (o sustitución)
-    return True
+    if abs(la - lb) > tope:
+        return tope + 1
+    anterior = list(range(lb + 1))
+    for i in range(1, la + 1):
+        actual = [i] + [0] * lb
+        mejor = actual[0]
+        for j in range(1, lb + 1):
+            coste = 0 if a[i - 1] == b[j - 1] else 1
+            actual[j] = min(anterior[j] + 1, actual[j - 1] + 1, anterior[j - 1] + coste)
+            mejor = min(mejor, actual[j])
+        if mejor > tope:
+            return tope + 1
+        anterior = actual
+    return anterior[lb]
+
+
+def _tolerancia(n: int) -> int:
+    """Cuántos errores de letra se le perdonan a una palabra de `n` letras.
+
+    - 1-3 letras: NINGUNO. Son "oye", "ok", "de"... y con tolerancia
+      disparaban solas. (Con substring, "oye" incluso coincidía DENTRO de
+      "pr-oye-cto": «el proyecto se llama mech» activaba la interrupción.)
+    - 4-6 letras: uno. Cubre "mech" -> "mec", "mek", "meche".
+    - 7+ letras: dos, pero pidiendo que empiecen igual (ver `_word_matches`).
+      Es lo que hace falta para "traduce" -> "trasluce", que es un error de
+      DOS letras y el caso que reportó el equipo.
+    """
+    if n >= 7:
+        return 2
+    if n >= 4:
+        return 1
+    return 0
 
 
 def _word_matches(w: str, tok: str) -> bool:
-    """Una palabra del wake phrase coincide con un token de la transcripción
-    si es substring (comportamiento original) o, para palabras de 4+ letras,
-    si están a una edición de distancia (tolerancia a errores de Whisper)."""
-    if w in tok:
+    """¿La palabra `w` de un comando coincide con el token `tok` que oyó Whisper?
+
+    Se prueba, de más barato a más caro: igual → suena igual → una está
+    dentro de la otra (solo palabras largas) → está a pocas letras.
+    """
+    if w == tok:
         return True
-    return len(w) >= 4 and _lev_leq1(w, tok)
+    fw, ft = _fonetica(w), _fonetica(tok)
+    if fw == ft:
+        return True
+    # "Casi la misma palabra": el token EMPIEZA igual y trae como mucho una
+    # letra de más ("mech" -> "mecha", "va" -> "vai"). Antes esto era un
+    # substring libre, y eso producía dos falsos positivos reales:
+    #   - "oye" coincidía DENTRO de "pr-oye-cto", así que «el proyecto se
+    #     llama mech» disparaba la interrupción;
+    #   - "avanza" coincidía dentro de "avanzada", así que «qué avanzada
+    #     tecnología» ponía al robot a caminar.
+    # Pidiendo prefijo y una sola letra de más, los dos desaparecen sin
+    # perder los casos buenos.
+    if len(tok) - len(w) <= 1 and (tok.startswith(w) or ft.startswith(fw)):
+        return True
+    tope = _tolerancia(len(w))
+    if tope == 0:
+        return False
+    if tope >= 2 and fw[:2] != ft[:2]:
+        # Dos errores es mucha manga ancha: se exige que arranquen igual.
+        # Así "trasluce" sigue casando con "traduce" (las dos "tra...") pero
+        # "produce" NO — si no, «produce» activaría el traductor.
+        tope = 1
+    return _lev(fw, ft, tope) <= tope
 
 
 def matches_any(text: str, phrases: list[str]) -> bool:

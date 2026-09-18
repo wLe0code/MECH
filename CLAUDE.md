@@ -461,11 +461,38 @@ multilingüe. **Al dormirse vuelve solo a español.**
   `WAKE_PORTUGUESE_ENABLED` = `false`.
 
 ⚠️ **Al inventar frases nuevas, ojo con las colisiones entre idiomas.** El
-matcher de `voice_phrases` tolera UNA letra de error en palabras de 4+ letras
-y hace substring en las cortas, así que palabras parecidas se pisan. Casos
-reales que ya se evitaron: el portugués «desperta» caía en el español
-«despierta»; «olá MECH» caía en «hola MECH»; el francés «dors» cae en «dos»,
-así que «avanza dos segundos, MECH» habría dormido al robot.
+matcher de `voice_phrases` perdona errores de letra, así que palabras
+parecidas se pisan. Casos reales que ya se evitaron: el portugués «desperta»
+caía en el español «despierta»; «olá MECH» caía en «hola MECH»; el francés
+«dors» cae en «dos», así que «avanza dos segundos, MECH» habría dormido al
+robot.
+
+### Cómo compara el matcher (sep 2026) — por qué «trasluce» ya funciona
+
+El equipo reportó que Whisper escribía «**trasluce** mech» en vez de
+«traduce mech» y el comando no se ejecutaba. El matcher era a la vez
+**demasiado estricto** (1 sola letra de error) y **demasiado laxo**
+(substring libre: «oye» coincidía DENTRO de «pr-**oye**-cto», así que «el
+proyecto se llama mech» disparaba la interrupción). `_word_matches` prueba
+ahora, de más barato a más caro:
+
+1. **Igual.**
+2. **Suena igual** (`_fonetica`): reducción rápida del español —
+   `ll`=`y`, `qu`=`k`, `sh`=`ch`, `h` muda, seseo (`c`/`z`/`s`), `b`=`v`,
+   `g`+`e/i`=`j`, letras dobles a simple. Arregla solo «olle»/«oye»,
+   «marqueting»/«marketing», «asia»/«hacia», «mesh»/«mech», «traduse».
+3. **Casi la misma palabra**: el token empieza igual y trae como mucho UNA
+   letra de más («mech»→«mecha», «va»→«vai»). Antes era substring libre, y
+   de ahí salían los falsos positivos.
+4. **Distancia de edición**: 1 error en palabras de 4-6 letras, **2 en las
+   de 7+ siempre que empiecen igual**. Lo de los 2 errores es lo que pilla
+   «trasluce»; el «empiecen igual» es lo que evita que «produce» active el
+   traductor.
+
+Medido contra un corpus de 37 transcripciones deformadas reales y 40 frases
+normales del stand: **37/37 comandos y 0 falsos positivos** (antes: 34/37 y
+1 falso positivo). ⚠️ Si tocás estos umbrales, **volvé a medir las dos
+listas**: aflojar para pillar un caso rompe el otro lado enseguida.
 
 ### Modo TRADUCTOR — MECH de intérprete («traduce MECH»)
 
