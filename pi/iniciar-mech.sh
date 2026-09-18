@@ -13,9 +13,19 @@
 #   - Si ya había un servidor corriendo, lo cierra antes (si no, el puerto
 #     8000 está ocupado y el nuevo no arranca).
 #
+# Con `--sin-actualizar` se salta el `git pull` y arranca directo. Lo usa el
+# arranque automático al encender la Pi: en un evento no querés que el robot
+# cambie de comportamiento solo porque alguien subió algo — actualizar tiene
+# que ser un acto deliberado (el icono «Iniciar MECH»).
+#
 # Para pararlo: Ctrl+C en esta ventana, o cerrarla.
 
 set -u
+
+ACTUALIZAR=1
+case "${1:-}" in
+    --sin-actualizar|--no-update) ACTUALIZAR=0 ;;
+esac
 
 # La carpeta del repo es la de arriba de este script, venga de donde venga
 # el acceso directo.
@@ -46,21 +56,25 @@ fi
 # ── 2. Bajar los últimos cambios ────────────────────────────────────────
 # `timeout` para que una wifi mala no deje esto colgado para siempre, y
 # `--ff-only` para no crear commits de merge por sorpresa en la Pi.
-echo "  Buscando actualizaciones..."
-# OJO: el resultado se guarda en una variable en vez de mandarlo por una
-# tubería a `sed`. En una tubería, el estado de salida es el del ÚLTIMO
-# comando (sed, que siempre va bien), así que el aviso de abajo no saldría
-# NUNCA aunque el pull fallara.
-SALIDA_PULL="$(timeout 25 git pull --ff-only 2>&1)"
-RC_PULL=$?
-[ -n "$SALIDA_PULL" ] && echo "$SALIDA_PULL" | sed 's/^/    /'
-if [ "$RC_PULL" -eq 0 ]; then
-    echo "  Código al día."
+if [ "$ACTUALIZAR" -eq 1 ]; then
+    echo "  Buscando actualizaciones..."
+    # OJO: el resultado se guarda en una variable en vez de mandarlo por una
+    # tubería a `sed`. En una tubería, el estado de salida es el del ÚLTIMO
+    # comando (sed, que siempre va bien), así que el aviso de abajo no
+    # saldría NUNCA aunque el pull fallara.
+    SALIDA_PULL="$(timeout 25 git pull --ff-only 2>&1)"
+    RC_PULL=$?
+    [ -n "$SALIDA_PULL" ] && echo "$SALIDA_PULL" | sed 's/^/    /'
+    if [ "$RC_PULL" -eq 0 ]; then
+        echo "  Código al día."
+    else
+        echo
+        echo "  AVISO: no pude actualizar."
+        echo "  Puede ser que no haya internet, o que haya cambios sin guardar"
+        echo "  en la Pi. Arranco igual con el código que ya está aquí."
+    fi
 else
-    echo
-    echo "  AVISO: no pude actualizar."
-    echo "  Puede ser que no haya internet, o que haya cambios sin guardar"
-    echo "  en la Pi. Arranco igual con el código que ya está aquí."
+    echo "  Arranque directo (sin buscar actualizaciones)."
 fi
 echo "  Versión: $(git log --oneline -1 2>/dev/null)"
 echo

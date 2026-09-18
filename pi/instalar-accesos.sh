@@ -60,8 +60,15 @@ crear_acceso "Proyector MECH" \
     "Abre la proyeccion a pantalla completa, con sonido" \
     "proyector-mech.sh"
 
+crear_acceso "MECH al encender" \
+    "Enciende o apaga el arranque automatico de MECH al prender la Pi" \
+    "autoarranque.sh"
+
 echo
-echo "  Listo. Ya tenés los dos iconos en el escritorio."
+echo "  Listo. Ya tenés los tres iconos en el escritorio."
+echo
+echo "  Si querés que MECH arranque SOLO al encender la Pi (sin tocar"
+echo "  nada), doble click en «MECH al encender». Se apaga igual."
 echo
 echo "  Si al hacer doble click el sistema pregunta qué hacer, elegí"
 echo "  «Ejecutar» (o «Ejecutar en terminal»). Solo pregunta la 1ª vez."

@@ -275,6 +275,11 @@ pi/                   ← Accesos de ESCRITORIO en la Raspberry Pi, para
                         no hay internet** (avisa y sigue con el código local).
   proyector-mech.sh   ← "Proyector MECH": Chromium kiosko en /projector CON
                         el flag de autoplay (sin él los videos van MUDOS).
+  autoarranque.sh     ← "MECH al encender": interruptor del arranque
+                        automático al prender la Pi (crea/borra
+                        ~/.config/autostart/mech.desktop). Arranca con
+                        `--sin-actualizar`: en un evento el robot no debe
+                        cambiar de código solo por encenderlo.
   instalar-accesos.sh ← Genera los .desktop con la ruta real del repo.
 
 windows/              ← Control desde laptop Windows

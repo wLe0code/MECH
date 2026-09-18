@@ -1,23 +1,28 @@
 # `pi/` — usar MECH sin la terminal
 
-Dos iconos en el escritorio de la Raspberry Pi para no tener que teclear
-comandos cada vez que se enciende el robot.
+Tres iconos en el escritorio de la Raspberry Pi para no tener que teclear
+comandos cada vez que se enciende el robot. Con el arranque automático
+activado, ni siquiera hace falta el doble click: se enciende la Pi y MECH
+queda escuchando «ok MECH».
 
 ## Instalación (una sola vez)
 
-Abrí la terminal en la Pi y pegá esto **una vez**:
+Abrí la carpeta `MECH/pi` en el explorador de archivos de la Pi y hacé
+**doble click en `instalar-accesos.sh`** → «Ejecutar en terminal».
+
+O, si preferís la terminal:
 
 ```bash
 bash ~/MECH/pi/instalar-accesos.sh
 ```
 
-Eso crea los dos iconos en el escritorio. A partir de ahí, todo con doble
+Eso crea los tres iconos en el escritorio. A partir de ahí, todo con doble
 click.
 
 > Si al primer doble click el sistema pregunta qué hacer con el archivo,
 > elegí **«Ejecutar»** (o «Ejecutar en terminal»). Solo lo pregunta una vez.
 
-## Los dos iconos
+## Los tres iconos
 
 ### 🟢 Iniciar MECH
 
@@ -55,6 +60,20 @@ una prueba entera.
 Espera a que el servidor responda antes de abrir, así que se puede lanzar
 justo después de «Iniciar MECH» sin esperar a mano. Para salir: **Alt+F4**.
 
+### ⚡ MECH al encender
+
+Interruptor del **arranque automático**. Doble click cambia el estado y te
+dice cuál quedó:
+
+- **ENCENDIDO** → al prender la Pi, MECH arranca solo y queda escuchando
+  «ok MECH». Cero terminal, cero clicks: encendés la Pi y ya está listo.
+- **APAGADO** → vuelve a arrancarse solo con el icono «Iniciar MECH».
+
+El arranque automático usa `--sin-actualizar` **a propósito**: en un evento
+no querés que el robot cambie de comportamiento al encenderlo solo porque
+alguien subió algo. Actualizar sigue siendo un acto deliberado (el icono
+«Iniciar MECH»).
+
 ## Si algo no funciona
 
 | Síntoma | Qué pasa |
@@ -63,6 +82,8 @@ justo después de «Iniciar MECH» sin esperar a mano. Para salir: **Alt+F4**.
 | `bad interpreter: /bin/bash^M` | El script llegó con finales de línea de Windows. Lo previene el `.gitattributes` del repo; si aparece, `dos2unix ~/MECH/pi/*.sh` |
 | «no encuentro Chromium» | `sudo apt install chromium` |
 | Arranca pero el panel sale viejo | En el navegador: **Ctrl+Shift+R** (recarga sin caché) |
+| Arranca solo y no quiero | Doble click en «MECH al encender» para apagarlo |
+| No arranca solo aunque lo activé | El arranque automático va con la SESIÓN de escritorio: la Pi tiene que entrar al escritorio sola (sin pedir contraseña) |
 | Dice que no pudo actualizar | Sin internet, o hay cambios sin guardar en la Pi. Arranca igual; para verlo: `cd ~/MECH && git status` |
 
 ## Lo que estos scripts NO hacen
