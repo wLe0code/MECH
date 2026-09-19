@@ -980,8 +980,9 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Ajustes («Volumen voz» / «Nivelar voz»). Detalle y tabla de medidas en
   [`docs/AUDIO.md`](docs/AUDIO.md) §4.bis.
   ⚠️ **Antes de tocar esto, revisá el volumen del sistema**
-  (`wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0`) y la rueda física del
-  parlante: suele ser el mayor salto, y es gratis.
+  (lo hace solo `pi/volumen-max.sh` en cada arranque) y los **3 botones**
+  del S150 (`−`, mute, `+` en el frente del derecho — NO tiene rueda):
+  que no esté en mute. Suele ser el mayor salto, y es gratis.
 - **Detección de voz híbrida anti-ruido** (`stt.record_until_silence`): mide
   el piso de ruido ambiente (RMS adaptativo: baja rápido, sube lento, y NO se
   actualiza mientras graba) y solo dispara si webrtcvad dice voz Y la

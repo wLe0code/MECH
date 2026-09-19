@@ -110,7 +110,8 @@ voz»** en el panel, que hace lo mismo pero con un limitador suave.
 
 Orden recomendado si suena bajo:
 
-1. La rueda de volumen **física** del parlante, arriba del todo. **Esto es
+1. Los **3 botones del parlante** (`−`, mute, `+`, en el frente del
+   derecho): que NO esté en mute y darle varias veces al `+`. **Esto es
    lo único que no puede hacer el software.**
 2. ~~`pi/volumen-max.sh`~~ — ya lo hace «Iniciar MECH» solo.
 3. Panel → Ajustes → **«Volumen voz»** a +6 dB.

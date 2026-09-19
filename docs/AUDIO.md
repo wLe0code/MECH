@@ -207,8 +207,15 @@ wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0    # PipeWire (Bookworm)
 alsamixer                                    # o a mano, tecla F6 para elegir
 ```
 
-Y los S150 tienen **rueda de volumen física**: que esté arriba. Eso suele ser
-el mayor salto de todos, y es gratis.
+Y los S150 tienen **3 botones** en el frente del parlante derecho: `−`,
+**mute** y `+` (no una rueda). Que no esté en mute, y darle varias veces al
+`+`. Eso suele ser el mayor salto de todos, y es gratis.
+
+⚠️ Ojo: en el S150 esos botones son **digitales**, no un potenciómetro. Si
+lo que mandan al sistema son teclas de volumen, están tocando la MISMA
+etapa que `wpctl` — y entonces `volumen-max.sh` ya la deja arriba. Para
+saberlo, `pi/volumen-max.sh` con doble click lista todas las etapas que
+encuentra y su nivel.
 
 ### Si aún así no alcanza
 

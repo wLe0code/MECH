@@ -105,7 +105,8 @@ fi
 echo "════════════════════════════════════════════════════════"
 echo "  Listo. Si AÚN suena bajo:"
 echo
-echo "   1. La rueda de volumen FÍSICA del parlante, arriba del todo."
+echo "   1. Los 3 botones del parlante (-, mute, + en el frente del"
+echo "      derecho): que NO este en mute, y darle varias veces al +."
 echo "   2. Panel -> Ajustes -> «Volumen voz»: subilo a +6 dB."
 echo "      (Eso es ganancia digital CON limitador; subir PipeWire por"
 echo "       encima del 100% hace lo mismo pero sin limitador y la voz"
