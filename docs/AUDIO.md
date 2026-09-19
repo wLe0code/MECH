@@ -156,6 +156,71 @@ todo se pueda apagar desde config.
 
 ---
 
+## 4.bis La SALIDA: que se oiga con un parlante pequeño
+
+Todo lo de arriba es cómo MECH **oye**. Esto es cómo se le **oye a él**.
+
+El equipo pasó de un **JBL Charge 5** (~30 W) a unos **Logitech S150**
+(**1,2 W por canal**). Son ~25 veces menos potencia: hay un límite físico que
+el software no puede saltarse. Lo que sí se puede es entregarle al parlante
+la señal más fuerte posible sin romperla.
+
+`tts._subir_volumen()` se aplica a TODO lo que suena (voz y chime), justo
+antes de escribir el WAV — así funciona igual con `pw-play`, `paplay` o
+`ffplay`. Dos pasos:
+
+### `TTS_NORMALIZE` (default true) — gratis, +8 dB
+
+Escala cada frase para que su pico quede casi en el máximo. ElevenLabs no
+entrega el audio a tope, así que aquí hay margen regalado. **Medido: +8,1 dB
+de volumen con 0 % de distorsión** — solo multiplica, no deforma nada.
+
+### `TTS_GAIN_DB` (default 0) — empuje con limitador
+
+Más decibelios encima. Como ya no cabe más señal, subir de golpe recortaría
+los picos en seco y la voz sonaría rota. En vez de eso hay un **limitador
+suave**: por debajo de 0.70 no se toca nada y los picos se redondean con
+`tanh`. Eso sube el volumen **percibido** (la energía media) sin el crujido
+del recorte duro. Medido:
+
+| `TTS_GAIN_DB` | Volumen total | Distorsión |
+|---|---|---|
+| 0 (solo nivelar) | +8,1 dB | 0 % |
+| **+6** | **+13,2 dB** | 1 % |
+| +9 | +14,9 dB | 3,5 % |
+| +12 | +16,2 dB | 7 % |
+| +18 | +17,7 dB | 14 % |
+
+**Recomendado para los S150: +6.** Por encima de +12 la voz empieza a sonar
+apretada y se gana poco — la curva se aplana porque el limitador ya está
+trabajando todo el rato.
+
+Los dos se ajustan **en vivo** desde Ajustes («Volumen voz» y «Nivelar voz»),
+así que en el stand se sube hasta donde suene bien y ya.
+
+### ⚠️ Antes que nada: el volumen del sistema
+
+El software no puede compensar un mezclador al 40 %. En la Pi:
+
+```bash
+wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0    # PipeWire (Bookworm)
+alsamixer                                    # o a mano, tecla F6 para elegir
+```
+
+Y los S150 tienen **rueda de volumen física**: que esté arriba. Eso suele ser
+el mayor salto de todos, y es gratis.
+
+### Si aún así no alcanza
+
+Es un problema de hardware, no de software. Un parlante **amplificado**
+(activo, con su propia fuente) de 10-20 W resuelve de verdad; los S150 se
+alimentan por USB y por eso son tan flojos.
+
+Ojo también con `BACKGROUND_MUSIC_VOLUME` (18): si subís la voz, quizá haya
+que bajar la música para que no compita.
+
+---
+
 ## 5. Lo que FALTA (por orden de impacto esperado)
 
 Ninguna de estas está hecha. Todas necesitan una decisión del equipo porque

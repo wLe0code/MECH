@@ -960,6 +960,20 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Claves en vivo (Ajustes): `AUDIO_HIGHPASS_HZ`, `AUDIO_TARGET_DBFS`,
   `WHISPER_BEAM_SIZE` (5; el de interrupciones sigue en 1, ahí manda el
   retardo).
+- **Volumen de la VOZ para parlantes pequeños (sep 2026)** —
+  `tts._subir_volumen()`, aplicado a voz y chime antes de escribir el WAV
+  (así vale para pw-play, paplay y ffplay). El equipo pasó de un JBL
+  Charge 5 (~30 W) a unos **Logitech S150 (1,2 W por canal)**.
+  `TTS_NORMALIZE` (default true) deja cada frase pegada al máximo:
+  **+8,1 dB medidos con 0 % de distorsión**. `TTS_GAIN_DB` (default 0)
+  empuja más, con **limitador suave** (`tanh` por encima de 0.70) en vez de
+  recorte duro: +6 dB da **+13,2 dB totales con 1 % de distorsión**; por
+  encima de +12 la voz suena apretada y se gana poco. Los dos, en vivo desde
+  Ajustes («Volumen voz» / «Nivelar voz»). Detalle y tabla de medidas en
+  [`docs/AUDIO.md`](docs/AUDIO.md) §4.bis.
+  ⚠️ **Antes de tocar esto, revisá el volumen del sistema**
+  (`wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0`) y la rueda física del
+  parlante: suele ser el mayor salto, y es gratis.
 - **Detección de voz híbrida anti-ruido** (`stt.record_until_silence`): mide
   el piso de ruido ambiente (RMS adaptativo: baja rápido, sube lento, y NO se
   actualiza mientras graba) y solo dispara si webrtcvad dice voz Y la

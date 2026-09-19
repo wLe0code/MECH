@@ -646,6 +646,8 @@
       setSlider('set-hpf', 'hpf', L.AUDIO_HIGHPASS_HZ);
       setSlider('set-agc', 'agc', L.AUDIO_TARGET_DBFS);
       setSlider('set-beam', 'beam', L.WHISPER_BEAM_SIZE);
+      setSlider('set-ttsgain', 'ttsgain', L.TTS_GAIN_DB);
+      if ($('set-ttsnorm')) $('set-ttsnorm').checked = !!L.TTS_NORMALIZE;
       setSlider('set-greetcd', 'greetcd', L.GREETING_COOLDOWN);
       setSlider('set-greetrearm', 'greetrearm', L.GREETING_REARM_SECONDS);
       if ($('set-greetdormant')) $('set-greetdormant').checked = !!L.GREETING_ONLY_DORMANT;
@@ -706,6 +708,8 @@
         AUDIO_HIGHPASS_HZ: $('set-hpf').value,
         AUDIO_TARGET_DBFS: $('set-agc').value,
         WHISPER_BEAM_SIZE: String(parseInt($('set-beam').value)),
+        TTS_GAIN_DB: $('set-ttsgain').value,
+        TTS_NORMALIZE: $('set-ttsnorm').checked ? 'true' : 'false',
         GREETING_COOLDOWN: $('set-greetcd').value,
         GREETING_REARM_SECONDS: $('set-greetrearm').value,
         GREETING_ONLY_DORMANT: $('set-greetdormant').checked ? 'true' : 'false',
@@ -764,7 +768,8 @@
                           wave: ' s', greetcd: ' s', turnsec: ' s', latsec: ' s', turnvel: '', latvel: '',
                           wavehigh: '°', waveswing: '°', waverep: '', kick: ' s',
                           advsec: ' s', advvel: '', advmax: ' s',
-                          hpf: ' Hz', agc: ' dBFS', beam: '', greetrearm: ' s' };
+                          hpf: ' Hz', agc: ' dBFS', beam: '', greetrearm: ' s',
+                          ttsgain: ' dB' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

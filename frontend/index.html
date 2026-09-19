@@ -456,6 +456,18 @@
             <span class="val" id="set-agc-val">-16 dBFS</span>
           </div>
           <div class="slider-row">
+            <label title="Sube el volumen de la VOZ de MECH por software, antes de mandarla al parlante. Con parlantes pequeños (Logitech S150: 1.2 W por canal) hace falta. Va con un limitador, así que no satura; por encima de +12 dB la voz empieza a sonar apretada.">Volumen voz</label>
+            <input type="range" min="0" max="18" step="1" value="0" id="set-ttsgain" oninput="UI.settingLabel('set-ttsgain','ttsgain')">
+            <span class="val" id="set-ttsgain-val">0 dB</span>
+          </div>
+          <div class="slider-row">
+            <label title="Deja cada frase al mismo nivel, pegada al máximo. ElevenLabs no entrega el audio a tope, así que esto solo ya sube ~8 dB y no cuesta nada en calidad. Déjalo encendido.">Nivelar voz</label>
+            <label class="switch">
+              <input type="checkbox" id="set-ttsnorm">
+              <span class="switch-text">Nivelar cada frase al máximo</span>
+            </label>
+          </div>
+          <div class="slider-row">
             <label title="Cuántas hipótesis explora Whisper. 1 = lo más rápido; 5 acierta bastante más en frases cortas con ruido, a cambio de unas décimas. Bájalo si la respuesta se siente lenta en el evento.">Precisión STT</label>
             <input type="range" min="1" max="5" step="1" value="5" id="set-beam" oninput="UI.settingLabel('set-beam','beam')">
             <span class="val" id="set-beam-val">5</span>

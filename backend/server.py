@@ -892,6 +892,8 @@ _LIVE_KEYS = {
     # Cadena de audio antes de Whisper (ver docs/AUDIO.md).
     "AUDIO_HIGHPASS_HZ": float,   # quita continua y retumbe
     "AUDIO_TARGET_DBFS": float,   # nivel objetivo ("AGC")
+    "TTS_GAIN_DB": float,         # empuje de volumen de la VOZ
+    "TTS_NORMALIZE": _to_bool,
     "WHISPER_BEAM_SIZE": int,     # hipótesis que explora Whisper
     "AUDIO_LEAD_SILENCE": float,
     "AUDIO_LISTEN_MAX_SECONDS": float,  # se guarda en config.LISTEN_MAX_SECONDS
@@ -957,6 +959,8 @@ async def get_config():
             "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
             "AUDIO_HIGHPASS_HZ": config.AUDIO_HIGHPASS_HZ,
             "AUDIO_TARGET_DBFS": config.AUDIO_TARGET_DBFS,
+            "TTS_GAIN_DB": config.TTS_GAIN_DB,
+            "TTS_NORMALIZE": config.TTS_NORMALIZE,
             "WHISPER_BEAM_SIZE": config.WHISPER_BEAM_SIZE,
             "TTS_DRY_RUN": config.TTS_DRY_RUN,
             "SUBTITLES_ENABLED": config.SUBTITLES_ENABLED,

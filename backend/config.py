@@ -631,6 +631,27 @@ AUDIO_INPUT_DEVICE = os.environ.get("AUDIO_INPUT_DEVICE", "")
 # arranque lento de parlantes Bluetooth (que se comen la primera palabra).
 # Súbelo si el parlante sigue cortando el inicio.
 AUDIO_LEAD_SILENCE = float(os.environ.get("AUDIO_LEAD_SILENCE", "1.0"))
+# --- Volumen de la VOZ ----------------------------------------------------
+# Parlantes pequeños (los Logitech S150 son 1.2 W por canal, contra los ~30 W
+# de un JBL Charge 5) se quedan cortos en un stand con gente alrededor. Estas
+# dos claves exprimen lo que se puede por software, ANTES de mandar el audio
+# al reproductor, así funcionan con pw-play, paplay y ffplay por igual.
+#
+# 1) Normalizar: cada frase sale al mismo nivel, pegada al máximo. ElevenLabs
+#    no entrega el audio a tope, así que esto solo ya se nota. Es gratis en
+#    calidad: solo escala, no distorsiona.
+TTS_NORMALIZE = os.environ.get("TTS_NORMALIZE", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+# 2) Empuje extra en decibelios por encima de lo normalizado. Como ya está al
+#    máximo, subir de aquí SATURARÍA — por eso se aplica con un limitador
+#    suave que redondea los picos en vez de recortarlos en seco. Eso sube el
+#    volumen PERCIBIDO sin que la voz suene rota.
+#    0 = solo normalizar. +6 se nota bastante. Por encima de +12 la voz
+#    empieza a sonar apretada; si con eso no alcanza, el problema es el
+#    parlante y hace falta uno amplificado.
+TTS_GAIN_DB = float(os.environ.get("TTS_GAIN_DB", "0"))
+
 # Volumen (0-100) de la música de fondo bajo la narración (solo obras con
 # música, ej. Malpaís). Bajo a propósito para que la voz quede por encima.
 BACKGROUND_MUSIC_VOLUME = int(os.environ.get("BACKGROUND_MUSIC_VOLUME", "18"))

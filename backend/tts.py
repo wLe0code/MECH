@@ -193,6 +193,52 @@ def _pad_lead_silence(audio: np.ndarray, samplerate: int, seconds: float | None 
     return np.concatenate([silence, audio], axis=0)
 
 
+def _subir_volumen(audio: np.ndarray) -> np.ndarray:
+    """Deja la voz lo más fuerte posible SIN que suene rota.
+
+    Existe porque un parlante pequeño (los Logitech S150 dan 1.2 W por canal,
+    contra los ~30 W de un JBL Charge 5) se queda corto en un stand. Dos
+    pasos, los dos configurables en vivo desde Ajustes:
+
+    1. **Normalizar** (`TTS_NORMALIZE`): escala la frase para que su pico
+       quede casi en el máximo. ElevenLabs no entrega el audio a tope, así
+       que esto solo ya sube el volumen, y no cuesta nada en calidad.
+
+    2. **Empujar** (`TTS_GAIN_DB`): más decibelios encima. Aquí ya no cabe
+       más señal, así que subir de golpe recortaría los picos en seco y la
+       voz sonaría rota. En vez de eso se usa un **limitador suave**: por
+       debajo del umbral no se toca nada, y los picos se redondean con una
+       tangente hiperbólica. Eso sube el volumen PERCIBIDO (la energía media)
+       sin el crujido del recorte duro.
+
+    Devuelve el audio tal cual si no hay nada que hacer.
+    """
+    if audio.size == 0:
+        return audio
+    pico = float(np.abs(audio).max())
+    if pico < 1e-6:
+        return audio  # silencio: amplificarlo solo subiría el ruido
+
+    salida = audio.astype(np.float32, copy=True)
+    if config.TTS_NORMALIZE:
+        salida *= 0.95 / pico
+
+    ganancia_db = float(config.TTS_GAIN_DB)
+    if ganancia_db > 0:
+        salida *= 10.0 ** (ganancia_db / 20.0)
+        # Limitador suave: lo que está por debajo de UMBRAL pasa intacto; por
+        # encima se comprime hacia 1.0 con tanh, así nunca satura del todo.
+        UMBRAL = 0.70
+        margen = 1.0 - UMBRAL
+        altos = np.abs(salida) > UMBRAL
+        if altos.any():
+            exceso = (np.abs(salida[altos]) - UMBRAL) / margen
+            comprimido = UMBRAL + margen * np.tanh(exceso)
+            salida[altos] = np.sign(salida[altos]) * comprimido
+    # Cinturón de seguridad: pase lo que pase, nada por encima de 1.0.
+    return np.clip(salida, -1.0, 1.0).astype(np.float32)
+
+
 def _play_audio(
     audio: np.ndarray,
     samplerate: int,
@@ -218,6 +264,7 @@ def _play_audio(
     global _current_proc
     if _stop_event.is_set():
         return
+    audio = _subir_volumen(audio)
     audio = _pad_lead_silence(audio, samplerate, lead_silence)
     tmp_path = None
     try:
