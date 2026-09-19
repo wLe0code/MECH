@@ -88,9 +88,13 @@ propósito: en un evento el robot no debe cambiar de comportamiento solo
 porque alguien subió algo, y la pantalla de la Pi es la superficie de
 proyección — abrir el panel ahí la taparía.
 
-## Extra: volumen de la Pi al máximo
+## Volumen de la Pi al máximo — ya es automático
 
-Doble click en **`pi/volumen-max.sh`** desde el explorador de archivos.
+**«Iniciar MECH» lo hace solo en cada arranque.** No hay que acordarse de
+nada. En la ventana del log aparece `Volumen del sistema al máximo...`.
+
+Si querés verlo en detalle (qué etapas encontró y cómo estaban), doble click
+en **`pi/volumen-max.sh`** desde el explorador de archivos.
 
 El audio pasa por varias etapas de volumen antes de llegar al parlante (el
 sink de PipeWire y uno o varios mezcladores de ALSA). Basta con que UNA esté
@@ -106,8 +110,9 @@ voz»** en el panel, que hace lo mismo pero con un limitador suave.
 
 Orden recomendado si suena bajo:
 
-1. La rueda de volumen **física** del parlante, arriba del todo.
-2. `pi/volumen-max.sh`.
+1. La rueda de volumen **física** del parlante, arriba del todo. **Esto es
+   lo único que no puede hacer el software.**
+2. ~~`pi/volumen-max.sh`~~ — ya lo hace «Iniciar MECH» solo.
 3. Panel → Ajustes → **«Volumen voz»** a +6 dB.
 4. Si aún no alcanza, es el parlante (los S150 son de 1,2 W por canal); uno
    amplificado de 10-20 W lo resuelve de verdad.

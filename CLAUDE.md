@@ -285,7 +285,9 @@ pi/                   ← TRES accesos de ESCRITORIO en la Raspberry Pi,
                         también la proyección en kiosko (SOLO esa).
   panel-mech.sh       ← Abre el panel de control. NO tiene icono propio: lo
                         llama `iniciar-mech.sh` con `--silencioso`.
-  volumen-max.sh      ← Pone TODAS las etapas de volumen de la Pi a tope
+  volumen-max.sh      ← Lo llama `iniciar-mech.sh` con `--silencioso` en
+                        CADA arranque (es gratis y nadie se acuerda de
+                        hacerlo). Pone TODAS las etapas de volumen a tope
                         (sink de PipeWire + cada mezclador de ALSA, que los
                         enumera en vez de adivinar el nombre). Ganancia
                         gratis. NO pasa del 100%: por encima sería ganancia

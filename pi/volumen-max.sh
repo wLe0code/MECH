@@ -17,25 +17,36 @@
 #
 # Se corre con doble click desde el explorador de archivos, o:
 #     bash ~/MECH/pi/volumen-max.sh
+#
+# Con `--silencioso` resume en una línea y no espera un Enter: así lo llama
+# `iniciar-mech.sh` en CADA arranque, para que nadie tenga que acordarse.
 
 set -u
 
-echo "════════════════════════════════════════════════════════"
-echo "  Volumen de la Raspberry Pi al máximo"
-echo "════════════════════════════════════════════════════════"
-echo
+CALLADO=0
+[ "${1:-}" = "--silencioso" ] && CALLADO=1
+decir() { [ "$CALLADO" -eq 1 ] || echo "$1"; }
+
+if [ "$CALLADO" -eq 1 ]; then
+    echo "  Volumen del sistema al máximo..."
+else
+    echo "════════════════════════════════════════════════════════"
+    echo "  Volumen de la Raspberry Pi al máximo"
+    echo "════════════════════════════════════════════════════════"
+    echo
+fi
 
 # ── 1. PipeWire / WirePlumber (lo normal en Bookworm) ───────────────────
 if command -v wpctl > /dev/null 2>&1; then
-    echo "  PipeWire:"
-    echo "    antes:  $(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo '?')"
+    decir "  PipeWire:"
+    decir "    antes:  $(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo '?')"
     wpctl set-mute   @DEFAULT_AUDIO_SINK@ 0   2>/dev/null
     wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 2>/dev/null
-    echo "    ahora:  $(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo '?')"
-    echo
+    decir "    ahora:  $(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo '?')"
+    decir ""
 else
-    echo "  (wpctl no está; salto PipeWire)"
-    echo
+    decir "  (wpctl no está; salto PipeWire)"
+    decir ""
 fi
 
 # ── 2. Mezcladores de ALSA, tarjeta por tarjeta ─────────────────────────
@@ -47,12 +58,12 @@ if command -v amixer > /dev/null 2>&1; then
     [ -z "$TARJETAS" ] && TARJETAS="0"
     for c in $TARJETAS; do
         NOMBRE="$(aplay -l 2>/dev/null | grep -E "^(tarjeta|card) $c:" | head -1 | cut -d: -f2- | cut -d, -f1)"
-        echo "  Tarjeta $c:${NOMBRE}"
+        decir "  Tarjeta $c:${NOMBRE}"
         CONTROLES="$(amixer -c "$c" scontrols 2>/dev/null |
                      sed -n "s/^Simple mixer control '\([^']*\)'.*/\1/p")"
         if [ -z "$CONTROLES" ]; then
-            echo "    (sin controles de mezclador)"
-            echo
+            decir "    (sin controles de mezclador)"
+            decir ""
             continue
         fi
         while IFS= read -r ctl; do
@@ -66,24 +77,29 @@ if command -v amixer > /dev/null 2>&1; then
             amixer -c "$c" sset "$ctl" 100% unmute > /dev/null 2>&1
             DESPUES="$(amixer -c "$c" sget "$ctl" 2>/dev/null |
                        grep -o '\[[0-9]*%\]' | head -1)"
-            printf "    %-22s %s -> %s\n" "$ctl" "${ANTES:-?}" "${DESPUES:-?}"
+            [ "$CALLADO" -eq 1 ] || printf "    %-22s %s -> %s\n" \
+                "$ctl" "${ANTES:-?}" "${DESPUES:-?}"
         done <<< "$CONTROLES"
-        echo
+        decir ""
     done
 else
-    echo "  (amixer no está; instalalo con: sudo apt install alsa-utils)"
-    echo
+    decir "  (amixer no está; instalalo con: sudo apt install alsa-utils)"
+    decir ""
 fi
 
 # ── 3. Guardar para que sobreviva al reinicio ───────────────────────────
 if command -v alsactl > /dev/null 2>&1; then
     if sudo -n true 2>/dev/null; then
-        sudo alsactl store 2>/dev/null && echo "  Guardado (sobrevive al reinicio)."
+        sudo alsactl store 2>/dev/null && decir "  Guardado (sobrevive al reinicio)."
     else
-        echo "  Para que sobreviva al reinicio, corré una vez:"
-        echo "      sudo alsactl store"
+        decir "  Para que sobreviva al reinicio, corré una vez:"
+        decir "      sudo alsactl store"
     fi
-    echo
+    decir ""
+fi
+
+if [ "$CALLADO" -eq 1 ]; then
+    exit 0   # lo llamó iniciar-mech.sh: nada de banners ni de esperar
 fi
 
 echo "════════════════════════════════════════════════════════"

@@ -94,7 +94,18 @@ else
     echo "  AVISO: no hay .venv; uso el Python del sistema."
 fi
 
-# ── 4. Dónde se abre el panel ───────────────────────────────────────────
+# ── 4. Volumen del sistema al máximo ────────────────────────────────────
+# En cada arranque, porque es gratis y porque nadie se acuerda de hacerlo.
+# El audio pasa por varias etapas (PipeWire + mezcladores de ALSA) y basta
+# con que UNA quede al 40% para que el parlante suene flojo — con los
+# Logitech S150 (1.2 W por canal) eso se nota mucho.
+# NO sube del 100%: por encima sería ganancia digital sin limitador. Para eso
+# está «Volumen voz» en Ajustes del panel, que lleva limitador suave.
+if [ -x "$REPO/pi/volumen-max.sh" ]; then
+    "$REPO/pi/volumen-max.sh" --silencioso < /dev/null || true
+fi
+
+# ── 5. Dónde se abre el panel ───────────────────────────────────────────
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "  Panel de control:"
@@ -106,7 +117,7 @@ echo "  Para parar MECH: Ctrl+C aquí, o cerrá esta ventana."
 echo "════════════════════════════════════════════════════════"
 echo
 
-# ── 5. Arrancar ─────────────────────────────────────────────────────────
+# ── 6. Arrancar ─────────────────────────────────────────────────────────
 # El panel se abre en SEGUNDO PLANO: `panel-mech.sh` espera a que el servidor
 # responda y entonces lo abre. Tiene que lanzarse ANTES del servidor porque
 # éste se queda en primer plano ocupando la ventana.
