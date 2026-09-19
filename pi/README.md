@@ -88,6 +88,30 @@ propósito: en un evento el robot no debe cambiar de comportamiento solo
 porque alguien subió algo, y la pantalla de la Pi es la superficie de
 proyección — abrir el panel ahí la taparía.
 
+## Extra: volumen de la Pi al máximo
+
+Doble click en **`pi/volumen-max.sh`** desde el explorador de archivos.
+
+El audio pasa por varias etapas de volumen antes de llegar al parlante (el
+sink de PipeWire y uno o varios mezcladores de ALSA). Basta con que UNA esté
+al 40 % para que todo suene flojo, y no hay un sitio único donde mirarlo. El
+script las enumera todas y las pone a tope; dice qué encontró y qué cambió.
+
+Es ganancia **gratis**: no distorsiona, solo deja de desperdiciar margen. Es
+lo primero que hay que hacer con un parlante flojo.
+
+**No sube por encima del 100 %** a propósito: eso sería ganancia digital sin
+limitador y la voz saldría rota. Para subir más está **Ajustes → «Volumen
+voz»** en el panel, que hace lo mismo pero con un limitador suave.
+
+Orden recomendado si suena bajo:
+
+1. La rueda de volumen **física** del parlante, arriba del todo.
+2. `pi/volumen-max.sh`.
+3. Panel → Ajustes → **«Volumen voz»** a +6 dB.
+4. Si aún no alcanza, es el parlante (los S150 son de 1,2 W por canal); uno
+   amplificado de 10-20 W lo resuelve de verdad.
+
 ## Si algo no funciona
 
 | Síntoma | Qué pasa |
