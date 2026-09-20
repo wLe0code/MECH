@@ -5,13 +5,23 @@ de tocar nada. Contexto de fondo (arquitectura/hardware/decisiones): **CLAUDE.md
 en la raíz — este handoff no lo reemplaza, lo complementa con el estado *vivo*.
 CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 
-> ✅ **Estado (3 sep 2026):** el robot FUNCIONA casi entero en la Pi — audio
+> ✅ **Estado (20 sep 2026):** el robot FUNCIONA casi entero en la Pi — audio
 > (mic Steren → Whisper local → Claude → voz por parlante Bluetooth),
 > movimiento (Arduino Uno + 2× L298N + 4 motores mecanum), proyección, visión
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (sep 2026, §3.decies): **cadena de audio** — MECH entiende mejor
+> Lo último (20 sep 2026): tres cosas de **usabilidad en el evento**, ninguna
+> probada todavía en la Pi. (§3.terdecies) **Tres botones en el escritorio de
+> la Pi** — iniciar+panel, proyectar y apagar, sin tocar la terminal.
+> (§3.duodecies) **Volumen** para los parlantes Logitech S150, que son
+> flojitos: el sistema se pone a tope solo en cada arranque y la voz se puede
+> empujar +6 dB con limitador. (§3.undecies) **El matcher perdona errores de
+> Whisper**: «trasluce mech» ya activa el traductor, y a la vez se quitaron
+> los falsos positivos («el pr-oye-cto» ya no interrumpe). ⚠️ Sigue SIN
+> resolver el cambio de Whisper que hizo un compañero — ver §3.quaterdecies.
+>
+> Antes (sep 2026, §3.decies): **cadena de audio** — MECH entiende mejor
 > (se arregló un defecto real de aliasing en el remuestreo y un offset que lo
 > dejaba sordo para el «ok MECH»). Antes (§3.nonies): el **saludo por cámara
 > solo va en reposo**, para que no corte presentaciones ni conversaciones.
@@ -58,7 +68,13 @@ Arduino para motores/servos). El nombre del robot es **MECH-1**.
 ## 2. Estado del repo
 
 - **Rama:** `main`, **todo pusheado** a `origin/main` (incluido este handoff).
-  Último commit: `6f432ec` (quitar el lag de la interrupción).
+  Último commit: `0216cdf` (corregir los controles del S150).
+
+  **La Pi se actualiza desde GitHub, no desde la carpeta local de nadie.**
+  El icono «Iniciar MECH» hace `git pull --ff-only` de `origin/main`. O sea:
+  para que un cambio llegue al robot tiene que estar **pusheado**. Cualquiera
+  del equipo con permiso de escritura en el repo puede pushear desde su
+  computadora y la Pi lo recogerá en el siguiente arranque.
 - Remoto: `https://github.com/wLe0code/MECH.git`
 - Sin trackear y **NO se commitean**: `.agents/`, `skills-lock.json`. Tampoco
   `windows/config.txt` (tiene la IP local del usuario).
@@ -798,6 +814,147 @@ continua y que todo se pueda apagar desde config).
 
 ---
 
+## 3.undecies Que entienda mal una palabra ya no rompe el comando (sep 2026)
+
+El equipo reportó que Whisper escribía «**trasluce** mech» en vez de «traduce
+mech» y el traductor no arrancaba. Pasaba también con «oye mech». No es un
+problema de Whisper: es del **matcher** de `backend/voice_phrases.py`, que
+comparaba demasiado literal.
+
+Y a la vez era demasiado LAXO en el otro extremo: hacía substring libre, así
+que «oye» coincidía dentro de «pr-**oye**-cto» y decir «el proyecto se llama
+mech» disparaba la interrupción.
+
+`_word_matches()` prueba ahora cuatro cosas, de más barata a más cara:
+
+1. **Igual.**
+2. **Suena igual** — `_fonetica()`, una reducción rápida del español:
+   `ll`=`y`, `qu`=`k`, `sh`=`ch`, `h` muda, seseo (`c`/`z`/`s`), `b`=`v`,
+   `g`+`e/i`=`j`, letras dobles a simple. Eso solo ya arregla «olle»/«oye»,
+   «mesh»/«mech», «traduse»/«traduce», «marqueting»/«marketing».
+3. **Casi la misma palabra**: el token empieza igual y trae como mucho UNA
+   letra de más («mech»→«mecha», «va»→«vai»). Esto sustituye al substring
+   libre y es lo que mató los falsos positivos.
+4. **Distancia de edición**: 1 error en palabras de 4-6 letras y **2 en las
+   de 7+ siempre que empiecen igual**. Los 2 errores son lo que pilla
+   «trasluce»; el «empiecen igual» es lo que evita que «produce mucha
+   energía» active el traductor.
+
+**Medido** contra 37 transcripciones deformadas reales y 40 frases normales de
+stand: **37/37 comandos detectados y 0 falsos positivos** (antes: 34/37 y 1
+falso positivo).
+
+⚠️ Si alguien toca estos umbrales, **hay que volver a medir las DOS listas**.
+Aflojar para pillar un caso rompe el otro lado enseguida — el corpus de prueba
+está descrito en CLAUDE.md, sección «Cómo compara el matcher».
+
+---
+
+## 3.duodecies Volumen: parlantes Logitech S150 (sep 2026)
+
+El equipo cambió el JBL Charge 5 (~30 W) por unos **Logitech S150** (1,2 W por
+canal) y MECH sonaba demasiado bajo. Se atacó en las tres capas que existen.
+
+### 1. Volumen del sistema — `pi/volumen-max.sh`, y ya es automático
+
+El audio pasa por varias etapas antes del parlante (sink de PipeWire + uno o
+varios mezcladores de ALSA). Basta con que UNA esté al 40 % para que todo
+suene flojo, y **no hay un sitio único donde mirarlo**. El script las
+**enumera** (no adivina nombres de control) y las pone a tope.
+
+`iniciar-mech.sh` lo llama con `--silencioso` en **cada arranque**: es
+ganancia gratis y nadie se acuerda de hacerlo a mano. En el log sale
+`Volumen del sistema al máximo...`. Para verlo en detalle, doble click en
+`pi/volumen-max.sh` — lista cada etapa que encontró y cómo estaba.
+
+**NO sube del 100 % a propósito**: por encima sería ganancia digital sin
+limitador y la voz saldría rota. Para eso está la capa 2.
+
+### 2. Volumen de la voz — `tts._subir_volumen()`
+
+Se aplica a la voz Y al chime, antes de escribir el WAV, así que vale para
+`pw-play`, `paplay` y `ffplay` por igual.
+
+| Clave | Default | Qué hace | Medido |
+|---|---|---|---|
+| `TTS_NORMALIZE` | `true` | deja cada frase pegada al máximo | **+8,1 dB, 0 % de distorsión** |
+| `TTS_GAIN_DB` | `0` | empuja más, con **limitador suave** (`tanh` por encima de 0.70) | +6 dB → **+13,2 dB totales, 1 % de distorsión** |
+
+Por encima de +12 dB la voz suena apretada y se gana poco. Los dos son
+**en vivo** desde Ajustes («Volumen voz» / «Nivelar voz»). Tabla completa en
+[`docs/AUDIO.md`](docs/AUDIO.md) §4.bis.
+
+### 3. El parlante
+
+Los S150 **no tienen rueda de volumen**: llevan **3 botones digitales** en el
+frente del parlante derecho — `−`, **mute**, `+`. (Yo afirmé que tenían rueda;
+el equipo lo corrigió. Está arreglado en `pi/README.md`, `pi/volumen-max.sh`,
+`docs/AUDIO.md` y CLAUDE.md.)
+
+⚠️ Al ser **digitales y no un potenciómetro**, es probable que manden teclas de
+volumen al SISTEMA — o sea, la misma etapa que `volumen-max.sh` ya pone al
+100 %. En ese caso pulsar `+` no añade nada, pero **el mute sí importa**. La
+forma de salir de dudas es doble click en `pi/volumen-max.sh` y mirar qué
+etapas lista.
+
+**Orden recomendado si suena bajo:** (1) que no esté en mute, (2) ya lo hace
+«Iniciar MECH» solo, (3) Ajustes → «Volumen voz» a +6 dB, (4) si aún no
+alcanza es el parlante — uno amplificado de 10-20 W lo resuelve de verdad.
+
+---
+
+## 3.terdecies Tres botones en el escritorio de la Pi (sep 2026)
+
+Pedido del equipo: usar MECH sin pasar por la terminal. Carpeta **`pi/`**.
+Se instalan UNA vez con doble click en `pi/instalar-accesos.sh` (también
+**borra** los iconos de versiones anteriores, para no dejar botones sueltos).
+
+| Icono | Script | Qué hace |
+|---|---|---|
+| 🟢 **Iniciar MECH** | `iniciar-mech.sh` | `git pull` → cierra un server anterior → venv → volumen al máximo → arranca el server → **abre el panel solo** cuando responde |
+| 📽️ **Proyectar MECH** | `proyector-mech.sh` | Chromium kiosko en `/projector` **con el flag de autoplay** |
+| 🔴 **Apagar MECH** | `apagar-mech.sh` | para el server con margen para cerrar bien; `-9` solo si no cierra; cierra también la proyección (SOLO esa) |
+
+Sin icono, a propósito (el equipo quiere solo 3): `panel-mech.sh` (lo llama
+`iniciar-mech.sh`), `volumen-max.sh` y `autoarranque.sh` (arranque al encender
+la Pi, con `--sin-actualizar --sin-panel`). Se lanzan con doble click desde el
+explorador de archivos.
+
+Detalles que importan:
+
+- **Arranca aunque no haya internet.** Si el `git pull` falla, avisa y sigue
+  con el código local. Quedarse sin robot por el wifi del recinto sería lo peor
+  que podría pasar en un evento.
+- **`.gitattributes` con `*.sh text eol=lf`** — sin eso, Git en Windows los
+  commitea con CRLF y en la Pi salen con `bad interpreter: /bin/bash^M`.
+- El flag `--autoplay-policy=no-user-gesture-required` del proyector **no es
+  opcional**: sin él los videos de marketing se ven MUDOS.
+
+Ver [`pi/README.md`](pi/README.md) para la tabla de «si algo no funciona».
+
+---
+
+## 3.quaterdecies ⚠️ Pendiente sin resolver: el cambio de Whisper del compañero
+
+El equipo dijo: «mi compañero hizo un cambio en el modelo de whisper, que nos
+está desbeneficiando». **No se llegó a resolver** — pedí la salida de este
+comando en la Pi y la conversación siguió por otro lado:
+
+```bash
+grep -E "WHISPER|AUDIO_SAMPLE_RATE" ~/MECH/backend/.env
+```
+
+Sospechas, por orden: `WHISPER_MODEL=tiny` (transcribe peor) o `small`/`medium`
+(la Pi tarda demasiado). El default sano es **`base`**. Y de paso confirmar
+`AUDIO_SAMPLE_RATE=48000`: con 16000 toda la mejora del remuestreo (§3.decies)
+no hace nada.
+
+Recordar que el `.env` de la Pi **tapa los defaults del código**, así que un
+`git pull` no deshace ese cambio: hay que editar el `.env` o cambiarlo desde
+Ajustes en el panel.
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:
@@ -840,6 +997,20 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
    remuestreo no hace nada), y comparar diez frases variadas con lo de antes.
    ¿Despierta más fácil con «ok MECH»? Si ahora dispara solo, subir el
    "Umbral ruido".
+6c. **Los tres botones (§3.terdecies, recién hecho)**: `git pull` en la Pi y
+   doble click en `pi/instalar-accesos.sh`. Después, probar los tres iconos.
+   Si sale `bad interpreter: /bin/bash^M`, es CRLF: `dos2unix ~/MECH/pi/*.sh`.
+6d. **Volumen (§3.duodecies, recién hecho)**: doble click en
+   `pi/volumen-max.sh` y **pegar la salida** — dice qué etapas de volumen
+   encontró y en qué nivel estaban. Con eso se sabe si los 3 botones del S150
+   tocan una etapa aparte o la misma. Y revisar que no esté en **mute**.
+6e. **Comandos mal entendidos (§3.undecies, recién hecho)**: decirle «traduce
+   mech» varias veces con ruido y ver si arranca el traductor aunque Whisper
+   escriba otra cosa (el panel loguea lo que oyó). Y comprobar que MECH **no**
+   se interrumpe solo cuando la narración dice «proyecto».
+6f. ⚠️ **El `.env` de la Pi (§3.quaterdecies)**: pegar la salida de
+   `grep -E "WHISPER|AUDIO_SAMPLE_RATE" ~/MECH/backend/.env`. Es lo que falta
+   para cerrar lo del cambio de modelo de Whisper.
 7. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
    siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
    vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el
