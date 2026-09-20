@@ -247,6 +247,15 @@ body {
 .btn-purple:hover { background: rgba(83,74,183,0.25); }
 .btn-red    { background: rgba(226,75,74,0.15);   border-color: rgba(226,75,74,0.3);   color: #F09595; }
 .btn-red:hover    { background: rgba(226,75,74,0.25); color: var(--red); }
+/* Botón que representa un modo ENCENDIDO ahora mismo (ej. el traductor
+   continuo). Se marca con borde lleno + halo para que se distinga de un
+   botón normal de un vistazo, incluso en la pantalla pequeña del stand. */
+.btn.btn-active {
+  background: rgba(83,74,183,0.32);
+  border-color: var(--purple-mid);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(83,74,183,0.45), 0 0 12px rgba(83,74,183,0.35);
+}
 
 /* ─── IMMERSIVE VIEW ───────────────────────────────────────────────────── */
 

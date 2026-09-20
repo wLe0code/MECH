@@ -243,11 +243,32 @@ VOICE_WAKE_PHRASES = [
 # Frases que ponen a MECH EN REPOSO (deja de responder, sigue oyendo el wake).
 # El match es por palabras en cualquier orden (ver _matches_any en server.py),
 # así que "duermete", "duermete mech" y "mech duermete" funcionan igual.
+#
+# ⚠️ La lista es LARGA a propósito (sep 2026). El equipo reportó que a veces
+# «duérmete MECH» no lo dormía: MECH soltaba una despedida larga y volvía a
+# escuchar. La causa es que la frase no casaba (Whisper escribe «dormite»,
+# «que duermas», «a dormir»...), el texto se iba a Claude y Claude improvisaba
+# una respuesta bonita — pero dormirse no es algo que un plan pueda hacer.
+# Cuantas más variantes naturales estén aquí, menos veces pasa.
+# Hay además DOS redes más abajo: el intercept de `mech_app.handle_text_command`
+# y el modo `sleep` del plan de Claude (ver llm.py).
 VOICE_SLEEP_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_SLEEP_PHRASES",
+        # ⚠️ Las formas de "dormir" PIDEN "mech" al lado, y no es un capricho:
+        # el matcher perdona 2 letras en palabras de 7+ que empiecen igual, así
+        # que «duermete» casa con «duermen» y la pregunta «¿los robots
+        # duermen?» dormía a MECH en vez de responderse (medido en
+        # scripts/probar_frases.py). Lo mismo con "buenas noches" suelto, que
+        # en un stand es un saludo, no una orden.
+        # Las frases que NO llevan "mech" son las que no se parecen a nada de
+        # una conversación normal ("para de escuchar", "modo reposo").
         "para de escuchar,deja de escuchar,para de recibir,ya no escuches,"
-        "duermete,duerme,descansa mech,ponte en reposo,modo reposo",
+        "duermete mech,duermase mech,dormite mech,duerme mech,"
+        "vete a dormir mech,ponte a dormir mech,ve a dormir mech,"
+        "a dormir mech,descansa mech,"
+        "ponte en reposo,modo reposo,entra en reposo,"
+        "buenas noches mech,hasta luego mech,adios mech",
     ).split(",") if p.strip()
 ]
 # --- Interrumpir a MECH mientras narra ("oye MECH" / "hey MECH") ----------
@@ -477,35 +498,78 @@ TRANSLATOR_ENABLED = os.environ.get("TRANSLATOR_ENABLED", "true").strip().lower(
 # pregunta normal del stand ("¿cómo se traduce Quijote al francés?") entraría
 # en modo traductor en vez de responderse. Por eso todas las frases piden dos
 # palabras.
+#
+# Hay DOS formas de traducir, y las listas están separadas a propósito
+# (pedido del equipo, sep 2026):
+#
+#   «traduce MECH»               -> UNA frase y se calla (VOICE_TRANSLATE_*)
+#   «activa modo traductor»      -> se queda traduciendo (VOICE_TRANSLATE_ON_*)
+#   «desactiva el modo traductor»-> sale del continuo (VOICE_TRANSLATE_STOP_*)
+#
+# ⚠️ «desactiva el modo traductor» CONTIENE «modo traductor», así que las dos
+# listas se pisan por fuerza. Lo resuelve `voice_phrases.is_translate_on()`,
+# que devuelve False si la frase también casa con las de salir. Si añadís
+# frases aquí, comprobá que ese orden sigue teniendo sentido.
 VOICE_TRANSLATE_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_PHRASES",
-        "traduce mech,traduci mech,modo traductor,activa el traductor,"
-        "quiero traducir,ponte a traducir,traductor mech",
+        "traduce mech,traduci mech,traduce una,traduce esto,traductor mech",
     ).split(",") if p.strip()
 ]
 VOICE_TRANSLATE_PHRASES_EN = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_PHRASES_EN",
-        "translate mech,translation mode,translator mode,start translating",
+        "translate mech,translate this,translate one",
     ).split(",") if p.strip()
 ]
 VOICE_TRANSLATE_PHRASES_FR = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_PHRASES_FR",
-        "traduis mech,mode traducteur,traduire mech,active le traducteur",
+        "traduis mech,traduire mech,traduis ceci",
     ).split(",") if p.strip()
 ]
 VOICE_TRANSLATE_PHRASES_PT = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_PHRASES_PT",
-        "traduz mech,modo tradutor,traduzir mech,ativa o tradutor",
+        "traduz mech,traduzir mech,traduz isto",
     ).split(",") if p.strip()
 ]
-# Frases para SALIR del modo traductor. Dormirlo también lo saca.
+# Frases que ENCIENDEN el modo traductor CONTINUO: MECH se queda traduciendo
+# todo lo que oiga, frase tras frase, hasta que le digan que lo desactive.
+VOICE_TRANSLATE_ON_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_ON_PHRASES",
+        "activa modo traductor,activa el modo traductor,modo traductor,"
+        "activa el traductor,enciende el traductor,ponte a traducir,"
+        "quiero traducir,entra en modo traductor",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_ON_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_ON_PHRASES_EN",
+        "translator mode,translation mode,turn on the translator,"
+        "start translating,enable translator",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_ON_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_ON_PHRASES_FR",
+        "mode traducteur,active le traducteur,active le mode traducteur",
+    ).split(",") if p.strip()
+]
+VOICE_TRANSLATE_ON_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRANSLATE_ON_PHRASES_PT",
+        "modo tradutor,ativa o tradutor,ativa o modo tradutor",
+    ).split(",") if p.strip()
+]
+# Frases para SALIR del modo traductor (del continuo y del de una frase).
+# Dormirlo y el paro de emergencia también lo sacan.
 VOICE_TRANSLATE_STOP_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_STOP_PHRASES",
+        "desactiva el modo traductor,desactiva modo traductor,"
+        "desactiva el traductor,apaga el traductor,quita el modo traductor,"
         "deja de traducir,para de traducir,termina la traduccion,"
         "sal del traductor,sal del modo traductor,fin de la traduccion",
     ).split(",") if p.strip()
@@ -513,19 +577,21 @@ VOICE_TRANSLATE_STOP_PHRASES = [
 VOICE_TRANSLATE_STOP_PHRASES_EN = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_STOP_PHRASES_EN",
-        "stop translating,stop the translation,exit translator,end translation",
+        "turn off the translator,disable translator,stop translating,"
+        "stop the translation,exit translator,end translation",
     ).split(",") if p.strip()
 ]
 VOICE_TRANSLATE_STOP_PHRASES_FR = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_STOP_PHRASES_FR",
-        "arrete de traduire,fin de la traduction,quitte le traducteur",
+        "desactive le traducteur,arrete de traduire,fin de la traduction,"
+        "quitte le traducteur",
     ).split(",") if p.strip()
 ]
 VOICE_TRANSLATE_STOP_PHRASES_PT = [
     p.strip() for p in os.environ.get(
         "VOICE_TRANSLATE_STOP_PHRASES_PT",
-        "para de traduzir,fim da traducao,sai do tradutor",
+        "desativa o tradutor,para de traduzir,fim da traducao,sai do tradutor",
     ).split(",") if p.strip()
 ]
 # Traduce en LOS DOS SENTIDOS: Whisper detecta en cuál de los dos idiomas del
@@ -544,6 +610,17 @@ CLAUDE_TRANSLATE_MODEL = os.environ.get("CLAUDE_TRANSLATE_MODEL", "") or CLAUDE_
 # con buffer propio) termine de sonar ANTES de volver a abrir el micrófono.
 # Sin esto MECH se oye a sí mismo y traduce su propia traducción en bucle.
 TRANSLATOR_DRAIN_SECONDS = float(os.environ.get("TRANSLATOR_DRAIN_SECONDS", "0.8"))
+# Lo mismo, pero en el modo CONTINUO («activa modo traductor»), donde MECH
+# vuelve a escuchar justo después de cada traducción. Es MÁS LARGO a
+# propósito: ahí el micrófono se abre siempre detrás de su propia voz, que es
+# exactamente la situación que el modo de una frase evitaba por diseño.
+#
+# ⚠️ Si en el evento MECH empieza a traducir su propia traducción, ÉSTA es la
+# primera perilla que hay que subir (Ajustes -> «Espera del traductor
+# continuo»). La segunda es el «Umbral ruido».
+TRANSLATOR_CONTINUOUS_DRAIN_SECONDS = float(
+    os.environ.get("TRANSLATOR_CONTINUOUS_DRAIN_SECONDS", "1.2")
+)
 
 # --- Idiomas extra: inglés, francés y portugués (opcionales) -------------
 # MECH vive en español. Los demás idiomas se activan SI Y SOLO SI se le
@@ -580,7 +657,8 @@ VOICE_WAKE_PHRASES_EN = [
 VOICE_SLEEP_PHRASES_EN = [
     p.strip() for p in os.environ.get(
         "VOICE_SLEEP_PHRASES_EN",
-        "stop listening,go to sleep,sleep mech,stop mech,goodbye mech",
+        "stop listening,go to sleep,sleep mech,stop mech,goodbye mech,"
+        "good night mech,rest mech,go back to sleep",
     ).split(",") if p.strip()
 ]
 # Frases que despiertan a MECH EN FRANCÉS. "bonjour" y "salut" están a
@@ -600,7 +678,8 @@ VOICE_WAKE_PHRASES_FR = [
 VOICE_SLEEP_PHRASES_FR = [
     p.strip() for p in os.environ.get(
         "VOICE_SLEEP_PHRASES_FR",
-        "arrete d ecouter,arrete mech,au revoir mech,bonne nuit mech,endors toi",
+        "arrete d ecouter,arrete mech,au revoir mech,bonne nuit mech,"
+        "endors toi,va dormir mech,mets toi en veille",
     ).split(",") if p.strip()
 ]
 # Frases que despiertan a MECH EN PORTUGUÉS. Nada de "olá MECH": "ola" cae
@@ -616,7 +695,8 @@ VOICE_WAKE_PHRASES_PT = [
 VOICE_SLEEP_PHRASES_PT = [
     p.strip() for p in os.environ.get(
         "VOICE_SLEEP_PHRASES_PT",
-        "para de ouvir,deixa de ouvir,boa noite mech,dorme mech,vai dormir",
+        "para de ouvir,deixa de ouvir,boa noite mech,dorme mech,vai dormir,"
+        "descansa mech,modo repouso",
     ).split(",") if p.strip()
 ]
 
@@ -710,6 +790,50 @@ VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "false")
 # va a 100. Con estos motores y el L298N, menos de 100 normalmente solo
 # zumba. Los BRAZOS son la excepción (van suaves, ver ARM_*).
 VISION_MAX_SPEED = int(os.environ.get("VISION_MAX_SPEED", "100"))
+
+# --- Gesto "67": MECH lo imita si alguien lo hace ante la cámara ----------
+# Pedido del equipo (sep 2026). El gesto son las DOS manos (o los dos brazos)
+# moviéndose en vertical, una arriba y otra abajo, ALTERNANDO. Todo el detector
+# está en backend/gesture_detect.py, que explica por qué se mide movimiento y
+# no color ni esqueleto.
+#
+# ⚠️ Los umbrales de abajo se midieron contra los dos videos del equipo Y
+# contra cinco negativos (quieto, una mano, dos manos a la vez, manos en
+# horizontal, alguien caminando). Si los tocás, volvé a pasar las dos listas:
+# `python scripts/probar_gesto67.py`. Aflojar para pillar un caso rompe el
+# otro lado enseguida.
+GESTURE67_ENABLED = _bool_env("GESTURE67_ENABLED", "true")
+# Cuántos segundos de gesto se miran a la vez. Más corto = reacciona antes
+# pero se confunde más; más largo = pide que insistan.
+GESTURE67_WINDOW = float(os.environ.get("GESTURE67_WINDOW", "1.6"))
+# Cuánto tiene que subir y bajar cada lado, como fracción del alto del cuadro.
+# Subilo si dispara con gestos pequeños; bajalo si hay que exagerar mucho.
+GESTURE67_MIN_AMPLITUDE = float(os.environ.get("GESTURE67_MIN_AMPLITUDE", "0.10"))
+# Correlación máxima entre las dos alturas. NEGATIVA a propósito: es lo que
+# exige la ANTIFASE (una sube mientras la otra baja) y lo que distingue este
+# gesto de levantar las dos manos a la vez. Más cerca de -1 = más estricto.
+GESTURE67_MAX_CORR = float(os.environ.get("GESTURE67_MAX_CORR", "-0.30"))
+# Cuántas veces tienen que intercambiarse (cuál va más arriba) dentro de la
+# ventana. Con 3 hace falta repetirlo; con 1 dispararía un cruce cualquiera.
+GESTURE67_MIN_ALTERNATIONS = int(os.environ.get("GESTURE67_MIN_ALTERNATIONS", "3"))
+# Movimiento mínimo en el cuadro (fracción de píxeles) para mirar siquiera.
+GESTURE67_MIN_MOTION = float(os.environ.get("GESTURE67_MIN_MOTION", "0.010"))
+# Equilibrio mínimo entre los dos lados (0-1). Es lo que descarta saludar con
+# UNA sola mano, que deja casi todo el movimiento de un lado.
+GESTURE67_BALANCE = float(os.environ.get("GESTURE67_BALANCE", "0.20"))
+# Segundos de descanso tras imitarlo, para no encadenar imitaciones.
+GESTURE67_COOLDOWN = float(os.environ.get("GESTURE67_COOLDOWN", "12"))
+# --- Cómo lo hace MECH con sus brazos (video 2 del equipo) ---------------
+# Un brazo arriba y el otro en reposo, intercambiándose. Sube solo por encima
+# de 90°: por debajo el brazo choca con el cuerpo (ver gestures.py).
+GESTURE67_ARM_HIGH = int(os.environ.get("GESTURE67_ARM_HIGH", "165"))
+# Lo que tarda CADA intercambio. Bajo = más enérgico; los MG996R no bajan
+# mucho de 0.3 s sin quedarse a medio camino.
+GESTURE67_ARM_SECONDS = float(os.environ.get("GESTURE67_ARM_SECONDS", "0.45"))
+# Cuántos intercambios hace (un "6-7" completo son 4-6).
+GESTURE67_REPEATS = int(os.environ.get("GESTURE67_REPEATS", "4"))
+# Si además lo dice en voz alta ("¡Seis... siete!"). Ver lang.py.
+GESTURE67_SAY = _bool_env("GESTURE67_SAY", "true")
 
 
 def assert_required() -> None:

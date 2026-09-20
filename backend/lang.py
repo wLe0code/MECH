@@ -193,6 +193,28 @@ _PHRASES: dict[str, dict[str, str]] = {
         "fr": "Je n'ai pas pu traduire ça. Peux-tu répéter ?",
         "pt": "Não consegui traduzir isso. Pode repetir?",
     },
+    # Al ENTRAR en modo traductor continuo (se queda traduciendo hasta que le
+    # digan "desactiva el modo traductor").
+    "translate_on_continuous": {
+        "es": "Modo traductor activado. Traduzco entre {src} y {dst} "
+              "hasta que me digas que lo desactive.",
+        "en": "Translator mode on. I'll translate between {src} and {dst} "
+              "until you tell me to turn it off.",
+        "fr": "Mode traducteur activé. Je traduis entre {src} et {dst} "
+              "jusqu'à ce que tu me dises de l'arrêter.",
+        "pt": "Modo tradutor ativado. Traduzo entre {src} e {dst} "
+              "até você mandar desativar.",
+    },
+    # --- Gesto "67" (ver backend/gesture_detect.py) ------------------------
+    # Lo que dice al imitar el gesto. Corto a propósito: la gracia está en el
+    # movimiento de los brazos, no en la frase, y una frase larga taparía el
+    # gesto. Los puntos suspensivos le dan a ElevenLabs la pausa del meme.
+    "sixty_seven": {
+        "es": "¡Seis... siete!",
+        "en": "Six... seven!",
+        "fr": "Six... sept !",
+        "pt": "Seis... sete!",
+    },
 }
 
 

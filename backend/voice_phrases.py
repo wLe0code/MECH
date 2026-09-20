@@ -324,12 +324,33 @@ def is_play_marketing(text: str) -> bool:
 
 
 def is_translate(text: str) -> bool:
-    """¿Piden entrar en modo traductor? ("traduce MECH", "modo traductor")"""
+    """¿Piden traducir UNA frase? ("traduce MECH")
+
+    Es el modo original: una frase y se calla. Para quedarse traduciendo está
+    `is_translate_on()`.
+    """
+    if is_translate_stop(text):
+        return False
     return matches_any(text, _todos_los_idiomas("VOICE_TRANSLATE_PHRASES"))
 
 
+def is_translate_on(text: str) -> bool:
+    """¿Piden ENCENDER el modo traductor continuo? ("activa modo traductor")
+
+    ⚠️ Se comprueba ANTES si la frase es de SALIR, y en ese caso se dice que
+    no. Es obligatorio: «desactiva el modo traductor» contiene «modo
+    traductor», y el matcher compara por palabras en cualquier orden, así que
+    sin esta guarda apagar el traductor lo volvería a encender. La palabra
+    «activa» tampoco salva la situación por sí sola — casa con la frase
+    entera, no con cada token.
+    """
+    if is_translate_stop(text):
+        return False
+    return matches_any(text, _todos_los_idiomas("VOICE_TRANSLATE_ON_PHRASES"))
+
+
 def is_translate_stop(text: str) -> bool:
-    """¿Piden salir del modo traductor? ("deja de traducir")"""
+    """¿Piden salir del modo traductor? ("desactiva el modo traductor")"""
     return matches_any(text, _todos_los_idiomas("VOICE_TRANSLATE_STOP_PHRASES"))
 
 

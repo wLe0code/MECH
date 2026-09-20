@@ -248,11 +248,20 @@ def _voice_loop_worker():
             # es lo correcto, un intérprete no obedece lo que traduce (si no,
             # "mira hacia afuera" giraría el robot en vez de traducirse).
             if translator.is_active():
+                # OJO con el ORDEN: "desactiva el modo traductor" contiene
+                # "modo traductor", así que salir se comprueba PRIMERO. Los
+                # helpers de voice_phrases ya lo tienen en cuenta, pero el
+                # orden de aquí es la segunda red.
                 if voice_phrases.is_translate_stop(text):
                     app_state.stop_translator()
                     app_state.set_voice_phase("waiting")
                 elif voice_phrases.is_sleep_any(text):
                     app_state.go_dormant()
+                elif voice_phrases.is_translate_on(text):
+                    # "activa modo traductor" estando ya dentro: pasa a
+                    # continuo (o cambia el par si nombró idiomas).
+                    src, dst = voice_phrases.extract_language_pair(text)
+                    app_state.start_translator(src, dst, continuous=True)
                 elif voice_phrases.is_translate(text):
                     # Volvió a decir "traduce MECH": vuelve a preguntar (y si
                     # nombró idiomas, cambia el par sin salir del modo).
@@ -682,6 +691,21 @@ async def move_greet():
     return {"ok": True}
 
 
+@app.post("/api/move/67")
+async def move_sixty_seven():
+    """Hace el gesto del "67" AHORA, sin cámara.
+
+    Es el botón para PROBAR la coreografía de los brazos (y para hacerlo a
+    propósito en el stand). El reconocimiento por cámara va aparte, en
+    backend/gesture_detect.py.
+    """
+    mech = get_app()
+    if mech.state.get("voice_phase") in ("speaking", "thinking"):
+        return {"ok": False, "reason": "MECH está narrando ahora mismo"}
+    threading.Thread(target=mech.do_sixty_seven, daemon=True).start()
+    return {"ok": True}
+
+
 # -- Playlist promo (marketing) ---------------------------------------------
 
 
@@ -822,12 +846,20 @@ async def set_language(code: str):
 
 
 @app.post("/api/translate/start")
-async def translate_start(src: str | None = None, dst: str | None = None):
-    """Arranca UN turno de traducción (lo mismo que decir «traduce MECH»).
+async def translate_start(
+    src: str | None = None,
+    dst: str | None = None,
+    continuous: bool = False,
+):
+    """Arranca el traductor desde el panel.
 
-    MECH pregunta qué hay que traducir, escucha una frase, la dice en el otro
-    idioma y se calla. Sin `src`/`dst` reutiliza el par de la vez anterior y,
-    si no hay ninguno, pregunta por los idiomas en voz alta.
+    - `continuous=false` (por defecto) = lo mismo que decir «traduce MECH»:
+      MECH traduce UNA frase y se calla.
+    - `continuous=true` = lo mismo que «activa modo traductor»: se queda
+      traduciendo hasta que le digan que lo desactive (o hasta `/stop`).
+
+    Sin `src`/`dst` reutiliza el par de la vez anterior y, si no hay ninguno,
+    pregunta por los idiomas en voz alta.
     """
     if not config.TRANSLATOR_ENABLED:
         raise HTTPException(400, "El modo traductor está desactivado (TRANSLATOR_ENABLED).")
@@ -841,14 +873,17 @@ async def translate_start(src: str | None = None, dst: str | None = None):
     mech = get_app()
     # En un hilo: habla (bloqueante) y no queremos colgar la petición HTTP.
     threading.Thread(
-        target=mech.start_translator, args=(src, dst), daemon=True
+        target=mech.start_translator,
+        args=(src, dst),
+        kwargs={"continuous": continuous},
+        daemon=True,
     ).start()
-    return {"ok": True}
+    return {"ok": True, "continuous": continuous}
 
 
 @app.post("/api/translate/stop")
 async def translate_stop():
-    """Sale del traductor Y olvida el par de idiomas («deja de traducir»)."""
+    """Sale del traductor Y olvida el par («desactiva el modo traductor»)."""
     mech = get_app()
     if not (translator.is_active() or translator.has_pair()):
         return {"ok": False, "reason": "El modo traductor no está activo."}
@@ -932,6 +967,24 @@ _LIVE_KEYS = {
     "ADVANCE_MAX_SECONDS": float,
     "TURN_LATERAL_SPEED": int,
     "TURN_LATERAL_SECONDS": float,
+    # Gesto "67" (ver backend/gesture_detect.py). Todo en vivo: se calibra
+    # en el stand, con la luz y la distancia reales.
+    "GESTURE67_ENABLED": _to_bool,
+    "GESTURE67_WINDOW": float,
+    "GESTURE67_MIN_AMPLITUDE": float,
+    "GESTURE67_MAX_CORR": float,
+    "GESTURE67_MIN_ALTERNATIONS": int,
+    "GESTURE67_MIN_MOTION": float,
+    "GESTURE67_BALANCE": float,
+    "GESTURE67_COOLDOWN": float,
+    "GESTURE67_ARM_HIGH": int,
+    "GESTURE67_ARM_SECONDS": float,
+    "GESTURE67_REPEATS": int,
+    "GESTURE67_SAY": _to_bool,
+    # Modo traductor.
+    "TRANSLATOR_AUTO_DETECT": _to_bool,
+    "TRANSLATOR_DRAIN_SECONDS": float,
+    "TRANSLATOR_CONTINUOUS_DRAIN_SECONDS": float,
 }
 # Claves que solo tienen efecto tras reiniciar el servidor.
 _RESTART_KEYS = {
@@ -994,6 +1047,22 @@ async def get_config():
             "ADVANCE_MAX_SECONDS": config.ADVANCE_MAX_SECONDS,
             "TURN_LATERAL_SPEED": config.TURN_LATERAL_SPEED,
             "TURN_LATERAL_SECONDS": config.TURN_LATERAL_SECONDS,
+            "GESTURE67_ENABLED": config.GESTURE67_ENABLED,
+            "GESTURE67_WINDOW": config.GESTURE67_WINDOW,
+            "GESTURE67_MIN_AMPLITUDE": config.GESTURE67_MIN_AMPLITUDE,
+            "GESTURE67_MAX_CORR": config.GESTURE67_MAX_CORR,
+            "GESTURE67_MIN_ALTERNATIONS": config.GESTURE67_MIN_ALTERNATIONS,
+            "GESTURE67_MIN_MOTION": config.GESTURE67_MIN_MOTION,
+            "GESTURE67_BALANCE": config.GESTURE67_BALANCE,
+            "GESTURE67_COOLDOWN": config.GESTURE67_COOLDOWN,
+            "GESTURE67_ARM_HIGH": config.GESTURE67_ARM_HIGH,
+            "GESTURE67_ARM_SECONDS": config.GESTURE67_ARM_SECONDS,
+            "GESTURE67_REPEATS": config.GESTURE67_REPEATS,
+            "GESTURE67_SAY": config.GESTURE67_SAY,
+            "TRANSLATOR_AUTO_DETECT": config.TRANSLATOR_AUTO_DETECT,
+            "TRANSLATOR_DRAIN_SECONDS": config.TRANSLATOR_DRAIN_SECONDS,
+            "TRANSLATOR_CONTINUOUS_DRAIN_SECONDS":
+                config.TRANSLATOR_CONTINUOUS_DRAIN_SECONDS,
         },
         "restart": {
             "AUDIO_INPUT_DEVICE": config.AUDIO_INPUT_DEVICE,

@@ -221,9 +221,13 @@
   };
 
   // Estado de la tarjeta del modo traductor (vista Voz).
-  // El traductor va por TURNOS: «traduce MECH» -> pregunta -> escucha UNA
-  // frase -> la dice -> se calla. El par de idiomas se recuerda entre turnos,
-  // así que "APAGADO" con par recordado se muestra como "LISTO".
+  //
+  // Hay DOS formas de traducir y el badge las distingue, porque en el stand
+  // hay que saber de un vistazo si MECH se va a callar solo o no:
+  //   «traduce MECH»          -> UNA frase; al terminar queda "LISTO".
+  //   «activa modo traductor» -> continuo; queda "CONTINUO" hasta apagarlo.
+  // El par de idiomas se recuerda entre turnos, así que "APAGADO" con par
+  // recordado se muestra como "LISTO".
   function updateTranslator(t) {
     t = t || {};
     const badge = $('translator-state');
@@ -238,7 +242,9 @@
       texto = 'ESPERANDO IDIOMAS';
       clase = 'tr-waiting';
     } else if (t.awaiting_phrase) {
-      texto = `ESCUCHANDO · ${par()}`;
+      // En continuo se dice, porque cambia lo que el operador debe esperar:
+      // aquí MECH NO se va a callar solo.
+      texto = `${t.continuous ? 'CONTINUO' : 'ESCUCHANDO'} · ${par()}`;
       clase = 'tr-on';
     } else if (tienePar) {
       texto = `LISTO · ${par()}`;   // recuerda el par, esperando el comando
@@ -247,6 +253,9 @@
     badge.textContent = texto;
     badge.className = 'translator-state ' + clase;
     box.classList.toggle('active', !!t.active);
+    // El botón del continuo se marca mientras lo está.
+    const btnCont = $('tr-continuous');
+    if (btnCont) btnCont.classList.toggle('btn-active', !!t.continuous);
     // Los selectores reflejan el par en curso, para no perderlo de vista.
     if (tienePar) {
       if ($('tr-src')) $('tr-src').value = t.src;
@@ -255,7 +264,7 @@
     if (state.translatorActive !== !!t.active) {
       if (state.translatorActive !== undefined) {
         log(t.active ? `Traductor escuchando (${texto}).`
-                     : 'Traductor: turno terminado.', 'ok');
+                     : 'Traductor apagado.', 'ok');
       }
       state.translatorActive = !!t.active;
     }
@@ -483,14 +492,21 @@
       if (res && res.ok) updateLanguage(res.language);
     },
 
-    // Modo traductor: un turno por pulsación, igual que «traduce MECH».
-    // Desde el panel se manda el par ya elegido, así no pregunta los idiomas.
-    async translateStart() {
+    // Modo traductor. `continuo=false` = «traduce MECH» (una frase y se
+    // calla); `continuo=true` = «activa modo traductor» (no para hasta que se
+    // lo desactiven). Desde el panel se manda el par ya elegido, así no
+    // pregunta los idiomas en voz alta.
+    async translateStart(continuo) {
       const src = $('tr-src') ? $('tr-src').value : 'es';
       const dst = $('tr-dst') ? $('tr-dst').value : 'en';
       if (src === dst) { log('Elegí dos idiomas distintos para traducir.', 'warn'); return; }
-      const res = await fetchJSON(`/api/translate/start?src=${src}&dst=${dst}`);
-      if (res && res.ok) log(`Traductor: preguntando qué traducir (${src} ↔ ${dst}).`, 'ok');
+      const res = await fetchJSON(
+        `/api/translate/start?src=${src}&dst=${dst}&continuous=${continuo ? 'true' : 'false'}`);
+      if (res && res.ok) {
+        log(continuo
+          ? `Traductor CONTINUO encendido (${src} ↔ ${dst}). Se queda traduciendo hasta que lo desactives.`
+          : `Traductor: preguntando qué traducir (${src} ↔ ${dst}).`, 'ok');
+      }
     },
 
     async translateStop() {
@@ -578,6 +594,13 @@
       else if (res) log(res.reason || 'No pude saludar ahora.', 'warn');
     },
 
+    // Gesto del "67": lo mismo que hace solo al detectarlo por cámara.
+    async sixtySeven() {
+      const res = await fetchJSON('/api/move/67');
+      if (res && res.ok) log('Haciendo el 67 con los brazos.', 'ok');
+      else if (res) log(res.reason || 'No pude hacer el 67 ahora.', 'warn');
+    },
+
     move(vx, vy, w) { fetchJSON('/api/arduino/move', { json: { vx, vy, w } }); },
     stopMove() { this.move(0, 0, 0); },
 
@@ -651,6 +674,21 @@
       setSlider('set-greetcd', 'greetcd', L.GREETING_COOLDOWN);
       setSlider('set-greetrearm', 'greetrearm', L.GREETING_REARM_SECONDS);
       if ($('set-greetdormant')) $('set-greetdormant').checked = !!L.GREETING_ONLY_DORMANT;
+      // Gesto "67"
+      if ($('set-g67')) $('set-g67').checked = !!L.GESTURE67_ENABLED;
+      if ($('set-g67say')) $('set-g67say').checked = !!L.GESTURE67_SAY;
+      setSlider('set-g67amp', 'g67amp', L.GESTURE67_MIN_AMPLITUDE);
+      setSlider('set-g67corr', 'g67corr', L.GESTURE67_MAX_CORR);
+      setSlider('set-g67alt', 'g67alt', L.GESTURE67_MIN_ALTERNATIONS);
+      setSlider('set-g67win', 'g67win', L.GESTURE67_WINDOW);
+      setSlider('set-g67cd', 'g67cd', L.GESTURE67_COOLDOWN);
+      setSlider('set-g67high', 'g67high', L.GESTURE67_ARM_HIGH);
+      setSlider('set-g67sec', 'g67sec', L.GESTURE67_ARM_SECONDS);
+      setSlider('set-g67rep', 'g67rep', L.GESTURE67_REPEATS);
+      // Traductor
+      setSlider('set-trcont', 'trcont', L.TRANSLATOR_CONTINUOUS_DRAIN_SECONDS);
+      setSlider('set-trdrain', 'trdrain', L.TRANSLATOR_DRAIN_SECONDS);
+      if ($('set-trauto')) $('set-trauto').checked = !!L.TRANSLATOR_AUTO_DETECT;
       // Calibración del giro de 180°
       setSlider('set-turnsec', 'turnsec', L.TURN_180_SECONDS);
       setSlider('set-turnvel', 'turnvel', L.TURN_180_SPEED);
@@ -723,6 +761,19 @@
         VISION_MIN_DISTANCE: $('set-dist').value,
         VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',
         VISION_PROJECT_GATE: $('set-gate').checked ? 'true' : 'false',
+        GESTURE67_ENABLED: $('set-g67').checked ? 'true' : 'false',
+        GESTURE67_SAY: $('set-g67say').checked ? 'true' : 'false',
+        GESTURE67_MIN_AMPLITUDE: $('set-g67amp').value,
+        GESTURE67_MAX_CORR: $('set-g67corr').value,
+        GESTURE67_MIN_ALTERNATIONS: String(parseInt($('set-g67alt').value)),
+        GESTURE67_WINDOW: $('set-g67win').value,
+        GESTURE67_COOLDOWN: $('set-g67cd').value,
+        GESTURE67_ARM_HIGH: String(parseInt($('set-g67high').value)),
+        GESTURE67_ARM_SECONDS: $('set-g67sec').value,
+        GESTURE67_REPEATS: String(parseInt($('set-g67rep').value)),
+        TRANSLATOR_CONTINUOUS_DRAIN_SECONDS: $('set-trcont').value,
+        TRANSLATOR_DRAIN_SECONDS: $('set-trdrain').value,
+        TRANSLATOR_AUTO_DETECT: $('set-trauto').checked ? 'true' : 'false',
       };
       const res = await fetchJSON('/api/config', { json: { updates } });
       if (res && res.ok) {
@@ -769,7 +820,11 @@
                           wavehigh: '°', waveswing: '°', waverep: '', kick: ' s',
                           advsec: ' s', advvel: '', advmax: ' s',
                           hpf: ' Hz', agc: ' dBFS', beam: '', greetrearm: ' s',
-                          ttsgain: ' dB' };
+                          ttsgain: ' dB',
+                          // Gesto "67" y traductor
+                          g67amp: '', g67corr: '', g67alt: '', g67win: ' s',
+                          g67cd: ' s', g67high: '°', g67sec: ' s', g67rep: '',
+                          trcont: ' s', trdrain: ' s' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

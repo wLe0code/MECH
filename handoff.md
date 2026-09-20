@@ -11,8 +11,19 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (20 sep 2026): tres cosas de **usabilidad en el evento**, ninguna
-> probada todavía en la Pi. (§3.terdecies) **Tres botones en el escritorio de
+> Lo último (20 sep 2026, §3.quindecies): cuatro cosas, **ninguna probada
+> todavía en la Pi** pero todas medidas en la laptop con scripts que quedan en
+> el repo. **(1) Gesto "67"**: MECH lo imita cuando alguien lo hace ante la
+> cámara — se reconoce por movimiento en ANTIFASE, no por la cara (con las
+> manos delante, Haar ve la cara en 1 de cada 45 fotogramas). **(2) Traductor
+> continuo**: «activa modo traductor» se queda traduciendo hasta «desactiva el
+> modo traductor»; «traduce MECH» sigue siendo una frase. **(3) El reposo que
+> no dormía** — la causa era que la frase acababa en Claude, que improvisa una
+> despedida pero no puede dormir al robot; ahora hay tres redes. **(4)
+> `MECH Panel.exe`**: app de Windows que encuentra la Pi sola (construida y
+> probada de verdad, 10,5 MB). Más **`docs/USO.md`**, la guía del operador.
+>
+> Antes (§3.terdecies) **Tres botones en el escritorio de
 > la Pi** — iniciar+panel, proyectar y apagar, sin tocar la terminal.
 > (§3.duodecies) **Volumen** para los parlantes Logitech S150, que son
 > flojitos: el sistema se pone a tope solo en cada arranque y la voz se puede
@@ -67,8 +78,12 @@ Arduino para motores/servos). El nombre del robot es **MECH-1**.
 
 ## 2. Estado del repo
 
-- **Rama:** `main`, **todo pusheado** a `origin/main` (incluido este handoff).
-  Último commit: `0216cdf` (corregir los controles del S150).
+- **Rama:** `main`. Lo de §3.quindecies (gesto 67, traductor continuo, reposo,
+  app de Windows y las guías) está **commiteado pero puede estar SIN PUSHEAR**
+  — comprobalo con `git log origin/main..main`. Hasta que no esté pusheado, la
+  Pi no lo recoge.
+  El último commit pusheado antes de esta sesión era `0216cdf` (controles del
+  S150).
 
   **La Pi se actualiza desde GitHub, no desde la carpeta local de nadie.**
   El icono «Iniciar MECH» hace `git pull --ff-only` de `origin/main`. O sea:
@@ -955,6 +970,171 @@ Ajustes en el panel.
 
 ---
 
+## 3.quindecies Gesto "67", traductor continuo, reposo y app de Windows (sep 2026)
+
+Cuatro cosas pedidas por el equipo. **Nada probado en la Pi todavía**, pero
+todo medido en la laptop con scripts que quedan en el repo.
+
+### 🙌 El gesto del "67"
+
+El equipo pasó **dos videos**: en el primero un visitante hace el "67" con las
+**manos** a la altura de la cara; en el segundo, cómo tiene que hacerlo MECH —
+con los **brazos enteros**, uno arriba y el otro abajo, alternando.
+
+Lo que define al gesto no es la forma de la mano: son **dos cosas moviéndose
+en vertical, una a cada lado, en ANTIFASE**, repitiéndose. Eso es todo lo que
+mide `backend/gesture_detect.py`.
+
+**Por qué NO se ancla en la cara.** Fue el primer intento (dos zonas de
+búsqueda a los lados del rostro) y se descartó con un dato: pasando el video
+real del equipo por el detector Haar de OpenCV, **con las manos delante la
+cara aparece en 1 de cada 45 fotogramas**. Anclarse ahí no habría detectado
+nada. MediaPipe Pose tampoco vale (la Pi corre Python 3.13, sin wheels).
+
+Cómo funciona, a 320×180 y en gris: diferencia entre fotogramas → el centro
+horizontal del movimiento parte la escena en dos mitades → se sigue la ALTURA
+media del movimiento de cada lado → sobre 1,6 s se exige amplitud,
+**correlación negativa** y varias alternancias.
+
+| Filtro | Qué descarta |
+|---|---|
+| Correlación ≤ −0,30 | levantar las dos manos A LA VEZ (correlación positiva) |
+| Equilibrio entre lados | saludar con UNA sola mano |
+| Alternancias ≥ 3 | un cruce suelto |
+| Amplitud mínima | alguien quieto, un temblor |
+
+⚠️ **Los huecos NO borran la ventana** (`_MAX_GAP_S`). En cada extremo del
+gesto la mano se frena un instante y ese fotograma cae por debajo del mínimo
+de movimiento; la primera versión limpiaba el historial ahí y nunca llegaba a
+juntar muestras. Se descubrió porque el positivo sintético no disparaba.
+
+**Medido, no estimado** — `python scripts/probar_gesto67.py <video1> <video2>`:
+
+```
+ok   REAL WIN_...26_Pro.mp4  (debe disparar)   -> [0.66, 1.19, 1.79]
+ok   REAL WIN_...34_Pro.mp4  (debe disparar)   -> [2.06, 2.99, 4.19, 5.52]
+ok   antifase (el gesto)     (debe disparar)   -> [1.07, 2.07, ...]
+ok   quieto                  (NO debe)         -> ninguno
+ok   saluda con UNA mano     (NO debe)         -> ninguno
+ok   dos manos EN FASE       (NO debe)         -> ninguno
+ok   manos en horizontal     (NO debe)         -> ninguno
+ok   alguien camina          (NO debe)         -> ninguno
+```
+
+Los negativos se generan solos con OpenCV, así que el script corre en
+cualquier máquina sin cargar videos al repo. **Si tocás un umbral, volvé a
+correrlo.**
+
+Lo demás: `gestures.sixty_seven()` (único gesto con los dos brazos en
+antifase), `mech_app.on_gesture_67()`, botón «🙌 HACER EL 67» en la vista
+Arduino (`POST /api/move/67`) y toda la calibración en vivo en Ajustes →
+GESTO "67". Frase «¡Seis... siete!» en los cuatro idiomas.
+
+### 💬 Traductor continuo
+
+Ahora hay DOS formas, con listas de frases separadas:
+
+| Se le dice | Qué hace |
+|---|---|
+| «traduce MECH» | UNA frase y se calla (**igual que antes, sin cambios**) |
+| «activa modo traductor» | se queda traduciendo frase tras frase |
+| «desactiva el modo traductor» | sale |
+
+⚠️ **«desactiva el modo traductor» contiene «modo traductor»** y el matcher
+compara por palabras en cualquier orden, así que las listas se pisan por
+fuerza. Lo resuelve `voice_phrases.is_translate_on()`, que devuelve False si
+la frase también casa con las de salir.
+
+⚠️ **El continuo reabre a propósito el problema del eco** que los turnos
+habían resuelto en jul 2026 (MECH traducía su propia traducción, sin fin).
+Volvió por pedido explícito del equipo. Lo que impide el bucle ahora son TRES
+cosas — **no quites ninguna**:
+
+1. `TRANSLATOR_CONTINUOUS_DRAIN_SECONDS` (1,2 s, más que en el modo de una
+   frase): el micrófono no se abre hasta que el parlante drena.
+2. La guarda compara contra las **últimas 3** cosas que MECH dijo, no solo la
+   última — con buffer Bluetooth, lo que entra tarde puede ser de dos frases
+   atrás. Y ahora se recuerda también **la traducción**, no solo la pregunta
+   (antes solo la pregunta, que en el continuo es justo lo que menos importa).
+3. Lo decisivo: **cuando la guarda salta, MECH no dice nada**. Sin voz nueva
+   no hay nada que realimentar, así que el bucle no puede existir aunque la
+   guarda falle a ratos.
+
+El panel avisa con «Llevo N ecos seguidos: me estoy oyendo a mí mismo» y dice
+qué perilla subir.
+
+### 😴 El reposo que no dormía
+
+El equipo: *«a veces le digo "duérmete MECH" y dice una frase más larga
+diciendo que se va a modo reposo, pero vuelve a abrir el módulo de voz»*.
+
+**La causa**: la frase no casaba con `VOICE_SLEEP_PHRASES`, el texto seguía
+hasta Claude, y Claude improvisaba una despedida bonita — pero **dormirse no
+es algo que un plan pueda hacer**, así que al terminar volvía a `waiting`. La
+"frase más larga" era literalmente Claude hablando.
+
+Tres redes, de la más barata a la más general:
+
+1. **Lista ampliada**: «dormite», «vete a dormir», «a dormir», «ponte a
+   dormir», «buenas noches mech», «adiós mech»…
+2. **Intercept en `mech_app.handle_text_command()`**, lo primero de todo. Así
+   vale para cualquier camino (voz, panel, petición pendiente tras «oye
+   MECH»), no solo para el bucle de voz.
+3. **Modo `sleep` en el Plan de Claude** (`llm.py`). Si Whisper deformó tanto
+   la frase que no casa con ninguna lista, Claude sí entiende la intención y
+   MECH se duerme **sin narrar** el plan.
+
+⚠️ **Efecto secundario que hubo que corregir**: al ampliar la lista,
+«¿los robots duermen?» empezó a dormir a MECH. El matcher perdona 2 letras en
+palabras de 7+ que empiecen igual, y «duermete» casa con «duermen». Por eso
+las formas cortas de dormir **piden «mech» al lado**. Está medido.
+
+**`scripts/probar_frases.py`** (nuevo) pasa las dos listas juntas: 47 comandos
+que deben reconocerse y 18 frases normales de stand que no. 65/65.
+
+### 🪟 `MECH Panel.exe` para Windows
+
+Hasta ahora, usar el panel desde una laptop pedía saberse la IP de la Pi y
+editar `config.txt` a mano — y esa IP cambia al cambiar de wifi.
+
+`windows/mech_panel.py` **encuentra la Pi sola**: prueba la última dirección
+que funcionó, `mech.local`, `mech`, y si no barre la red local en paralelo
+buscando quién responde en el 8000 **con `/api/state`** (no basta con que el
+puerto esté abierto: así no confunde la Pi con otra cosa). Después abre el
+panel con Edge/Chrome en `--app`, con el flag de autoplay puesto.
+
+**Solo librería estándar, a propósito**: eso es lo que hace que el .exe pese
+10 MB y se construya en un minuto. Tauri/Electron meterían un navegador entero
+dentro del ejecutable para mostrar la misma página que Edge ya muestra.
+
+**Construido y probado de verdad en esta sesión**: `MECH Panel.exe` (10,5 MB)
+arranca, detecta un servidor de prueba, guarda la dirección y habilita los
+botones. Instalador opcional con Inno Setup (`windows/MECH-Panel.iss`): menú
+inicio, desinstalador, sin permisos de administrador.
+
+⚠️ Gotcha encontrado al probarlo: el **Python de la Microsoft Store virtualiza
+`%APPDATA%`**, así que correr el script con ese intérprete guarda la dirección
+en otro sitio que el .exe. No rompe nada, pero despista.
+
+### 📖 Guía de USO
+
+**[`docs/USO.md`](docs/USO.md)** (nuevo): qué decirle a MECH, qué hace cada
+comando y qué tocar cuando algo falla, escrito para quien no programa. Es la
+que hay que darle al equipo en el evento. Incluye la tabla de todos los
+comandos y una de «lo que pasa → qué mirar».
+
+También actualizados: `docs/GUIA.md`, `docs/FRONTEND.md`, `windows/README.md`,
+`README.md`, `CLAUDE.md` y `backend/.env.example`.
+
+### El preflight ahora comprueba los comandos
+
+`python -m backend.preflight` §9 ya no solo lista las claves del `.env` que
+tapan los defaults: **prueba los comandos principales con el `.env` puesto** y
+falla si alguno dejó de reconocerse o si apagar el traductor lo enciende. Es
+la comprobación que habría pillado el fallo del reposo antes del evento.
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:
@@ -1011,6 +1191,31 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
 6f. ⚠️ **El `.env` de la Pi (§3.quaterdecies)**: pegar la salida de
    `grep -E "WHISPER|AUDIO_SAMPLE_RATE" ~/MECH/backend/.env`. Es lo que falta
    para cerrar lo del cambio de modelo de Whisper.
+6g. **Gesto "67" (§3.quindecies, recién hecho)**: encender la visión y
+   ponerse delante haciendo el gesto — MECH debe imitarlo con los brazos y
+   decir «¡Seis... siete!». Probar ANTES el botón «🙌 HACER EL 67» de la
+   vista Arduino, para separar "la coreografía no va" de "la cámara no lo
+   reconoce". Después, los falsos positivos: saludar con una mano, levantar
+   las dos a la vez y pasar caminando **no** deben dispararlo. Si hay que
+   exagerar mucho, bajar «Amplitud mínima» en Ajustes; si dispara de más,
+   subirla. ⚠️ Ojo con la luz de la proyección moviéndose: en teoría no
+   afecta (la visión se pausa al narrar) pero es lo primero a mirar si
+   dispara solo.
+6h. **Traductor continuo (§3.quindecies)**: «activa modo traductor» → par de
+   idiomas → tres o cuatro frases seguidas **sin repetir el comando** →
+   «desactiva el modo traductor». Lo que más puede fallar sigue siendo el
+   eco: si empieza a traducir su propia traducción, subir «Espera continuo»
+   en Ajustes. Comprobar también que **«traduce MECH» sigue traduciendo UNA
+   sola** y callándose.
+6i. **Reposo (§3.quindecies)**: decirle «duérmete MECH» varias veces, de
+   formas distintas y con ruido. Debe decir solo «De acuerdo, hasta luego» y
+   quedarse en reposo. Si vuelve a soltar una despedida larga, mirar el panel:
+   si ahí sale un plan de Claude, la frase no se reconoció — **y lo primero a
+   revisar es si el `.env` de la Pi tiene `VOICE_SLEEP_PHRASES` con la lista
+   vieja** (el preflight lo avisa ahora).
+6j. **El `.env` de la Pi, de una vez**: `python -m backend.preflight` con el
+   server apagado. El §9 ahora PRUEBA los comandos con el `.env` puesto y
+   falla si alguno dejó de reconocerse. Es el chequeo que cierra §3.quaterdecies.
 7. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
    siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
    vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el

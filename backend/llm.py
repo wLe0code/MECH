@@ -70,6 +70,13 @@ Decides el modo según lo que pregunte el usuario:
    "saluda", "explora"). 1 segmento, gesto correspondiente, narración corta
    confirmando.
 
+5. **sleep**: el usuario te está pidiendo que te CALLES o te duermas
+   ("duérmete", "ya no escuches", "descansa", "hasta luego"). Devuelve este
+   modo con UN segmento de narración vacía o mínima: el backend no lo narra,
+   simplemente se pone en reposo y dice su frase de despedida.
+   Úsalo SOLO cuando te pidan claramente que dejes de escuchar. Una pregunta
+   SOBRE dormir ("¿los robots duermen?") es `qa`, no esto.
+
 # Cómo escribir narraciones
 
 - En español neutro, evita modismos muy regionales. Si el bloque de
@@ -162,7 +169,12 @@ class Segment(BaseModel):
 class Plan(BaseModel):
     """Plan completo de la respuesta de Claude a una petición del usuario."""
 
-    mode: Literal["stand", "immersive", "qa", "movement"]
+    # "sleep" es la RED DE SEGURIDAD del modo reposo: si Whisper deformó
+    # "duérmete MECH" y la frase no casó con VOICE_SLEEP_PHRASES, el texto
+    # llega hasta aquí y Claude sí entiende la intención. Sin esto, Claude
+    # improvisaba una despedida y MECH seguía despierto — que es justo el
+    # fallo que reportó el equipo. Ver mech_app.handle_text_command.
+    mode: Literal["stand", "immersive", "qa", "movement", "sleep"]
     title: str = Field(..., description="Título corto, sirve de log/depuración.")
     segments: list[Segment] = Field(..., min_length=1, max_length=8)
     background_music: str | None = Field(

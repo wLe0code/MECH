@@ -316,6 +316,53 @@ def wave_outward(link: ArduinoLink) -> None:
     threading.Thread(target=_run, daemon=True).start()
 
 
+# ── Gesto "67" (sep 2026) ────────────────────────────────────────────
+# El equipo pasó dos videos: en el primero un visitante hace el "67" con las
+# MANOS a la altura de la cara; en el segundo, cómo tiene que hacerlo MECH —
+# con los BRAZOS enteros, uno arriba y el otro abajo, intercambiándose.
+#
+# Es el único gesto en el que los dos brazos van en ANTIFASE (todos los demás
+# los mueven juntos o mueven uno solo), y eso es justo lo que se reconoce en
+# backend/gesture_detect.py. Aquí se devuelve igual.
+#
+# Como el resto de los brazos: solo sube (90 -> alto). Por debajo de 90 el
+# brazo choca con el cuerpo del robot.
+
+
+def _g_sixty_seven(link: ArduinoLink) -> None:
+    """Los brazos alternan arriba/abajo, como en el video 2 del equipo."""
+    alto = max(_NEUTRAL + 20, min(180, config.GESTURE67_ARM_HIGH))
+    paso = max(0.25, config.GESTURE67_ARM_SECONDS)
+    veces = max(2, config.GESTURE67_REPEATS)
+    # Arranca con el izquierdo arriba; a partir de ahí se van cambiando.
+    for i in range(veces):
+        if i % 2 == 0:
+            _move_smooth(link, alto, _NEUTRAL, paso)
+        else:
+            _move_smooth(link, _NEUTRAL, alto, paso)
+    _move_smooth(link, _NEUTRAL, _NEUTRAL, paso)
+
+
+def sixty_seven(link: ArduinoLink) -> None:
+    """Imita el gesto del "67" (lo llama mech_app al detectarlo en cámara).
+
+    Respeta `ARM_GESTURE_MODE=off`, pero NO se encoge con `subtle`: igual que
+    el saludo, es un gesto que se hace para que se vea.
+    """
+
+    def _run():
+        if not _gesture_lock.acquire(blocking=False):
+            return
+        try:
+            if config.ARM_GESTURE_MODE == "off":
+                return
+            _g_sixty_seven(link)
+        finally:
+            _gesture_lock.release()
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def perform(link: ArduinoLink, gesture: str, user_x: float | None = None) -> None:
     """Ejecuta el gesto COMPLETO en segundo plano (no bloquea a quien llama).
 

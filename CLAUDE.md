@@ -186,6 +186,9 @@ backend/
                         Auto-reconexión + autodetección de puerto + LED:.
   interrupt_listener.py ← Hilo que escucha SOLO "oye MECH"/"hey MECH"
                         mientras MECH narra, para poder cortarlo.
+  gesture_detect.py   ← Detector del gesto "67" por CÁMARA (solo OpenCV:
+                        movimiento en antifase a los dos lados). Lo alimenta
+                        vision.py fotograma a fotograma.
   gestures.py         ← Coreografías reales de gestos (wave, excited...)
                         con interpolación suave; modos full/subtle/off;
                         opcionalmente mueve ruedas (GESTURE_WHEELS).
@@ -300,14 +303,41 @@ pi/                   ← TRES accesos de ESCRITORIO en la Raspberry Pi,
                         `--sin-actualizar --sin-panel`.
   instalar-accesos.sh ← Genera los .desktop con la ruta real del repo.
 
+scripts/              ← Utilidades de desarrollo (no corren en la Pi).
+  probar_frases.py    ← Regresión de TODOS los comandos de voz a la vez:
+                        los que deben reconocerse Y las frases normales de
+                        stand que NO. Correrlo al tocar voice_phrases.py o
+                        cualquier lista VOICE_*.
+  probar_gesto67.py   ← Regresión del detector del "67": videos reales
+                        (se pasan por argumento) + 5 negativos sintéticos
+                        que se generan solos. Correrlo al tocar GESTURE67_*.
+  mkicons.py          ← Regenera el subconjunto de iconos del panel.
+  mkfonts.py          ← Regenera las fuentes locales.
+
 windows/              ← Control desde laptop Windows
+  mech_panel.py       ← **App de escritorio** (sep 2026). ENCUENTRA LA PI
+                        SOLA (mech.local, mech, la última dirección, y si no
+                        barre la red buscando el puerto 8000 + /api/state) y
+                        abre el panel con Edge/Chrome en modo --app. Solo
+                        librería estándar, a propósito: así el .exe pesa
+                        10 MB y se construye en un minuto.
+  construir_exe.ps1   ← Construye "MECH Panel.exe" con PyInstaller en un
+                        venv aparte (desde el Python de diario se colarían
+                        numpy/opencv y el .exe pasaría a cientos de MB).
+  MECH-Panel.iss      ← Instalador Inno Setup (menú inicio + desinstalador,
+                        sin pedir permisos de administrador). Opcional.
+  hacer_icono.py      ← Genera mech.ico desde branding/logo-mech.jpg.
   MECH Control.bat    ← Doble click → Edge --app, ventana sin barras.
   MECH Kiosko.bat     ← Pantalla completa kiosko.
   MECH Proyector.bat  ← Página de proyector en kiosko.
-  config.txt          ← URL del servidor (el usuario edita la IP de la Pi aquí).
+  config.txt          ← URL del servidor (solo lo usan los .bat).
   README.md
 
 docs/
+  USO.md              ← **Guía del OPERADOR del stand**: qué decirle a MECH,
+                        qué hace cada comando y qué tocar cuando algo falla.
+                        Es la que hay que darle a alguien del equipo que no
+                        programa. Si añadís un comando, va aquí también.
   AUDIO.md            ← Cómo oye MECH: qué hacen los teléfonos con el
                         micrófono, qué de eso hace MECH y qué falta.
   GUIA.md             ← Hardware y montaje en la Pi.
@@ -399,6 +429,21 @@ el HTML con doble click).
 ### Tests y lint
 
 Este repo **no tiene suite de tests ni linter configurado**. La validación es manual extremo-a-extremo: voz → STT → Plan de Claude → imagen → proyección → comandos Arduino. No inventes `pytest`/`ruff`/`black` — si crees que hace falta uno, propónselo al usuario antes de añadirlo.
+
+Lo que SÍ hay, y hay que correr al tocar lo suyo (no necesitan hardware ni
+claves de API):
+
+```bash
+python scripts/probar_frases.py    # comandos de voz: los que deben sonar Y los falsos positivos
+python scripts/probar_gesto67.py   # detector del "67": positivos + 5 negativos
+python -m py_compile backend/*.py  # que compile
+node --check frontend/app.js       # que el panel no tenga errores de sintaxis
+```
+
+`probar_frases.py` es el que evita el error clásico de este repo: aflojar el
+matcher para pillar una transcripción deformada y romper el otro lado (que
+«el proyecto» interrumpa, que «¿los robots duermen?» lo duerma...). Mide las
+dos listas juntas por eso.
 
 ---
 
@@ -502,12 +547,83 @@ normales del stand: **37/37 comandos y 0 falsos positivos** (antes: 34/37 y
 1 falso positivo). ⚠️ Si tocás estos umbrales, **volvé a medir las dos
 listas**: aflojar para pillar un caso rompe el otro lado enseguida.
 
-### Modo TRADUCTOR — MECH de intérprete («traduce MECH»)
+### Gesto "67" — MECH lo imita si alguien lo hace ante la cámara (sep 2026)
+
+Pedido del equipo, con dos videos de referencia: el visitante lo hace con las
+**manos** a la altura de la cara; MECH lo devuelve con los **brazos enteros**.
+
+**Qué define al gesto**: dos cosas moviéndose en vertical, una a cada lado,
+**en ANTIFASE** (una sube mientras la otra baja), repitiéndose. Eso es lo
+único que se mide — ni forma de mano, ni esqueleto, ni color.
+
+- Detector: [`backend/gesture_detect.py`](backend/gesture_detect.py). Solo
+  OpenCV, a 320×180 en gris: diferencia entre fotogramas → el centro
+  horizontal del movimiento parte la escena en dos → se sigue la ALTURA media
+  del movimiento de cada lado → sobre una ventana de ~1.6 s se pide amplitud,
+  **correlación negativa** (la antifase) y varias alternancias.
+- ⚠️ **NO se ancla en la cara, y no es un descuido.** Medido sobre el video
+  real del equipo: con las manos delante, el Haar de OpenCV encuentra la cara
+  en **1 de cada 45 fotogramas**. Anclarse ahí no habría detectado nada.
+  MediaPipe Pose tampoco es opción (la Pi corre Python 3.13, sin wheels).
+- ⚠️ **Los huecos no borran la ventana** (`_MAX_GAP_S`): en cada extremo del
+  gesto la mano se frena un instante y ese fotograma cae por debajo del
+  mínimo de movimiento. La primera versión limpiaba el historial ahí y nunca
+  juntaba muestras.
+- La correlación negativa es LO que distingue el gesto: levantar las dos manos
+  a la vez da correlación positiva y se rechaza; saludar con una sola deja
+  todo el movimiento de un lado y lo descarta el equilibrio (`GESTURE67_BALANCE`).
+- **Medido**, no estimado: `python scripts/probar_gesto67.py` pasa los dos
+  videos del equipo (dispara) y cinco negativos (quieto, una mano, dos manos
+  en fase, manos en horizontal, alguien caminando — ninguno dispara).
+  **Si tocás un umbral, volvé a correrlo**: aflojar para pillar un caso rompe
+  el otro lado enseguida.
+- Coreografía de MECH: `gestures.sixty_seven()` — los brazos alternan
+  `alto`/reposo. Es el **único** gesto con los dos brazos en antifase.
+- Se dispara desde `vision._check_gesture_67()` → `mech_app.on_gesture_67()`.
+  Va **antes** de detectar la cara y es independiente de ella. Funciona
+  despierto y en reposo (es un juego), pero **no mientras narra**.
+- Botón «HACER EL 67» en la vista Arduino (`POST /api/move/67`) para probarlo
+  sin cámara. Todos los `GESTURE67_*` son **live** desde Ajustes.
+
+### Modo TRADUCTOR — MECH de intérprete
 
 Pedido del equipo (sep 2026): que MECH sirva para que dos personas que no
 hablan el mismo idioma se entiendan en el stand.
 
-**Va por TURNOS: un «traduce MECH» = UNA frase traducida.**
+**Hay DOS formas, y sus listas de frases están separadas:**
+
+| Se le dice | Qué hace | Lista en config |
+|---|---|---|
+| «traduce MECH» | UNA frase y se calla | `VOICE_TRANSLATE_PHRASES` |
+| «activa modo traductor» | se queda traduciendo | `VOICE_TRANSLATE_ON_PHRASES` |
+| «desactiva el modo traductor» | sale | `VOICE_TRANSLATE_STOP_PHRASES` |
+
+⚠️ **«desactiva el modo traductor» CONTIENE «modo traductor»**, y el matcher
+compara por palabras en cualquier orden: las dos listas se pisan por fuerza.
+Lo resuelve `voice_phrases.is_translate_on()`, que devuelve False si la frase
+también casa con las de salir, y el orden del bucle de voz (salir primero).
+Si tocás estas listas, corré `python scripts/probar_frases.py`.
+
+#### El continuo y el eco
+
+⚠️ **El modo continuo reabre a propósito el problema que los turnos
+resolvían.** La primera versión del traductor (jul 2026) era continua y se
+traducía a sí misma sin fin. Volvió por pedido explícito del equipo, y lo que
+impide el bucle ahora son TRES cosas — **mantené las tres**:
+
+1. `TRANSLATOR_CONTINUOUS_DRAIN_SECONDS` (1.2 s, más que en el modo de una
+   frase): el micrófono no se abre hasta que el parlante drena.
+2. `translator.looks_like_own_echo()` compara contra las **últimas 3** cosas
+   que MECH dijo, no solo la última — con buffer Bluetooth, lo que entra
+   tarde puede ser de dos frases atrás. Y `handle_translation` recuerda
+   también **la traducción**, no solo la pregunta.
+3. Lo más importante: **cuando la guarda salta, MECH no dice nada** y vuelve a
+   escuchar. Sin voz nueva no hay nada que realimentar, así que el bucle
+   infinito no puede existir aunque la guarda falle a ratos.
+
+El panel avisa con «Llevo N ecos seguidos» (`translator.echo_streak()`).
+
+#### El modo de UNA frase (sin cambios)
 
 ```
 «ok MECH»               → despierta
@@ -526,11 +642,10 @@ MECH: «Muy bien, gracias.»              → y se calla otra vez
 «deja de traducir»      → olvida el par (dormirlo o el paro, también)
 ```
 
-- ⚠️ **Un turno por comando es LA solución al eco, no una limitación.** La
-  primera versión escuchaba en bucle y MECH acababa traduciendo su propia
-  traducción, y la de esa, sin fin. Con turnos el micrófono nunca está
-  abierto justo después de que él hable. **No lo vuelvas a hacer continuo**
-  sin resolver el eco de otra manera.
+- ⚠️ **En el modo de una frase, el turno por comando es LA solución al eco.**
+  El micrófono nunca está abierto justo después de que MECH hable. El modo
+  CONTINUO sí lo abre ahí, y por eso lleva las tres defensas de arriba: no
+  quites ninguna de las dos cosas.
 - **El par de idiomas se RECUERDA** entre turnos (`translator.finish()` lo
   conserva; `translator.reset()` lo borra). Repetirlo en cada frase sería
   insufrible. Se cambia nombrándolo en el propio comando («traduce MECH del
@@ -560,14 +675,16 @@ MECH: «Muy bien, gracias.»              → y se calla otra vez
   turno**: vuelve a pedir la frase.
 - Si la traducción falla (API caída, respuesta vacía), tampoco pierde el
   turno: lo dice y vuelve a pedir la frase.
-- Panel: tarjeta TRADUCTOR en la vista Voz con los dos selectores,
-  «Traducir una» (un turno con ese par) y «Olvidar». El badge muestra la
-  etapa: `APAGADO` · `ESPERANDO IDIOMAS` · `ESCUCHANDO · ES ↔ FR` ·
+- Panel: tarjeta TRADUCTOR en la vista Voz con los dos selectores y tres
+  botones: «Traducir una», «Modo continuo» (se marca con `btn-active`
+  mientras lo está) y «Desactivar». El badge muestra la etapa: `APAGADO` ·
+  `ESPERANDO IDIOMAS` · `ESCUCHANDO · ES ↔ FR` · **`CONTINUO · ES ↔ FR`** ·
   `LISTO · ES ↔ FR` (callado, con el par recordado). Endpoints
-  `POST /api/translate/start?src=&dst=` y `/api/translate/stop`.
+  `POST /api/translate/start?src=&dst=&continuous=` y `/api/translate/stop`.
 - Claves: `TRANSLATOR_ENABLED`, `TRANSLATOR_AUTO_DETECT`,
-  `TRANSLATOR_DRAIN_SECONDS`, `CLAUDE_TRANSLATE_MODEL`,
-  `VOICE_TRANSLATE_PHRASES{,_EN,_FR,_PT}`,
+  `TRANSLATOR_DRAIN_SECONDS`, **`TRANSLATOR_CONTINUOUS_DRAIN_SECONDS`**,
+  `CLAUDE_TRANSLATE_MODEL`, `VOICE_TRANSLATE_PHRASES{,_EN,_FR,_PT}`,
+  **`VOICE_TRANSLATE_ON_PHRASES{,_EN,_FR,_PT}`**,
   `VOICE_TRANSLATE_STOP_PHRASES{,_EN,_FR,_PT}`.
 
 ### Interrumpir a MECH mientras narra ("oye MECH" / "hey MECH")
@@ -759,6 +876,10 @@ comporta al revés que las demás en cuatro cosas.
 Definidos en `backend/gestures.py` y referenciados en el system prompt de `llm.py`:
 `neutral`, `excited`, `thoughtful`, `wave`, `point`, `arms_open`.
 Si añades uno nuevo, **modifica ambos archivos** y el `Literal[...]` del schema en `llm.py`.
+
+Aparte, y **fuera del catálogo de Claude** (no los elige el modelo, los
+dispara el código): `gestures.wave_outward()` (al girar hacia afuera) y
+`gestures.sixty_seven()` (el "67", ver su sección).
 
 ### Dos "tamaños" de gesto (ago 2026) — NO los mezcles
 
@@ -1246,15 +1367,43 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   automática** (`stt.transcribe_any`) y compara contra todas las listas.
   Claves nuevas: `WAKE_FRENCH_ENABLED`, `WAKE_PORTUGUESE_ENABLED`,
   `VOICE_*_PHRASES_FR`, `VOICE_*_PHRASES_PT`.
-- **Modo TRADUCTOR (sep 2026)** — «traduce MECH» convierte a MECH en
-  intérprete entre dos personas. Va **por turnos**: pregunta qué traducir,
-  escucha UNA frase, la dice en el otro idioma (con subtítulo) y se calla;
-  para la siguiente hay que repetir el comando. El par de idiomas se
-  recuerda entre turnos. Bidireccional (Whisper detecta en qué idioma se
-  dijo la frase). No pasa por Claude salvo una llamada corta de traducción
-  (`llm.translate`). Se olvida con «deja de traducir», durmiéndolo o con el
-  paro. Tarjeta nueva en el panel (vista Voz) para elegir el par a mano.
+- **Modo TRADUCTOR (sep 2026)** — MECH de intérprete entre dos personas, en
+  **dos formas**: «traduce MECH» traduce UNA frase y se calla;
+  **«activa modo traductor»** se queda traduciendo frase tras frase hasta
+  **«desactiva el modo traductor»**. El par de idiomas se recuerda entre
+  turnos. Bidireccional (Whisper detecta en qué idioma se dijo la frase). No
+  pasa por Claude salvo una llamada corta de traducción (`llm.translate`).
+  Se olvida al desactivarlo, durmiéndolo o con el paro. Tarjeta en el panel
+  (vista Voz) con los tres botones. El continuo lleva su propia espera
+  anti-eco (`TRANSLATOR_CONTINUOUS_DRAIN_SECONDS`) y la guarda compara
+  contra las últimas 3 cosas que MECH dijo.
   Módulo: [`backend/translator.py`](backend/translator.py).
+- **Gesto "67" (sep 2026)** — MECH imita el "67" cuando alguien lo hace ante
+  la cámara: dos manos (o brazos) subiendo y bajando **alternadas**, una
+  arriba mientras la otra baja. Se reconoce por MOVIMIENTO EN ANTIFASE, no
+  por la cara (con las manos delante, Haar la ve en 1 de 45 fotogramas).
+  Medido contra los dos videos del equipo y 5 negativos
+  (`scripts/probar_gesto67.py`). Coreografía: `gestures.sixty_seven()` — el
+  único gesto con los dos brazos en antifase. Botón «HACER EL 67» en la
+  vista Arduino y toda la calibración en vivo desde Ajustes.
+  Módulo: [`backend/gesture_detect.py`](backend/gesture_detect.py).
+- **Reposo arreglado (sep 2026)** — el equipo reportó que a veces «duérmete
+  MECH» soltaba una despedida larga y MECH seguía escuchando: la frase no
+  casaba, iba a Claude, y Claude improvisa una despedida pero no puede
+  dormir al robot. Tres redes ahora: lista de frases ampliada (con «mech» al
+  lado en las formas cortas, para que «¿los robots duermen?» no lo duerma),
+  intercept en `handle_text_command()` antes de todo, y el modo `sleep` del
+  Plan de Claude. Cubierto en `scripts/probar_frases.py`.
+- **App de Windows `MECH Panel.exe` (sep 2026)** — lanzador de escritorio que
+  **encuentra la Pi sola** (mech.local, mech, la última dirección, y si no
+  barre la red buscando `/api/state`) y abre el panel en ventana de
+  aplicación. Solo librería estándar → .exe de 10 MB con PyInstaller
+  (`windows/construir_exe.ps1`) e instalador opcional con Inno Setup
+  (`windows/MECH-Panel.iss`). Quita el paso de editar la IP a mano, que es
+  lo que más fallaba al cambiar de wifi.
+- **Guía de USO (sep 2026)** — [`docs/USO.md`](docs/USO.md): qué decirle a
+  MECH y qué tocar cuando algo falla, escrita para quien no programa. Es la
+  que hay que darle al equipo en el evento.
 - **Subtítulos en la proyección (ago 2026)** — `frontend/subtitles.js` (compartido
   por `/projector` y `/projector/vr`) muestra el guion abajo, estilo cine, haya
   video, imagen o nada. Lo alimenta `mech_app.set_subtitle()` (evento WS
@@ -1410,6 +1559,32 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     tenga datos. Sin reporte, el visor simplemente reproduce desde el
     principio — no se rompe, solo pierde la sincronía.
 27. **cv2/mediapipe son opcionales**: `vision.py` los importa perezosamente; si faltan, `start()` loguea el aviso y el server sigue. No mover esos imports al nivel de módulo.
+28. **Si «duérmete MECH» suelta una despedida LARGA y MECH sigue despierto**,
+    la frase no se reconoció y acabó en Claude — que improvisa una despedida
+    bonita pero NO puede dormir al robot. Desde sep 2026 hay tres redes:
+    (a) la lista `VOICE_SLEEP_PHRASES` ampliada, (b) un intercept en
+    `mech_app.handle_text_command()` que va ANTES de todo, y (c) el modo
+    `sleep` del Plan de Claude (`llm.py`), que se atiende sin narrar. Si
+    vuelve a pasar, lo más probable es que el `.env` de la Pi tenga
+    `VOICE_SLEEP_PHRASES` con la lista vieja: el preflight lo detecta.
+29. **Las formas cortas de dormir PIDEN «mech» al lado.** El matcher perdona
+    2 letras en palabras de 7+ que empiecen igual, así que «duermete» casa
+    con «duermen» y la pregunta «¿los robots duermen?» dormía a MECH en vez
+    de responderse. Está medido en `scripts/probar_frases.py`; si añadís una
+    forma corta, comprobá ahí que no se come una pregunta normal.
+30. **El detector del "67" NO usa la cara, y no es un descuido.** Con las
+    manos delante, Haar la encuentra en 1 de cada 45 fotogramas (medido sobre
+    el video del equipo). Si alguien "mejora" el detector anclándolo al
+    rostro, deja de detectar el gesto.
+31. **El .exe de Windows se construye en un venv aparte.** Desde el Python de
+    diario, PyInstaller mete lo que encuentre (numpy, opencv...) y el .exe
+    pasa de 10 MB a cientos. Por eso `mech_panel.py` no usa nada fuera de la
+    librería estándar: es lo que hace que eso se pueda garantizar.
+32. **El Python de la Microsoft Store virtualiza `%APPDATA%`.** Correr
+    `python windows\mech_panel.py` con ese intérprete guarda la dirección en
+    `...LocalCache\Roaming\MECH\` y el .exe la busca en la real. No rompe
+    nada (cada uno es coherente), pero explica que "se olvide" la dirección
+    al pasar del script al .exe.
 
 ---
 

@@ -312,30 +312,33 @@ class MechApp:
                 "waiting" if self.state.get("voice_awake", True) else "dormant"
             )
 
-    def start_translator(self, src: str | None = None, dst: str | None = None) -> None:
-        """Arranca UN turno de traducción: pregunta y se queda escuchando.
+    def start_translator(
+        self,
+        src: str | None = None,
+        dst: str | None = None,
+        continuous: bool = False,
+    ) -> None:
+        """Arranca el traductor: pregunta lo que falte y se queda escuchando.
 
-        Es un turno por comando a propósito (ver backend/translator.py): al
-        terminar de traducir una frase MECH se calla y hay que volver a
-        decirle «traduce MECH». Así el micrófono nunca está abierto justo
-        después de que él hable, que era lo que hacía que se tradujera a sí
-        mismo en bucle.
+        `continuous=False` («traduce MECH») traduce UNA frase y se calla; hay
+        que repetir el comando para la siguiente. `continuous=True` («activa
+        modo traductor») se queda traduciendo hasta que le digan que lo
+        desactive. Ver backend/translator.py para por qué el continuo necesita
+        más cuidado con el eco.
 
-        Si ya sabe el par de idiomas (de un «traduce MECH» anterior, o porque
-        lo eligieron en el panel / lo dijeron en el propio comando), va
-        directo a pedir la frase. Si no, pregunta primero por los idiomas.
+        Si ya sabe el par de idiomas (de una vez anterior, porque lo eligieron
+        en el panel o porque lo dijeron en el propio comando), va directo a
+        pedir la frase. Si no, pregunta primero por los idiomas.
         """
         src, dst = self._resolve_pair(src, dst)
-        etapa = translator.begin(src, dst)
+        etapa = translator.begin(src, dst, continuous=continuous)
         with self._talking_alone():
-            if etapa == "phrase" and src and dst:
-                # Par nuevo: lo confirma y pide la frase de una vez.
-                self._announce_pair()
-            elif etapa == "phrase":
-                # Ya lo sabía de antes: al grano.
-                self._ask_phrase()
+            if etapa == "phrase":
+                # Ya hay par: lo confirma (o va al grano) y se pone a escuchar.
+                self._announce_pair(nuevo=bool(src and dst))
             else:
-                self.log("Modo traductor: pregunto el par de idiomas.", "ok")
+                modo = "continuo" if continuous else "de una frase"
+                self.log(f"Modo traductor {modo}: pregunto el par de idiomas.", "ok")
                 self._emit_translator()
                 tts.speak(lang.say("translate_ask"), blocking=True)
                 time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
@@ -362,28 +365,38 @@ class MechApp:
             return None, None
         return src, dst
 
-    def _announce_pair(self) -> None:
-        """Confirma el par de idiomas Y pide la frase, en una sola frase."""
+    def _announce_pair(self, nuevo: bool = True) -> None:
+        """Confirma el par de idiomas y se queda escuchando.
+
+        `nuevo` distingue "acabamos de fijar este par" de "ya lo sabía de
+        antes". En el segundo caso va al grano, que en un stand se agradece.
+        En modo CONTINUO lo anuncia distinto: hay que decirle al visitante que
+        no tiene que repetir el comando en cada frase.
+        """
         src, dst = translator.pair()
+        continuo = translator.is_continuous()
         self.log(
             f"Traduzco entre {lang.label(src)} y {lang.label(dst)}"
-            f"{' (los dos sentidos)' if config.TRANSLATOR_AUTO_DETECT else ''}.",
+            f"{' (los dos sentidos)' if config.TRANSLATOR_AUTO_DETECT else ''}"
+            f"{' — modo CONTINUO' if continuo else ''}.",
             "ok",
         )
         self._emit_translator()
-        texto = lang.say(
-            "translate_ready",
-            src=lang.language_name(src),
-            dst=lang.language_name(dst),
-        )
+        if continuo:
+            texto = lang.say(
+                "translate_on_continuous",
+                src=lang.language_name(src),
+                dst=lang.language_name(dst),
+            )
+        elif nuevo:
+            texto = lang.say(
+                "translate_ready",
+                src=lang.language_name(src),
+                dst=lang.language_name(dst),
+            )
+        else:
+            texto = lang.say("translate_ask_phrase")
         self._say_and_listen(texto)
-
-    def _ask_phrase(self) -> None:
-        """Pide la frase a traducir (el par ya se sabe de antes)."""
-        src, dst = translator.pair()
-        self.log(f"Traductor listo ({lang.label(src)} / {lang.label(dst)}).", "ok")
-        self._emit_translator()
-        self._say_and_listen(lang.say("translate_ask_phrase"))
 
     def _say_and_listen(self, texto: str) -> None:
         """Dice una pregunta del traductor y deja el micrófono listo.
@@ -418,7 +431,7 @@ class MechApp:
             self.set_voice_phase("waiting")
             return
         translator.set_pair(src, dst)
-        self._announce_pair()
+        self._announce_pair(nuevo=True)
         self.set_voice_phase("waiting")
 
     def handle_translation(self, text: str, detected: str | None = None) -> None:
@@ -431,10 +444,20 @@ class MechApp:
         pantalla (no se borra al terminar) para que dé tiempo a leerlo.
         """
         text = (text or "").strip()
-        # Guarda anti-eco: si lo que oyó es casi lo último que él mismo dijo
-        # (la pregunta), es su propio parlante. Se vuelve a pedir la frase.
+        # Guarda anti-eco: si lo que oyó es casi algo que él mismo acaba de
+        # decir (la pregunta, o la traducción anterior en modo continuo), es
+        # su propio parlante. Se descarta y se vuelve a escuchar SIN DECIR
+        # NADA — eso es lo que impide que el modo continuo se realimente.
         if text and translator.looks_like_own_echo(text, voice_phrases.normalize):
             self.log(f"Ignoro mi propio eco: {text!r}", "info")
+            seguidos = translator.echo_streak()
+            if seguidos >= 3:
+                self.log(
+                    f"Llevo {seguidos} ecos seguidos: me estoy oyendo a mí "
+                    "mismo. Sube «Espera del traductor continuo» en Ajustes "
+                    "(TRANSLATOR_CONTINUOUS_DRAIN_SECONDS).",
+                    "warn",
+                )
             text = ""
         if not text:
             self.set_voice_phase("waiting")
@@ -458,17 +481,30 @@ class MechApp:
         self.state["last_ai_response"] = traduccion
         self.emit("ai_response", text=traduccion)
         self.set_subtitle(traduccion, destino)
+        # La traducción también se recuerda para la guarda anti-eco. En modo
+        # continuo esto es IMPRESCINDIBLE: el micrófono se abre justo después
+        # de decirla, así que es lo que más se puede colar.
+        translator.remember_spoken(traduccion)
         self.set_voice_phase("speaking")
         tts.speak(traduccion, blocking=True)
-        # Y aquí SE CALLA: el turno terminó. Para traducir otra frase hay que
-        # volver a decir «traduce MECH». El par de idiomas se recuerda.
-        translator.finish()
+        sigue = translator.finish()
         self._emit_translator()
-        self.log(
-            "Traducción lista. Decí «traduce MECH» otra vez para la siguiente.",
-            "info",
-        )
-        time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
+        if sigue:
+            # CONTINUO: no dice nada más (cada frase suya es eco en potencia),
+            # solo espera más tiempo a que el parlante drene y vuelve a
+            # escuchar. El chime avisa al visitante de que le toca.
+            self.log("Traducción lista. Sigo escuchando (modo continuo).", "info")
+            time.sleep(config.TRANSLATOR_CONTINUOUS_DRAIN_SECONDS)
+            self.chime_pending = True
+        else:
+            # UNA FRASE: aquí se calla. Para la siguiente hay que volver a
+            # decir «traduce MECH». El par de idiomas se recuerda.
+            self.log(
+                "Traducción lista. Decí «traduce MECH» otra vez para la "
+                "siguiente, o «activa modo traductor» para que no pare.",
+                "info",
+            )
+            time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
         self.set_voice_phase("waiting")
 
     def stop_translator(self, announce: bool = True) -> None:
@@ -826,6 +862,50 @@ class MechApp:
             self.log("No saludo: MECH está hablando o grabando ahora mismo.", "warn")
             return
         self._perform_greeting()
+
+    def on_gesture_67(self) -> None:
+        """Alguien hizo el gesto del "67" ante la cámara: MECH se lo devuelve.
+
+        Lo dispara `vision._check_gesture_67` cuando el detector acierta (ver
+        backend/gesture_detect.py). Aquí solo se decide si CABE hacerlo ahora
+        y se lanza el gesto + la frase.
+
+        No pasa por Claude: es un reflejo, y si tuviera que esperar a la API
+        llegaría tarde y sin gracia. Tampoco mira si MECH está despierto o en
+        reposo — es un juego con quien esté delante, y funciona igual en los
+        dos estados. Lo único que respeta es no hablar encima de una
+        narración o de una grabación en curso.
+        """
+        if self.state.get("voice_phase") in self._BUSY_PHASES:
+            self.log("No imito el 67: MECH está hablando o grabando.", "info")
+            return
+        self.do_sixty_seven()
+
+    def do_sixty_seven(self) -> None:
+        """Hace el "67" con los brazos (y lo dice). Sin comprobar nada.
+
+        Lo usan `on_gesture_67()` y el botón «HACER EL 67» del panel
+        (`POST /api/move/67`), que sirve para probarlo sin cámara.
+        """
+        self.log("Imito el gesto del 67.", "ok")
+        # El gesto corre en su propio hilo (gestures lo lanza), así que los
+        # brazos y la voz van a la vez — que es como se ve bien.
+        gestures.sixty_seven(self.arduino)
+        if not config.GESTURE67_SAY:
+            return
+
+        def _decir():
+            # Misma guarda anti-eco que el saludo: mientras MECH habla, el
+            # bucle de voz descarta lo que transcriba para no oírse a sí mismo.
+            self.greeting_until = time.time() + 10
+            try:
+                tts.speak(lang.say("sixty_seven"), blocking=True)
+            except Exception as e:
+                self.log(f"No pude decir el 67: {e}", "warn")
+            finally:
+                self.greeting_until = time.time() + 1.5
+
+        threading.Thread(target=_decir, daemon=True).start()
 
     def on_user_lost(self) -> None:
         """El usuario salió de cámara.
@@ -1380,15 +1460,40 @@ class MechApp:
         self.state["last_transcript"] = text
         self.emit("transcript", text=text)
         self.log(f"Comando: {text!r}", "info")
-        # "traduce MECH": arranca UN turno de traducción. Va ANTES que todo
-        # lo demás y no pasa por Claude. Si el comando nombra los idiomas
-        # ("traduce MECH del inglés al portugués"), se toman de ahí; si no,
-        # se reutiliza el par de la vez anterior y, si tampoco lo hay, MECH
-        # pregunta.
-        if config.TRANSLATOR_ENABLED and voice_phrases.is_translate(text):
-            src, dst = voice_phrases.extract_language_pair(text)
-            self.start_translator(src, dst)
+        # REPOSO: "duérmete MECH". Va lo PRIMERO de todo y no pasa por Claude.
+        #
+        # ⚠️ Esto está aquí porque el equipo reportó (sep 2026) que a veces
+        # MECH "decía una frase larga sobre que se iba a modo reposo, pero
+        # volvía a abrir el micrófono". Era exactamente eso: la frase no
+        # casaba con la lista, el texto llegaba a Claude, Claude improvisaba
+        # una despedida bonita... y MECH NO se dormía, porque dormirse no es
+        # algo que un plan pueda hacer. Interceptándolo aquí, cualquier
+        # camino que llegue a un comando de texto (voz, panel, petición
+        # pendiente tras un "oye MECH") duerme a MECH de verdad.
+        if voice_phrases.is_sleep_any(text):
+            self.log("Me piden reposo: me duermo (sin pasar por Claude).", "info")
+            self.go_dormant()
             return
+        # Traductor. El ORDEN importa: "desactiva el modo traductor" contiene
+        # "modo traductor", así que apagar se mira antes que encender.
+        if config.TRANSLATOR_ENABLED:
+            if voice_phrases.is_translate_stop(text):
+                self.stop_translator()
+                return
+            # "activa modo traductor": se queda traduciendo hasta que le digan
+            # que lo desactive.
+            if voice_phrases.is_translate_on(text):
+                src, dst = voice_phrases.extract_language_pair(text)
+                self.start_translator(src, dst, continuous=True)
+                return
+            # "traduce MECH": UNA frase y se calla. Si el comando nombra los
+            # idiomas ("traduce MECH del inglés al portugués"), se toman de
+            # ahí; si no, se reutiliza el par de la vez anterior y, si tampoco
+            # lo hay, MECH pregunta.
+            if voice_phrases.is_translate(text):
+                src, dst = voice_phrases.extract_language_pair(text)
+                self.start_translator(src, dst)
+                return
         # Órdenes de movimiento: se atienden aquí mismo, sin llamar a Claude.
         if self.handle_movement_command(text):
             if self.state["voice_loop_active"]:
@@ -1408,6 +1513,15 @@ class MechApp:
                 language=lang.current(),
             )
             self.log(f"Plan: {plan.mode} — {plan.title}", "ok")
+            # Tercera red del modo reposo: la frase no casó con ninguna lista
+            # (Whisper la deformó), pero Claude sí entendió que le pedían
+            # callarse. Nos dormimos aquí, SIN narrar el plan: si no, MECH
+            # soltaría una despedida improvisada y seguiría despierto — el
+            # fallo exacto que reportó el equipo (sep 2026).
+            if plan.mode == "sleep":
+                self.log("Claude entendió que me piden reposo: me duermo.", "info")
+                self.go_dormant()
+                return
             self.execute_plan(plan)
             self.history = llm.append_turn(self.history, text, plan)
             if len(self.history) > 12:

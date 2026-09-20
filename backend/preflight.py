@@ -550,13 +550,26 @@ def check_env_sombra() -> None:
         "VOICE_WAKE_PHRASES_EN": "afecta a 'wake up MECH'",
         "VOICE_WAKE_PHRASES_FR": "afecta a 'bonjour MECH'",
         "VOICE_WAKE_PHRASES_PT": "afecta a 'bom dia MECH'",
-        "VOICE_SLEEP_PHRASES": "afecta a dormirlo",
+        # Una lista vieja aquí es la causa MÁS repetida de "le digo X y no
+        # hace nada". Ya pasó con el despertar; en sep 2026 volvió a pasar
+        # con el reposo: MECH soltaba una despedida larga y seguía despierto.
+        "VOICE_SLEEP_PHRASES": (
+            "afecta a dormirlo — si tenés la lista vieja, 'duérmete MECH' "
+            "se va a Claude y MECH NO se duerme"
+        ),
+        "VOICE_SLEEP_PHRASES_EN": "afecta a dormirlo en inglés",
+        "VOICE_SLEEP_PHRASES_FR": "afecta a dormirlo en francés",
+        "VOICE_SLEEP_PHRASES_PT": "afecta a dormirlo en portugués",
         "VOICE_INTERRUPT_PHRASES": "afecta a 'oye MECH'",
         "VOICE_OUTWARD_PHRASES": "afecta a 'mira hacia afuera'",
         "VOICE_PROJECT_PHRASES": "afecta a 'regresa a proyectar'",
         "VOICE_MARKETING_PHRASES": "afecta a 'proyecta marketing'",
-        "VOICE_TRANSLATE_PHRASES": "afecta a 'traduce MECH'",
-        "VOICE_TRANSLATE_STOP_PHRASES": "afecta a 'deja de traducir'",
+        "VOICE_TRANSLATE_PHRASES": "afecta a 'traduce MECH' (una frase)",
+        "VOICE_TRANSLATE_ON_PHRASES": (
+            "afecta a 'activa modo traductor' (continuo) — es una lista "
+            "NUEVA de sep 2026, si la tenés escrita a mano revisala"
+        ),
+        "VOICE_TRANSLATE_STOP_PHRASES": "afecta a 'desactiva el modo traductor'",
         "ARM_GESTURE_MODE": "en 'subtle' los gestos casi no se ven",
     }
     encontradas = []
@@ -580,6 +593,29 @@ def check_env_sombra() -> None:
         _di(_WARN, "ARM_GESTURE_MODE=subtle",
             "Los gestos quedan en un vaivén de pocos grados. El SALUDO ya no\n"
             "se encoge, pero el resto sí. Ponelo en 'full' para el evento.")
+
+    # Las listas de frases tienen que seguir siendo distinguibles entre sí.
+    # Se comprueba con el .env YA aplicado, que es lo que va a correr de
+    # verdad: si alguien escribió una lista a mano, aquí se ve el efecto.
+    import voice_phrases as vp
+    choques = []
+    for frase, etiqueta, debe in (
+        ("duermete mech", "reposo", vp.is_sleep_any),
+        ("activa modo traductor", "traductor continuo", vp.is_translate_on),
+        ("desactiva el modo traductor", "apagar traductor", vp.is_translate_stop),
+        ("traduce mech", "traducir una", vp.is_translate),
+        ("ok mech", "despertar", lambda t: vp.wake_language(t) == "es"),
+    ):
+        if not debe(frase):
+            choques.append(f"«{frase}» ya NO activa: {etiqueta}")
+    # Y al revés: apagar el traductor no puede encenderlo.
+    if vp.is_translate_on("desactiva el modo traductor"):
+        choques.append("«desactiva el modo traductor» ENCIENDE el traductor "
+                       "(las listas se pisan)")
+    if choques:
+        _di(_FAIL, "Hay comandos que dejaron de funcionar", "\n".join(choques))
+    else:
+        _di(_OK, "Los comandos principales se reconocen con este .env")
 
 
 # ---------------------------------------------------------------------------

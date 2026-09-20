@@ -1,12 +1,83 @@
 # MECH — Control desde Windows
 
-Tres formas de tener el panel de control de MECH en tu equipo Windows, de menos a más "nativa":
+Cuatro formas de tener el panel de control de MECH en tu equipo Windows, de más a menos recomendada:
 
 | Modo | Cómo se ve | Setup | Recomendado para |
 |---|---|---|---|
-| **Launcher .bat (app)** | Ventana sin barras (parece app) | Doble click | Operador del stand (laptop normal) |
-| **Launcher .bat (kiosko)** | Pantalla completa, sin escape fácil | Doble click | Tablet/pantalla dedicada |
-| **PWA instalada** | Acceso directo en menú inicio + ícono | 30s desde Edge | Uso permanente |
+| **App `MECH Panel.exe`** ⭐ | Ventana propia; **encuentra la Pi sola** | Doble click | **Todo el mundo.** Es lo que hay que repartir |
+| **Instalador** | Igual, pero en el menú inicio y con desinstalador | Compilar una vez | La laptop fija del stand |
+| **Launcher .bat** | Ventana sin barras (parece app) | Doble click + editar la IP a mano | Si no quieres construir nada |
+| **PWA instalada** | Acceso directo en menú inicio + ícono | 30 s desde Edge | Alternativa al .exe, sin construir |
+
+> **Lo nuevo (sep 2026): `MECH Panel.exe`.** Antes había que saberse la IP de
+> la Pi y editar `config.txt` a mano — y esa IP cambia cada vez que se cambia
+> de wifi. La app la **busca sola**: prueba `mech.local`, `mech`, la última
+> dirección que funcionó y, si hace falta, barre la red local buscando quién
+> responde. Se salta ese paso entero.
+
+## 0. La app: `MECH Panel.exe` (recomendado)
+
+### Usarla
+
+Doble click y ya. Al abrir busca la Pi sola; cuando el punto se pone **verde**
+los tres botones se habilitan:
+
+| Botón | Qué abre |
+|---|---|
+| **ABRIR EL PANEL** | El panel de control, en ventana de aplicación (sin barra de direcciones ni pestañas). |
+| **Abrir la proyección** | La página `/projector`, por si proyectas desde el Windows en vez de desde la Pi. |
+| **Panel a pantalla completa** | El panel en modo kiosko. Se sale con `Alt + F4`. |
+
+Si no la encuentra (redes con *client isolation*, muy común en colegios y
+eventos — ver `handoff.md` §6), escribe la dirección a mano en el campo y pulsa
+**Probar**. Acepta cualquier forma: `192.168.1.42`, `mech`, `mech.local:8000`,
+`http://192.168.1.42:8000`. La recuerda para la próxima.
+
+La dirección se guarda en `%APPDATA%\MECH\config.json`.
+
+### Construir el .exe
+
+Hace falta **una** máquina con Python para construirlo; el .exe que sale no
+necesita Python en ninguna otra.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File windows\construir_exe.ps1
+```
+
+Deja `windows\dist\MECH Panel.exe` (~10 MB). Ese archivo es lo que se le pasa
+a quien sea: se copia y funciona, no instala nada.
+
+La primera vez que se abre, **Windows SmartScreen dirá «editor desconocido»**
+(el .exe no está firmado — firmarlo cuesta dinero y no aporta nada aquí):
+*Más información* → *Ejecutar de todas formas*. Solo pasa una vez por equipo.
+
+### Instalador (opcional)
+
+Para la laptop fija del stand, donde no conviene depender de en qué carpeta
+quedó el .exe:
+
+1. Instala [Inno Setup](https://jrsoftware.org/isdl.php) (gratis).
+2. Construye el .exe con el comando de arriba.
+3. Doble click en [`MECH-Panel.iss`](MECH-Panel.iss) → **Compile**.
+
+Sale `windows\instalador\MECH-Panel-Setup.exe`: menú inicio, acceso directo
+opcional en el escritorio y desinstalador. **No pide permisos de
+administrador** (se instala solo para el usuario actual).
+
+### Por qué está hecha así
+
+`windows/mech_panel.py` **no usa nada fuera de la librería estándar de
+Python**. Es lo que permite que el .exe pese 10 MB y se construya en un
+minuto. Las alternativas (Tauri, Electron, pywebview) meten un navegador
+entero dentro del ejecutable para acabar mostrando la misma página que Edge ya
+sabe mostrar. Aquí Edge/Chrome ponen la ventana (modo `--app`) y el .exe solo
+se encarga de lo que faltaba: encontrar la Pi y recordar la dirección.
+
+⚠️ Si corres `python windows\mech_panel.py` directamente **con el Python de la
+Microsoft Store**, Windows le virtualiza `%APPDATA%` y guarda la dirección en
+otro sitio que el .exe. No es un problema real (cada uno es coherente consigo
+mismo), pero explica que la app "se olvide" de la dirección al pasar del
+script al .exe.
 
 ## 1. Preparar la conexión
 
@@ -77,12 +148,15 @@ Una vez dentro del panel, sirven estos:
 | La página carga pero el PARO no responde | Botones REST: el servidor debe estar activo. Mira los logs del panel a la derecha — si no aparecen logs nuevos al pulsar emergencia, el servidor no recibe. Revisa la consola Python en la Pi. |
 | Quiero salir del modo kiosko | `Alt + F4` cierra Edge. Si está bloqueado, `Ctrl + Alt + Supr` → Administrador de tareas → cierra `msedge.exe`. |
 
-## 6. ¿Por qué no una app .exe nativa de verdad?
+## 6. Historial: por qué antes no había .exe
 
-Lo consideramos. Las opciones nativas son:
+Hasta sep 2026 el panel se abría solo con los `.bat` y la PWA, y este README
+explicaba que un .exe nativo no compensaba: Tauri pedía instalar Rust + Visual
+Studio Build Tools (~1 GB) y Electron empaquetaba Chromium entero (~150 MB).
 
-- **Tauri** — Rust + webview. Binario pequeño (~10 MB). Requiere instalar Rust + Visual Studio Build Tools para compilar, ~1 GB de setup. Sobrecarga para el caso.
-- **Electron** — Chromium empaquetado. Pesado (~150 MB), pero familiar. Necesita Node.js para construir.
-- **PyWebView / NeutralinoJS** — alternativas ligeras pero menos pulidas.
-
-Para un proyecto de competencia con plazo, el modo `--app` de Edge + PWA da el 95% de la experiencia nativa con 0% del setup. Si más adelante quieres un `.exe` distribuible, [Tauri](https://tauri.app/) es el camino más limpio: el HTML/CSS/JS que ya tenemos sirve sin cambios.
+Eso **sigue siendo cierto para esas dos opciones**. Lo que cambió es el
+enfoque: en vez de meter un navegador dentro del ejecutable, el .exe solo
+resuelve lo que los `.bat` no podían (encontrar la Pi, recordar la dirección) y
+deja la ventana en manos de Edge. Con eso, un ejecutable de 10 MB sin
+dependencias hace el trabajo — y los `.bat` siguen ahí para quien no quiera
+construir nada.

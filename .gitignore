@@ -25,3 +25,10 @@ backend/video_library/*/
 
 # Worktrees y estado local de Claude Code
 .claude/
+
+# Construcción del .exe de Windows (windows/construir_exe.ps1).
+# El .exe se genera en cada máquina; a git solo va el código que lo produce.
+windows/dist/
+windows/build/
+windows/instalador/
+windows/.venv-build/
