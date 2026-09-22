@@ -330,6 +330,75 @@ def _frame_rms(frame: bytes) -> float:
     return float(np.sqrt(np.mean(samples * samples)) / 32768.0)
 
 
+def probe_microphone(seconds: float = 1.0) -> dict:
+    """Abre el micrófono un momento y MIDE lo que entra.
+
+    Por qué existe: cuando alguien dice "MECH está sordo, es como si no
+    tuviera micrófono", hay tres causas muy distintas y desde fuera se ven
+    igual — el dispositivo equivocado, el micrófono apagado/silenciado, o un
+    umbral mal puesto. Esto las separa con un número, y corre en CADA
+    arranque del bucle de voz, así que el panel lo dice solo.
+
+    Devuelve un dict con:
+      - `device`: lo que pidió el .env (None = el que tenga el sistema puesto)
+      - `nombre`: el dispositivo que de VERDAD se abrió
+      - `rate`: la tasa de captura
+      - `nivel`: RMS medio (0..1) de lo que se oyó
+      - `pico`: RMS máximo
+      - `frames`: cuántos bloques llegaron (0 = el micrófono no da datos)
+      - `error`: texto del fallo, si no se pudo abrir
+
+    No lanza excepciones: un fallo aquí NO puede impedir que MECH arranque.
+    """
+    info: dict = {
+        "device": config.AUDIO_INPUT_DEVICE.strip() or None,
+        "nombre": None,
+        "rate": config.AUDIO_SAMPLE_RATE,
+        "nivel": 0.0,
+        "pico": 0.0,
+        "frames": 0,
+        "error": None,
+    }
+    try:
+        dev = _resolve_input_device()
+        try:
+            info["nombre"] = sd.query_devices(dev, "input").get("name")
+        except Exception:
+            pass
+
+        q: queue.Queue = queue.Queue()
+
+        def cb(indata, frames, time_info, status):
+            q.put(bytes(indata))
+
+        suma = 0.0
+        with sd.RawInputStream(
+            samplerate=config.AUDIO_SAMPLE_RATE,
+            blocksize=FRAME_BYTES // 2,
+            dtype="int16",
+            channels=1,
+            device=dev,
+            callback=cb,
+        ):
+            fin = time.monotonic() + max(0.2, seconds)
+            while time.monotonic() < fin:
+                try:
+                    frame = q.get(timeout=0.3)
+                except queue.Empty:
+                    continue
+                if len(frame) < FRAME_BYTES:
+                    continue
+                rms = _frame_rms(frame[:FRAME_BYTES])
+                suma += rms
+                info["frames"] += 1
+                info["pico"] = max(info["pico"], rms)
+        if info["frames"]:
+            info["nivel"] = suma / info["frames"]
+    except Exception as e:
+        info["error"] = str(e)
+    return info
+
+
 def record_until_silence(
     max_seconds: float = 15.0,
     on_phase: Callable[[str], None] | None = None,

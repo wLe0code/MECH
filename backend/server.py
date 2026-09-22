@@ -119,6 +119,63 @@ def _voice_loop_worker():
         app_state.log("Bucle de voz detenido", "info")
 
 
+def _reportar_microfono(app_state) -> None:
+    """Mide el micrófono y escribe el veredicto en el panel.
+
+    Tres desenlaces, y cada uno dice qué hacer:
+      - no se pudo abrir  -> el dispositivo del .env no existe o está ocupado.
+      - se abrió pero MUDO -> el micrófono está apagado, silenciado o es el
+        equipado equivocado (p. ej. el de la webcam, que ya no se usa).
+      - se abrió con señal -> todo bien; queda el nivel apuntado por si luego
+        hay que tocar el umbral.
+    """
+    try:
+        info = stt.probe_microphone(1.0)
+    except Exception as e:  # nunca puede impedir que MECH arranque
+        app_state.log(f"No pude probar el micrófono: {e}", "warn")
+        return
+
+    pedido = info.get("device") or "(el que tenga puesto el sistema)"
+    nombre = info.get("nombre") or "?"
+
+    if info.get("error"):
+        app_state.log(
+            f"NO pude abrir el micrófono ({pedido}): {info['error']}. "
+            "MECH no va a oír nada. Revisá que esté enchufado y que "
+            "AUDIO_INPUT_DEVICE del .env coincida con un dispositivo real "
+            "(la lista sale en Ajustes o con `python -m backend.preflight`).",
+            "err",
+        )
+        return
+
+    if not info.get("frames"):
+        app_state.log(
+            f"El micrófono '{nombre}' se abrió pero NO llegó audio. "
+            "Suele ser que está desenchufado o apagado.",
+            "err",
+        )
+        return
+
+    nivel, pico = info["nivel"], info["pico"]
+    app_state.log(
+        f"Micrófono: '{nombre}' a {info['rate']} Hz "
+        f"(pedido en .env: {pedido}) — nivel {nivel:.4f}, pico {pico:.4f}.",
+        "info",
+    )
+    # 0.0005 es ruido de fondo de un micrófono vivo en una sala en silencio.
+    # Por debajo de eso, lo que entra es literalmente silencio digital.
+    if pico < 0.0005:
+        app_state.log(
+            "El micrófono NO capta nada (silencio digital). MECH va a estar "
+            "sordo. Revisá: que sea el dispositivo correcto (el del proyecto "
+            "es el Steren, NO el de la cámara), que el receptor esté "
+            "encendido y con batería, y que no esté silenciado en el sistema.",
+            "err",
+        )
+    else:
+        app_state.log("Micrófono OK: capta señal.", "ok")
+
+
 def _voice_loop_body(app_state) -> None:
     """El bucle en sí. Lo envuelve `_voice_loop_worker` para que un fallo no
     deje el hilo muerto y el estado mintiendo."""
@@ -151,6 +208,14 @@ def _voice_loop_body(app_state) -> None:
     except Exception as e:
         app_state.log(f"No se pudo precargar Whisper: {e}", "warn")
     app_state.log(f"Whisper cargado en {time.monotonic() - t0:.1f} s.", "ok")
+    # PRUEBA REAL DEL MICRÓFONO antes de ponerse a escuchar.
+    #
+    # El equipo reportó "al inicio está sordo, como si no tuviera micrófono".
+    # Desde fuera, tres causas muy distintas se ven exactamente igual: el
+    # dispositivo equivocado, el micrófono mudo, o el umbral mal puesto.
+    # Esto las separa con un número y lo deja escrito en el panel en CADA
+    # arranque, así no hay que adivinar nunca más.
+    _reportar_microfono(app_state)
     # Sonido de "listo": a partir de aquí el micrófono está activo y ya se le
     # puede hablar / decir "despierta MECH".
     tts.play_chime()
@@ -431,6 +496,19 @@ async def lifespan(app: FastAPI):
     if config.VOICE_AUTOSTART:
         mech.log("Voz en reposo: di 'ok MECH' para activarlo.", "info")
         start_voice_loop(awake=False)
+    else:
+        # ⚠️ Antes esto era SILENCIO ABSOLUTO: con VOICE_AUTOSTART=false el
+        # bucle no arrancaba y el arranque no lo mencionaba, así que MECH
+        # parecía "sordo, como si no tuviera micrófono" — y pulsar el botón
+        # del panel lo "arreglaba" porque era lo único que lo encendía.
+        # Recordá que el .env de la Pi TAPA el default del código.
+        mech.log(
+            "VOICE_AUTOSTART=false: el bucle de voz NO arranca solo, así que "
+            "MECH no va a oír nada todavía. Pulsá el micrófono del panel (o "
+            "la tecla V) para encenderlo. Para que arranque solo, poné "
+            "VOICE_AUTOSTART=true en backend/.env.",
+            "warn",
+        )
     # Slots de proyección directa (marketing): decir cuántos videos hay, para
     # que se vea de un vistazo si están subidos y si esta es la versión nueva.
     for slug in (s for s in video_library.WORKS if video_library.is_promo(s)):
