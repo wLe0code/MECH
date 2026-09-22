@@ -684,6 +684,7 @@
       setSlider('set-greetcd', 'greetcd', L.GREETING_COOLDOWN);
       setSlider('set-greetrearm', 'greetrearm', L.GREETING_REARM_SECONDS);
       if ($('set-greetdormant')) $('set-greetdormant').checked = !!L.GREETING_ONLY_DORMANT;
+      if ($('set-greetlang') && L.GREETING_LANGUAGE) $('set-greetlang').value = L.GREETING_LANGUAGE;
       // Gesto "67"
       if ($('set-g67')) $('set-g67').checked = !!L.GESTURE67_ENABLED;
       if ($('set-g67say')) $('set-g67say').checked = !!L.GESTURE67_SAY;
@@ -763,6 +764,7 @@
         GREETING_COOLDOWN: $('set-greetcd').value,
         GREETING_REARM_SECONDS: $('set-greetrearm').value,
         GREETING_ONLY_DORMANT: $('set-greetdormant').checked ? 'true' : 'false',
+        GREETING_LANGUAGE: $('set-greetlang').value,
         TURN_180_SECONDS: $('set-turnsec').value,
         TURN_180_SPEED: String(parseInt($('set-turnvel').value)),
         TURN_180_INVERT: $('set-turninv').checked ? 'true' : 'false',

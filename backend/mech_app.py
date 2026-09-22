@@ -671,8 +671,13 @@ class MechApp:
         self.pending_command = None
         return pendiente
 
-    def start_subtitles(self, text: str, info: dict) -> None:
+    def start_subtitles(self, text: str, info: dict, code: str | None = None) -> None:
         """Arranca los subtítulos de `text` sincronizados con la voz.
+
+        `code` fuerza el idioma del subtítulo. Hace falta para el saludo por
+        cámara, que sale en `GREETING_LANGUAGE` (inglés) aunque MECH esté en
+        español: sin esto, el subtítulo diría que es español y la pantalla lo
+        etiquetaría mal. None = el idioma activo, que es lo normal.
 
         Lo llama `tts.speak` en el instante EXACTO en que empieza a sonar el
         audio, con su duración real (y, si ElevenLabs lo dio, el segundo de
@@ -699,7 +704,7 @@ class MechApp:
                     return  # nos cancelaron mientras esperábamos
                 if cancel.is_set():
                     return
-                self.set_subtitle(linea)
+                self.set_subtitle(linea, code)
 
         threading.Thread(target=_run, daemon=True).start()
 
@@ -834,6 +839,16 @@ class MechApp:
         self._last_greeting_skip_log = now
         self.log(mensaje, "info")
 
+    def _greeting_language(self) -> str:
+        """Idioma en el que sale el saludo por cámara.
+
+        `GREETING_LANGUAGE` (inglés por defecto). Si está vacío o trae algo
+        que no reconocemos, se usa el idioma activo — que es como funcionaba
+        antes, así que una clave mal escrita no deja a MECH mudo.
+        """
+        code = (config.GREETING_LANGUAGE or "").strip().lower()
+        return code if code in lang.SUPPORTED else lang.current()
+
     def _perform_greeting(self) -> None:
         """El saludo en sí: brazo + voz, a la vez. Sin comprobar nada."""
         self._last_greeting = time.time()
@@ -849,12 +864,19 @@ class MechApp:
             # Ventana provisional amplia mientras habla; al terminar se
             # ajusta a un margen corto para drenar el eco del parlante.
             self.greeting_until = time.time() + 20
-            texto = lang.say("greeting")
+            # El saludo sale en `GREETING_LANGUAGE` (inglés por defecto), NO
+            # en el idioma activo. Es lo primero que oye quien llega al
+            # stand, y conviene que lo entienda cualquiera; el idioma de la
+            # conversación lo sigue decidiendo la frase con que lo despierten.
+            idioma = self._greeting_language()
+            texto = lang.say("greeting", code=idioma)
             try:
                 tts.speak(
                     texto,
                     blocking=True,
-                    on_playback=lambda info: self.start_subtitles(texto, info),
+                    on_playback=lambda info: self.start_subtitles(
+                        texto, info, code=idioma
+                    ),
                 )
             finally:
                 self.greeting_until = time.time() + 1.5

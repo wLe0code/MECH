@@ -1347,6 +1347,20 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Para probar el saludo despierto, se apaga la regla en Ajustes.
   El aviso «No saludo: MECH está despierto» sale como mucho **una vez por
   minuto** — la visión detecta a ~10 fps y si no llenaría el panel.
+- **El saludo por cámara sale en INGLÉS** (`GREETING_LANGUAGE`, default
+  `en`, sep 2026): es lo primero que se oye en un stand internacional y
+  conviene que lo entienda cualquiera. ⚠️ **NO cambia el idioma de MECH** —
+  eso lo sigue decidiendo la frase con la que se le despierta, y en reposo
+  vuelve siempre a español. Solo esa frase (y su subtítulo) cambian.
+  Un valor vacío o desconocido cae al idioma activo, así que una clave mal
+  escrita no deja a MECH mudo. Selector en Ajustes → «Idioma del saludo».
+- **Sentido de giro por brazo** (`ARM_INVERT_R` default **true**,
+  `ARM_INVERT_L` false): si la bocina del servo está montada del otro lado,
+  el brazo sube al BAJAR el ángulo y TODOS los gestos salen al revés.
+  `gestures._fisico()` traduce el ángulo lógico (90 = reposo, más =
+  levantado) al que ve el servo. Es la misma idea que `DIR_FL/FR/BL/BR` con
+  las ruedas. El reposo son 90 en los dos sentidos, así que cambiarlo no
+  obliga a recalibrar nada más. En vivo desde Ajustes → «Sentido brazos».
 - **Saludo al detectar usuario (calibrado con videos del equipo, jul 2026)**:
   al ver a alguien, MECH dice «¡Hola! Soy MECH. Un gusto verte hoy aquí»
   (`mech_app.GREETING_TEXT`, cooldown 60 s, no interrumpe narraciones) y hace

@@ -229,8 +229,13 @@ a la nube.
 ## 7. Cuando alguien se acerca
 
 Con la cámara encendida, MECH **saluda solo** a quien llega: levanta el
-**brazo derecho**, lo agita **4 veces** y dice «¡Hola! Soy MECH. Un gusto
-verte hoy aquí».
+**brazo derecho**, lo agita **4 veces** y dice, **en inglés**,
+«Hello! I am MECH. It's a pleasure to see you here today».
+
+> El saludo va en inglés a propósito: es lo primero que se oye en el stand y
+> así lo entiende cualquiera. **No cambia el idioma de MECH** — si le hablas
+> con «ok MECH» te responde en español, como siempre. Se cambia en
+> Ajustes → «Idioma del saludo».
 
 - **Solo saluda en reposo.** Despierto está atendiendo a alguien y saludar
   encima le cortaría la experiencia. Esto vale para TODOS los caminos,
@@ -247,6 +252,8 @@ Se ajusta en Panel → Ajustes:
 |---|---|
 | **Saludo rotaciones** | Cuántas veces sube el brazo (por defecto 4) |
 | **Saludo brazos** | Apagado = solo el derecho. Encendido = los dos |
+| **Idioma del saludo** | En qué idioma saluda (inglés por defecto) |
+| **Sentido brazos** | Hacia qué lado se mueven. Si un brazo va al revés, es esto |
 | **Saludo** (interruptor) | Si se exige que esté en reposo para saludar |
 | **Saludo lento** / **Saludo alto** / **Saludo amplitud** | Velocidad y tamaño del arco |
 

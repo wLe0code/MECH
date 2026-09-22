@@ -1095,6 +1095,7 @@ _LIVE_KEYS = {
     "ARM_WAVE_REPEATS": int,
     "GREETING_COOLDOWN": float,
     "GREETING_ONLY_DORMANT": _to_bool,  # saludar solo con MECH en reposo
+    "GREETING_LANGUAGE": str,       # idioma del saludo por cámara
     "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
     "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos
@@ -1178,6 +1179,7 @@ async def get_config():
             "ARM_WAVE_REPEATS": config.ARM_WAVE_REPEATS,
             "GREETING_COOLDOWN": config.GREETING_COOLDOWN,
             "GREETING_ONLY_DORMANT": config.GREETING_ONLY_DORMANT,
+            "GREETING_LANGUAGE": config.GREETING_LANGUAGE,
             "GREETING_REARM_SECONDS": config.GREETING_REARM_SECONDS,
             "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,
             "ARM_WAVE_BOTH": config.ARM_WAVE_BOTH,

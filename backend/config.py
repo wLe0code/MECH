@@ -135,6 +135,17 @@ GREETING_COOLDOWN = float(os.environ.get("GREETING_COOLDOWN", "45"))
 # frenaba. Ahora el reloj se REINICIA con cada pérdida: si el detector
 # parpadea, nunca llega a esta cuenta y MECH no repite el saludo.
 GREETING_REARM_SECONDS = float(os.environ.get("GREETING_REARM_SECONDS", "20"))
+# Idioma del SALUDO POR CÁMARA (el que MECH suelta al ver llegar a alguien
+# estando en reposo). INGLÉS por defecto (sep 2026, pedido del equipo): en un
+# stand internacional, lo primero que se oye conviene que lo entienda todo el
+# mundo, y quien quiera seguir en otro idioma solo tiene que despertarlo con
+# la frase de ese idioma.
+#
+# ⚠️ Esto NO cambia el idioma de MECH: solo el de esa frase. El resto sigue
+# igual — el idioma lo decide la frase con la que se le despierta, y en
+# reposo MECH vuelve siempre a español (ver backend/lang.py).
+# Vacío = usar el idioma activo, que era el comportamiento anterior.
+GREETING_LANGUAGE = os.environ.get("GREETING_LANGUAGE", "en").strip().lower()
 # El saludo por cámara SOLO se dispara con MECH EN REPOSO (decisión del
 # equipo, sep 2026). Despierto está narrando, conversando o traduciendo, y
 # soltar "¡Hola! Soy MECH" encima de eso corta la experiencia del visitante
