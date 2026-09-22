@@ -222,6 +222,10 @@ class MechApp:
     # Patrón del aro de LEDs (estilo Alexa) para cada fase de voz.
     _LED_BY_PHASE = {
         "off": "OFF",
+        # Arrancando (cargando Whisper): el aro pulsa como "pensando", que es
+        # lo que de verdad está haciendo. No "IDLE", que es el de reposo y
+        # daría a entender que ya escucha.
+        "loading": "THINK",
         "dormant": "IDLE",
         "waiting": "LISTEN",
         "listening": "LISTEN",
@@ -233,7 +237,10 @@ class MechApp:
     def set_voice_phase(self, phase: str) -> None:
         """Actualiza la fase del ciclo de voz y la difunde al panel.
 
-        Fases: off | waiting | listening | transcribing | thinking | speaking.
+        Fases: off | loading | dormant | waiting | listening | transcribing |
+        thinking | speaking. "loading" es mientras carga Whisper al arrancar:
+        ahí el micrófono está CERRADO, y decirlo evita el susto de "MECH no
+        me oye al encender el server".
         `voice_listening` se mantiene en sincronía (True solo cuando el
         micrófono está realmente abierto) para no romper indicadores viejos.
         También sincroniza el aro de LEDs del robot (como un Alexa Echo:

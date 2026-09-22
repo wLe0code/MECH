@@ -99,10 +99,49 @@ def _voice_loop_worker():
     solo a español. Ver backend/lang.py.
     """
     app_state = get_app()
+    try:
+        _voice_loop_body(app_state)
+    except Exception as e:
+        # Sin esto, un fallo ANTES del bucle (cargar Whisper, el Arduino, el
+        # audio) mataba el hilo en silencio y dejaba `voice_loop_active` en
+        # True: el panel decía que la voz estaba encendida, el micrófono
+        # nunca se abría, y apagar/encender desde el botón era la única
+        # forma de salir. Ahora se ve el error y el estado dice la verdad.
+        app_state.log(f"El bucle de voz se cayó: {e}", "err")
+    finally:
+        app_state.state["voice_loop_active"] = False
+        try:
+            app_state.arduino.set_mode("IDLE")
+        except Exception:
+            pass
+        app_state.set_voice_phase("off")
+        app_state.emit("state", state=app_state.state)
+        app_state.log("Bucle de voz detenido", "info")
+
+
+def _voice_loop_body(app_state) -> None:
+    """El bucle en sí. Lo envuelve `_voice_loop_worker` para que un fallo no
+    deje el hilo muerto y el estado mintiendo."""
     app_state.log("Bucle de voz iniciado", "ok")
     app_state.arduino.set_mode("IDLE")
-    # Precargamos Whisper para que el primer "despierta MECH" responda rápido
-    # (la primera vez puede tardar si tiene que descargar el modelo).
+    # ⚠️ ESTO TARDA, y mientras tanto el micrófono está CERRADO.
+    #
+    # Cargar los dos modelos de Whisper lleva de varios segundos a casi un
+    # minuto en la Pi (y la PRIMERA vez, si hay que descargarlos, mucho más).
+    # Antes esto no se decía en el panel: MECH aparecía "en reposo", que es
+    # su estado normal, así que parecía que estaba escuchando cuando todavía
+    # no. El equipo lo reportó como "al encender el server no oye 'ok MECH',
+    # pero si toco el botón sí" — el botón "arreglaba" el problema porque
+    # para entonces los modelos ya estaban cargados en memoria.
+    #
+    # Por eso ahora hay una fase propia ("loading") y se dice cuánto tardó.
+    app_state.set_voice_phase("loading")
+    app_state.log(
+        f"Cargando Whisper '{config.WHISPER_MODEL}' — MECH todavía NO "
+        "escucha. Espera a que diga «Voz lista».",
+        "warn",
+    )
+    t0 = time.monotonic()
     try:
         stt.get_model()
         # El de las interrupciones también, para no cargarlo a mitad de una
@@ -111,6 +150,7 @@ def _voice_loop_worker():
             stt.get_interrupt_model()
     except Exception as e:
         app_state.log(f"No se pudo precargar Whisper: {e}", "warn")
+    app_state.log(f"Whisper cargado en {time.monotonic() - t0:.1f} s.", "ok")
     # Sonido de "listo": a partir de aquí el micrófono está activo y ya se le
     # puede hablar / decir "despierta MECH".
     tts.play_chime()
@@ -297,22 +337,40 @@ def _voice_loop_worker():
                 pendiente = app_state.take_pending_command()
         except Exception as e:
             app_state.log(f"Error en bucle de voz: {e}", "err")
-    app_state.arduino.set_mode("IDLE")
-    app_state.set_voice_phase("off")
-    app_state.log("Bucle de voz detenido", "info")
+    # El apagado (modo IDLE, fase "off", log) lo hace el `finally` de
+    # `_voice_loop_worker`, para que valga también si esto se cae.
 
 
 _voice_thread: threading.Thread | None = None
 
 
+def _loop_vivo() -> bool:
+    """¿Hay de verdad un hilo de voz corriendo?
+
+    `voice_loop_active` es solo una bandera: si el hilo muere, se queda en
+    True y el panel muestra la voz como encendida aunque el micrófono esté
+    cerrado. Mirar el hilo es lo único que no miente.
+    """
+    return _voice_thread is not None and _voice_thread.is_alive()
+
+
 def start_voice_loop(awake: bool = True):
     global _voice_thread
     app_state = get_app()
-    if app_state.state["voice_loop_active"]:
+    if app_state.state["voice_loop_active"] and _loop_vivo():
         # Ya corriendo: si estaba en reposo y se pide despierto, lo despertamos.
         if awake and not app_state.state.get("voice_awake", True):
             app_state.go_awake()
         return
+    if app_state.state["voice_loop_active"]:
+        # La bandera decía que sí, pero el hilo no existe: se cayó. Lo
+        # decimos y arrancamos otro, en vez de no hacer nada (que es lo que
+        # obligaba a pulsar el botón dos veces).
+        app_state.log(
+            "El bucle de voz estaba marcado como activo pero el hilo no "
+            "existía. Lo arranco de nuevo.",
+            "warn",
+        )
     app_state.state["voice_awake"] = awake
     app_state.state["voice_loop_active"] = True
     _voice_thread = threading.Thread(target=_voice_loop_worker, daemon=True)

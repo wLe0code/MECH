@@ -186,6 +186,11 @@
   // Mapa de fases del ciclo de voz → texto + estilo del banner grande.
   const PHASES = {
     off:          { cls: 'phase-off',     text: 'Bucle de voz apagado',     hint: 'Pulsa el micrófono o la tecla V para empezar' },
+    // Whisper tarda de segundos a casi un minuto en cargar, y hasta que
+    // termina el micrófono está CERRADO. Sin esta fase, el banner decía "en
+    // reposo" (su estado normal) y parecía que ya escuchaba: de ahí el
+    // reporte "al encender el server no oye 'ok MECH'".
+    loading:      { cls: 'phase-work',    text: '⏳ Cargando Whisper…',      hint: 'MECH TODAVÍA NO ESCUCHA. Espera a que suene el tono.' },
     dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'ok MECH' (español) o 'wake up MECH' (inglés)" },
     waiting:      { cls: 'phase-waiting', text: '🎤 PUEDES HABLAR',          hint: 'Dile al juez/usuario que hable AHORA' },
     listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
@@ -208,7 +213,8 @@
     const micActive = phase === 'waiting' || phase === 'listening';
     $('dot-mic').className = micActive ? 'dot-active' : (state.voiceLoopActive ? 'dot-ok' : 'dot-off');
     const micLabel = { waiting: 'PUEDES HABLAR', listening: 'GRABANDO', transcribing: 'PROCESANDO',
-                       thinking: 'PENSANDO', speaking: 'HABLANDO', dormant: 'EN REPOSO', off: 'INACTIVO' }[phase] || 'INACTIVO';
+                       thinking: 'PENSANDO', speaking: 'HABLANDO', dormant: 'EN REPOSO',
+                       loading: 'CARGANDO', off: 'INACTIVO' }[phase] || 'INACTIVO';
     setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
   }
 
