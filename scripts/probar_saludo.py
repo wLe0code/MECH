@@ -81,8 +81,13 @@ def correr():
     izq=[a for l,a in link.ordenes if l=="L"]
     return der, izq
 
+# La coreografia se mide con los brazos SIN invertir: asi el angulo que
+# recibe el Arduino es el mismo que el logico (90 reposo, mas = arriba) y
+# las comprobaciones se leen solas. La inversion tiene su propia seccion.
+config.ARM_INVERT_R = config.ARM_INVERT_L = False
+
 print("=== Defaults que pidió el equipo (sep 2026) ===")
-print(f"    ARM_WAVE_REPEATS = {config.ARM_WAVE_REPEATS}   (agitadas)")
+print(f"    ARM_WAVE_REPEATS = {config.ARM_WAVE_REPEATS}   (veces arriba)")
 print(f"    ARM_WAVE_BOTH    = {config.ARM_WAVE_BOTH}  (dos brazos)")
 check(config.ARM_WAVE_REPEATS in (3,4), "las rotaciones por defecto son 3 o 4")
 check(config.ARM_WAVE_BOTH is False, "por defecto NO saluda con los dos brazos")
@@ -99,7 +104,7 @@ check(subidas == config.ARM_WAVE_REPEATS,
       f"llega arriba exactamente {config.ARM_WAVE_REPEATS} veces")
 check(der[-1] == 90, "termina en reposo")
 
-print("\n=== El numero del panel es literal para cualquier valor ===")
+print("\n=== El numero del panel coincide para cualquier valor ===")
 for n in (2, 3, 4, 6):
     config.ARM_WAVE_REPEATS = n
     der, _ = correr()
@@ -108,6 +113,25 @@ for n in (2, 3, 4, 6):
 config.ARM_WAVE_REPEATS = 4
 
 print("\n=== Con ARM_WAVE_BOTH=true vuelve el izquierdo ===")
+print("\n=== Sentido del brazo (ARM_INVERT_R) ===")
+config.ARM_INVERT_R = False
+der_normal, _ = correr()
+config.ARM_INVERT_R = True
+der_invertido, _ = correr()
+print(f"    normal:     de {min(der_normal)} a {max(der_normal)}")
+print(f"    invertido:  de {min(der_invertido)} a {max(der_invertido)}")
+check(max(der_normal) >= 170 and min(der_normal) == 90,
+      "sin invertir va de 90 hacia ARRIBA (90..180)")
+check(min(der_invertido) <= 10 and max(der_invertido) == 90,
+      "invertido va de 90 hacia el OTRO LADO (0..90)")
+check(len(der_normal) == len(der_invertido),
+      "el recorrido dura lo mismo, solo cambia el sentido")
+check(der_normal[-1] == der_invertido[-1] == 90,
+      "el reposo sigue siendo 90 en los dos (no hay que recalibrar)")
+check(all(b == 180 - a for a, b in zip(der_normal, der_invertido)),
+      "cada angulo es el espejo exacto del otro")
+config.ARM_INVERT_R = False
+
 config.ARM_WAVE_BOTH = True
 der, izq = correr()
 check(max(izq) >= 170, "el izquierdo sube a acompañar")

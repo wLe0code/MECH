@@ -57,16 +57,39 @@ _STEP_S = 0.03
 _TALK_MAX = 125
 
 
+def _fisico(lado: str, angulo: float) -> int:
+    """Pasa un ángulo LÓGICO al que hay que mandarle al servo de verdad.
+
+    Todo el código de gestos piensa en ángulos lógicos: **90 = reposo y más
+    de 90 = brazo levantado**. Pero eso depende de cómo esté montado cada
+    servo en el robot: si la bocina está puesta del otro lado, el brazo sube
+    al BAJAR el ángulo, y todos los gestos salen al revés.
+
+    `ARM_INVERT_L` / `ARM_INVERT_R` arreglan eso sin tocar el firmware ni
+    desmontar nada: dan la vuelta al recorrido (90 sigue siendo 90, así que
+    el reposo no se mueve). Es lo mismo que hacen `DIR_FL/FR/BL/BR` en el
+    .ino con el sentido de giro de las ruedas.
+    """
+    invertir = config.ARM_INVERT_L if lado == "L" else config.ARM_INVERT_R
+    angulo = 180 - angulo if invertir else angulo
+    return max(0, min(180, round(angulo)))
+
+
 def _move_smooth(link: ArduinoLink, target_l: int, target_r: int, duration: float) -> None:
-    """Lleva ambos brazos de su posición actual a la meta, interpolando."""
+    """Lleva ambos brazos de su posición actual a la meta, interpolando.
+
+    Los ángulos que entran y los que se guardan en `_current` son LÓGICOS
+    (90 = reposo, más = arriba); la conversión a lo que ve el servo la hace
+    `_fisico()` justo al mandar.
+    """
     target_l = max(0, min(180, int(target_l)))
     target_r = max(0, min(180, int(target_r)))
     start_l, start_r = _current["L"], _current["R"]
     steps = max(1, int(duration / _STEP_S))
     for i in range(1, steps + 1):
         t = i / steps
-        link.arm("L", round(start_l + (target_l - start_l) * t))
-        link.arm("R", round(start_r + (target_r - start_r) * t))
+        link.arm("L", _fisico("L", start_l + (target_l - start_l) * t))
+        link.arm("R", _fisico("R", start_r + (target_r - start_r) * t))
         time.sleep(_STEP_S)
     _current["L"], _current["R"] = target_l, target_r
 
@@ -253,8 +276,8 @@ def _perform(link: ArduinoLink, gesture: str, talking: bool) -> None:
         try:
             mode = config.ARM_GESTURE_MODE
             if mode == "off":
-                link.arm("L", _NEUTRAL)
-                link.arm("R", _NEUTRAL)
+                link.arm("L", _fisico("L", _NEUTRAL))
+                link.arm("R", _fisico("R", _NEUTRAL))
                 _current["L"] = _current["R"] = _NEUTRAL
                 return
             # El SALUDO nunca se encoge: es el gesto que ve todo el que se

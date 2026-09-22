@@ -1098,6 +1098,8 @@ _LIVE_KEYS = {
     "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
     "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos
+    "ARM_INVERT_R": _to_bool,       # sentido de giro de cada brazo
+    "ARM_INVERT_L": _to_bool,
     "RETURN_SPEED": int,
     "GESTURE_WHEEL_SPEED": int,
     "GESTURE_WHEEL_SECONDS": float,
@@ -1179,6 +1181,8 @@ async def get_config():
             "GREETING_REARM_SECONDS": config.GREETING_REARM_SECONDS,
             "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,
             "ARM_WAVE_BOTH": config.ARM_WAVE_BOTH,
+            "ARM_INVERT_R": config.ARM_INVERT_R,
+            "ARM_INVERT_L": config.ARM_INVERT_L,
             "RETURN_SPEED": config.RETURN_SPEED,
             "GESTURE_WHEEL_SPEED": config.GESTURE_WHEEL_SPEED,
             "GESTURE_WHEEL_SECONDS": config.GESTURE_WHEEL_SECONDS,

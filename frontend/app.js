@@ -674,6 +674,8 @@
       // Por defecto va APAGADO (solo el brazo derecho), así que se lee tal
       // cual. Antes era `!== false`, que con la clave ausente lo marcaba.
       if ($('set-waveboth')) $('set-waveboth').checked = !!L.ARM_WAVE_BOTH;
+      if ($('set-invr')) $('set-invr').checked = !!L.ARM_INVERT_R;
+      if ($('set-invl')) $('set-invl').checked = !!L.ARM_INVERT_L;
       setSlider('set-hpf', 'hpf', L.AUDIO_HIGHPASS_HZ);
       setSlider('set-agc', 'agc', L.AUDIO_TARGET_DBFS);
       setSlider('set-beam', 'beam', L.WHISPER_BEAM_SIZE);
@@ -751,6 +753,8 @@
         ARM_WAVE_SWING: String(parseInt($('set-waveswing').value)),
         ARM_WAVE_REPEATS: String(parseInt($('set-waverep').value)),
         ARM_WAVE_BOTH: $('set-waveboth').checked ? 'true' : 'false',
+        ARM_INVERT_R: $('set-invr').checked ? 'true' : 'false',
+        ARM_INVERT_L: $('set-invl').checked ? 'true' : 'false',
         AUDIO_HIGHPASS_HZ: $('set-hpf').value,
         AUDIO_TARGET_DBFS: $('set-agc').value,
         WHISPER_BEAM_SIZE: String(parseInt($('set-beam').value)),

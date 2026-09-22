@@ -570,6 +570,20 @@
             </label>
           </div>
           <div class="slider-row">
+            <label title="¿Hacia qué lado se mueven los brazos? Si el brazo saluda hacia el lado contrario al que debería, es que el servo está montado al revés: esto le da la vuelta al recorrido sin desmontar nada ni tocar el firmware. El reposo (90°) no cambia. Afecta a TODOS los gestos, no solo al saludo.">Sentido brazos</label>
+            <label class="switch">
+              <input type="checkbox" id="set-invr">
+              <span class="switch-text">Invertir brazo DERECHO</span>
+            </label>
+          </div>
+          <div class="slider-row">
+            <label title="Lo mismo para el brazo izquierdo.">&nbsp;</label>
+            <label class="switch">
+              <input type="checkbox" id="set-invl">
+              <span class="switch-text">Invertir brazo IZQUIERDO</span>
+            </label>
+          </div>
+          <div class="slider-row">
             <label title="Segundos entre saludos a la cámara. Bajo = saluda a cada visitante nuevo.">Repetir saludo</label>
             <input type="range" min="5" max="120" step="5" value="45" id="set-greetcd" oninput="UI.settingLabel('set-greetcd','greetcd')">
             <span class="val" id="set-greetcd-val">45 s</span>

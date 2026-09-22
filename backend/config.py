@@ -92,6 +92,27 @@ ARM_WAVE_REPEATS = max(2, int(os.environ.get("ARM_WAVE_REPEATS", "4")))
 ARM_WAVE_BOTH = os.environ.get("ARM_WAVE_BOTH", "false").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
+# Sentido de giro de cada brazo, igual que DIR_FL/FR/BL/BR hacen con las
+# ruedas en el .ino.
+#
+# Todo el código de gestos piensa en "90 = reposo, más de 90 = levantado".
+# Si la bocina del servo está montada del otro lado, el brazo sube al BAJAR
+# el ángulo y TODOS los gestos salen al revés. Esto le da la vuelta al
+# recorrido sin tocar el firmware ni desmontar el brazo (el reposo se queda
+# en 90 en los dos casos, así que no hay que recalibrar nada más).
+#
+# El DERECHO va invertido por defecto (sep 2026): el equipo reportó que
+# saludaba hacia el lado contrario. Si en tu robot es al revés, se cambia en
+# vivo desde Ajustes → «Invertir brazo derecho / izquierdo», sin reiniciar.
+#
+# OJO: `_bool_env` se define al final del módulo, así que aquí arriba se lee
+# a mano igual que las demás claves de esta zona.
+ARM_INVERT_R = os.environ.get("ARM_INVERT_R", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+ARM_INVERT_L = os.environ.get("ARM_INVERT_L", "false").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 # Gestos MIENTRAS NARRA (proyectando):
 #   "simple" (default) = UN solo brazo, recorrido corto y lento. Los servos
 #                        gastan poco y la proyección no se llena de ruido
