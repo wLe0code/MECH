@@ -228,14 +228,27 @@ a la nube.
 
 ## 7. Cuando alguien se acerca
 
-Con la cámara encendida, MECH **saluda solo** a quien llega: levanta el brazo
-y dice «¡Hola! Soy MECH. Un gusto verte hoy aquí».
+Con la cámara encendida, MECH **saluda solo** a quien llega: levanta el
+**brazo derecho**, lo agita **4 veces** y dice «¡Hola! Soy MECH. Un gusto
+verte hoy aquí».
 
-- Solo saluda **en reposo**. Despierto está atendiendo a alguien y saludar
-  encima le cortaría la experiencia.
+- **Solo saluda en reposo.** Despierto está atendiendo a alguien y saludar
+  encima le cortaría la experiencia. Esto vale para TODOS los caminos,
+  incluido el botón del panel.
 - Saluda **una vez por visitante**: para volver a hacerlo, la cámara tiene
   que quedarse vacía un rato.
-- Para probarlo: Panel → vista **Arduino** → **👋 SALUDAR AHORA**.
+- Para probarlo: Panel → vista **Arduino** → **👋 SALUDAR AHORA** (se salta
+  la espera, pero MECH tiene que estar **dormido**; si está despierto te lo
+  dirá).
+
+Se ajusta en Panel → Ajustes:
+
+| Ajuste | Qué hace |
+|---|---|
+| **Saludo rotaciones** | Cuántas veces sube el brazo (por defecto 4) |
+| **Saludo brazos** | Apagado = solo el derecho. Encendido = los dos |
+| **Saludo** (interruptor) | Si se exige que esté en reposo para saludar |
+| **Saludo lento** / **Saludo alto** / **Saludo amplitud** | Velocidad y tamaño del arco |
 
 ---
 

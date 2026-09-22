@@ -558,12 +558,12 @@
             <span class="val" id="set-waveswing-val">65°</span>
           </div>
           <div class="slider-row">
-            <label title="Cuántas veces sube y baja el brazo EN TOTAL, contando la subida inicial. 2 = sube, agita una vez y baja. Vale para el saludo y para mirar hacia afuera.">Saludo subidas</label>
-            <input type="range" min="1" max="6" step="1" value="2" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
-            <span class="val" id="set-waverep-val">2</span>
+            <label title="Cuántas veces llega el brazo ARRIBA al saludar (las «rotaciones» que se cuentan mirando el robot). Cuenta la subida inicial: 4 = sube, agita 3 veces más y baja. Vale para el saludo y para mirar hacia afuera.">Saludo rotaciones</label>
+            <input type="range" min="2" max="6" step="1" value="4" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
+            <span class="val" id="set-waverep-val">4</span>
           </div>
           <div class="slider-row">
-            <label title="El saludo levanta los DOS brazos (el derecho agita, el izquierdo acompaña).">Saludo brazos</label>
+            <label title="Por defecto saluda SOLO EL BRAZO DERECHO (sep 2026). Activando esto, el izquierdo sube a acompañar — se lee más como «manos arriba» que como un saludo, y gasta el doble.">Saludo brazos</label>
             <label class="switch">
               <input type="checkbox" id="set-waveboth">
               <span class="switch-text">Saludar con los dos brazos</span>
@@ -580,7 +580,7 @@
             <span class="val" id="set-greetrearm-val">20 s</span>
           </div>
           <div class="slider-row">
-            <label title="Con esto activado, el saludo por cámara solo se dispara con MECH EN REPOSO. Despierto está narrando, conversando o traduciendo, y saludar encima corta la experiencia del visitante que ya está atendiendo. El botón «SALUDAR AHORA» funciona igual en los dos casos.">Saludo</label>
+            <label title="Con esto activado, el saludo por cámara solo se dispara con MECH EN REPOSO. Despierto está narrando, conversando o traduciendo, y saludar encima corta la experiencia del visitante que ya está atendiendo. El botón «SALUDAR AHORA» TAMBIÉN respeta esta regla (sep 2026): para probar el saludo con MECH despierto, apaga esto.">Saludo</label>
             <label class="switch">
               <input type="checkbox" id="set-greetdormant">
               <span class="switch-text">Saludar por cámara solo en reposo</span>

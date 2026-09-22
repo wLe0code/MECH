@@ -671,7 +671,9 @@
       setSlider('set-wavehigh', 'wavehigh', L.ARM_WAVE_HIGH);
       setSlider('set-waveswing', 'waveswing', L.ARM_WAVE_SWING);
       setSlider('set-waverep', 'waverep', L.ARM_WAVE_REPEATS);
-      if ($('set-waveboth')) $('set-waveboth').checked = L.ARM_WAVE_BOTH !== false;
+      // Por defecto va APAGADO (solo el brazo derecho), así que se lee tal
+      // cual. Antes era `!== false`, que con la clave ausente lo marcaba.
+      if ($('set-waveboth')) $('set-waveboth').checked = !!L.ARM_WAVE_BOTH;
       setSlider('set-hpf', 'hpf', L.AUDIO_HIGHPASS_HZ);
       setSlider('set-agc', 'agc', L.AUDIO_TARGET_DBFS);
       setSlider('set-beam', 'beam', L.WHISPER_BEAM_SIZE);

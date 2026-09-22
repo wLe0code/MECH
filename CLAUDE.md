@@ -311,6 +311,9 @@ scripts/              ← Utilidades de desarrollo (no corren en la Pi).
   probar_gesto67.py   ← Regresión del detector del "67": videos reales
                         (se pasan por argumento) + 5 negativos sintéticos
                         que se generan solos. Correrlo al tocar GESTURE67_*.
+  probar_saludo.py    ← Cuenta las órdenes que el SALUDO manda al Arduino:
+                        cuántas veces llega arriba el brazo, cuál se mueve y
+                        que nunca baje de 90. Correrlo al tocar ARM_WAVE_*.
   mkicons.py          ← Regenera el subconjunto de iconos del panel.
   mkfonts.py          ← Regenera las fuentes locales.
 
@@ -436,6 +439,7 @@ claves de API):
 ```bash
 python scripts/probar_frases.py    # comandos de voz: los que deben sonar Y los falsos positivos
 python scripts/probar_gesto67.py   # detector del "67": positivos + 5 negativos
+python scripts/probar_saludo.py    # el saludo: qué ángulos recibe el Arduino
 python -m py_compile backend/*.py  # que compile
 node --check frontend/app.js       # que el panel no tenga errores de sintaxis
 ```
@@ -897,9 +901,13 @@ coreografías completas también al narrar. `ARM_GESTURE_MODE` (full/subtle/off)
 sigue mandando por encima de las dos.
 
 **Las repeticiones son las MISMAS para el saludo y para el giro hacia
-afuera** (`ARM_WAVE_REPEATS`, default 2 = sube, agita una vez y baja): una
-sola perilla en el panel, porque el equipo pidió el mismo criterio para los
-dos. Lo que cambia entre ellos es la amplitud del arco, no el número.
+afuera** (`ARM_WAVE_REPEATS`, default **4** = sube, agita 3 veces más y
+baja): una sola perilla en el panel, porque el equipo pidió el mismo
+criterio para los dos. Lo que cambia entre ellos es la amplitud del arco.
+⚠️ El número cuenta **las veces que el brazo llega ARRIBA**, incluida la
+subida inicial — que es lo que se cuenta mirando el robot. No lo cambies a
+"solo las agitadas": ya se probó y el panel dejaba de coincidir con la
+realidad (`scripts/probar_saludo.py` lo mide).
 
 **El saludo es lento y AMPLIO a propósito** (todo ajustable en vivo):
 `ARM_WAVE_SECONDS` (2.2 s) es lo que tarda en subir y bajar; `ARM_WAVE_HIGH`
@@ -908,8 +916,10 @@ agitadas de arriba. Antes era 170° con UN vaivén de 20° y el equipo dijo que
 "casi no se notaba" (sep 2026).
 **El brazo solo sube (90 → 180). Por debajo de 90 choca con el cuerpo** — el
 código lo topa ahí; no bajes ese límite sin verlo en el robot.
-El saludo levanta **los DOS brazos** (`ARM_WAVE_BOTH`, default true): el
-derecho agita, el izquierdo sube y acompaña. Y **`ARM_GESTURE_MODE=subtle` ya
+El saludo usa **solo el brazo DERECHO** (`ARM_WAVE_BOTH`, default **false**
+desde sep 2026, pedido del equipo): con los dos se leía más como "manos
+arriba" que como un saludo, y gasta el doble en el gesto que más se repite
+en el stand. Poniéndolo en true, el izquierdo vuelve a subir a acompañar. Y **`ARM_GESTURE_MODE=subtle` ya
 no encoge el saludo** — solo `off` lo desactiva. Antes, un `.env` con
 `subtle` dejaba el saludo de bienvenida en un vaivén de 12° que no se veía.
 
@@ -1331,8 +1341,10 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   en vivo desde Ajustes → «Saludar por cámara solo en reposo»). Despierto
   está narrando, conversando o traduciendo, y soltar «¡Hola! Soy MECH»
   encima de eso le corta la experiencia al visitante que ya está atendiendo.
-  El botón **«SALUDAR AHORA»** del panel se salta la regla Y el cooldown (es
-  para probarlo); lo único que respeta es no hablar encima de una narración.
+  El botón **«SALUDAR AHORA»** del panel se salta el cooldown y lo de
+  "visitante nuevo", pero **desde sep 2026 SÍ respeta la regla de "solo en
+  reposo"**: el equipo pidió que MECH no salude despierto por ningún camino.
+  Para probar el saludo despierto, se apaga la regla en Ajustes.
   El aviso «No saludo: MECH está despierto» sale como mucho **una vez por
   minuto** — la visión detecta a ~10 fps y si no llenaría el panel.
 - **Saludo al detectar usuario (calibrado con videos del equipo, jul 2026)**:
@@ -1494,10 +1506,11 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     que nunca se fue nadie y no volverá a saludar — ahí el problema es la
     cámara, no esto.
 17d. **Si MECH no saluda a nadie por cámara, mirá si está DESPIERTO.**
-    Desde sep 2026 el saludo por cámara solo va en reposo
-    (`GREETING_ONLY_DORMANT`). El panel lo dice una vez por minuto («No
-    saludo: MECH está despierto»). Para probar el saludo sin dormirlo está
-    el botón «SALUDAR AHORA» de la vista Arduino, que se salta la regla.
+    El saludo por cámara solo va en reposo (`GREETING_ONLY_DORMANT`). El
+    panel lo dice una vez por minuto («No saludo: MECH está despierto»).
+    ⚠️ El botón «SALUDAR AHORA» **ya no se salta esa regla** (sep 2026): si
+    MECH está despierto, también se niega y lo explica. Para probarlo
+    despierto hay que apagar la regla en Ajustes.
 17c. **Si el traductor traduce la PREGUNTA de MECH** («¿Qué quieres que
     traduzca?»), es el eco del parlante en el único hueco que queda abierto:
     subí `TRANSLATOR_DRAIN_SECONDS` (el Bluetooth tiene buffer propio) y/o

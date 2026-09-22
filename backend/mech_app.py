@@ -767,7 +767,11 @@ class MechApp:
 
     # Fases en las que MECH está ocupado con alguien: no se le puede soltar
     # un saludo encima. `listening` incluida: está GRABANDO a un visitante.
-    _BUSY_PHASES = ("speaking", "thinking", "transcribing", "listening")
+    # Fases en las que MECH NO puede ponerse a saludar: está hablando,
+    # procesando, grabando a alguien... o todavía arrancando ("loading",
+    # mientras carga Whisper). Saludar recién encendido, antes de poder
+    # escuchar la respuesta, deja al visitante hablándole a un robot sordo.
+    _BUSY_PHASES = ("speaking", "thinking", "transcribing", "listening", "loading")
 
     def on_user_detected(self) -> None:
         """Alguien entró al campo de la cámara: MECH lo saluda.
@@ -859,14 +863,30 @@ class MechApp:
         threading.Thread(target=_greet, daemon=True).start()
 
     def greet_now(self) -> None:
-        """Fuerza el saludo AHORA (botón «SALUDAR AHORA» del panel).
+        """Saludo a mano (botón «SALUDAR AHORA» del panel).
 
-        Se salta el cooldown Y la regla de "solo en reposo": es el botón para
-        PROBAR el saludo, y tener que dormir a MECH para verlo no serviría de
-        nada. Lo único que respeta es no hablar encima de una narración.
+        Se salta el COOLDOWN y la regla de "visitante nuevo" — para eso está,
+        para poder probarlo sin salir y entrar del campo de la cámara.
+
+        Pero **respeta la regla de "solo en reposo"** igual que el saludo por
+        cámara (sep 2026, pedido del equipo: "que solo pueda saludar si está
+        en reposo"). Antes era una excepción, y eso hacía que MECH saludara
+        estando despierto cuando alguien pulsaba el botón — justo lo que se
+        quería evitar. Ahora la regla es UNA y vale para todos los caminos.
+
+        Para probar el saludo con MECH despierto, se apaga la regla en
+        Ajustes → «Saludar por cámara solo en reposo».
         """
         if self.state.get("voice_phase") in self._BUSY_PHASES:
             self.log("No saludo: MECH está hablando o grabando ahora mismo.", "warn")
+            return
+        if config.GREETING_ONLY_DORMANT and self.state.get("voice_awake", True):
+            self.log(
+                "No saludo: MECH está DESPIERTO y el saludo solo va en "
+                "reposo. Dormilo («duérmete MECH») o apagá la regla en "
+                "Ajustes → «Saludar por cámara solo en reposo».",
+                "warn",
+            )
             return
         self._perform_greeting()
 

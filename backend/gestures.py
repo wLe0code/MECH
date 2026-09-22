@@ -102,10 +102,13 @@ def _g_wave(link: ArduinoLink) -> None:
         lo pidió lento (ago 2026): rápido se veía nervioso.
       - `ARM_WAVE_HIGH` (180): hasta dónde sube. Antes eran 170.
       - `ARM_WAVE_SWING` (65): cuánto baja y sube en cada agitada.
-      - `ARM_WAVE_REPEATS` (3): cuántas veces sube y baja EN TOTAL, contando
-        la subida inicial. O sea: sube, agita 2 veces más, y baja. El equipo
-        lo bajó de 4 a 3 ("daba demasiadas revoluciones", sep 2026) pero
-        pidió que quedara en más de 2. El mínimo es 2.
+      - `ARM_WAVE_REPEATS` (4): cuántas veces llega ARRIBA, contando la
+        subida inicial. 4 = sube, agita 3 veces más y baja. El equipo lo
+        pidió en "3 o 4 rotaciones" (sep 2026).
+
+    Por defecto agita **solo el brazo DERECHO** (`ARM_WAVE_BOTH=false`,
+    sep 2026): con los dos se leía más como "manos arriba" que como un
+    saludo, y gasta el doble en el gesto que más se repite en el stand.
 
     Solo se mueve HACIA ARRIBA (90 → 180). Por debajo de 90 el brazo choca
     con el cuerpo del robot: no bajar de ahí."""
@@ -114,12 +117,12 @@ def _g_wave(link: ArduinoLink) -> None:
     alto = max(_NEUTRAL + 10, min(180, config.ARM_WAVE_HIGH))
     # El vaivén nunca baja del reposo (ahí choca con el cuerpo).
     bajo = max(_NEUTRAL, alto - max(10, config.ARM_WAVE_SWING))
-    # Brazo izquierdo: sube y se queda arriba acompañando (no agita, para que
-    # el gesto se lea claro). Con ARM_WAVE_BOTH=false vuelve a ser un brazo.
+    # Brazo izquierdo: solo si ARM_WAVE_BOTH. Por defecto se queda en reposo
+    # y saluda únicamente el derecho.
     izq = alto if config.ARM_WAVE_BOTH else _NEUTRAL
-    # ARM_WAVE_REPEATS cuenta las subidas TOTALES: la primera es este arco,
-    # así que arriba quedan REPEATS-1 agitadas. Con 3 se ve "sube, agita,
-    # agita, baja" — que es lo que pidió el equipo.
+    # La subida inicial YA cuenta como una de las veces que el brazo llega
+    # arriba, así que arriba quedan REPEATS-1 agitadas. Así el número del
+    # panel coincide con las que se cuentan mirando el robot.
     agitadas = max(1, config.ARM_WAVE_REPEATS - 1)
     _move_smooth(link, izq, alto, subida)   # suben en arco hasta arriba
     for _ in range(agitadas):
@@ -287,7 +290,7 @@ _OUTWARD_SWING = 30
 
 
 def _g_wave_outward(link: ArduinoLink) -> None:
-    """Saludo contenido: un brazo, arco medio, dos subidas."""
+    """Saludo contenido: un brazo, arco medio, las mismas agitadas."""
     subida = max(0.4, config.ARM_WAVE_SECONDS * 0.8)
     vaiven = max(0.25, subida * 0.35)
     alto = _OUTWARD_HIGH

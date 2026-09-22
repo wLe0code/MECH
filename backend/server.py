@@ -819,10 +819,17 @@ async def move_greet():
     """Dispara el saludo de bienvenida AHORA (sin esperar a la cámara).
 
     Útil para probar el arco del brazo y la frase sin tener que entrar y
-    salir del campo de visión."""
+    salir del campo de visión. Se salta el cooldown, pero NO la regla de
+    "solo en reposo" (ver mech_app.greet_now)."""
     mech = get_app()
     if mech.state.get("voice_phase") in ("speaking", "thinking"):
         return {"ok": False, "reason": "MECH está narrando ahora mismo"}
+    if config.GREETING_ONLY_DORMANT and mech.state.get("voice_awake", True):
+        return {
+            "ok": False,
+            "reason": "MECH está despierto y el saludo solo va en reposo. "
+                      "Dormilo, o apagá la regla en Ajustes.",
+        }
     threading.Thread(target=mech.greet_now, daemon=True).start()
     return {"ok": True}
 

@@ -70,19 +70,26 @@ ARM_WAVE_SECONDS = float(os.environ.get("ARM_WAVE_SECONDS", "2.2"))
 # cuerpo del robot.
 ARM_WAVE_HIGH = int(os.environ.get("ARM_WAVE_HIGH", "180"))
 ARM_WAVE_SWING = int(os.environ.get("ARM_WAVE_SWING", "65"))
-# Cuántas veces sube y baja el brazo EN TOTAL durante el saludo, contando la
-# subida inicial. 3 = sube, agita dos veces y baja. El equipo pidió bajarlo
-# ("daba demasiadas revoluciones") pero que quedara en más de 2, sep 2026.
-# El mínimo es 2: con 1 no se leería como saludo.
-# Cuántas veces sube y baja el brazo EN TOTAL al saludar, contando la
-# subida inicial. El equipo lo quiere "entre una y dos" (sep 2026), así
-# que el default es 2: sube, agita una vez y baja.
-# Vale para el saludo de bienvenida Y para el giro hacia afuera: es el
-# mismo número, cambia solo la amplitud del arco.
-ARM_WAVE_REPEATS = max(1, int(os.environ.get("ARM_WAVE_REPEATS", "2")))
-# El saludo levanta LOS DOS brazos (el derecho agita, el izquierdo
-# acompaña). El equipo pidió que se moviera más al ver a alguien.
-ARM_WAVE_BOTH = os.environ.get("ARM_WAVE_BOTH", "true").strip().lower() in (
+# Cuántas veces llega el brazo ARRIBA durante el saludo — o sea, cuántas
+# "rotaciones" se ven. Cuenta la subida inicial: 4 = sube, agita 3 veces más
+# y baja.
+#
+# ⚠️ No lo cambies a "solo las agitadas": la subida inicial también se ve
+# como una, así que el número del panel dejaría de coincidir con lo que se
+# cuenta mirando el robot. Se midió: `scripts/probar_saludo.py`.
+#
+# El equipo lo pidió en "3 o 4 rotaciones" (sep 2026) -> default 4.
+# Vale para el saludo de bienvenida Y para el giro hacia afuera: es el mismo
+# número, lo que cambia entre ellos es la amplitud del arco.
+ARM_WAVE_REPEATS = max(2, int(os.environ.get("ARM_WAVE_REPEATS", "4")))
+# ¿El saludo levanta los DOS brazos?
+#
+# FALSE por defecto (sep 2026, pedido del equipo): saluda SOLO EL BRAZO
+# DERECHO. Con los dos se leía más como "manos arriba" que como un saludo, y
+# además gasta el doble de batería en el gesto que más se repite en el stand.
+# Ponerlo en true recupera el comportamiento anterior (el derecho agita y el
+# izquierdo sube a acompañar).
+ARM_WAVE_BOTH = os.environ.get("ARM_WAVE_BOTH", "false").strip().lower() in (
     "1", "true", "yes", "on", "si", "sí",
 )
 # Gestos MIENTRAS NARRA (proyectando):

@@ -571,6 +571,22 @@ def check_env_sombra() -> None:
         ),
         "VOICE_TRANSLATE_STOP_PHRASES": "afecta a 'desactiva el modo traductor'",
         "ARM_GESTURE_MODE": "en 'subtle' los gestos casi no se ven",
+        # El equipo pidió (sep 2026) que MECH solo salude en reposo, con el
+        # brazo derecho y 3 agitadas. Si el .env trae los valores viejos,
+        # tapa esos defaults y parece que el cambio no se aplicó.
+        "GREETING_ONLY_DORMANT": (
+            "si está en false, MECH saluda también DESPIERTO (el equipo "
+            "pidió que solo salude en reposo)"
+        ),
+        "ARM_WAVE_BOTH": (
+            "si está en true, el saludo levanta los DOS brazos (el equipo "
+            "pidió solo el derecho)"
+        ),
+        "ARM_WAVE_REPEATS": "cuántas agitadas hace el brazo al saludar",
+        "VOICE_AUTOSTART": (
+            "si está en false, el bucle de voz NO arranca solo y MECH parece "
+            "sordo al encender el server"
+        ),
     }
     encontradas = []
     for linea in env.read_text(encoding="utf-8").splitlines():
