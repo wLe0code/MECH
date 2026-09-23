@@ -379,36 +379,38 @@ class Vision:
                     cap.release()
                     self._release_drive()
                     reintentos += 1
-                    if reintentos > _REINTENTOS_REABRIR:
+                    if reintentos == _REINTENTOS_REABRIR + 1:
                         self.app.log(
                             f"La cámara se cayó {_REINTENTOS_REABRIR} veces "
-                            "seguidas y dejo de intentarlo. Casi seguro es "
-                            "CORRIENTE o CABLE, no el programa: mirá "
-                            "`dmesg | tail -20` en la Pi (si sale "
-                            "'over-current' o 'disconnect', es la corriente; "
-                            "un hub USB con alimentación propia lo arregla). "
-                            "Para reintentar: apagá y encendé la visión.",
+                            "seguidas. Casi seguro es CORRIENTE o CABLE, no "
+                            "el programa: mirá `dmesg | tail -20` en la Pi "
+                            "(si sale 'over-current' o 'disconnect', es la "
+                            "corriente; un hub USB con alimentación propia "
+                            "lo arregla). NO me rindo: sigo reabriéndola "
+                            "sola en segundo plano.",
                             "err",
                         )
-                        break
-                    self.app.log(
-                        f"La cámara dejó de dar imagen tras {duro:.0f} s. "
-                        f"La reabro (intento {reintentos} de "
-                        f"{_REINTENTOS_REABRIR})…",
-                        "warn",
-                    )
+                    # Tras los primeros 5 intentos, los avisos se espacian
+                    # (cada 5 reintentos) para no llenar el panel.
+                    if reintentos <= _REINTENTOS_REABRIR or reintentos % 5 == 0:
+                        self.app.log(
+                            f"La cámara dejó de dar imagen tras {duro:.0f} s. "
+                            f"La reabro (intento {reintentos})…",
+                            "warn",
+                        )
                     self._publish(enabled=True, present=False, x=0.0,
                                   distance=None)
                     # Se le da un respiro antes de reabrir: si fue un bajón
                     # de corriente o el USB se reinició, el /dev/video tarda
-                    # en volver a aparecer.
-                    if self._stop.wait(min(8.0, 1.5 * reintentos)):
+                    # en volver a aparecer. La espera crece con los fallos
+                    # (hasta 30 s) para no martillar un bus convaleciente.
+                    if self._stop.wait(min(30.0, 1.5 * reintentos)):
                         break
                     nuevo, indice = self._buscar_camara(cv2)
                     if nuevo is None:
                         # Sin cámara a la vista todavía: seguimos esperando
                         # en la próxima vuelta (con el contador de fallos
-                        # corriendo, así esto termina en algún momento).
+                        # corriendo, así la espera crece).
                         sin_imagen_desde = time.monotonic() - _SIN_IMAGEN_S
                         cap = _CamaraMuerta()
                         continue

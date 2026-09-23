@@ -14,6 +14,7 @@ import base64
 import io
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -275,6 +276,11 @@ def _play_audio(
             ["pw-play", tmp_path],
             ["paplay", tmp_path],
             ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", tmp_path],
+            # Último recurso EN PROCESO APARTE: sounddevice directo puede
+            # abortar TODO el servidor si el dispositivo de salida desaparece
+            # (aserción ALSA — el mismo bug que mataba al server con el mic).
+            # En un hijo (`backend.wav_play`), el abort mata solo al hijo.
+            [sys.executable, "-m", "backend.wav_play", tmp_path],
         )
         for player in players:
             if _stop_event.is_set():
@@ -298,22 +304,11 @@ def _play_audio(
             if proc.returncode == 0:
                 return  # reproducido OK
             # returncode != 0 sin interrupción → ese player falló, probar el siguiente
-        # Último recurso: sounddevice (irá al dispositivo por defecto de PortAudio).
-        sd.play(audio, samplerate)
-        if on_started:
-            try:
-                on_started()
-            except Exception as e:
-                print(f"[TTS] on_started falló: {e}")
-        try:
-            stream = sd.get_stream()
-            while stream is not None and stream.active:
-                if _stop_event.is_set():
-                    sd.stop()
-                    break
-                sd.sleep(50)
-        except Exception:
-            sd.wait()
+        # Ningún reproductor pudo emitir (se acabó la lista). Antes esto caía
+        # a `sd.play` en el mismo proceso, que era el último vector del abort
+        # de ALSA: se loguea y se sigue — un audio perdido NO puede tumbar al
+        # resto del robot.
+        print("[TTS] Ningún reproductor pudo emitir el audio (parlante o drivers).")
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)

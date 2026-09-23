@@ -296,24 +296,30 @@ def check_audio() -> None:
                 "Entradas: " + ", ".join(f"[{i}] {d['name']}" for i, d in entradas))
 
     # Abrirlo de verdad: los mics USB baratos no aceptan cualquier sample rate.
+    # Se usa stt.probe_microphone, que corre el stream en un proceso aparte:
+    # si ALSA aborta al abrir (el bug cuando el receptor desaparece), el
+    # chequeo se entera con un error — no revienta el diagnóstico.
     try:
-        import sounddevice as sd
-        grab = sd.rec(
-            int(0.3 * config.AUDIO_SAMPLE_RATE),
-            samplerate=config.AUDIO_SAMPLE_RATE,
-            channels=1, dtype="int16",
-            device=(buscado if buscado else None),
-        )
-        sd.wait()
-        pico = int(abs(grab).max())
-        _di(_OK, f"Grabé 0.3 s a {config.AUDIO_SAMPLE_RATE} Hz (pico {pico})",
-            "Pico muy bajo puede ser normal en silencio; si al hablar sigue "
-            "en cero, revisá el micrófono."
-            if pico < 50 else "")
+        import stt  # noqa: F401
+
+        info = stt.probe_microphone(0.4)
     except Exception as e:
-        _di(_FAIL, f"No pude grabar a {config.AUDIO_SAMPLE_RATE} Hz",
-            f"{e}\n-> Muchos mics USB no abren a 16000. Probá "
-            "AUDIO_SAMPLE_RATE=48000 en backend/.env.")
+        _di(_FAIL, "No pude probar el micrófono", str(e))
+    else:
+        if info.get("error"):
+            _di(_FAIL, f"No pude abrir el micrófono a {config.AUDIO_SAMPLE_RATE} Hz",
+                f"{info['error']}\n-> Muchos mics USB no abren a 16000. Probá "
+                "AUDIO_SAMPLE_RATE=48000 en backend/.env.")
+        elif not info["frames"]:
+            _di(_FAIL, f"El micrófono se abrió pero no entregó audio",
+                "-> ¿Está enchufado y encendido el receptor del Steren?")
+        else:
+            _di(_OK, f"Grabé {info['frames']} bloques a "
+                     f"{config.AUDIO_SAMPLE_RATE} Hz (nivel {info['nivel']:.4f}, "
+                     f"pico {info['pico']:.4f})",
+                "Nivel muy bajo puede ser normal en silencio; si al hablar "
+                "sigue en cero, revisá el micrófono."
+                if info["pico"] < 0.0015 else "")
 
     # Salida: el TTS prueba varios reproductores en orden.
     players = [p for p in ("pw-play", "paplay", "ffplay", "aplay") if shutil.which(p)]
