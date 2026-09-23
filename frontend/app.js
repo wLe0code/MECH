@@ -658,6 +658,7 @@
       setSlider('set-turnsec', 'turnsec', L.TURN_180_SECONDS);
       setSlider('set-turnvel', 'turnvel', L.TURN_180_SPEED);
       if ($('set-turninv')) $('set-turninv').checked = !!L.TURN_180_INVERT;
+      if ($('set-fwdinv')) $('set-fwdinv').checked = !!L.DRIVE_INVERT_FORWARD;
       setSlider('set-advsec', 'advsec', L.ADVANCE_SECONDS);
       setSlider('set-advvel', 'advvel', L.ADVANCE_SPEED);
       setSlider('set-advmax', 'advmax', L.ADVANCE_MAX_SECONDS);
@@ -720,6 +721,7 @@
         TURN_180_SECONDS: $('set-turnsec').value,
         TURN_180_SPEED: String(parseInt($('set-turnvel').value)),
         TURN_180_INVERT: $('set-turninv').checked ? 'true' : 'false',
+        DRIVE_INVERT_FORWARD: $('set-fwdinv').checked ? 'true' : 'false',
         ADVANCE_SECONDS: $('set-advsec').value,
         ADVANCE_SPEED: String(parseInt($('set-advvel').value)),
         ADVANCE_MAX_SECONDS: $('set-advmax').value,

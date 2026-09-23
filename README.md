@@ -43,13 +43,16 @@ windows/                  Operación desde Windows
   README.md               Guía detallada
 
 docs/
+  USO.md                  Guía del operador del stand (qué decirle, qué tocar)
   GUIA.md                 Guía de montaje y hardware
   FRONTEND.md             Guía del servidor + panel + control desde Windows
 ```
 
 ## Inicio rápido
 
-Lee [`docs/GUIA.md`](docs/GUIA.md) (hardware) y [`docs/FRONTEND.md`](docs/FRONTEND.md) (servidor + panel). Resumen:
+Para **usar** MECH en el stand: [`docs/USO.md`](docs/USO.md) — qué decirle y qué hace cada botón.
+
+Para **montarlo**: [`docs/GUIA.md`](docs/GUIA.md) (hardware) y [`docs/FRONTEND.md`](docs/FRONTEND.md) (servidor + panel). Resumen:
 
 1. Cablea el hardware según `docs/GUIA.md` §1.
 2. Sube `arduino/mech_controller/mech_controller.ino` al Arduino.

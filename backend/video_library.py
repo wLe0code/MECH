@@ -29,6 +29,8 @@ romper preguntas espontáneas del usuario.
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
 from typing import TypedDict
 
@@ -62,6 +64,13 @@ class WorkMeta(TypedDict, total=False):
     #   4. NO se le ofrece a Claude: se dispara con una orden directa
     #      ("proyecta marketing"), sin pasar por el modelo.
     promo: bool
+    # Opcional: RECORTE automático al subir un video, por segmento.
+    # {segmento: ("inicio" | "final", segundos)} = se conservan los primeros
+    # o los últimos N segundos. Lo hace `trim_uploaded()` con ffmpeg justo
+    # después de subirlo; el archivo ORIGINAL se guarda en
+    # <slug>/originales/ por si hay que recortarlo distinto. Los segmentos que
+    # no aparecen aquí se usan tal cual. Las imágenes nunca se recortan.
+    trim: dict[int, tuple[str, float]]
 
 
 # Catálogo de obras con video pre-renderizado.
@@ -324,6 +333,18 @@ WORKS: dict[str, WorkMeta] = {
         # OCHO segmentos, uno por escena del guion (docs/GUIONES_RELATIVIDAD.md).
         # Ocho es justo el máximo de segmentos que admite un plan de Claude.
         "segments": 8,
+        # Duraciones que pidió el equipo (23 sep 2026): el 1 dura 20 s y el 2
+        # dura 10 s; del 3 al 7 los videos traen más de lo necesario y solo
+        # se conservan sus ÚLTIMOS 10 s. El 8 se usa entero.
+        "trim": {
+            1: ("inicio", 20),
+            2: ("inicio", 10),
+            3: ("final", 10),
+            4: ("final", 10),
+            5: ("final", 10),
+            6: ("final", 10),
+            7: ("final", 10),
+        },
         "facts": [
             "Los OCHO videos van en este orden, uno por segmento de "
             "narración: 1) el misterio de la luz y el éter (Maxwell, "
@@ -461,6 +482,121 @@ def segment_file(slug: str, segment: int) -> Path | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Recorte automático al subir (campo `trim` de la obra)
+# ---------------------------------------------------------------------------
+
+
+def trim_rule(slug: str, segment: int) -> tuple[str, float] | None:
+    """("inicio"|"final", segundos) si ese segmento se recorta al subirlo."""
+    regla = WORKS.get(slug, {}).get("trim", {}).get(segment)
+    if not regla:
+        return None
+    lado, segundos = regla
+    return (lado, float(segundos))
+
+
+def trim_label(slug: str, segment: int) -> str | None:
+    """Texto corto para la página /library: "últimos 10 s", "primeros 20 s"."""
+    regla = trim_rule(slug, segment)
+    if regla is None:
+        return None
+    lado, segundos = regla
+    cuales = "últimos" if lado == "final" else "primeros"
+    return f"{cuales} {segundos:g} s"
+
+
+def _duracion(path: Path) -> float | None:
+    """Duración en segundos según ffprobe, o None si no se pudo saber."""
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        return float(r.stdout.strip())
+    except Exception:
+        return None
+
+
+def trim_uploaded(slug: str, segment: int, path: Path) -> tuple[Path, str | None]:
+    """Recorta un video recién subido según el `trim` de su obra.
+
+    Devuelve (ruta final del segmento, mensaje para el panel o None si no
+    había nada que hacer). NUNCA pierde el video: si no hay ffmpeg o el
+    recorte falla, se queda el archivo entero tal cual se subió y el mensaje
+    lo dice.
+
+    El original se mueve a `<slug>/originales/` y el recortado se escribe
+    como `segNN.mp4` en H.264 (lo que mejor lee el navegador de la
+    proyección). Se re-codifica en vez de copiar: copiando, ffmpeg solo puede
+    cortar en los fotogramas clave y "los últimos 10 s" saldrían en 12 o 13.
+    """
+    regla = trim_rule(slug, segment)
+    if regla is None or not segment_is_video(path):
+        return path, None
+    lado, segundos = regla
+    etiqueta = trim_label(slug, segment)
+    if not (shutil.which("ffmpeg") and shutil.which("ffprobe")):
+        return path, (
+            f"No recorté {path.name} a los {etiqueta}: falta ffmpeg en la Pi "
+            f"(sudo apt install ffmpeg). Se usa el video entero."
+        )
+
+    total = _duracion(path)
+    if total is not None and total <= segundos + 0.3:
+        return path, f"{path.name} ya dura {total:.1f} s: no hace falta recortarlo."
+
+    originales = path.parent / "originales"
+    originales.mkdir(exist_ok=True)
+    original = originales / path.name
+    if original.exists():
+        original.unlink()
+    shutil.move(str(path), str(original))
+
+    destino = path.parent / f"{segment_basename(segment)}.mp4"
+    cmd = ["ffmpeg", "-y", "-v", "error"]
+    if lado == "final":
+        cmd += ["-sseof", f"-{segundos:g}", "-i", str(original)]
+    else:
+        cmd += ["-i", str(original), "-t", f"{segundos:g}"]
+    cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
+    # Las obras van MUDAS (encima habla MECH); los slots promo llevan su audio.
+    cmd += (["-c:a", "aac", "-b:a", "160k"] if is_promo(slug) else ["-an"])
+    cmd.append(str(destino))
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        ok = r.returncode == 0 and destino.exists() and destino.stat().st_size > 0
+        error = (r.stderr or "").strip().splitlines()[-1:] if not ok else []
+    except Exception as e:
+        ok, error = False, [str(e)]
+
+    if not ok:
+        # Volvemos a dejar el original donde estaba: mejor entero que nada.
+        if destino.exists():
+            destino.unlink()
+        shutil.move(str(original), str(path))
+        return path, (
+            f"No pude recortar {path.name} ({' '.join(error) or 'error de ffmpeg'}). "
+            f"Se usa el video entero."
+        )
+    return destino, (
+        f"{destino.name} recortado a los {etiqueta}"
+        + (f" (el original duraba {total:.1f} s)" if total else "")
+        + f". El original quedó en {slug}/originales/."
+    )
+
+
+def remove_original(slug: str, segment: int) -> None:
+    """Borra el original guardado de un segmento (al borrar el segmento)."""
+    carpeta = config.VIDEO_LIBRARY_DIR / slug / "originales"
+    for ext in _SEG_VIDEO_EXTS:
+        p = carpeta / f"{segment_basename(segment)}{ext}"
+        if p.exists():
+            p.unlink()
+
+
 def segment_path(slug: str, segment: int) -> Path:
     """Ruta por defecto (.mp4) — para guardar cuando no se sabe la extensión."""
     return config.VIDEO_LIBRARY_DIR / slug / segment_filename(segment)
@@ -594,6 +730,9 @@ def available_works() -> list[dict]:
                     "url": (f"/videos/{slug}/{p.name}" if p else None),
                     "kind": ("video" if (p and segment_is_video(p)) else
                              ("image" if p else None)),
+                    # Si al subirlo se recorta ("últimos 10 s"), para avisarlo
+                    # en /library antes de que lo suban.
+                    "trim": trim_label(slug, i),
                 }
             )
         present = sum(1 for s in seg_files if s["present"])

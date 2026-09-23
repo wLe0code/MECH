@@ -233,11 +233,16 @@ class ArduinoLink:
         self.send(f"ARM:{side}:{angle}")
 
     def move(self, vx: int, vy: int, w: int) -> None:
+        """`vx` positivo = ADELANTE, siempre. Si en el robot sale al revés,
+        `DRIVE_INVERT_FORWARD` le da la vuelta justo aquí, al mandarlo: el
+        odómetro guarda el `vx` lógico, así que `return_to_start()` sigue
+        deshaciendo bien el desplazamiento."""
         vx = max(-100, min(100, int(vx)))
         vy = max(-100, min(100, int(vy)))
         w = max(-100, min(100, int(w)))
         self._odo_update(vx)
-        self.send(f"MOVE:{vx}:{vy}:{w}")
+        fisico = -vx if config.DRIVE_INVERT_FORWARD else vx
+        self.send(f"MOVE:{fisico}:{vy}:{w}")
 
     def stop_motors(self) -> None:
         self._odo_update(0)

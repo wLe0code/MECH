@@ -920,6 +920,7 @@ _LIVE_KEYS = {
     "GREETING_LANGUAGE": str,       # idioma del saludo (inglés por defecto)
     "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
+    "DRIVE_INVERT_FORWARD": _to_bool,  # adelante/atrás al revés (todas las ruedas)
     "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos
     "ARM_INVERT_R": _to_bool,       # sentido de giro de cada brazo
     "ARM_INVERT_L": _to_bool,
@@ -984,6 +985,7 @@ async def get_config():
             "GREETING_LANGUAGE": config.GREETING_LANGUAGE,
             "GREETING_REARM_SECONDS": config.GREETING_REARM_SECONDS,
             "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,
+            "DRIVE_INVERT_FORWARD": config.DRIVE_INVERT_FORWARD,
             "ARM_WAVE_BOTH": config.ARM_WAVE_BOTH,
             "ARM_INVERT_R": config.ARM_INVERT_R,
             "ARM_INVERT_L": config.ARM_INVERT_L,
@@ -1132,7 +1134,21 @@ async def library_upload(slug: str, segment: int, file: UploadFile = File(...)):
     size_mb = dest.stat().st_size / (1024 * 1024)
     kind = "imagen" if ext in video_library._SEG_IMAGE_EXTS else "video"
     get_app().log(f"Subido ({kind}): {slug}/{dest.name} ({size_mb:.1f} MB)", "ok")
-    return {"ok": True, "url": video_library.segment_url(slug, segment), "kind": kind}
+    # Recorte automático si la obra lo pide para este segmento (campo `trim`,
+    # ej. la relatividad: "los últimos 10 s"). ffmpeg tarda unos segundos:
+    # va en otro hilo para que el panel no se congele mientras tanto.
+    dest, nota = await asyncio.to_thread(
+        video_library.trim_uploaded, slug, segment, dest
+    )
+    if nota:
+        ok_trim = "recortado" in nota or "no hace falta" in nota
+        get_app().log(nota, "ok" if ok_trim else "warn")
+    return {
+        "ok": True,
+        "url": video_library.segment_url(slug, segment),
+        "kind": kind,
+        "note": nota,
+    }
 
 
 @app.delete("/api/library/{slug}/{segment:int}")
@@ -1142,6 +1158,7 @@ async def library_delete(slug: str, segment: int):
     if path is not None:
         path.unlink()
         get_app().log(f"Segmento eliminado: {slug}/{path.name}", "info")
+    video_library.remove_original(slug, segment)
     return {"ok": True}
 
 

@@ -304,15 +304,20 @@
             <div></div>
             <button class="arduino-btn"  onpointerdown="API.move(100,0,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↑ AVANZAR</button>
             <div></div>
-            <button class="arduino-btn"  onpointerdown="API.move(0,-100,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">← LATERAL</button>
+            <!-- Con estas ruedas `vy` es el que GIRA y `w` el que va de LADO
+                 (sep 2026, probado por el equipo). Por eso los LATERALES
+                 mandan `w` y los GIROS mandan `vy` — que es también lo que usa
+                 la media vuelta de «mira hacia afuera». -->
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,-100)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">← LATERAL</button>
             <button class="arduino-btn danger" onclick="API.move(0,0,0)">■ ALTO</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,100,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">→ LATERAL</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,0,-100)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟲ GIRO IZQ</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,100)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">→ LATERAL</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,-100,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟲ GIRO IZQ</button>
             <button class="arduino-btn"  onpointerdown="API.move(-100,0,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↓ ATRÁS</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,0,100)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟳ GIRO DER</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,100,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟳ GIRO DER</button>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
             Mantén presionado el botón para mover. Soltar = detiene. Todo va a POTENCIA MÁXIMA (100): a menos, estos motores solo zumban.
+            Si AVANZAR va hacia atrás: Ajustes → «Adelante/atrás invertido».
           </div>
         </div>
 
@@ -329,7 +334,7 @@
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
             Ahora mira a: <b id="facing-val" style="color:var(--text)">la proyección</b>.
             Lo mismo que decirle «mira hacia afuera» / «regresa a proyectar».
-            La media vuelta es el mismo movimiento del botón LATERAL de arriba,
+            La media vuelta es el mismo movimiento de los botones GIRO de arriba,
             sostenido — se mide por TIEMPO, calíbralo en Ajustes.
             «PROBAR MEDIA VUELTA» la repite sin cambiar la orientación: pulsa,
             mira cuánto giró, ajusta los segundos y vuelve a pulsar.
@@ -378,8 +383,8 @@
           <div class="cmd-grid" style="margin-top:10px">
             <div class="cmd-chip" onclick="API.rawPreset('MOVE:50:0:0')"><i class="ti ti-arrow-up"></i>MOVE:50:0:0</div>
             <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:50:0')"><i class="ti ti-arrow-right"></i>MOVE:0:50:0</div>
-            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:0:100')"><i class="ti ti-rotate-clockwise"></i>MOVE:0:0:100 (giro a fondo)</div>
-            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:100:0')"><i class="ti ti-arrows-horizontal"></i>MOVE:0:100:0 (lateral a fondo)</div>
+            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:0:100')"><i class="ti ti-arrows-horizontal"></i>MOVE:0:0:100 (lateral a fondo)</div>
+            <div class="cmd-chip" onclick="API.rawPreset('MOVE:0:100:0')"><i class="ti ti-rotate-clockwise"></i>MOVE:0:100:0 (giro a fondo)</div>
             <div class="cmd-chip" onclick="API.rawPreset('STOP')"><i class="ti ti-hand-stop"></i>STOP</div>
             <div class="cmd-chip" onclick="API.rawPreset('ARM:L:150')"><i class="ti ti-hand-three-fingers"></i>ARM:L:150</div>
             <div class="cmd-chip" onclick="API.rawPreset('ARM:R:150')"><i class="ti ti-hand-three-fingers"></i>ARM:R:150</div>
@@ -391,7 +396,7 @@
             <div class="cmd-chip" onclick="API.rawPreset('WHEEL:BR:50')"><i class="ti ti-wheel"></i>WHEEL:BR:50</div>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:10px;font-family:var(--font-mono);line-height:1.7">
-            <b>MOVE:vx:vy:w</b> — vx adelante(+)/atrás(−) · vy lateral · w giro · valores −100..100. Cinemática adaptada a NUESTRAS ruedas: giro = patrón diagonal (FL+BR vs FR+BL), lateral = tren delantero vs trasero<br>
+            <b>MOVE:vx:vy:w</b> — vx adelante/atrás · vy <b>GIRO</b> (tren delantero vs trasero) · w <b>LATERAL</b> (patrón diagonal FL+BR vs FR+BL) · valores −100..100. Es lo que se ve en el suelo con NUESTRAS ruedas (sep 2026). El comando crudo va tal cual: NO pasa por «Adelante/atrás invertido»<br>
             <b>ARM:L/R:ángulo</b> — brazos 0–180 (90 = reposo) · <b>STOP</b> — detiene ruedas<br>
             <b>WHEEL:FL/FR/BL/BR:vel</b> — calibración: mueve UNA sola rueda (positivo = adelante); <b>WHEEL:FL:0</b> o <b>STOP</b> la detiene<br>
             <b>MODE:</b> AUTO · IDLE · LISTEN · SPEAK · STOP &nbsp;·&nbsp; <b>LED:</b> OFF · IDLE · WAKE · LISTEN · THINK · SPEAK · ERR<br>
@@ -596,19 +601,19 @@
             <i class="ti ti-rotate-360"></i> GIRO DE 180° — CALIBRACIÓN
           </div>
           <div class="section-sub" style="margin-bottom:10px">
-            La media vuelta es <b>el mismo movimiento del botón «LATERAL»</b>
+            La media vuelta es <b>el mismo movimiento de los botones «GIRO»</b>
             de la vista Arduino, sostenido hasta que MECH queda de espaldas.
             Sin encoders se mide <b>por tiempo</b>: pulsa «MIRA HACIA AFUERA»
             y sube o baja los segundos hasta que quede mirando al público.
             Se aplica en vivo.
           </div>
           <div class="slider-row">
-            <label title="Cuánto tiempo se desliza de lado. Es LO ÚNICO que hay que calibrar. Regla de tres: si con estos segundos gira X grados, los que necesitas son segundos × 180 / X.">Media vuelta</label>
+            <label title="Cuánto tiempo gira. Es LO ÚNICO que hay que calibrar. Regla de tres: si con estos segundos gira X grados, los que necesitas son segundos × 180 / X.">Media vuelta</label>
             <input type="range" min="0.4" max="14" step="0.1" value="4.8" id="set-turnsec" oninput="UI.settingLabel('set-turnsec','turnsec')">
             <span class="val" id="set-turnsec-val">4.8 s</span>
           </div>
           <div class="slider-row">
-            <label title="Potencia del desplazamiento lateral (0-100). Con estos motores, por debajo de 100 normalmente solo zumban.">Velocidad</label>
+            <label title="Potencia del giro (0-100). Con estos motores, por debajo de 100 normalmente solo zumban.">Velocidad</label>
             <input type="range" min="20" max="100" step="5" value="100" id="set-turnvel" oninput="UI.settingLabel('set-turnvel','turnvel')">
             <span class="val" id="set-turnvel-val">100</span>
           </div>
@@ -628,6 +633,13 @@
             <label title="Potencia al avanzar (0-100). Con estos motores, por debajo de 100 normalmente solo zumban.">Vel. avanzar</label>
             <input type="range" min="20" max="100" step="5" value="100" id="set-advvel" oninput="UI.settingLabel('set-advvel','advvel')">
             <span class="val" id="set-advvel-val">100</span>
+          </div>
+          <div class="slider-row">
+            <label title="Si «AVANZAR» va hacia atrás (y «ATRÁS» hacia adelante), activa esto. Vale para TODO lo que mueve las ruedas adelante/atrás: los botones, «avanza diez segundos», acercarse al visitante y la vuelta al punto de inicio. No hay que reflashear el Arduino.">Adelante/atrás</label>
+            <label class="switch">
+              <input type="checkbox" id="set-fwdinv">
+              <span class="switch-text">Adelante/atrás invertido</span>
+            </label>
           </div>
           <div class="slider-row">
             <label title="Tope de seguridad: por mucho que se le pida, nunca se mueve más que esto de una sola vez.">Tope avanzar</label>

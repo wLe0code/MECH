@@ -26,9 +26,19 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > - **Relatividad** en la biblioteca con **8 segmentos**, uno por escena de
 >   `docs/GUIONES_RELATIVIDAD.md`.
 >
-> Sin probar en la Pi todavía. Verificado en la laptop: `py_compile`,
-> `node --check`, `scripts/probar_saludo.py` y una simulación de las reglas
-> del saludo.
+> El equipo lo probó en la Pi y **funciona** (23 sep).
+>
+> Después, el mismo día: `docs/USO.md` reescrita al día; los controles del
+> panel corregidos (AVANZAR iba hacia atrás → `DRIVE_INVERT_FORWARD`; los
+> botones LATERAL giraban → ahora GIRO manda `vy` y LATERAL manda `w`); botón
+> «Biblioteca de videos» en `MECH Panel.exe`; y guiones de **CRISPR y Cas9**
+> (`docs/GUIONES_CRISPR.md`, 5 escenas — la obra aún no está en la
+> biblioteca). **Falta confirmar en el robot** que LATERAL (`w`) desplace de
+> lado y que izquierda/derecha no salgan espejados.
+>
+> Y la relatividad **recorta sola al subir** (campo `trim`): seg 1 → primeros
+> 20 s, seg 2 → primeros 10 s, seg 3-7 → últimos 10 s, seg 8 entero. Usa
+> ffmpeg en la Pi; sin ffmpeg deja el video entero y avisa.
 
 > ✅ **Estado (3 sep 2026):** el robot FUNCIONA casi entero en la Pi — audio
 > (mic Steren → Whisper local → Claude → voz por parlante Bluetooth),

@@ -271,6 +271,19 @@ def abrir(direccion: str, ruta: str = "/", kiosko: bool = False) -> str:
     return f"Abierto en {nombre} ({'kiosko' if kiosko else 'modo aplicación'})."
 
 
+def abrir_en_navegador(direccion: str, ruta: str) -> str:
+    """Abre una página en el navegador de SIEMPRE, como pestaña normal.
+
+    Es para la biblioteca de videos (`/library`): ahí se arrastran los mp4
+    desde el Explorador, y conviene tener la barra de direcciones a la vista
+    para copiar la dirección o pasársela a alguien del equipo.
+    """
+    import webbrowser
+    url = direccion + ruta
+    webbrowser.open(url)
+    return f"Abierto en el navegador: {url}"
+
+
 # ---------------------------------------------------------------------------
 # La ventana
 # ---------------------------------------------------------------------------
@@ -281,7 +294,7 @@ class Ventana(tk.Tk):
         self.title(APP)
         self.configure(bg=FONDO)
         self.resizable(False, False)
-        self.geometry("460x420")
+        self.geometry("460x470")
         self._icono()
 
         self.cfg = cargar_config()
@@ -348,6 +361,9 @@ class Ventana(tk.Tk):
         self.b_proy.pack(fill="x", padx=28, pady=3)
         self.b_kiosk = self._boton(self, "Panel a pantalla completa", self.abrir_kiosko)
         self.b_kiosk.pack(fill="x", padx=28, pady=3)
+        self.b_lib = self._boton(self, "Biblioteca de videos (en el navegador)",
+                                 self.abrir_biblioteca)
+        self.b_lib.pack(fill="x", padx=28, pady=3)
 
         tk.Label(self, text="La Pi tiene que estar encendida y en la misma wifi.",
                  bg=FONDO, fg=APAGADO, font=("Segoe UI", 8)).pack(pady=(12, 0))
@@ -377,7 +393,7 @@ class Ventana(tk.Tk):
     def _marcar(self, ok: bool) -> None:
         self.conectado = ok
         estado = "normal" if ok else "disabled"
-        for b in (self.b_panel, self.b_proy, self.b_kiosk):
+        for b in (self.b_panel, self.b_proy, self.b_kiosk, self.b_lib):
             self.after(0, lambda b=b, e=estado: b.config(state=e))
 
     def buscar(self) -> None:
@@ -433,6 +449,12 @@ class Ventana(tk.Tk):
 
     def abrir_kiosko(self) -> None:
         self._abrir("/", kiosko=True)
+
+    def abrir_biblioteca(self) -> None:
+        try:
+            self._decir(abrir_en_navegador(self.direccion.get(), "/library"), VERDE)
+        except Exception as e:
+            messagebox.showerror(APP, f"No pude abrir el navegador:\n{e}")
 
 
 def main() -> int:

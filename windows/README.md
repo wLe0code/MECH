@@ -20,13 +20,14 @@ Cuatro formas de tener el panel de control de MECH en tu equipo Windows, de más
 ### Usarla
 
 Doble click y ya. Al abrir busca la Pi sola; cuando el punto se pone **verde**
-los tres botones se habilitan:
+los cuatro botones se habilitan:
 
 | Botón | Qué abre |
 |---|---|
 | **ABRIR EL PANEL** | El panel de control, en ventana de aplicación (sin barra de direcciones ni pestañas). |
 | **Abrir la proyección** | La página `/projector`, por si proyectas desde el Windows en vez de desde la Pi. |
 | **Panel a pantalla completa** | El panel en modo kiosko. Se sale con `Alt + F4`. |
+| **Biblioteca de videos (en el navegador)** | La página `/library`, en tu navegador de siempre (pestaña normal, con la dirección a la vista). Ahí se suben los videos de cada obra arrastrándolos. |
 
 Si no la encuentra (redes con *client isolation*, muy común en colegios y
 eventos: la laptop no ve a la Pi aunque estén en la misma wifi — el hotspot

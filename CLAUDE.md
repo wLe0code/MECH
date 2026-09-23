@@ -19,7 +19,10 @@ Este archivo es tu primer punto de referencia al abrir una sesión nueva en este
 > (`windows/`, solo control remoto, no toca el audio). Encima de la
 > reversión se hizo: el saludo nuevo (3 rotaciones del brazo derecho hacia
 > adelante, solo en reposo, en inglés — ver «Saludo» en Estado actual) y la
-> obra `relatividad` con **8 segmentos**.
+> obra `relatividad` con **8 segmentos**. Después (23 sep): `docs/USO.md`
+> **reescrita desde cero** con lo que SÍ hay ahora, los controles de
+> movimiento del panel corregidos, el botón de la biblioteca en la app y los
+> guiones de CRISPR.
 
 ---
 
@@ -147,6 +150,10 @@ Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard)
 **Sentido de giro por motor:** constantes `DIR_FL/DIR_FR/DIR_BL/DIR_BR` en el .ino (1 = normal, −1 = invertido). Calibración CONFIRMADA en el robot real (jul 2026): **FR y BL van en −1** (cableadas con polaridad opuesta); con esos signos AVANZAR va hacia adelante. Si una rueda gira al revés, se cambia su signo ahí y se reflashea — NO recablear. Para calibrar sin adivinar: comando `WHEEL:<id>:<vel>` (una sola rueda; chips en el panel → Arduino → comando crudo).
 
 **Cinemática ADAPTADA a las ruedas reales (jul 2026) — NO "corregirla" al estándar de libro:** por cómo están montadas las mecanum del robot (el usuario decidió NO remontarlas), los patrones se calibraron empíricamente en el suelo: 4 iguales = avanza (vx) ✓; patrón DIAGONAL (FL+BR vs FR+BL) = GIRO sobre sí mismo (w) ✓; patrón de LADOS (izq vs der) = las fuerzas se anulan y NO se mueve (no se usa); patrón DELANTERO/TRASERO (2 de adelante vs 2 de atrás) = desplazamiento LATERAL (vy). `driveOmni()`: `fl=vx+vy+w · fr=vx+vy−w · bl=vx−vy−w · br=vx−vy+w`. El giro a 2 ruedas (solo FL+BR sin las otras) se descartó: se sentía "trabado". Si un sentido sale espejado (giro der ↔ izq o lateral der ↔ izq), se voltea el signo de `w` o `vy` en esta fórmula, nada más.
+
+**⚠️ Actualización sep 2026 (tras cambiar motores/ruedas) — lo que se ve HOY en el suelo:** el botón AVANZAR (`vx`+) iba **hacia atrás**, y el patrón `vy` (delantero vs trasero) **GIRA** el robot (la media vuelta ya lo usaba así). En vez de reflashear:
+- **`DRIVE_INVERT_FORWARD`** (default **true**, en vivo desde Ajustes → «Adelante/atrás invertido»): `arduino_link.move()` manda `-vx` al Arduino. Vale para TODO (botones, «avanza», visión, gestos, `return_to_start`); el odómetro guarda el `vx` lógico. El **comando crudo** del panel NO pasa por ahí.
+- **Panel**: los botones **GIRO** mandan `vy` y los **LATERAL** mandan `w` (antes al revés). Es solo el mapeo de botones en `frontend/index.html`: el código de maniobras ya usaba `vy` para girar. Que `w` desplace de lado de verdad está **pendiente de confirmar en el robot**; si salen espejados, se cambia el signo en el botón.
 
 **Movimiento AUTÓNOMO = SOLO adelante/atrás (decisión jul 2026):** en la práctica el robot solo se desplaza bien hacia adelante y atrás; girar se hace MANUAL desde el panel "estilo carro" (atrás, girar un poco, atrás, girar un poco). Por eso los comportamientos automáticos (visión al acercarse, gestos con ruedas) SOLO usan `vx` — nada de `w` ni `vy`. Además `arduino_link.py` lleva un **odómetro** adelante/atrás (integra vx·tiempo) y `mech_app.return_to_start()` revierte el desplazamiento neto ANTES de cada plan, para que el proyector vuelva a apuntar a donde estaba calibrado (la proyección no se desfasa). El odómetro se resetea con el paro de emergencia (posición ya no confiable).
 
@@ -318,7 +325,10 @@ windows/              ← Control desde laptop Windows
                         abre el panel con Edge/Chrome en modo --app. Solo
                         librería estándar, a propósito: así el .exe pesa
                         10 MB y se construye en un minuto. Es SOLO control
-                        remoto: no toca nada del audio ni del robot.
+                        remoto: no toca nada del audio ni del robot. Botones:
+                        panel, proyección, kiosko y **biblioteca de videos**
+                        (`/library` en el navegador de siempre, pestaña
+                        normal, para arrastrar los mp4).
   construir_exe.ps1   ← Construye "MECH Panel.exe" con PyInstaller en un
                         venv aparte (desde el Python de diario se colarían
                         numpy/opencv y el .exe pasaría a cientos de MB).
@@ -336,8 +346,15 @@ docs/
                         micrófono, qué de eso hace MECH y qué falta.
   GUIA.md             ← Hardware y montaje en la Pi.
   FRONTEND.md         ← Servidor, panel, control desde Windows.
+  USO.md              ← **Guía del OPERADOR del stand**: qué decirle a MECH,
+                        qué hace cada botón y qué tocar cuando algo falla.
+                        Para quien no programa. Si añadís un comando o un
+                        botón, va aquí también (y SOLO lo que existe: se
+                        reescribió el 23 sep tras la reversión).
   GUIONES_NEWTON.md   ← Guiones (narración + prompt de video) de Newton.
   GUIONES_RELATIVIDAD.md ← Los 8 guiones de la relatividad, uno por segmento.
+  GUIONES_CRISPR.md   ← 5 guiones de CRISPR y Cas9 + datos verificados. La
+                        obra `crispr` AÚN NO está en video_library.py.
 
 scripts/
   probar_saludo.py    ← Cuenta las órdenes que el SALUDO manda al Arduino:
@@ -979,7 +996,29 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   aplicación. Solo control remoto. Solo librería estándar → .exe de 10 MB
   con PyInstaller (`windows/construir_exe.ps1`) e instalador opcional con
   Inno Setup (`windows/MECH-Panel.iss`). Es lo único que se conservó al
-  revertir a `c0e0310` (ver el aviso de arriba).
+  revertir a `c0e0310` (ver el aviso de arriba). Desde el 23 sep tiene un
+  cuarto botón, **«Biblioteca de videos (en el navegador)»**.
+- **Controles de movimiento del panel corregidos (23 sep 2026)** — AVANZAR
+  iba hacia atrás y los LATERAL giraban. Ver la actualización de la
+  cinemática (arriba): `DRIVE_INVERT_FORWARD` + botones GIRO = `vy`,
+  LATERAL = `w`.
+- **Guía de uso `docs/USO.md` (23 sep 2026)** — reescrita al día: encender,
+  despertar/dormir, obras, traductor de una frase, moverlo (voz y panel),
+  saludo, biblioteca, problemas y resumen de comandos.
+- **Recorte automático al subir (23 sep 2026)** — campo `trim` de `WORKS`
+  (`{segmento: ("inicio"|"final", segundos)}`). La relatividad lo usa a
+  pedido del equipo: seg 1 → primeros 20 s, seg 2 → primeros 10 s,
+  **seg 3-7 → ÚLTIMOS 10 s**, seg 8 entero. Lo hace
+  `video_library.trim_uploaded()` con ffmpeg justo después de
+  `POST /api/library/{slug}/{seg}` (en `asyncio.to_thread`, re-codificando a
+  H.264: copiando solo se puede cortar en fotogramas clave). El original
+  queda en `<slug>/originales/`; si no hay ffmpeg o falla, **se usa el video
+  entero** y el panel avisa — nunca se pierde lo subido. `/library` marca con
+  ✂ los segmentos que recortan. Solo afecta a lo que se suba DESPUÉS del
+  cambio. Probado con ffmpeg simulado (en la laptop no hay ffmpeg).
+- **Guiones de CRISPR y Cas9** — [`docs/GUIONES_CRISPR.md`](docs/GUIONES_CRISPR.md),
+  5 escenas + 18 datos verificados con fuentes. Falta añadir la obra `crispr`
+  a la biblioteca cuando el equipo lo pida.
 - Documentación (GUIA.md, FRONTEND.md, PRUEBAS_HARDWARE.md, windows/README.md).
 - **Biblioteca de videos pre-renderizados (Opción B)** — manifest, schema, dispatch
   en execute_plan, fallback a NanoBanana, UI `/library` para subir mp4s,
@@ -1434,6 +1473,10 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     `stopAllMotors()`. Comprobación rápida: `MOVE:0:0:100` desde el panel
     (vista Arduino → comando crudo) con el bucle de voz APAGADO. Si ahí se
     mueve y con el bucle encendido no, es esto. Ver la sección del giro.
+20b. **Si AVANZAR va hacia atrás, es `DRIVE_INVERT_FORWARD`** (Ajustes →
+    «Adelante/atrás invertido»), no un bug de maniobras: se aplica en
+    `arduino_link.move()` a TODO. El comando crudo no la usa, así que
+    `MOVE:100:0:0` a mano puede ir al revés que el botón AVANZAR.
 21. **Velocidad ≠ potencia.** El firmware escala `v * 255 / 100`: velocidad
     50 son 127/255 de PWM, y con estos motores + L298N eso normalmente solo
     zumba. Para probar movimiento SIEMPRE usa 100.

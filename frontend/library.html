@@ -68,6 +68,7 @@
   }
   .toast.show { opacity: 1; transform: translateY(0); }
   .toast.ok  { border-color: #356b3f; }
+  .seg-trim { font-size: 11px; color: #E5A54B; margin-top: 2px; font-family: 'Space Mono', monospace; }
   .toast.err { border-color: #6a3232; }
   .empty {
     text-align: center; padding: 60px 20px; color: #777; font-size: 13px;
@@ -263,6 +264,7 @@
         <div>
           <div class="seg-num">seg${padded}</div>
           <div class="seg-status ${d.present ? 'ok' : 'no'}">${label}</div>
+          ${d.trim ? `<div class="seg-trim" title="Al subir un video aquí, MECH se queda solo con esta parte. El original se guarda aparte.">✂ ${escape(d.trim)}</div>` : ''}
         </div>
         <div class="seg-actions">
           <button class="btn btn-primary" onclick="pickFile('${w.slug}', ${d.n})">
@@ -293,7 +295,9 @@
     const file = input.files[0];
     if (!file) return;
     const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-    toast(`Subiendo ${file.name} (${sizeMB} MB)…`, 'ok');
+    const card = document.getElementById(`seg-${slug}-${segNum}`);
+    const recorta = card && card.querySelector('.seg-trim');
+    toast(`Subiendo ${file.name} (${sizeMB} MB)…` + (recorta ? ' y recortando, espera' : ''), 'ok');
     const fd = new FormData();
     fd.append('file', file);
     try {
@@ -305,7 +309,9 @@
         const text = await res.text();
         throw new Error(`${res.status}: ${text}`);
       }
-      toast(`Subido seg${String(segNum).padStart(2, '0')} de ${slug}`, 'ok');
+      const data = await res.json().catch(() => ({}));
+      // Si el servidor lo recortó (o no pudo), se dice: es lo que importa.
+      toast(data.note || `Subido seg${String(segNum).padStart(2, '0')} de ${slug}`, 'ok');
       await loadLibrary();  // re-render con el estado real (presencia + tipo)
     } catch (e) {
       toast(`Error subiendo: ${e.message}`, 'err');

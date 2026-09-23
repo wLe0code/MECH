@@ -11,20 +11,28 @@ Cada escena trae dos cosas:
   por separado). Unas 65-75 palabras ≈ 25 segundos de voz.
 - **Prompt de video** — listo para pegar en **Gemini (Veo)** y generar el clip.
 
-| # | Título | Época | Archivo |
-|---|---|---|---|
-| 1 | El misterio de la luz | 1865 – 1887 | `seg01.mp4` |
-| 2 | El empleado de patentes | 1895 – 1905 | `seg02.mp4` |
-| 3 | El tiempo no es igual para todos | 1905 | `seg03.mp4` |
-| 4 | Las transformaciones de Lorentz | 1892 – 1905 | `seg04.mp4` |
-| 5 | E = mc² | 1905 | `seg05.mp4` |
-| 6 | La gravedad es espacio curvo | 1907 – 1915 | `seg06.mp4` |
-| 7 | El eclipse que lo cambió todo | 1919 | `seg07.mp4` |
-| 8 | La relatividad hoy | 2015 – hoy | `seg08.mp4` |
+| # | Título | Época | Archivo | Duración en MECH |
+|---|---|---|---|---|
+| 1 | El misterio de la luz | 1865 – 1887 | `seg01.mp4` | 20 s (los primeros) |
+| 2 | El empleado de patentes | 1895 – 1905 | `seg02.mp4` | 10 s (los primeros) |
+| 3 | El tiempo no es igual para todos | 1905 | `seg03.mp4` | **los ÚLTIMOS 10 s** |
+| 4 | Las transformaciones de Lorentz | 1892 – 1905 | `seg04.mp4` | **los ÚLTIMOS 10 s** |
+| 5 | E = mc² | 1905 | `seg05.mp4` | **los ÚLTIMOS 10 s** |
+| 6 | La gravedad es espacio curvo | 1907 – 1915 | `seg06.mp4` | **los ÚLTIMOS 10 s** |
+| 7 | El eclipse que lo cambió todo | 1919 | `seg07.mp4` | **los ÚLTIMOS 10 s** |
+| 8 | La relatividad hoy | 2015 – hoy | `seg08.mp4` | entero |
+
+> ✂ **El recorte es automático** (pedido del equipo, 23 sep 2026). Se sube
+> el video completo en `/library` y la Pi se queda solo con la parte de la
+> última columna: del 3 al 7, **los últimos 10 segundos**; el 1 y el 2, sus
+> primeros 20 y 10 s (si ya duran eso, no se tocan); el 8, entero. El
+> original se guarda en `video_library/relatividad/originales/`, por si hay
+> que recortarlo distinto. Necesita `ffmpeg` en la Pi: sin él se usa el video
+> entero y el panel lo avisa.
 
 **Un archivo por escena.** En la biblioteca, la obra `relatividad` tiene **8
-segmentos**: en `/library` sale su tarjeta con 8 botones, y cada escena se
-sube en el suyo. El orden importa: MECH narra el tramo N sobre `segNN`.
+segmentos**: en `/library` sale su tarjeta con 8 botones (los que recortan
+llevan la marca ✂), y cada escena se sube en el suyo. El orden importa: MECH narra el tramo N sobre `segNN`.
 
 Mientras falte alguno de los ocho, la obra se sigue ofreciendo a Claude (con
 su sinopsis y sus datos verificados), pero narrando con imágenes generadas en

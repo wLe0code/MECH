@@ -155,10 +155,11 @@ GREETING_ONLY_DORMANT = os.environ.get(
 # los motores zumban y no rompen la fricción estática, sobre todo girando
 # (las mecanum arrastran los rodillos de lado). 100 = PWM 255. Si el giro
 # sale demasiado brusco, baja PRIMERO los segundos, no la velocidad.
-# La media vuelta es UN SOLO tramo LATERAL (el mismo movimiento del botón
-# "LATERAL" del panel) sostenido hasta que el robot queda de espaldas. NO se
-# usa rotación (`w`): en el suelo del stand hacía "un movimiento raro y muy
-# corto" — con estas ruedas el que gira de verdad es el lateral (sep 2026).
+# La media vuelta es UN SOLO tramo de `vy` (el mismo movimiento de los botones
+# «GIRO» del panel) sostenido hasta que el robot queda de espaldas. NO se usa
+# `w`: en el suelo del stand hacía "un movimiento raro y muy corto" — con
+# estas ruedas el que gira de verdad es `vy` (sep 2026). Por eso en el panel
+# los botones de GIRO mandan `vy` y los LATERALES mandan `w`.
 TURN_180_SPEED = int(os.environ.get("TURN_180_SPEED", "100"))
 # CALIBRADO EN EL ROBOT (sep 2026), en dos pasadas:
 #   2.0 s  -> giraba "un poquito menos de la mitad" (~80°)
@@ -182,6 +183,17 @@ TURN_LATERAL_SECONDS = float(os.environ.get("TURN_LATERAL_SECONDS", "0.5"))
 # Es el truco clásico cuando un motor "zumba pero no arranca". Si la
 # velocidad pedida ya es 100, el pulso no cambia nada. 0 = desactivado.
 MOTOR_KICK_SECONDS = float(os.environ.get("MOTOR_KICK_SECONDS", "0.15"))
+# Sentido de ADELANTE/ATRÁS (sep 2026). El equipo probó el panel y el botón
+# «AVANZAR» iba hacia atrás. Es el mismo MOVE que usan «avanza diez
+# segundos», acercarse al visitante y la vuelta al punto de inicio, así que
+# se corrige AQUÍ, una sola vez para todos, en `arduino_link.move()`: el
+# código sigue pensando en "vx positivo = adelante" y el odómetro también.
+# Si algún día vuelve a salir al revés (otra batería, otros motores), se
+# cambia en vivo desde Ajustes → «Adelante/atrás invertido», sin reflashear.
+# Ojo: el COMANDO CRUDO del panel va tal cual al Arduino, sin esta inversión.
+DRIVE_INVERT_FORWARD = os.environ.get("DRIVE_INVERT_FORWARD", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
 
 # RoboKit RS — movimiento por "bus de pines".
 # La Pi pone estos pines GPIO (BCM) en alto/bajo; el RoboKit corre un programa

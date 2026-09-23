@@ -15,13 +15,14 @@ por detrás, "mira hacia afuera" lo pone de cara al público, saluda con el
 brazo, y "regresa a proyectar" deshace la maniobra EXACTA para que el
 proyector vuelva a apuntar a donde estaba calibrado.
 
-La maniobra es **UN SOLO tramo LATERAL** (`vy`), exactamente el mismo
-movimiento del botón «LATERAL» del panel, mantenido hasta que el robot queda
-de espaldas.
+La maniobra es **UN SOLO tramo de `vy`**, exactamente el mismo movimiento
+de los botones «GIRO» del panel, mantenido hasta que el robot queda de
+espaldas. (En el código `vy` se llama "lateral" por la mecanum de libro, pero
+con estas ruedas es el que GIRA; desde sep 2026 el panel lo etiqueta así.)
 
 ⚠️ **No se usa `w` (rotación) — y es a propósito** (sep 2026). Sobre el suelo
 del stand, con estas ruedas, el patrón de rotación hacía "un movimiento raro y
-muy corto"; el que de verdad hace girar al robot es el LATERAL. Es coherente
+muy corto"; el que de verdad hace girar al robot es `vy`. Es coherente
 con el resto del proyecto: la cinemática de este robot está calibrada a mano
 y no coincide con la mecanum de libro (ver `driveOmni` en el .ino). Si alguien
 vuelve a meter `w` aquí, va a repetir el mismo problema.
@@ -126,7 +127,7 @@ def _side() -> int:
 
 
 def _turn(app, direction: int) -> None:
-    """Media vuelta: UN solo tramo LATERAL, igual que el botón del panel.
+    """Media vuelta: UN solo tramo de `vy`, igual que los botones GIRO del panel.
 
     `direction` +1 = ida (mirar hacia afuera), −1 = vuelta."""
     speed = max(10, min(100, config.TURN_180_SPEED))
@@ -134,7 +135,7 @@ def _turn(app, direction: int) -> None:
 
 
 def _unturn(app, direction: int) -> None:
-    """Deshace `_turn`: el mismo tramo lateral con el signo cambiado."""
+    """Deshace `_turn`: el mismo tramo con el signo cambiado."""
     _turn(app, -direction)
 
 
@@ -295,7 +296,7 @@ def test_half_turn(app) -> None:
         return
     try:
         app.log(
-            f"PRUEBA de media vuelta: lateral a {config.TURN_180_SPEED} "
+            f"PRUEBA de media vuelta: giro a {config.TURN_180_SPEED} "
             f"durante {config.TURN_180_SECONDS} s. Mirá cuánto gira y ajustá "
             f"los segundos en Ajustes.",
             "info",
