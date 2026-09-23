@@ -1321,6 +1321,53 @@ otra sesión abierta:
 
 ---
 
+### Segunda ronda (22 sep 2026): «la cámara se enciende un momento y se apaga» + error del micrófono
+
+Llegaron juntos, y probablemente son **uno solo**.
+
+**El error del micrófono** era `Error opening RawInputStream: Illegal
+combination of I/O devices [PaErrorCode -9993]`. Lo importante no era el
+error sino lo que hacía el bucle con él: lo registraba y **reintentaba al
+instante, sin pausa**. Medido sobre el código viejo: **41 063 intentos y
+41 063 mensajes de error en 2 segundos**. Con eso la Pi se queda sin CPU, y la
+cámara (que corre en otro hilo) deja de recibir fotogramas a tiempo.
+
+Arreglos:
+
+- **El bucle ya no gira en vacío**: ante un fallo de micrófono espera 2-6 s,
+  le pide a PortAudio que vuelva a mirar la lista de dispositivos
+  (`stt.reset_audio()`, porque PortAudio la lee UNA vez al arrancar) y
+  reintenta. Avisa UNA vez, no miles. Fase nueva `nomic` en el banner
+  («🎤✗ Sin micrófono — reintentando…», aro en rojo). Cuando vuelve:
+  «Micrófono recuperado». Medido: 2 intentos en 5 s, se recupera solo.
+- **`_resolve_input_device()` comprueba el dispositivo**: si
+  `AUDIO_INPUT_DEVICE` es un número que ya no es un micrófono (pasa al mover
+  cosas de puerto USB), busca el Steren por nombre y evita el micro de la
+  webcam. Con el `.env` vacío no cambia nada.
+- **Cualquier otro error del bucle** espera 0,5 s antes de reintentar.
+
+**¿Es por tener el micrófono apagado?** Casi seguro NO: si solo se apaga el
+micrófono de solapa, el **receptor USB** sigue apareciendo y el resultado es
+silencio, no este error. Este error sale cuando el **receptor** no está (o el
+número del `.env` apunta a otro aparato).
+
+**La cámara**: además del efecto del bucle, había dos puntos donde se
+rendía a la primera — al abrirla (pedía UN fotograma y la descartaba si no
+llegaba al instante) y funcionando (un solo `read()` fallido apagaba la
+visión). Ahora tiene 2,5 s de calentamiento, tolera 2 s de tropiezos y si se
+cae de verdad se reabre sola hasta 5 veces, diciendo cuánto aguantó.
+Validado con una cámara simulada en cuatro escenarios (calentamiento lento,
+tropiezos sueltos, caída y vuelta, caída definitiva).
+
+**Qué pedirle al equipo**: `git pull`, reiniciar, y mirar el panel.
+- Si sale «Micrófono recuperado» o no sale nada rojo del micrófono → estaba.
+- Si sale «No puedo abrir el micrófono» → es el receptor: `arecord -l` en la
+  Pi dice si el sistema lo ve.
+- Si la cámara dice «dejó de dar imagen tras N s» con el MISMO N cada vez →
+  corriente. `dmesg | tail -20` y un hub USB con alimentación.
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:

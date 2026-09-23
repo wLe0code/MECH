@@ -52,6 +52,22 @@ FOCAL_PX = (FRAME_W / 2) / math.tan(math.radians(HFOV_DEG / 2))  # ≈ 320
 
 # Tiempo sin ver caras para declarar que el usuario se fue.
 LOST_AFTER_S = 1.5
+
+# --- Aguante de la cámara (sep 2026) ---------------------------------------
+# El equipo vio "la cámara se enciende un momento y se apaga". Había dos
+# puntos donde el código se rendía a la primera:
+#   1. al abrirla, si el PRIMER fotograma no llegaba enseguida;
+#   2. ya funcionando, un solo read() fallido apagaba la visión entera.
+# En la Pi los fallos sueltos pasan (USB compartido con el micrófono y el
+# Arduino, un bajón de corriente de un instante), así que ahora se aguanta.
+#
+# Segundos que se le dan a la cámara para dar su primer fotograma.
+_CALENTAMIENTO_S = 2.5
+# Segundos seguidos SIN fotogramas antes de dar la cámara por caída y
+# reabrirla. Menos que esto es un tropiezo y se ignora.
+_SIN_IMAGEN_S = 2.0
+# Cuántas veces seguidas se intenta reabrirla antes de rendirse del todo.
+_REINTENTOS_REABRIR = 5
 # Margen sobre la distancia mínima para no oscilar (histéresis).
 APPROACH_MARGIN_M = 0.15
 
@@ -137,6 +153,20 @@ def _make_detector(app):
         "caras frontales y a menor distancia. Para el modo full-range instala "
         "mediapipe (Python 3.11/3.12)."
     )
+
+
+class _CamaraMuerta:
+    """Sustituto de una cámara que no se pudo reabrir: read() siempre falla.
+
+    Así el bucle sigue por el mismo camino (espera, reintenta, y al final se
+    rinde) en vez de necesitar un caso especial para "no hay cámara".
+    """
+
+    def read(self):
+        return False, None
+
+    def release(self):
+        pass
 
 
 class Vision:
@@ -232,11 +262,20 @@ class Vision:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
         cap.set(cv2.CAP_PROP_FPS, TARGET_FPS)
-        ok, _ = cap.read()
-        if not ok:
-            cap.release()
-            return None
-        return cap
+        # CALENTAMIENTO: tras cambiarle el formato, la C930e tarda en dar su
+        # primer fotograma (en la Pi, a veces más de medio segundo). Pedir UNO
+        # solo y rendirse era el síntoma exacto que vio el equipo: «la cámara
+        # se enciende un momento y se apaga» — se encendía al abrirla, el
+        # primer read() fallaba por impaciencia, se cerraba y se probaba la
+        # siguiente. Ahora se le dan hasta `_CALENTAMIENTO_S` segundos.
+        limite = time.monotonic() + _CALENTAMIENTO_S
+        while time.monotonic() < limite:
+            ok, _ = cap.read()
+            if ok:
+                return cap
+            time.sleep(0.1)
+        cap.release()
+        return None
 
     def _buscar_camara(self, cv2):
         """Abre la cámara, buscándola si el índice configurado no sirve.
@@ -315,14 +354,74 @@ class Vision:
         present = False
         last_emit = 0.0
         frame_interval = 1.0 / TARGET_FPS
+        # Aguante (ver _SIN_IMAGEN_S): desde cuándo no llega un fotograma, y
+        # cuándo arrancó esta cámara (para decir cuánto aguantó si se cae:
+        # si siempre dura lo mismo, huele a corriente, no a programa).
+        sin_imagen_desde: float | None = None
+        abierta_en = time.monotonic()
+        reintentos = 0
 
         try:
             while not self._stop.is_set():
                 t0 = time.monotonic()
                 ok, frame = cap.read()
                 if not ok:
-                    self.app.log("La cámara dejó de dar frames; visión detenida.", "err")
-                    break
+                    ahora = time.monotonic()
+                    if sin_imagen_desde is None:
+                        sin_imagen_desde = ahora
+                    if ahora - sin_imagen_desde < _SIN_IMAGEN_S:
+                        # Un tropiezo: se ignora. Antes, UNO solo apagaba la
+                        # visión entera («se enciende y se apaga»).
+                        time.sleep(0.05)
+                        continue
+                    # Lleva un rato sin imagen: la damos por caída y se reabre.
+                    duro = ahora - abierta_en
+                    cap.release()
+                    self._release_drive()
+                    reintentos += 1
+                    if reintentos > _REINTENTOS_REABRIR:
+                        self.app.log(
+                            f"La cámara se cayó {_REINTENTOS_REABRIR} veces "
+                            "seguidas y dejo de intentarlo. Casi seguro es "
+                            "CORRIENTE o CABLE, no el programa: mirá "
+                            "`dmesg | tail -20` en la Pi (si sale "
+                            "'over-current' o 'disconnect', es la corriente; "
+                            "un hub USB con alimentación propia lo arregla). "
+                            "Para reintentar: apagá y encendé la visión.",
+                            "err",
+                        )
+                        break
+                    self.app.log(
+                        f"La cámara dejó de dar imagen tras {duro:.0f} s. "
+                        f"La reabro (intento {reintentos} de "
+                        f"{_REINTENTOS_REABRIR})…",
+                        "warn",
+                    )
+                    self._publish(enabled=True, present=False, x=0.0,
+                                  distance=None)
+                    # Se le da un respiro antes de reabrir: si fue un bajón
+                    # de corriente o el USB se reinició, el /dev/video tarda
+                    # en volver a aparecer.
+                    if self._stop.wait(min(8.0, 1.5 * reintentos)):
+                        break
+                    nuevo, indice = self._buscar_camara(cv2)
+                    if nuevo is None:
+                        # Sin cámara a la vista todavía: seguimos esperando
+                        # en la próxima vuelta (con el contador de fallos
+                        # corriendo, así esto termina en algún momento).
+                        sin_imagen_desde = time.monotonic() - _SIN_IMAGEN_S
+                        cap = _CamaraMuerta()
+                        continue
+                    cap = nuevo
+                    self.app.log(f"Cámara recuperada (índice {indice}).", "ok")
+                    sin_imagen_desde = None
+                    abierta_en = time.monotonic()
+                    continue
+                # Llegó un fotograma: si veníamos de fallos, todo en orden.
+                sin_imagen_desde = None
+                if reintentos and time.monotonic() - abierta_en > 30:
+                    # Aguantó medio minuto seguido: el contador vuelve a cero.
+                    reintentos = 0
 
                 now = time.monotonic()
 

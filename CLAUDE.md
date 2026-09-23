@@ -1621,6 +1621,34 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     `...LocalCache\Roaming\MECH\` y el .exe la busca en la real. No rompe
     nada (cada uno es coherente), pero explica que "se olvide" la dirección
     al pasar del script al .exe.
+33. **Un bucle que falla SIN PAUSA tumba a toda la Pi.** Antes, si el
+    micrófono no abría, el bucle de voz registraba el error y reintentaba al
+    instante: medido, **41 063 intentos y 41 063 mensajes en 2 segundos**. La
+    Pi se quedaba sin CPU y el resto (la cámara, el panel) empezaba a fallar
+    también — el equipo lo vio como "la cámara se enciende un momento y se
+    apaga" a la vez que el error del micrófono. Ahora espera y reintenta cada
+    pocos segundos (fase `nomic` en el banner). ⚠️ **Todo `except` dentro de
+    un `while` que corre solo necesita un `sleep`.**
+34. **`Illegal combination of I/O devices [PaErrorCode -9993]` = PortAudio
+    no puede abrir ESE dispositivo como micrófono.** No lo causa apagar el
+    micrófono de solapa (el receptor USB sigue apareciendo y solo daría
+    silencio): lo causa el RECEPTOR desenchufado, o un `AUDIO_INPUT_DEVICE`
+    numérico que tras mover cosas de puerto USB apunta a otro aparato (a
+    veces uno que ni graba). `stt._resolve_input_device()` ahora comprueba
+    el número contra la lista real y, si no vale, busca el Steren por nombre
+    (evitando el micro de la webcam). Mejor aún: poner un NOMBRE en el
+    `.env` (`AUDIO_INPUT_DEVICE=Steren` o `USB`) en vez de un número.
+    Y como PortAudio lee la lista de dispositivos UNA vez al arrancar,
+    `stt.reset_audio()` le pide que vuelva a mirar tras cada fallo: así ve el
+    receptor aunque se enchufe con el server ya corriendo.
+35. **La cámara no se rinde al primer fotograma perdido.** Antes, un solo
+    `read()` fallido apagaba la visión entera, y al abrirla se le pedía UN
+    fotograma y se descartaba si no llegaba al instante (la C930e tarda hasta
+    medio segundo tras cambiarle el formato). Ahora: `_CALENTAMIENTO_S`
+    (2,5 s) para el primer fotograma, `_SIN_IMAGEN_S` (2 s) de tropiezos
+    tolerados, y si se cae de verdad se REABRE sola hasta
+    `_REINTENTOS_REABRIR` (5) veces. El panel dice cuánto aguantó antes de
+    cada caída: si siempre es lo mismo, huele a corriente, no a programa.
 
 ---
 

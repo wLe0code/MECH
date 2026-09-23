@@ -226,6 +226,9 @@ class MechApp:
         # lo que de verdad está haciendo. No "IDLE", que es el de reposo y
         # daría a entender que ya escucha.
         "loading": "THINK",
+        # Sin micrófono (no se pudo abrir): rojo, como el paro. Es un fallo
+        # que hay que ver desde lejos.
+        "nomic": "ERR",
         "dormant": "IDLE",
         "waiting": "LISTEN",
         "listening": "LISTEN",

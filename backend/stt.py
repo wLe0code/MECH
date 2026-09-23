@@ -77,19 +77,156 @@ _model: WhisperModel | None = None
 _interrupt_model: WhisperModel | None = None
 
 
+# Nombres de micrófonos que preferimos cuando el configurado no sirve (el del
+# proyecto es el receptor USB del Steren MIC-9010, que se anuncia de varias
+# formas según el sistema) y nombres que NO queremos: el micrófono de la
+# webcam, que el proyecto dejó de usar a propósito.
+_MIC_PREFERIDOS = ("steren", "wxmh", "wireless", "usb audio", "usb pnp", "usb")
+_MIC_EVITAR = ("c930", "webcam", "camera", "logitech")
+
+# Último aviso sobre el dispositivo, para no repetir el mismo en cada vuelta
+# del bucle (se graba cada pocos segundos).
+_ultimo_aviso_dispositivo: str = ""
+# Por qué se eligió el micrófono la última vez (lo lee el panel).
+ultima_eleccion_mic: str = ""
+
+
+def _avisar_dispositivo(texto: str) -> None:
+    global _ultimo_aviso_dispositivo
+    if texto != _ultimo_aviso_dispositivo:
+        _ultimo_aviso_dispositivo = texto
+        print(f"[STT] {texto}", file=sys.stderr)
+
+
+def _entradas() -> list[tuple[int, str]]:
+    """`(índice, nombre)` de los dispositivos que PUEDEN grabar ahora mismo."""
+    try:
+        todos = sd.query_devices()
+    except Exception:
+        return []
+    return [
+        (i, str(d.get("name", "")))
+        for i, d in enumerate(todos)
+        if int(d.get("max_input_channels", 0) or 0) > 0
+    ]
+
+
+def _buscar_microfono(entradas: list[tuple[int, str]]) -> int | None:
+    """El mejor micrófono de la lista, sin contar el de la webcam."""
+    for clave in _MIC_PREFERIDOS:
+        for i, nombre in entradas:
+            n = nombre.lower()
+            if clave in n and not any(e in n for e in _MIC_EVITAR):
+                return i
+    return None
+
+
 def _resolve_input_device() -> int | str | None:
-    """Dispositivo de micrófono configurado (índice o nombre), o None=default.
+    """Qué micrófono abrir. None = el que tenga puesto el sistema.
 
     El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda
     solo para video. Se configura con AUDIO_INPUT_DEVICE en .env.
+
+    ⚠️ Antes esto devolvía el valor del .env TAL CUAL, sin comprobar nada. Con
+    un NÚMERO eso es frágil: los índices de audio cambian cuando se enchufa,
+    desenchufa o cambia de puerto cualquier cosa USB (el equipo lo vivió
+    moviendo la cámara), y el número guardado pasa a apuntar a OTRO
+    dispositivo — a veces uno que ni siquiera graba. PortAudio responde con
+    errores tan poco claros como «Illegal combination of I/O devices».
+
+    Ahora se comprueba contra la lista real de dispositivos que graban:
+      - si lo configurado sigue siendo un micrófono, se usa;
+      - si no, se busca uno por nombre (el Steren, "USB"...), evitando el de
+        la webcam, y se avisa;
+      - si no hay ninguno reconocible, se deja al sistema elegir.
+
+    Con el .env VACÍO se deja al sistema, igual que siempre: es lo que ya
+    funcionaba y no hay por qué tocarlo.
     """
+    global ultima_eleccion_mic
     dev = config.AUDIO_INPUT_DEVICE.strip()
     if not dev:
+        ultima_eleccion_mic = "el del sistema (AUDIO_INPUT_DEVICE vacío)"
         return None
+
+    entradas = _entradas()
+    if not entradas:
+        # Ni un solo dispositivo que grabe: que PortAudio lo intente con lo
+        # configurado y dé su error; el bucle de voz lo explicará.
+        ultima_eleccion_mic = "ninguno (no hay micrófonos a la vista)"
+        try:
+            return int(dev)
+        except ValueError:
+            return dev
+
     try:
-        return int(dev)  # índice numérico
+        pedido = int(dev)
     except ValueError:
-        return dev  # nombre (sounddevice acepta coincidencia parcial)
+        pedido = None
+
+    if pedido is not None:
+        for i, nombre in entradas:
+            if i == pedido:
+                ultima_eleccion_mic = f"'{nombre}' (índice {i}, del .env)"
+                return i
+        motivo = (f"AUDIO_INPUT_DEVICE={pedido} ya no es un micrófono (los "
+                  "números cambian al mover cosas de puerto USB)")
+    else:
+        for i, nombre in entradas:
+            if dev.lower() in nombre.lower():
+                ultima_eleccion_mic = f"'{nombre}' (índice {i}, por nombre)"
+                return i
+        motivo = f"no hay ningún micrófono que se llame '{dev}'"
+
+    otro = _buscar_microfono(entradas)
+    if otro is not None:
+        nombre = dict(entradas)[otro]
+        ultima_eleccion_mic = f"'{nombre}' (índice {otro}, buscado solo)"
+        _avisar_dispositivo(f"{motivo}. Uso '{nombre}' (índice {otro}).")
+        return otro
+    ultima_eleccion_mic = "el del sistema (el configurado no existe)"
+    _avisar_dispositivo(f"{motivo}. Pruebo con el del sistema.")
+    return None
+
+
+def is_audio_device_error(exc: BaseException) -> bool:
+    """¿Este error es "no se pudo abrir el micrófono"?
+
+    Sirve para que el bucle de voz lo trate distinto de un fallo cualquiera:
+    no tiene sentido reintentarlo cien veces por segundo, hay que esperar a
+    que el micrófono vuelva (se enchufe, se encienda el receptor...).
+    """
+    texto = str(exc)
+    return (
+        isinstance(exc, getattr(sd, "PortAudioError", ()))
+        or "Error opening" in texto
+        or "PaErrorCode" in texto
+        or "No input device" in texto
+        or "Invalid device" in texto
+    )
+
+
+def reset_audio() -> bool:
+    """Vuelve a pedirle a PortAudio la lista de dispositivos.
+
+    PortAudio la lee UNA vez al arrancar y no se entera de lo que se enchufa
+    después. Si el receptor del micrófono se conectó (o se reconectó) con el
+    server ya corriendo, sin esto MECH no lo vería nunca.
+
+    Solo es seguro sin ninguna grabación ni reproducción de PortAudio en
+    curso; si hay una, no hace nada y devuelve False.
+    """
+    try:
+        if sd.get_stream() is not None and sd.get_stream().active:
+            return False
+    except Exception:
+        pass  # no hay ningún stream "por defecto": es justo lo que queremos
+    try:
+        sd._terminate()
+        sd._initialize()
+        return True
+    except Exception:
+        return False
 
 
 # Filtro anti-aliasing para bajar de la tasa de captura a los 16 kHz de

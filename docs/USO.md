@@ -276,6 +276,8 @@ todo lo que hace. La mayoría de las veces el problema se ve de una.
 | **No se oye** | Revisa los **3 botones del parlante Logitech S150** (`−`, mute, `+`, en el frente del derecho) — que no esté en mute. Después, Ajustes → **Volumen voz**. |
 | **Los videos de marketing se ven pero no se oyen** | La proyección se abrió sin el permiso de autoplay. Ciérrala y ábrela con el icono **Proyectar MECH** (ese ya lo lleva). |
 | **La proyección de marketing dura un segundo** | Es el formato de los videos. El panel dice cuáles fallaron; hay que reconvertirlos (el panel da el comando). |
+| **Banner rojo «Sin micrófono — reintentando…»** | El receptor USB del Steren no está o el sistema no lo ve. Enchúfalo: **se recupera solo** en unos segundos, no hace falta reiniciar. Si no vuelve: `arecord -l` en la Pi dice si lo ve. Apagar solo el micrófono de solapa NO causa esto (da silencio, no error). |
+| **La cámara se enciende y se apaga** | Mira el panel: dice cuántos segundos aguantó cada vez. Si siempre es lo mismo, es **corriente**: `dmesg \| tail -20` y un hub USB con alimentación propia. Ahora se reabre sola hasta 5 veces antes de rendirse. |
 | **Las ruedas no se mueven** | Prueba `MOVE:0:0:100` desde el panel (vista Arduino → comando crudo) con el bucle de voz apagado. |
 | **No veo la Pi desde Windows** | La wifi del recinto puede estar aislando los equipos entre sí. Usa el hotspot del móvil para los dos. |
 

@@ -223,6 +223,12 @@ def _voice_loop_body(app_state) -> None:
     if not app_state.state.get("voice_awake", True):
         app_state.set_voice_phase("dormant")
 
+    # Fallos SEGUIDOS al abrir el micrófono. Sirve para esperar cada vez más
+    # entre intentos (sin esto el bucle giraba a toda velocidad: cientos de
+    # «Error en bucle de voz» por segundo y la CPU a tope) y para avisar
+    # cuando el micrófono vuelve.
+    fallos_mic = 0
+    ultimo_aviso_mic = 0.0
     while app_state.state["voice_loop_active"]:
         try:
             awake = app_state.state.get("voice_awake", True)
@@ -272,6 +278,13 @@ def _voice_loop_body(app_state) -> None:
                 # que lo pueda usar el listener de interrupción.
                 cancel_event=app_state.mic_release,
             )
+            if fallos_mic:
+                app_state.log(
+                    f"Micrófono recuperado ({stt.ultima_eleccion_mic}). "
+                    "Vuelvo a escuchar.",
+                    "ok",
+                )
+                fallos_mic = 0
             if audio is None:
                 app_state.set_voice_phase(
                     "waiting" if app_state.state.get("voice_awake", True) else "dormant"
@@ -401,7 +414,33 @@ def _voice_loop_body(app_state) -> None:
                 app_state.handle_text_command(pendiente)
                 pendiente = app_state.take_pending_command()
         except Exception as e:
+            if stt.is_audio_device_error(e):
+                # NO SE PUDO ABRIR EL MICRÓFONO. Casi nunca es un fallo del
+                # programa: el receptor está desenchufado, se movió de
+                # puerto USB (y el número guardado apunta a otra cosa) o
+                # PortAudio aún no lo ha visto. Se espera, se le pide a
+                # PortAudio que vuelva a mirar la lista de dispositivos y se
+                # reintenta — así se recupera SOLO al enchufarlo.
+                fallos_mic += 1
+                ahora = time.time()
+                if fallos_mic == 1 or ahora - ultimo_aviso_mic > 30:
+                    ultimo_aviso_mic = ahora
+                    app_state.log(
+                        f"No puedo abrir el micrófono: {e}. Revisá que el "
+                        "RECEPTOR USB del Steren esté enchufado (si solo "
+                        "está apagado el micrófono de solapa, el receptor "
+                        "sigue apareciendo y esto no pasaría). Sigo "
+                        "intentándolo solo cada pocos segundos.",
+                        "err",
+                    )
+                app_state.set_voice_phase("nomic")
+                time.sleep(min(6.0, 1.0 + fallos_mic))
+                stt.reset_audio()
+                continue
             app_state.log(f"Error en bucle de voz: {e}", "err")
+            # Nunca girar en vacío: un error que se repite en cada vuelta
+            # llenaba el panel y dejaba a la Pi sin CPU para lo demás.
+            time.sleep(0.5)
     # El apagado (modo IDLE, fase "off", log) lo hace el `finally` de
     # `_voice_loop_worker`, para que valga también si esto se cae.
 

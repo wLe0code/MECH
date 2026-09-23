@@ -191,6 +191,10 @@
     // reposo" (su estado normal) y parecía que ya escuchaba: de ahí el
     // reporte "al encender el server no oye 'ok MECH'".
     loading:      { cls: 'phase-work',    text: '⏳ Cargando Whisper…',      hint: 'MECH TODAVÍA NO ESCUCHA. Espera a que suene el tono.' },
+    // No se pudo abrir el micrófono: el bucle sigue vivo y reintenta solo
+    // cada pocos segundos. NO usar 'off' aquí: el banner diría «pulsa el
+    // micrófono» y el botón (que es un interruptor) apagaría el bucle.
+    nomic:        { cls: 'phase-off',     text: '🎤✗ Sin micrófono — reintentando…', hint: 'Revisa que el receptor USB del Steren esté enchufado. Se recupera solo.' },
     dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'ok MECH' (español) o 'wake up MECH' (inglés)" },
     waiting:      { cls: 'phase-waiting', text: '🎤 PUEDES HABLAR',          hint: 'Dile al juez/usuario que hable AHORA' },
     listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
@@ -214,8 +218,8 @@
     $('dot-mic').className = micActive ? 'dot-active' : (state.voiceLoopActive ? 'dot-ok' : 'dot-off');
     const micLabel = { waiting: 'PUEDES HABLAR', listening: 'GRABANDO', transcribing: 'PROCESANDO',
                        thinking: 'PENSANDO', speaking: 'HABLANDO', dormant: 'EN REPOSO',
-                       loading: 'CARGANDO', off: 'INACTIVO' }[phase] || 'INACTIVO';
-    setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
+                       loading: 'CARGANDO', nomic: 'SIN MICRÓFONO', off: 'INACTIVO' }[phase] || 'INACTIVO';
+    setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'nomic' ? 'val-err' : (phase === 'off' ? 'val-off' : 'val-ok')));
   }
 
   // Cómo se despierta a MECH en cada idioma (para el log del panel).
