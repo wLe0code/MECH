@@ -39,6 +39,11 @@ import os
 import sys
 import time
 
+# Flag compartido entre el callback (hilo de PortAudio) y el bucle principal:
+# sounddevice TRAGA las excepciones de los callbacks, así que para salir no se
+# puede lanzar desde adentro — se marca acá y el bucle principal se va solo.
+_salir = False
+
 
 def main() -> int:
     if len(sys.argv) < 3:
@@ -69,14 +74,20 @@ def main() -> int:
         return 1
 
     def callback(indata, frames, time_info, status):
+        global _salir
         if status:
             print(f"[STT] sounddevice: {status}", file=sys.stderr, flush=True)
         try:
             out.write(indata.tobytes())
         except OSError:
-            # El padre cerró el pipe (terminó la escucha o se cayó): salimos.
-            raise SystemExit(0)
+            # El padre cerró el pipe (terminó la escucha o se cayó). OJO:
+            # NO podemos salir lanzando desde el callback: sounddevice traga
+            # las excepciones de los callbacks y el proceso seguiría vivo.
+            # Marcamos el flag y el bucle principal sale solo.
+            _salir = True
 
+    # `_salir` es la global de módulo: el callback la marca y este
+    # try abre el stream; el bucle de abajo sale solo al cortarse el pipe.
     try:
         with sd.RawInputStream(
             samplerate=sample_rate,
@@ -86,10 +97,10 @@ def main() -> int:
             device=device,
             callback=callback,
         ):
-            # Vivimos hasta que el padre corte el pipe o nos mate. El callback
-            # es el que escribe; aquí solo se espera.
-            while True:
-                time.sleep(3600)
+            # Vivimos hasta que el padre corte el pipe: el callback marca la
+            # global `_salir` y este bucle sale solo (máx. 0.2 s después).
+            while not _salir:
+                time.sleep(0.2)
     except Exception as e:
         print(f"[mic_worker] no pude abrir el micrófono: {e}", file=sys.stderr, flush=True)
         return 1

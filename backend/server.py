@@ -444,7 +444,7 @@ def _voice_loop_body(app_state) -> None:
                 pendiente = app_state.take_pending_command()
         except Exception as e:
             if stt.is_audio_device_error(e):
-                # NO SE PUDO ABRIR EL MICRÓFONO. Casi nunca es un fallo del
+                # NO SE PUDO USAR EL MICRÓFONO. Casi nunca es un fallo del
                 # programa: el receptor está desenchufado, se movió de
                 # puerto USB (y el número guardado apunta a otra cosa) o
                 # PortAudio aún no lo ha visto. Se espera, se le pide a
@@ -454,14 +454,42 @@ def _voice_loop_body(app_state) -> None:
                 ahora = time.time()
                 if fallos_mic == 1 or ahora - ultimo_aviso_mic > 30:
                     ultimo_aviso_mic = ahora
-                    app_state.log(
-                        f"No puedo abrir el micrófono: {e}. Revisá que el "
-                        "RECEPTOR USB del Steren esté enchufado (si solo "
-                        "está apagado el micrófono de solapa, el receptor "
-                        "sigue apareciendo y esto no pasaría). Sigo "
-                        "intentándolo solo cada pocos segundos.",
-                        "err",
-                    )
+                    if isinstance(e, stt.MicProcessCrashed) and e.silencioso:
+                        # Distinto del de abajo: el dispositivo SE ABRIÓ pero
+                        # no entrega audio. Son otras causas y otra guía.
+                        app_state.log(
+                            "El micrófono se abre pero NO llega audio. "
+                            "Revisá, en orden: 1) que el TRANSMISOR de "
+                            "solapa esté encendido y con batería (el "
+                            "receptor puede estar enchufado pero SIN señal "
+                            "inalámbrica); 2) que AUDIO_INPUT_DEVICE apunte "
+                            "al receptor y no al micrófono de la cámara; "
+                            "3) que no esté silenciado en el sistema "
+                            "(alsamixer). Sigo intentándolo solo cada pocos "
+                            "segundos.",
+                            "err",
+                        )
+                        # Diagnóstico concreto: qué cree ver PortAudio.
+                        # Solo de vez en cuando, para no llenar el panel.
+                        if fallos_mic in (3, 9):
+                            visibles = stt._entradas()
+                            app_state.log(
+                                "Micrófonos que veo ahora: "
+                                + (
+                                    ", ".join(f"[{i}] {n}" for i, n in visibles)
+                                    or "ninguno"
+                                ),
+                                "warn",
+                            )
+                    else:
+                        app_state.log(
+                            f"No puedo abrir el micrófono: {e}. Revisá que el "
+                            "RECEPTOR USB del Steren esté enchufado (si solo "
+                            "está apagado el micrófono de solapa, el receptor "
+                            "sigue apareciendo y esto no pasaría). Sigo "
+                            "intentándolo solo cada pocos segundos.",
+                            "err",
+                        )
                 app_state.set_voice_phase("nomic")
                 time.sleep(min(6.0, 1.0 + fallos_mic))
                 stt.reset_audio()

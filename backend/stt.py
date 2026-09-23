@@ -501,7 +501,16 @@ def _frame_rms(frame: bytes) -> float:
 class MicProcessCrashed(RuntimeError):
     """El proceso aislado del micrófono murió (seguramente por el bug de ALSA
     al desaparecer el dispositivo). Es un error del dispositivo, no del
-    programa: el server sigue vivo y solo falta reabrir."""
+    programa: el server sigue vivo y solo falta reabrir.
+
+    `silencioso=True` distingue el caso «se abrió pero NO llega audio» (el
+    receptor puede estar enchufado pero sin señal, o es el dispositivo
+    equivocado): el bucle de voz muestra una guía distinta.
+    """
+
+    def __init__(self, mensaje: str, silencioso: bool = False) -> None:
+        super().__init__(mensaje)
+        self.silencioso = silencioso
 
 
 class _MicInProcess:
@@ -633,7 +642,8 @@ class _MicWorker:
 
     def close(self) -> None:
         # Primero el pipe: el hijo ve EPIPE en la próxima escritura y sale solo
-        # (~30 ms). Después, si sigue vivo, SIGTERM y por último SIGKILL.
+        # (~30 ms). Se le da UNA vuelta de callback para que salga limpio por
+        # EPIPE; solo si sigue vivo, SIGTERM y por último SIGKILL.
         if self._r is not None:
             try:
                 os.close(self._r)
@@ -643,47 +653,72 @@ class _MicWorker:
         proc, self._proc = self._proc, None
         if proc is not None and proc.poll() is None:
             try:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=2.0)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    proc.wait(timeout=2.0)
-            except Exception:
+                proc.wait(timeout=0.5)  # chance de salir solo por EPIPE
+            except subprocess.TimeoutExpired:
                 pass
+            if proc.poll() is None:
+                try:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=2.0)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=2.0)
+                except Exception:
+                    pass
+
+
+# En pruebas se fuerza con `_FORZAR_INPROCESS = True` (sin tocar `os.name`,
+# que rompería pathlib/pytest por todos lados).
+_FORZAR_INPROCESS = False
 
 
 def abrir_mic_stream(device: int | str | None):
     """Contexto que abre el micrófono; devuelve un objeto con `read_chunk()`.
 
     En POSIX (la Pi) corre en un proceso aparte, a prueba del abort de ALSA.
-    En otros sistemas cae al modo histórico, sin aislamiento (solo desarrollo).
+    En otros sistemas (o con `_FORZAR_INPROCESS`) cae al modo histórico, sin
+    aislamiento (solo desarrollo/pruebas).
     """
-    if os.name == "posix":
+    if not _FORZAR_INPROCESS and os.name == "posix":
         return _MicWorker(device, config.AUDIO_SAMPLE_RATE, FRAME_BYTES // 2)
     return _MicInProcess(device, config.AUDIO_SAMPLE_RATE, FRAME_BYTES // 2)
 
 
-def _worker_chunks(mic, idle_limit: float = 8.0) -> Iterator[bytes]:
+def _worker_chunks(mic, idle_limit: float = 8.0, gracia_inicial: float = 3.0) -> Iterator[bytes]:
     """Genera los chunks que entrega `mic`, detectando caídas silenciosas.
 
     Si el dispositivo muere sin cerrar el pipe (quedó abierto pero no entrega
     más audio), `read_chunk` devolvería None para siempre y la escucha colgaría
     sin remedio. Pasado `idle_limit` sin un solo byte se declara caído: es un
     error recuperable, no un congelamiento.
+
+    `gracia_inicial`: las primeras veces (recién abierto) se aguanta más:
+    tras un bajón del USB, el receptor tarda en volver a transmitir y un corte
+    prematuro reiniciaría el intento justo cuando iba a arrancar.
     """
-    ultimo = time.monotonic()
+    arranque = time.monotonic()
+    ultimo = arranque
+    hay_bytes = False
     while True:
         chunk = mic.read_chunk(timeout=0.5)
+        ahora = time.monotonic()
         if chunk is None:
-            if time.monotonic() - ultimo > idle_limit:
+            tope = idle_limit + (gracia_inicial if not hay_bytes else 0.0)
+            referencia = arranque if not hay_bytes else ultimo
+            if ahora - referencia > tope:
                 raise MicProcessCrashed(
-                    "El micrófono dejó de entregar audio (lleva "
-                    f"{time.monotonic() - ultimo:.0f} s sin datos); lo doy por "
-                    "caído y lo reabro."
+                    "El micrófono se abrió pero NO llega audio (lleva "
+                    f"{ahora - referencia:.0f} s sin datos). Puede ser que el "
+                    "transmisor de solapa esté apagado, que el receptor esté "
+                    "sin señal, que AUDIO_INPUT_DEVICE apunte a otro "
+                    "dispositivo, o que el receptor haya quedado a mitad de "
+                    "arrancar tras un bajón del USB. Lo reabro y sigo.",
+                    silencioso=True,
                 )
             continue
-        ultimo = time.monotonic()
+        hay_bytes = True
+        ultimo = ahora
         yield chunk
 
 
