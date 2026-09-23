@@ -109,6 +109,35 @@
             <i class="ti ti-hand-stop"></i>Interrumpir narración («oye MECH»)
           </button>
 
+          <!-- Trivia: el juego de preguntas que se proyecta. Corre en el
+               servidor (backend/trivia.py); aquí se lanza y se puede
+               responder sin micrófono, que es como se separa "el juego
+               falla" de "no te entendió al hablar". -->
+          <div class="trivia-box" id="trivia-box">
+            <div class="translator-head">
+              <span class="translator-label"><i class="ti ti-help-circle"></i> TRIVIA</span>
+              <span class="translator-state" id="trivia-state">APAGADA</span>
+            </div>
+            <div class="trivia-q" id="trivia-q"><span class="tq-empty">Sin partida en marcha.</span></div>
+            <div class="trivia-opts" id="trivia-opts"></div>
+            <div class="translator-row">
+              <button class="btn btn-purple" id="tv-start" onclick="API.triviaStart()"
+                      title="Escribe las preguntas sobre lo ÚLTIMO que MECH narró (si no ha narrado nada, sobre MECH) y empieza. Igual que decir «juguemos una trivia».">
+                <i class="ti ti-player-play"></i>Empezar trivia
+              </button>
+              <button class="btn" id="tv-stop" onclick="API.triviaStop()"
+                      title="Sale del juego («deja la trivia»).">
+                <i class="ti ti-player-stop"></i>Salir
+              </button>
+            </div>
+            <span class="translator-hint">
+              <b>«juguemos una trivia»</b> → empieza ·
+              se contesta <b>«la A»</b>, <b>«la segunda»</b> o diciendo la opción ·
+              <b>«deja la trivia»</b> → sale.
+              Al terminar de narrar una obra, MECH la ofrece él solo.
+            </span>
+          </div>
+
           <!-- Modo traductor. Hay DOS formas (sep 2026):
                  «traduce MECH»          -> UNA frase y se calla.
                  «activa modo traductor» -> se queda traduciendo hasta que le
@@ -689,6 +718,36 @@
         <!-- Modo traductor -->
         <div class="fw-card settings-live">
           <div class="fw-key" style="margin-bottom:4px;color:#E5A54B">
+            <i class="ti ti-help-circle"></i> TRIVIA
+          </div>
+          <div class="section-sub" style="margin-bottom:10px">
+            El juego de preguntas que se proyecta. Se pide con
+            <b>«juguemos una trivia»</b> y MECH la ofrece solo al terminar de
+            narrar una obra.
+          </div>
+          <div class="slider-row">
+            <label title="Si lo apagas, MECH no ofrece ni acepta la trivia.">Trivia</label>
+            <label class="switch">
+              <input type="checkbox" id="set-trivia">
+              <span class="switch-text">Juego de preguntas activado</span>
+            </label>
+          </div>
+          <div class="slider-row">
+            <label title="Cuántas preguntas tiene cada partida. Tres es lo que aguanta la gente en un stand con cola.">Preguntas</label>
+            <input type="range" min="2" max="6" step="1" value="3" id="set-trivia-n" oninput="UI.settingLabel('set-trivia-n','trivian')">
+            <span class="val" id="set-trivia-n-val">3</span>
+          </div>
+          <div class="slider-row">
+            <label title="Al acabar de narrar una obra, MECH pregunta si quieren jugar. Si lo apagas, la trivia solo empieza si se la piden.">Ofrecerla</label>
+            <label class="switch">
+              <input type="checkbox" id="set-trivia-offer">
+              <span class="switch-text">Ofrecerla al terminar de narrar</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="fw-card settings-live">
+          <div class="fw-key" style="margin-bottom:4px;color:#5DCAA5">
             <i class="ti ti-sphere"></i> TRADUCTOR
           </div>
           <div class="section-sub" style="margin-bottom:10px">

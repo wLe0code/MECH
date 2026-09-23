@@ -26,6 +26,9 @@ Endpoints REST:
     POST /api/language/{es|en|fr|pt}    → cambia el idioma (voz + subtítulos)
     POST /api/translate/start           → modo traductor (?src=&dst= opcional)
     POST /api/translate/stop            → sale del modo traductor
+    POST /api/trivia/start              → arranca el juego de preguntas
+    POST /api/trivia/stop               → sale del juego
+    POST /api/trivia/answer/{a|b|c}     → responde sin micrófono (pruebas)
     POST /api/emergency/stop            → PARO DE EMERGENCIA
     GET  /api/state                     → estado completo (JSON)
 
@@ -61,6 +64,7 @@ import lang
 import maneuvers
 import stt
 import translator
+import trivia
 import tts
 import video_library
 import vision
@@ -391,6 +395,31 @@ def _voice_loop_body(app_state) -> None:
                     app_state.handle_translation(text, detected)
                 continue
 
+            # MODO TRIVIA: MECH acaba de ofrecer el juego, o de hacer una
+            # pregunta, y esto es la respuesta. Va ANTES que todo lo demás
+            # porque dentro del juego "la a" o "la segunda" no son comandos.
+            if trivia.is_active():
+                if voice_phrases.is_sleep_any(text):
+                    app_state.go_dormant()
+                    continue
+                if voice_phrases.is_trivia_stop(text):
+                    app_state.stop_trivia()
+                    app_state.set_voice_phase("waiting")
+                    continue
+                if trivia.is_asking():
+                    app_state.handle_trivia_answer(text)
+                    continue
+                if trivia.is_offering():
+                    # Si devuelve False es que cambió de tema: NO hacemos
+                    # `continue`, y el texto sigue su camino normal (ya se
+                    # canceló el ofrecimiento).
+                    if app_state.handle_trivia_offer(text):
+                        continue
+                else:
+                    # Entre pregunta y pregunta (revelando el resultado) el
+                    # micrófono debería estar cerrado; si algo entra, es eco.
+                    continue
+
             # Despierto: ¿pidió reposo? (se aceptan las frases de los 4 idiomas)
             if voice_phrases.is_sleep_any(text):
                 app_state.go_dormant()
@@ -529,6 +558,16 @@ async def lifespan(app: FastAPI):
             "traduce UNA frase y se calla (para otra, repetí el comando)"
             + (" (traduce en los dos sentidos)." if config.TRANSLATOR_AUTO_DETECT
                else " (sentido fijo: origen → destino)."),
+            "ok",
+        )
+    if config.TRIVIA_ENABLED:
+        # Misma idea que las líneas de arriba: si esto NO sale en el panel, la
+        # Pi está corriendo código viejo (hicieron git pull sin reiniciar).
+        mech.log(
+            f"Trivia: {config.TRIVIA_QUESTIONS} preguntas por partida"
+            + (" · la ofrece sola al terminar de narrar"
+               if config.TRIVIA_OFFER_AFTER_PLAN else " · solo si la piden")
+            + " — decí «juguemos una trivia».",
             "ok",
         )
     # Autostart en reposo: MECH queda escuchando solo "ok MECH".
@@ -1073,6 +1112,56 @@ async def translate_stop():
     return {"ok": True}
 
 
+@app.post("/api/trivia/start")
+async def trivia_start():
+    """Arranca el juego de preguntas desde el panel.
+
+    Pregunta sobre lo ÚLTIMO que MECH narró; si todavía no ha contado nada,
+    la partida va sobre MECH y su proyecto. Generar las preguntas tarda unos
+    segundos (una llamada a Claude), así que va en un hilo: la petición HTTP
+    contesta enseguida y el juego arranca solo.
+    """
+    if not config.TRIVIA_ENABLED:
+        raise HTTPException(400, "La trivia está desactivada (TRIVIA_ENABLED).")
+    mech = get_app()
+    if trivia.is_active():
+        return {"ok": False, "reason": "Ya hay una trivia en marcha."}
+    threading.Thread(target=mech.start_trivia, daemon=True).start()
+    return {"ok": True}
+
+
+@app.post("/api/trivia/stop")
+async def trivia_stop():
+    """Sale del juego («deja la trivia»)."""
+    mech = get_app()
+    if not trivia.is_active():
+        return {"ok": False, "reason": "No hay ninguna trivia en marcha."}
+    threading.Thread(target=mech.stop_trivia, daemon=True).start()
+    return {"ok": True}
+
+
+@app.post("/api/trivia/answer/{choice}")
+async def trivia_answer(choice: str):
+    """Responde la pregunta actual SIN micrófono (letra A/B/C o número).
+
+    Es el equivalente del botón «Interrumpir narración»: separa "el juego
+    funciona" de "el micrófono no te entendió". Si por aquí responde bien y
+    hablando no, el problema es de audio.
+    """
+    mech = get_app()
+    crudo = (choice or "").strip().lower()
+    letras = [l.lower() for l in trivia.LETTERS]
+    if crudo in letras:
+        idx = letras.index(crudo)
+    elif crudo.isdigit():
+        idx = int(crudo) - 1 if int(crudo) > 0 else 0
+    else:
+        raise HTTPException(400, f"Respuesta inválida: {choice}. Usa A, B o C.")
+    if not mech.answer_trivia_from_panel(idx):
+        return {"ok": False, "reason": "Ahora mismo no hay ninguna pregunta esperando."}
+    return {"ok": True, "choice": idx}
+
+
 @app.post("/api/emergency/stop")
 async def emergency_stop():
     stop_voice_loop()
@@ -1171,6 +1260,9 @@ _LIVE_KEYS = {
     "GESTURE67_SAY": _to_bool,
     # Modo traductor.
     "TRANSLATOR_AUTO_DETECT": _to_bool,
+    "TRIVIA_ENABLED": _to_bool,          # el juego de preguntas
+    "TRIVIA_QUESTIONS": int,             # cuántas por partida
+    "TRIVIA_OFFER_AFTER_PLAN": _to_bool,  # ¿la ofrece sola al terminar?
     "TRANSLATOR_DRAIN_SECONDS": float,
     "TRANSLATOR_CONTINUOUS_DRAIN_SECONDS": float,
 }
@@ -1252,6 +1344,9 @@ async def get_config():
             "GESTURE67_REPEATS": config.GESTURE67_REPEATS,
             "GESTURE67_SAY": config.GESTURE67_SAY,
             "TRANSLATOR_AUTO_DETECT": config.TRANSLATOR_AUTO_DETECT,
+            "TRIVIA_ENABLED": config.TRIVIA_ENABLED,
+            "TRIVIA_QUESTIONS": config.TRIVIA_QUESTIONS,
+            "TRIVIA_OFFER_AFTER_PLAN": config.TRIVIA_OFFER_AFTER_PLAN,
             "TRANSLATOR_DRAIN_SECONDS": config.TRANSLATOR_DRAIN_SECONDS,
             "TRANSLATOR_CONTINUOUS_DRAIN_SECONDS":
                 config.TRANSLATOR_CONTINUOUS_DRAIN_SECONDS,

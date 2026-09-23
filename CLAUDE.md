@@ -161,6 +161,10 @@ backend/
   llm.py              ← Cliente Claude. System prompt + schema Pydantic del Plan.
                         Inyecta dinámicamente la lista de obras disponibles
                         desde video_library.
+  trivia.py           ← Modo TRIVIA: el juego de preguntas que se proyecta
+                        al terminar una obra. Solo el ESTADO (etapa,
+                        preguntas, marcador, guarda anti-eco); quien habla,
+                        proyecta y llama a Claude es mech_app.
   translator.py       ← Modo TRADUCTOR: MECH de intérprete entre dos
                         personas. Solo el ESTADO (activo, par de idiomas,
                         guarda anti-eco); quien habla y pide la traducción
@@ -214,6 +218,11 @@ frontend/
   projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
                         Maneja eventos image y video, con loop en video, y
                         pinta los SUBTÍTULOS de la narración abajo.
+  trivia.js           ← La PANTALLA del juego de preguntas (se sirve en
+                        /static/trivia.js). Pintor tonto, igual que los
+                        subtítulos: muestra el estado que manda el servidor.
+                        Trae su propio CSS inyectado, así cualquier vista lo
+                        usa con una línea.
   subtitles.js        ← Subtítulos estilo cine compartidos por /projector y
                         /projector/vr. Es un pintor TONTO: muestra la línea
                         que manda el backend. El reparto y el ritmo los
@@ -308,6 +317,10 @@ scripts/              ← Utilidades de desarrollo (no corren en la Pi).
                         los que deben reconocerse Y las frases normales de
                         stand que NO. Correrlo al tocar voice_phrases.py o
                         cualquier lista VOICE_*.
+  probar_trivia.py    ← Regresión de cómo entiende las RESPUESTAS de la
+                        trivia (letra, orden, texto) y de lo que NO debe
+                        adivinar ("no sé", una palabra que vale para dos
+                        opciones). Correrlo al tocar parse_answer().
   probar_gesto67.py   ← Regresión del detector del "67": videos reales
                         (se pasan por argumento) + 5 negativos sintéticos
                         que se generan solos. Correrlo al tocar GESTURE67_*.
@@ -438,6 +451,7 @@ claves de API):
 
 ```bash
 python scripts/probar_frases.py    # comandos de voz: los que deben sonar Y los falsos positivos
+python scripts/probar_trivia.py    # respuestas de la trivia: aciertos Y lo que no debe adivinar
 python scripts/probar_gesto67.py   # detector del "67": positivos + 5 negativos
 python scripts/probar_saludo.py    # el saludo: qué ángulos recibe el Arduino
 python -m py_compile backend/*.py  # que compile
@@ -690,6 +704,67 @@ MECH: «Muy bien, gracias.»              → y se calla otra vez
   `CLAUDE_TRANSLATE_MODEL`, `VOICE_TRANSLATE_PHRASES{,_EN,_FR,_PT}`,
   **`VOICE_TRANSLATE_ON_PHRASES{,_EN,_FR,_PT}`**,
   `VOICE_TRANSLATE_STOP_PHRASES{,_EN,_FR,_PT}`.
+
+### Modo TRIVIA — el juego de preguntas (sep 2026)
+
+Pedido del equipo: al terminar de contar una obra, MECH ofrece una trivia
+sobre lo que acaba de narrar, la **proyecta** y el visitante contesta
+hablando.
+
+**El juego corre ENTERO en el servidor** ([`backend/trivia.py`](backend/trivia.py)
+= estado, `mech_app` = voz y proyección). La pantalla
+([`frontend/trivia.js`](frontend/trivia.js)) solo pinta lo que le mandan, por
+evento WS `trivia` **y** por `state["trivia"]`: una pantalla que se recargue a
+media partida vuelve sola a la pregunta correcta.
+
+Etapas: `offer` (¿jugamos?) → `question` → `result` (celebra o revela) →
+`final` (marcador).
+
+- **Opción múltiple A/B/C, no respuesta libre** — y es una decisión, no una
+  simplificación: esto se juega hablándole a un robot en un stand ruidoso.
+  Con tres opciones leídas en voz alta el visitante solo dice una letra;
+  interpretar una respuesta libre costaría otra llamada a la API y fallaría
+  a cada rato.
+- `voice_phrases.parse_answer()` acepta las tres formas naturales: **la
+  letra** («la A»), **el orden** («la segunda») y **el texto** («1605»,
+  «Sancho Panza», incluso a medias: «Dulcinea» por «Dulcinea del Toboso»).
+  ⚠️ **El orden de comprobación importa** y está medido en
+  `scripts/probar_trivia.py`:
+  1. Primero el TEXTO, porque dentro de una opción dicha entera puede haber
+     un «se» o un «de» que se confundiría con una letra.
+  2. Luego el ORDINAL, porque en español y portugués el artículo que
+     acompaña al ordinal ES una letra de opción («a terceira» era la A).
+  3. Y por último la LETRA, que solo cuenta si la frase es corta o si
+     delante va un marcador («la», «opción», «letra»).
+- ⚠️ **«No sé» NO es la opción C.** En español lleva dentro un «se» que suena
+  igual que esa letra; sin `is_dont_know()`, rendirse contaría como
+  responder. A la SEGUNDA respuesta que no se entiende, MECH revela la buena
+  y pasa a la siguiente: insistir con «decí A, B o C» a alguien que no te
+  entiende es la peor experiencia posible en un stand.
+- **Las preguntas las escribe Claude en el momento** (`llm.make_quiz`, salida
+  estructurada, prompt corto y aparte del grande) con DOS fuentes: el guion
+  que acaba de narrar y los **datos verificados** (`facts`) de esa obra. Si
+  todavía no ha narrado nada, la partida va sobre `informacion_nuestra`.
+  Solo se usa lo que el visitante **llegó a oír**: si lo interrumpieron a la
+  mitad, los segmentos que no sonaron no entran.
+- **Se ofrece solo tras un plan `immersive`** y sin interrupción. Tras una
+  respuesta suelta o una orden de movimiento, ofrecer un juego queda fuera
+  de lugar.
+- Si en el ofrecimiento contestan otra cosa, `handle_trivia_offer()` devuelve
+  **False** y el bucle de voz procesa el texto como un comando normal: nadie
+  se queda encerrado en el juego.
+- Guarda anti-eco propia (`trivia.remember_spoken` + `sounds_like_same`), por
+  lo mismo que el traductor: el micrófono se abre justo detrás de la voz de
+  MECH.
+- Panel: tarjeta TRIVIA en la vista Voz con «Empezar trivia», «Salir» y un
+  botón por opción para responder **sin micrófono** — es lo que separa «el
+  juego falla» de «no te entendió al hablar»
+  (`POST /api/trivia/answer/{a|b|c}`).
+- Claves: `TRIVIA_ENABLED`, `TRIVIA_QUESTIONS` (3), `TRIVIA_OFFER_AFTER_PLAN`,
+  `TRIVIA_DRAIN_SECONDS`, `TRIVIA_FINAL_SECONDS`, `CLAUDE_TRIVIA_MODEL`,
+  `VOICE_TRIVIA_PHRASES{,_EN,_FR,_PT}`, `VOICE_TRIVIA_STOP_PHRASES{...}`,
+  `VOICE_YES_PHRASES{...}`, `VOICE_NO_PHRASES{...}`. Las tres primeras son
+  **live** desde Ajustes.
 
 ### Interrumpir a MECH mientras narra ("oye MECH" / "hey MECH")
 
@@ -1481,6 +1556,17 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   sin repetirla. Guarda anti-eco (umbral relativo al ruido, dos palabras,
   `guard_text`) y switch en Ajustes (`VOICE_INTERRUPT_ENABLED`).
 
+- **Modo TRIVIA (sep 2026)** — al terminar de narrar una obra, MECH ofrece un
+  juego de preguntas sobre lo que acaba de contar, lo **proyecta** (pregunta +
+  tres opciones, celebración al acertar y revelación al fallar) y se contesta
+  hablando: «la A», «la segunda» o diciendo la opción. Tres preguntas por
+  partida, escritas en el momento por Claude con el guion + los `facts` de la
+  obra. También se pide con «juguemos una trivia». Todo el juego corre en el
+  servidor; la pantalla solo pinta. Botones en el panel para jugar sin
+  micrófono. Módulos: [`backend/trivia.py`](backend/trivia.py) +
+  [`frontend/trivia.js`](frontend/trivia.js). Medido en
+  `scripts/probar_trivia.py` (50/50) y con una partida completa simulada.
+
 ### 🚧 Pendiente
 
 - **Copiar las fotos reales del robot terminado** a `web/assets/robot-01.jpg`
@@ -1612,6 +1698,17 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     manos delante, Haar la encuentra en 1 de cada 45 fotogramas (medido sobre
     el video del equipo). Si alguien "mejora" el detector anclándolo al
     rostro, deja de detectar el gesto.
+31b. **En la trivia, entender mal una respuesta NO da un error: da un
+    resultado FALSO.** El visitante dice «la A», MECH apunta la C y le dice
+    que falló. Por eso `parse_answer()` prefiere devolver None (y volver a
+    preguntar) antes que adivinar, y por eso `scripts/probar_trivia.py` mide
+    las dos caras. Si aflojás el matcher para pillar un caso, corré ESE
+    script **y** `probar_frases.py`.
+31c. **Si la trivia no arranca**, mirá el arranque del server: tiene que
+    salir la línea «Trivia: 3 preguntas por partida…». Si no sale, la Pi
+    corre código viejo (git pull sin reiniciar) o está apagada en Ajustes.
+    Y si MECH ofrece jugar pero no entiende el «sí», revisá
+    `VOICE_YES_PHRASES` en el `.env` de la Pi (tapa el default, como todas).
 31. **El .exe de Windows se construye en un venv aparte.** Desde el Python de
     diario, PyInstaller mete lo que encuentre (numpy, opencv...) y el .exe
     pasa de 10 MB a cientos. Por eso `mech_panel.py` no usa nada fuera de la

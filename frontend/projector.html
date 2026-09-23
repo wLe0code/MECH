@@ -54,6 +54,7 @@
   <div id="idle">MECH · STAND</div>
 
 <script src="/static/subtitles.js"></script>
+<script src="/static/trivia.js"></script>
 <script>
 /* Pantalla de proyección fullscreen.
  *
@@ -73,6 +74,13 @@ const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.ho
 const subs = window.MechSubs
   ? MechSubs.create([document.getElementById('subs')])
   : { set() {}, clear() {} };
+
+/* Juego de preguntas. Se pinta ENCIMA de todo lo demás (el video sigue
+   detrás, pero tapado): el servidor manda qué toca ver en cada momento.
+   Ver frontend/trivia.js y backend/trivia.py. */
+const juego = window.MechTrivia
+  ? MechTrivia.create(document.body)
+  : { apply() {}, clear() {} };
 
 let ws = null;
 
@@ -274,6 +282,7 @@ function detectVideo(url) {
 
 function applyState(s) {
   subs.set(s.current_subtitle, s.subtitle_lang);
+  juego.apply(s.trivia);
   // La playlist promo (marketing) manda sobre todo lo demás.
   if (s.current_playlist) {
     // Si ya la estamos reproduciendo, no la reiniciamos (esto se llama en
@@ -309,6 +318,9 @@ function connect() {
       // Playlist promo (marketing): videos enteros, en fila y con su audio.
       if (msg.playlist) startPlaylist(msg.playlist);
       else clear();
+    } else if (msg.type === 'trivia') {
+      // Pregunta, resultado o marcador del juego (ver backend/trivia.py).
+      juego.apply(msg);
     } else if (msg.type === 'subtitle') {
       // El guion del segmento que MECH está narrando (o null al terminar).
       subs.set(msg.text, msg.lang);

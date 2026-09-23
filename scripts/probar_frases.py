@@ -37,6 +37,10 @@ def _clasificar(texto: str) -> str:
         return "trad-on"
     if vp.is_translate(texto):
         return "trad-una"
+    if vp.is_trivia_stop(texto):
+        return "trivia-off"
+    if vp.is_trivia(texto):
+        return "trivia"
     if vp.is_interrupt(texto):
         return "interrumpe"
     if vp.is_advance(texto):
@@ -56,6 +60,20 @@ def _clasificar(texto: str) -> str:
 
 # (frase, etiqueta esperada)
 COMANDOS: list[tuple[str, str]] = [
+    # --- Trivia (el juego de preguntas) ---
+    ("juguemos una trivia", "trivia"),
+    ("quiero jugar la trivia", "trivia"),
+    ("empieza la trivia", "trivia"),
+    ("modo trivia", "trivia"),
+    ("hagamos una trivia", "trivia"),
+    ("let's play a trivia", "trivia"),
+    ("vamos jogar o quiz", "trivia"),
+    # Salir se mira ANTES que entrar: "ya no quiero jugar" lleva "jugar".
+    ("deja la trivia", "trivia-off"),
+    ("sal de la trivia", "trivia-off"),
+    ("para la trivia", "trivia-off"),
+    ("ya no quiero jugar", "trivia-off"),
+    ("stop the trivia", "trivia-off"),
     # --- Despertar, en los cuatro idiomas ---
     ("ok MECH", "despierta:es"),
     ("Okay, mech.", "despierta:es"),
@@ -111,6 +129,12 @@ COMANDOS: list[tuple[str, str]] = [
 
 # Frases normales de stand: ninguna es un comando.
 STAND: list[str] = [
+    # Cerca de la trivia, pero no son el comando.
+    "me gusta jugar videojuegos",
+    "¿de qué trata la obra?",
+    "cuéntame un juego de mesa costarricense",
+    "hazme una pregunta difícil",
+    "los niños juegan en el parque",
     "Háblame del Quijote",
     "¿Los robots duermen?",
     "¿Cómo se traduce Quijote al francés?",

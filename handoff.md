@@ -11,12 +11,18 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> **Lo último (22 sep 2026, §3.septendecies): lo que salió de probarlo en el
-> robot** — el arranque de voz (MECH parecía sordo al encender el server y el
-> panel no lo decía), el micrófono que ahora se MIDE solo al arrancar, el
-> saludo (4 rotaciones, un brazo, solo en reposo, en inglés), el **sentido de
-> giro por brazo** y la **cámara que se perdía al cambiarla de puerto USB**
-> (el índice ahora se busca solo). Más los guiones de la relatividad.
+> **Lo último (22 sep 2026, §3.sexdecies): la TRIVIA** — al terminar de contar
+> una obra, MECH ofrece un juego de preguntas sobre lo que acaba de narrar, lo
+> proyecta y se contesta hablando («la A», «la segunda», o diciendo la
+> opción). Sin probar en la Pi, pero con el flujo completo simulado y el
+> reconocimiento de respuestas medido (50/50).
+>
+> **Y (22 sep 2026, §3.septendecies): lo que salió de probarlo en el robot** —
+> el arranque de voz (MECH parecía sordo al encender el server y el panel no
+> lo decía), el micrófono que ahora se MIDE solo al arrancar, el saludo (4
+> rotaciones, un brazo, solo en reposo, en inglés), el **sentido de giro por
+> brazo** y la **cámara que se perdía al cambiarla de puerto USB** (el índice
+> ahora se busca solo). Más los guiones de la relatividad.
 >
 > Antes (20 sep 2026, §3.quindecies): cuatro cosas, **ninguna probada
 > todavía en la Pi** pero todas medidas en la laptop con scripts que quedan en
@@ -1139,6 +1145,102 @@ También actualizados: `docs/GUIA.md`, `docs/FRONTEND.md`, `windows/README.md`,
 tapan los defaults: **prueba los comandos principales con el `.env` puesto** y
 falla si alguno dejó de reconocerse o si apagar el traductor lo enciende. Es
 la comprobación que habría pillado el fallo del reposo antes del evento.
+
+---
+
+## 3.sexdecies Modo TRIVIA (22 sep 2026) — sin probar en la Pi
+
+Pedido del equipo: *«un juego de trivia sobre la presentación, que se proyecte
+en MECH, con animación de victoria si acierta, y que al terminar la
+presentación MECH pregunte si quieres jugar»*.
+
+### Cómo se juega
+
+```
+...MECH termina de narrar Don Quijote...
+MECH:      «¿Te animas a una trivia sobre lo que acabo de contarte?»   (+ chime)
+Visitante: «sí»
+MECH:      «Dame un momento, preparo las preguntas.»      (3-6 s: las escribe Claude)
+MECH:      «Pregunta 1 de 3. ¿En qué año se publicó la primera parte?
+            A. 1605. B. 1700. C. 1492.»                                (+ chime)
+           -> la PROYECCIÓN muestra la pregunta con las tres opciones
+Visitante: «la a»
+MECH:      «¡Correcto!»   -> la opción se pone verde y cae confeti
+...
+MECH:      «Fin del juego. Acertaste 2 de 3.»  -> marcador a pantalla completa
+```
+
+También se pide cuando se quiera con **«juguemos una trivia»**, y se sale con
+**«deja la trivia»**. Si todavía no narró nada, las preguntas van sobre MECH.
+
+### Las decisiones que importan
+
+- **El juego corre ENTERO en el servidor** (lo pidió el equipo).
+  `backend/trivia.py` es solo el estado (etapa, preguntas, marcador), igual
+  que `translator.py`; quien habla, proyecta y llama a Claude es `mech_app`.
+  `frontend/trivia.js` es un pintor tonto. Como el estado va también en
+  `state["trivia"]`, **si la pantalla se recarga a media partida vuelve sola
+  a la pregunta correcta**.
+- **Opción múltiple A/B/C, no respuesta libre.** Se juega hablándole a un
+  robot en un stand ruidoso: con tres opciones el visitante solo dice una
+  letra. Una respuesta libre habría que interpretarla (otra llamada a la API)
+  y fallaría a cada rato.
+- **Se acepta contestar de las tres formas naturales**: la letra («la A»), el
+  orden («la segunda») y el texto de la opción («1605», «Sancho Panza», o
+  incluso a medias: «Dulcinea» por «Dulcinea del Toboso»).
+- ⚠️ **El orden de comprobación no es casual** (está medido en
+  `scripts/probar_trivia.py`): primero el TEXTO (dentro de una opción dicha
+  entera puede haber un «se» o un «de» que se confundiría con una letra),
+  luego el ORDINAL (en español y portugués el artículo del ordinal ES una
+  letra: «a terceira» se leía como la A) y por último la LETRA.
+- ⚠️ **«No sé» no es la opción C.** Lleva dentro un «se» que suena igual.
+  Sin la guarda, rendirse contaría como responder la tercera. A la segunda
+  respuesta que no se entiende, MECH revela la buena y sigue: insistir con
+  «decí A, B o C» a alguien que no te entiende es lo peor que puede pasar en
+  un stand.
+- **Las preguntas las escribe Claude en el momento**, con el guion que acaba
+  de narrar MÁS los `facts` verificados de esa obra (no de su conocimiento
+  general). Solo entra lo que el visitante **llegó a oír**: si lo
+  interrumpieron a la mitad, esos segmentos no cuentan.
+- **Se ofrece solo tras una obra** (`mode="immersive"`) y sin interrupción.
+- Si en el ofrecimiento contestan otra cosa («cuéntame de Malpaís»), el juego
+  se cancela y ese texto sigue como comando normal: nadie se queda encerrado.
+
+### Lo que hay en el panel
+
+Tarjeta TRIVIA en la vista Voz: «Empezar trivia», «Salir» y **un botón por
+opción para responder sin micrófono**. Es lo mismo que el botón «Interrumpir
+narración»: separa «el juego falla» de «no te entendió al hablar». Si por ahí
+va bien y hablando no, el problema es de audio.
+
+En Ajustes: «Trivia» (encender/apagar), «Preguntas» (2-6) y «Ofrecerla al
+terminar de narrar» — las tres en vivo.
+
+### Qué se midió (en la laptop, sin robot)
+
+- `python scripts/probar_trivia.py` → **50/50**: 37 formas de contestar bien
+  (letra, orden, texto, los cuatro idiomas, transcripciones deformadas) y 13
+  que NO se pueden adivinar («no sé», una palabra que vale para dos opciones,
+  ruido) y tienen que devolver None.
+- `python scripts/probar_frases.py` → **82/82** con los comandos nuevos
+  dentro («juguemos una trivia», «deja la trivia») y frases de stand que NO
+  deben dispararlos.
+- Partida completa simulada con el código real de `mech_app`: ofrecer →
+  «sí» → acertar → fallar → rendirse → marcador final, más el eco del propio
+  ofrecimiento (se descarta) y el cambio de tema (cancela el juego).
+- La pantalla, vista de verdad en el navegador a 1280×720 (la resolución del
+  proyector): pregunta, acierto con confeti, fallo con la correcta marcada,
+  «¿Jugamos?» y el marcador final.
+
+### Qué falta probar en la Pi
+
+1. Que al terminar una obra ofrezca el juego y entienda el «sí».
+2. Que se lea bien **desde lejos** en la proyección real (el tamaño está
+   calculado para 1280×720; si el proyector va a otra resolución, mirarlo).
+3. Cuánto tarda Claude en escribir las preguntas (si se hace largo, bajar a
+   2 preguntas en Ajustes o poner `CLAUDE_TRIVIA_MODEL` a un modelo más
+   rápido).
+4. Que el micrófono entienda «la A» / «la B» / «la C» con el ruido del stand.
 
 ---
 

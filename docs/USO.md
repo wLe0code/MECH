@@ -96,6 +96,64 @@ Mientras narra, MECH **solo** escucha esa frase. Todo lo demás lo ignora
 
 ---
 
+## 3bis. La trivia (sep 2026)
+
+Cuando MECH **termina de contar una obra**, pregunta él solo:
+
+> «¿Te animas a una trivia sobre lo que acabo de contarte?»
+
+Se contesta **«sí»** o **«no»**. Con un sí, escribe tres preguntas sobre lo
+que acaba de narrar y las **proyecta**, cada una con tres opciones:
+
+```
+¿En qué año se publicó la primera parte del Quijote?
+   A   1605
+   B   1700
+   C   1492
+```
+
+El visitante contesta **hablando**, como le salga:
+
+| Se le dice | Vale |
+|---|---|
+| «la A» · «be» · «opción C» | Por la letra |
+| «la primera» · «la segunda» · «la 3» | Por el orden |
+| «1605» · «Sancho Panza» | Diciendo la opción |
+
+- **Si acierta**, la pantalla lo celebra (la opción se pone verde y cae
+  confeti) y MECH dice «¡Correcto!».
+- **Si falla**, MECH dice «No acertaste, la respuesta correcta es la A:
+  1605» y la pantalla marca en rojo la que eligió y en verde la buena.
+- **Si dice «no sé»** (o no se le entiende dos veces), MECH le regala esa y
+  pasa a la siguiente: nadie se queda atascado.
+- Al final proyecta el marcador: **2/3**, con confeti si acertó todas.
+
+También se puede pedir en cualquier momento:
+
+```
+«juguemos una trivia»    → empieza (sobre lo último que contó)
+«deja la trivia»         → sale
+```
+
+Si todavía no ha contado nada, las preguntas van sobre **MECH y el proyecto**.
+
+### Lo que hay que saber
+
+- **Las preguntas salen de lo que acaba de narrar**, no de internet: se
+  escriben en el momento con el guion y los datos verificados de esa obra.
+  Tardan unos segundos, y MECH avisa («dame un momento»).
+- Se ofrece **solo al terminar una obra**, no después de una respuesta
+  suelta ni de una orden de movimiento.
+- Si alguien contesta otra cosa («cuéntame de Malpaís»), MECH **deja el
+  juego y atiende eso**: nadie se queda encerrado en la trivia.
+- Para probarla **sin micrófono**: panel → vista Voz → tarjeta TRIVIA, con el
+  botón «Empezar trivia» y los botones de cada opción. Si por ahí funciona y
+  hablando no, el problema es de audio, no del juego.
+- Se apaga entera en Ajustes → «Trivia», y ahí mismo se cambia cuántas
+  preguntas tiene cada partida.
+
+---
+
 ## 4. Modo traductor
 
 MECH hace de intérprete entre dos personas que no hablan el mismo idioma.
@@ -319,5 +377,8 @@ en su sitio de proyección. También olvida el par de idiomas del traductor.
 | «desactiva el modo traductor» | Sale del traductor |
 | «mira hacia afuera» / «regresa a proyectar» | Gira 180° y vuelve |
 | «avanza N segundos» / «retrocede N segundos» | Se desplaza |
+| «juguemos una trivia» | Empieza el juego de preguntas |
+| «la A» / «la segunda» / «1605» | Responde la pregunta en pantalla |
+| «deja la trivia» | Sale del juego |
 | «proyecta marketing» | Los videos promocionales, con su audio |
 | *(el gesto del 67 ante la cámara)* | Lo imita con los brazos |
