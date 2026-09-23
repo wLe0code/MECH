@@ -160,12 +160,30 @@ def _resolve_input_device() -> int | str | None:
         la webcam, y se avisa;
       - si no hay ninguno reconocible, se deja al sistema elegir.
 
-    Con el .env VACÍO se deja al sistema, igual que siempre: es lo que ya
-    funcionaba y no hay por qué tocarlo.
+    Con el .env VACÍO ya no se confía al default del sistema (que suele ser
+    el mic de la cámara o el built-in): se busca el receptor automáticamente
+    (Steren/WXMH/USB) y solo si no hay ningún candidato se usa el sistema.
     """
     global ultima_eleccion_mic
     dev = config.AUDIO_INPUT_DEVICE.strip()
     if not dev:
+        # Sin valor en el .env: en vez de confiar a ciegas en el "default del
+        # sistema" (que suele ser el micrófono de la cámara o el built-in),
+        # se busca el receptor automáticamente (Steren/WXMH/USB, nunca la
+        # webcam). Solo si no hay ningún candidato reconocible se deja el
+        # default del sistema.
+        entradas = _entradas()
+        if entradas:
+            auto = _buscar_microfono(entradas)
+            if auto is not None:
+                nombre = dict(entradas)[auto]
+                ultima_eleccion_mic = f"'{nombre}' (índice {auto}, buscado solo)"
+                _avisar_dispositivo(
+                    "AUDIO_INPUT_DEVICE vacío: uso el receptor "
+                    f"('{nombre}', índice {auto}). Si no es el que querés, "
+                    "poné su nombre en el .env."
+                )
+                return auto
         ultima_eleccion_mic = "el del sistema (AUDIO_INPUT_DEVICE vacío)"
         return None
 

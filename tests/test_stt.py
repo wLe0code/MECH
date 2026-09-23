@@ -108,9 +108,26 @@ def test_crash_silencioso_se_distingue_para_la_guia():
 
 
 # ── _resolve_input_device ─────────────────────────────────────────────────
-def test_dev_vacio_deja_al_sistema(monkeypatch):
+def test_dev_vacio_busca_el_receptor_solo(monkeypatch):
+    # Sin nombre en el .env no se confía al default del sistema (que suele
+    # ser el mic de la cámara): se busca el receptor automáticamente.
+    monkeypatch.setattr(config, "AUDIO_INPUT_DEVICE", "")
+    dev = stt._resolve_input_device()
+    assert dev != 1, "el mic de la cámara jamás se elige"  # la C930e
+    assert dev in (0, 2, 3)
+    assert "buscado solo" in stt.ultima_eleccion_mic
+
+
+def test_dev_vacio_sin_candidatos_cae_al_sistema(monkeypatch):
+    # Solo dispositivos irreconocibles (cámara + built-in sin "usb/steren"):
+    # no hay candidato → default del sistema (None), como siempre.
+    monkeypatch.setattr(sd, "DEVICE_LIST", [
+        {"name": "C930e (camera)", "max_input_channels": 1, "max_output_channels": 0},
+        {"name": "Built-in Audio (hw:0,0)", "max_input_channels": 2, "max_output_channels": 2},
+    ])
     monkeypatch.setattr(config, "AUDIO_INPUT_DEVICE", "")
     assert stt._resolve_input_device() is None
+    assert "el del sistema" in stt.ultima_eleccion_mic
 
 
 def test_dev_por_indice_valido(monkeypatch):
