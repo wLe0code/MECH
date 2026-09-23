@@ -306,6 +306,132 @@ WORKS: dict[str, WorkMeta] = {
         ],
         "segments": 4,  # 3 videos reales + 1 imagen de una obra (cada slot acepta video o imagen)
     },
+    "relatividad": {
+        "title": "La teoría de la relatividad",
+        "author": "Albert Einstein (1879-1955), físico alemán",
+        "synopsis": (
+            "La relatividad contada en el orden en que se descubrió: el "
+            "misterio de la luz que el éter no explicaba, el empleado de la "
+            "oficina de patentes de Berna que en 1905 publicó cuatro "
+            "artículos que cambiaron la física, el tiempo que se estira y el "
+            "espacio que se encoge según las transformaciones de Lorentz, la "
+            "equivalencia entre masa y energía, el 'pensamiento más feliz' "
+            "que llevó a entender la gravedad como espacio-tiempo curvo, el "
+            "eclipse de 1919 que lo comprobó y lo hizo mundialmente famoso, "
+            "y todo lo que hoy depende de ella: el GPS, las ondas "
+            "gravitacionales y la primera imagen de un agujero negro."
+        ),
+        # ⚠️ SOLO DOS SEGMENTOS, y no es un recorte del guion.
+        #
+        # El guion de docs/GUIONES_RELATIVIDAD.md tiene OCHO escenas, pero
+        # Gemini ahora junta las escenas en un único video y el equipo las
+        # generó en dos cuentas distintas. Resultado: dos archivos.
+        #
+        #   seg01 = escenas 1-4  -> el problema y la relatividad ESPECIAL
+        #   seg02 = escenas 5-8  -> E=mc², la general, el eclipse y el hoy
+        #
+        # El corte cae donde termina la relatividad especial, así que cada
+        # archivo es coherente por sí mismo. Claude puede narrar VARIOS
+        # tramos sobre el mismo video (el clip va en bucle por debajo), que
+        # es justo lo que le pide la nota de abajo.
+        "segments": 2,
+        "facts": [
+            "ESTA OBRA TIENE SOLO DOS VIDEOS, pero la historia es larga: usa "
+            "video_segment 1 para los primeros tramos de la narración (el "
+            "éter, Einstein en la oficina de patentes, el tiempo que se "
+            "estira y las transformaciones de Lorentz) y video_segment 2 "
+            "para el resto (E=mc², la relatividad general, el eclipse de "
+            "1919 y las aplicaciones de hoy). Varios segmentos de narración "
+            "pueden compartir el mismo video.",
+            "Albert Einstein nació el 14 de marzo de 1879 en Ulm, Alemania, "
+            "y murió el 18 de abril de 1955 en Princeton, Estados Unidos.",
+            "James Clerk Maxwell publicó su teoría del campo "
+            "electromagnético en 1865: de ella se deduce que la luz es una "
+            "onda electromagnética que viaja a unos 300 000 km/s.",
+            "El experimento de Michelson y Morley (1887, en Cleveland, "
+            "Estados Unidos) buscaba el movimiento de la Tierra a través del "
+            "éter y NO lo encontró. Es el 'resultado nulo' más famoso de la "
+            "historia de la física.",
+            "Hendrik Lorentz y Henri Poincaré ya habían desarrollado parte "
+            "de las matemáticas de la relatividad especial. Lo NUEVO de "
+            "Einstein fue la interpretación: el tiempo y el espacio mismos "
+            "son relativos, y el éter sobra.",
+            "Las transformaciones de Lorentz giran alrededor del factor de "
+            "Lorentz: gamma = 1 dividido entre la raíz cuadrada de "
+            "(1 menos v al cuadrado sobre c al cuadrado). A velocidades "
+            "normales gamma vale prácticamente 1 y no se nota nada; cuando v "
+            "se acerca a c, gamma se dispara. Lorentz las publicó en su "
+            "forma moderna en 1904 y Einstein las dedujo en 1905 a partir de "
+            "sus dos postulados. El nombre se lo puso Poincaré.",
+            "De gamma salen las dos consecuencias famosas: la dilatación del "
+            "tiempo (un reloj en movimiento avanza más lento) y la "
+            "contracción de la longitud (un objeto en movimiento se acorta "
+            "en la dirección en que viaja). Las ecuaciones de Newton son el "
+            "caso particular de estas cuando la velocidad es mucho menor que "
+            "la de la luz.",
+            "Einstein trabajó en la Oficina de Patentes de Berna desde 1902 "
+            "como experto técnico de tercera clase. Allí escribió los "
+            "artículos de 1905.",
+            "1905 es su 'año milagroso': cuatro artículos — el efecto "
+            "fotoeléctrico, el movimiento browniano, la relatividad especial "
+            "('Sobre la electrodinámica de los cuerpos en movimiento') y el "
+            "de la equivalencia entre masa y energía, de donde sale E=mc².",
+            "El Premio Nobel de Física de 1921 (entregado en 1922) se lo "
+            "dieron por el EFECTO FOTOELÉCTRICO, **no** por la relatividad.",
+            "El Sol convierte unos cuatro millones de toneladas de su masa "
+            "en energía cada segundo. Eso es E=mc² en acción.",
+            "Hermann Minkowski, que había sido profesor de Einstein, propuso "
+            "en 1908 unir espacio y tiempo en una sola cosa: el "
+            "espacio-tiempo.",
+            "El 'pensamiento más feliz de su vida' (1907): una persona en "
+            "caída libre no siente su propio peso. De ahí sale el principio "
+            "de equivalencia entre gravedad y aceleración.",
+            "Su amigo el matemático Marcel Grossmann le enseñó la geometría "
+            "de Riemann, la herramienta que necesitaba para describir el "
+            "espacio curvo. Publicaron juntos un primer intento en 1913.",
+            "Las ecuaciones finales de la relatividad general las presentó "
+            "ante la Academia Prusiana de Ciencias en noviembre de 1915. El "
+            "matemático David Hilbert trabajaba en lo mismo al mismo tiempo.",
+            "Con la relatividad general explicó por fin una anomalía en la "
+            "órbita de Mercurio que la física de Newton no podía explicar "
+            "(unos 43 segundos de arco por siglo).",
+            "En 1916 Karl Schwarzschild, mientras servía en el frente de la "
+            "Primera Guerra Mundial, encontró la primera solución exacta de "
+            "las ecuaciones: la que describe lo que hoy llamamos un agujero "
+            "negro.",
+            "Eclipse del 29 de mayo de 1919: una expedición dirigida por "
+            "Arthur Eddington fue a la isla de Príncipe (frente a África) y "
+            "otra a Sobral (Brasil). Los resultados se anunciaron en Londres "
+            "el 6 de noviembre de 1919 y convirtieron a Einstein en una "
+            "celebridad mundial.",
+            "GPS: los relojes de los satélites se adelantan unos 38 "
+            "microsegundos al día respecto a los de la Tierra. Sin "
+            "corregirlo, el error de posición crecería varios kilómetros por "
+            "día.",
+            "Ondas gravitacionales: Einstein las predijo en 1916 y el "
+            "observatorio LIGO las detectó por primera vez el 14 de "
+            "septiembre de 2015 (anunciado en febrero de 2016), producidas "
+            "por la fusión de dos agujeros negros. Premio Nobel de Física "
+            "2017.",
+            "La primera imagen de un agujero negro (el del centro de la "
+            "galaxia M87) la publicó el Event Horizon Telescope el 10 de "
+            "abril de 2019.",
+            "OJO con Mileva Marić, compañera de estudios y primera esposa "
+            "de Einstein: se menciona a veces como coautora de la relatividad. "
+            "Es un debate histórico SIN pruebas concluyentes: si alguien "
+            "pregunta, di que se discute — no lo afirmes ni lo niegues.",
+        ],
+        "sources": [
+            "https://en.wikipedia.org/wiki/Albert_Einstein",
+            "https://en.wikipedia.org/wiki/Lorentz_transformation",
+            "https://en.wikipedia.org/wiki/Michelson%E2%80%93Morley_experiment",
+            "https://en.wikipedia.org/wiki/Eddington_experiment",
+            "https://www.nobelprize.org/prizes/physics/1921/einstein/facts/",
+            "https://www.ligo.caltech.edu/page/detection-companion-papers",
+            "https://eventhorizontelescope.org/blog/astronomers-capture-first-image-black-hole",
+            "https://www.gps.gov/systems/gps/performance/accuracy/",
+        ],
+    },
 }
 
 

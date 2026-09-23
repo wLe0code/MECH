@@ -1069,10 +1069,19 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   en execute_plan, fallback a NanoBanana, UI `/library` para subir mp4s,
   endpoints REST `GET/POST/DELETE /api/library/...`. Obras actuales:
   `don_quijote`, `campana_1856`, `jimenez_deredia`, `malpais`,
-  `isidro_con_wong` (4 segmentos c/u) e `isaac_newton` (5 segmentos:
+  `isidro_con_wong` (4 segmentos c/u), `isaac_newton` (5 segmentos:
   contexto, vida, annus mirabilis, Principia, legado; 17 `facts`
-  verificados). Guiones para generar sus videos en
-  [`docs/GUIONES_NEWTON.md`](docs/GUIONES_NEWTON.md).
+  verificados) y `relatividad` (**2 segmentos**, 22 `facts`). Guiones para
+  generar sus videos en [`docs/GUIONES_NEWTON.md`](docs/GUIONES_NEWTON.md) y
+  [`docs/GUIONES_RELATIVIDAD.md`](docs/GUIONES_RELATIVIDAD.md).
+  ⚠️ **`relatividad` tiene 8 escenas de guion pero solo 2 archivos**: Gemini
+  junta las escenas en un video y el equipo las generó en dos cuentas
+  (seg01 = escenas 1-4, la relatividad especial; seg02 = escenas 5-8, el
+  resto). El primer `fact` de la obra le dice a Claude que puede usar el
+  mismo `video_segment` en varios tramos de narración — sin eso intentaría
+  contar toda la historia en dos segmentos. El **segmento 4 del guion (las
+  transformaciones de Lorentz) es el único que lleva FÓRMULAS en pantalla**,
+  a pedido del equipo; el resto va sin texto.
 - **Música de fondo bajo la narración** (`backend/background_audio.py`): obras
   marcadas con `music: True` en `WORKS` (solo `malpais`) admiten un sample
   `video_library/<slug>/music.<ext>` que suena en bucle a bajo volumen
