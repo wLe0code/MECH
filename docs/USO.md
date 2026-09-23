@@ -230,39 +230,7 @@ oyendo a mí mismo».
 
 ---
 
-## 5. El gesto del "67" (sep 2026)
 
-Si alguien se pone delante de la cámara y hace el **"67"** — las dos manos (o
-los dos brazos) subiendo y bajando **alternadas**, una arriba mientras la
-otra baja —, MECH **se lo devuelve** con sus brazos y dice «¡Seis… siete!».
-
-- Funciona **despierto o en reposo**: es un juego con quien esté delante.
-- **No lo hace si está narrando**, para no cortar una presentación.
-- Después espera unos segundos antes de volver a hacerlo, para no encadenarlo.
-- Solo reacciona a **ese** gesto: saludar con una mano, levantar las dos a la
-  vez o pasar caminando no lo activan.
-
-**Requiere la visión encendida** (Panel → Ajustes → Cámara). Para probarlo
-sin cámara: Panel → vista **Arduino** → botón **🙌 HACER EL 67**.
-
-### Si no lo reconoce, o lo hace cuando no toca
-
-Panel → **Ajustes** → **GESTO "67"**:
-
-| Si… | Toca |
-|---|---|
-| Hay que exagerar mucho para que lo pille | Baja **Amplitud mínima** |
-| Lo hace con movimientos que no eran el 67 | Sube **Amplitud mínima** |
-| Lo confunde con otros gestos | Acerca **Antifase** a −1 (más estricto) |
-| Cuesta que lo reconozca aunque se haga bien | Baja **Alternancias** a 2 |
-| Lo repite demasiado | Sube **Descanso** |
-| Los brazos se quedan cortos | Sube **Brazo arriba** |
-| Se ve lento | Baja **Ritmo** (no bajes de 0,3 s: el servo se queda a medias) |
-
-Se puede apagar del todo con el interruptor **Detectar** de esa misma
-tarjeta.
-
----
 
 ## 6. Moverlo
 
@@ -330,7 +298,6 @@ todo lo que hace. La mayoría de las veces el problema se ve de una.
 | **No se deja interrumpir** | Prueba el botón **«Interrumpir narración»** del panel. Si por ahí SÍ corta, el mecanismo está bien y el problema es de audio: baja **«Umbral al narrar»**. |
 | **Se corta solo a media narración** | Es su propio eco. Sube **«Umbral al narrar»**, o apaga **Interrumpir**. |
 | **Traduce su propia voz** | §4, «Si empieza a traducir su propia voz». |
-| **No hace el 67 / lo hace de más** | §5. |
 | **No se oye** | Revisa los **3 botones del parlante Logitech S150** (`−`, mute, `+`, en el frente del derecho) — que no esté en mute. Después, Ajustes → **Volumen voz**. |
 | **Los videos de marketing se ven pero no se oyen** | La proyección se abrió sin el permiso de autoplay. Ciérrala y ábrela con el icono **Proyectar MECH** (ese ya lo lleva). |
 | **La proyección de marketing dura un segundo** | Es el formato de los videos. El panel dice cuáles fallaron; hay que reconvertirlos (el panel da el comando). |
@@ -381,4 +348,3 @@ en su sitio de proyección. También olvida el par de idiomas del traductor.
 | «la A» / «la segunda» / «1605» | Responde la pregunta en pantalla |
 | «deja la trivia» | Sale del juego |
 | «proyecta marketing» | Los videos promocionales, con su audio |
-| *(el gesto del 67 ante la cámara)* | Lo imita con los brazos |

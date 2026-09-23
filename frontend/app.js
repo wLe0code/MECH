@@ -674,13 +674,6 @@
       else if (res) log(res.reason || 'No pude saludar ahora.', 'warn');
     },
 
-    // Gesto del "67": lo mismo que hace solo al detectarlo por cámara.
-    async sixtySeven() {
-      const res = await fetchJSON('/api/move/67');
-      if (res && res.ok) log('Haciendo el 67 con los brazos.', 'ok');
-      else if (res) log(res.reason || 'No pude hacer el 67 ahora.', 'warn');
-    },
-
     move(vx, vy, w) { fetchJSON('/api/arduino/move', { json: { vx, vy, w } }); },
     stopMove() { this.move(0, 0, 0); },
 
@@ -762,17 +755,6 @@
       setSlider('set-greetrearm', 'greetrearm', L.GREETING_REARM_SECONDS);
       if ($('set-greetdormant')) $('set-greetdormant').checked = !!L.GREETING_ONLY_DORMANT;
       if ($('set-greetlang') && L.GREETING_LANGUAGE) $('set-greetlang').value = L.GREETING_LANGUAGE;
-      // Gesto "67"
-      if ($('set-g67')) $('set-g67').checked = !!L.GESTURE67_ENABLED;
-      if ($('set-g67say')) $('set-g67say').checked = !!L.GESTURE67_SAY;
-      setSlider('set-g67amp', 'g67amp', L.GESTURE67_MIN_AMPLITUDE);
-      setSlider('set-g67corr', 'g67corr', L.GESTURE67_MAX_CORR);
-      setSlider('set-g67alt', 'g67alt', L.GESTURE67_MIN_ALTERNATIONS);
-      setSlider('set-g67win', 'g67win', L.GESTURE67_WINDOW);
-      setSlider('set-g67cd', 'g67cd', L.GESTURE67_COOLDOWN);
-      setSlider('set-g67high', 'g67high', L.GESTURE67_ARM_HIGH);
-      setSlider('set-g67sec', 'g67sec', L.GESTURE67_ARM_SECONDS);
-      setSlider('set-g67rep', 'g67rep', L.GESTURE67_REPEATS);
       // Traductor
       setSlider('set-trcont', 'trcont', L.TRANSLATOR_CONTINUOUS_DRAIN_SECONDS);
       setSlider('set-trdrain', 'trdrain', L.TRANSLATOR_DRAIN_SECONDS);
@@ -857,16 +839,6 @@
         VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',
         VISION_PROJECT_GATE: $('set-gate').checked ? 'true' : 'false',
         VISION_CAMERA_INDEX: String(parseInt($('set-camidx').value)),
-        GESTURE67_ENABLED: $('set-g67').checked ? 'true' : 'false',
-        GESTURE67_SAY: $('set-g67say').checked ? 'true' : 'false',
-        GESTURE67_MIN_AMPLITUDE: $('set-g67amp').value,
-        GESTURE67_MAX_CORR: $('set-g67corr').value,
-        GESTURE67_MIN_ALTERNATIONS: String(parseInt($('set-g67alt').value)),
-        GESTURE67_WINDOW: $('set-g67win').value,
-        GESTURE67_COOLDOWN: $('set-g67cd').value,
-        GESTURE67_ARM_HIGH: String(parseInt($('set-g67high').value)),
-        GESTURE67_ARM_SECONDS: $('set-g67sec').value,
-        GESTURE67_REPEATS: String(parseInt($('set-g67rep').value)),
         TRANSLATOR_CONTINUOUS_DRAIN_SECONDS: $('set-trcont').value,
         TRANSLATOR_DRAIN_SECONDS: $('set-trdrain').value,
         TRANSLATOR_AUTO_DETECT: $('set-trauto').checked ? 'true' : 'false',
@@ -918,9 +890,6 @@
                           advsec: ' s', advvel: '', advmax: ' s',
                           hpf: ' Hz', agc: ' dBFS', beam: '', greetrearm: ' s',
                           ttsgain: ' dB',
-                          // Gesto "67" y traductor
-                          g67amp: '', g67corr: '', g67alt: '', g67win: ' s',
-                          g67cd: ' s', g67high: '°', g67sec: ' s', g67rep: '',
                           trcont: ' s', trdrain: ' s', camidx: '' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);

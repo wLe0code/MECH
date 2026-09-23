@@ -53,9 +53,6 @@ class _FakeApp:
     def on_user_lost(self):
         pass
 
-    def on_gesture_67(self):
-        pass
-
 
 class _FakeDetector:
     name = "fake"

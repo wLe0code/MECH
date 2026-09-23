@@ -362,7 +362,6 @@
             <button class="arduino-btn" onclick="API.lookOutward()">↻ MIRA HACIA AFUERA</button>
             <button class="arduino-btn" onclick="API.backToProjection()">↺ REGRESA A PROYECTAR</button>
             <button class="arduino-btn" onclick="API.greetNow()">👋 SALUDAR AHORA</button>
-            <button class="arduino-btn" onclick="API.sixtySeven()" title="Hace el gesto del 67 con los brazos (uno arriba, otro abajo, alternando). Es lo mismo que hace solo cuando alguien lo hace ante la cámara.">🙌 HACER EL 67</button>
             <button class="arduino-btn" onclick="API.testTurn()">🔁 PROBAR MEDIA VUELTA</button>
             <button class="arduino-btn" onclick="API.advance(false)">⇈ AVANZAR (config.)</button>
             <button class="arduino-btn" onclick="API.advance(true)">⇊ RETROCEDER (config.)</button>
@@ -637,78 +636,6 @@
               <option value="fr">FRANCÉS</option>
               <option value="pt">PORTUGUÉS</option>
             </select>
-          </div>
-          <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
-            <i class="ti ti-device-floppy"></i>Guardar y aplicar
-          </button>
-        </div>
-
-        <!-- Gesto "67" — se calibra con la luz y la distancia del stand -->
-        <div class="fw-card settings-live">
-          <div class="fw-key" style="margin-bottom:4px;color:#E5A54B">
-            <i class="ti ti-hand-three-fingers"></i> GESTO "67" — DETECCIÓN
-          </div>
-          <div class="section-sub" style="margin-bottom:10px">
-            MECH imita el "67" cuando alguien lo hace ante la cámara: las
-            <b>dos manos (o los dos brazos) subiendo y bajando alternadas</b>,
-            una arriba mientras la otra baja. Se reconoce por el
-            <b>movimiento</b>, no por la cara — con las manos delante, la cara
-            casi no se detecta. Pruébalo sin cámara con el botón
-            <b>«HACER EL 67»</b> de la vista Arduino.
-          </div>
-          <div class="slider-row">
-            <label title="Enciende o apaga el reconocimiento por cámara. El botón del panel funciona igual.">Detectar</label>
-            <label class="switch">
-              <input type="checkbox" id="set-g67">
-              <span class="switch-text">Imitar el 67 al verlo en cámara</span>
-            </label>
-          </div>
-          <div class="slider-row">
-            <label title="Cuánto tienen que subir y bajar las manos, como fracción del alto de la imagen. SUBE esto si MECH imita el gesto con movimientos pequeños que no eran el 67; BÁJALO si hay que exagerar mucho para que lo reconozca.">Amplitud mínima</label>
-            <input type="range" min="0.04" max="0.35" step="0.01" value="0.10" id="set-g67amp" oninput="UI.settingLabel('set-g67amp','g67amp')">
-            <span class="val" id="set-g67amp-val">0.10</span>
-          </div>
-          <div class="slider-row">
-            <label title="Qué tan ANTIFASE tienen que ir las dos manos (una sube mientras la otra baja). Es el filtro que distingue el 67 de levantar las dos manos a la vez. Más cerca de -1 = más estricto; cerca de 0 = casi cualquier movimiento vale.">Antifase</label>
-            <input type="range" min="-0.9" max="-0.05" step="0.05" value="-0.30" id="set-g67corr" oninput="UI.settingLabel('set-g67corr','g67corr')">
-            <span class="val" id="set-g67corr-val">-0.30</span>
-          </div>
-          <div class="slider-row">
-            <label title="Cuántas veces tienen que intercambiarse las manos dentro de la ventana. Con 3 hay que repetir el gesto; con 1 lo dispararía un cruce cualquiera.">Alternancias</label>
-            <input type="range" min="1" max="8" step="1" value="3" id="set-g67alt" oninput="UI.settingLabel('set-g67alt','g67alt')">
-            <span class="val" id="set-g67alt-val">3</span>
-          </div>
-          <div class="slider-row">
-            <label title="Cuántos segundos de gesto se miran a la vez. Más corto = reacciona antes pero se confunde más.">Ventana</label>
-            <input type="range" min="0.8" max="4" step="0.1" value="1.6" id="set-g67win" oninput="UI.settingLabel('set-g67win','g67win')">
-            <span class="val" id="set-g67win-val">1.6 s</span>
-          </div>
-          <div class="slider-row">
-            <label title="Segundos de descanso tras imitarlo, para que no lo encadene sin parar.">Descanso</label>
-            <input type="range" min="2" max="60" step="1" value="12" id="set-g67cd" oninput="UI.settingLabel('set-g67cd','g67cd')">
-            <span class="val" id="set-g67cd-val">12 s</span>
-          </div>
-          <div class="slider-row">
-            <label title="Hasta dónde suben los brazos de MECH al imitarlo. El reposo es 90°: por debajo el brazo choca con el cuerpo.">Brazo arriba</label>
-            <input type="range" min="110" max="180" step="5" value="165" id="set-g67high" oninput="UI.settingLabel('set-g67high','g67high')">
-            <span class="val" id="set-g67high-val">165°</span>
-          </div>
-          <div class="slider-row">
-            <label title="Lo que tarda cada intercambio de brazos. Bajo = más enérgico, pero los MG996R no bajan mucho de 0,3 s sin quedarse a medio camino.">Ritmo</label>
-            <input type="range" min="0.25" max="1.2" step="0.05" value="0.45" id="set-g67sec" oninput="UI.settingLabel('set-g67sec','g67sec')">
-            <span class="val" id="set-g67sec-val">0.45 s</span>
-          </div>
-          <div class="slider-row">
-            <label title="Cuántos intercambios hace. Un 67 completo son 4-6.">Repeticiones</label>
-            <input type="range" min="2" max="10" step="1" value="4" id="set-g67rep" oninput="UI.settingLabel('set-g67rep','g67rep')">
-            <span class="val" id="set-g67rep-val">4</span>
-          </div>
-          <div class="slider-row">
-            <label title="Si además lo dice en voz alta («¡Seis... siete!»), en el idioma activo.">Voz</label>
-            <label class="switch">
-              <input type="checkbox" id="set-g67say">
-              <span class="switch-text">Decir «¡Seis... siete!» al hacerlo</span>
-            </label>
           </div>
           <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar

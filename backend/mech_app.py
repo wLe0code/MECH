@@ -1217,50 +1217,6 @@ class MechApp:
             return
         self._perform_greeting()
 
-    def on_gesture_67(self) -> None:
-        """Alguien hizo el gesto del "67" ante la cámara: MECH se lo devuelve.
-
-        Lo dispara `vision._check_gesture_67` cuando el detector acierta (ver
-        backend/gesture_detect.py). Aquí solo se decide si CABE hacerlo ahora
-        y se lanza el gesto + la frase.
-
-        No pasa por Claude: es un reflejo, y si tuviera que esperar a la API
-        llegaría tarde y sin gracia. Tampoco mira si MECH está despierto o en
-        reposo — es un juego con quien esté delante, y funciona igual en los
-        dos estados. Lo único que respeta es no hablar encima de una
-        narración o de una grabación en curso.
-        """
-        if self.state.get("voice_phase") in self._BUSY_PHASES:
-            self.log("No imito el 67: MECH está hablando o grabando.", "info")
-            return
-        self.do_sixty_seven()
-
-    def do_sixty_seven(self) -> None:
-        """Hace el "67" con los brazos (y lo dice). Sin comprobar nada.
-
-        Lo usan `on_gesture_67()` y el botón «HACER EL 67» del panel
-        (`POST /api/move/67`), que sirve para probarlo sin cámara.
-        """
-        self.log("Imito el gesto del 67.", "ok")
-        # El gesto corre en su propio hilo (gestures lo lanza), así que los
-        # brazos y la voz van a la vez — que es como se ve bien.
-        gestures.sixty_seven(self.arduino)
-        if not config.GESTURE67_SAY:
-            return
-
-        def _decir():
-            # Misma guarda anti-eco que el saludo: mientras MECH habla, el
-            # bucle de voz descarta lo que transcriba para no oírse a sí mismo.
-            self.greeting_until = time.time() + 10
-            try:
-                tts.speak(lang.say("sixty_seven"), blocking=True)
-            except Exception as e:
-                self.log(f"No pude decir el 67: {e}", "warn")
-            finally:
-                self.greeting_until = time.time() + 1.5
-
-        threading.Thread(target=_decir, daemon=True).start()
-
     def on_user_lost(self) -> None:
         """El usuario salió de cámara.
 

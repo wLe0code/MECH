@@ -293,16 +293,6 @@ _PHRASES: dict[str, dict[str, str]] = {
         "pt": "Modo tradutor ativado. Traduzo entre {src} e {dst} "
               "até você mandar desativar.",
     },
-    # --- Gesto "67" (ver backend/gesture_detect.py) ------------------------
-    # Lo que dice al imitar el gesto. Corto a propósito: la gracia está en el
-    # movimiento de los brazos, no en la frase, y una frase larga taparía el
-    # gesto. Los puntos suspensivos le dan a ElevenLabs la pausa del meme.
-    "sixty_seven": {
-        "es": "¡Seis... siete!",
-        "en": "Six... seven!",
-        "fr": "Six... sept !",
-        "pt": "Seis... sete!",
-    },
 }
 
 

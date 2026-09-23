@@ -966,50 +966,6 @@ VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "false")
 # zumba. Los BRAZOS son la excepción (van suaves, ver ARM_*).
 VISION_MAX_SPEED = int(os.environ.get("VISION_MAX_SPEED", "100"))
 
-# --- Gesto "67": MECH lo imita si alguien lo hace ante la cámara ----------
-# Pedido del equipo (sep 2026). El gesto son las DOS manos (o los dos brazos)
-# moviéndose en vertical, una arriba y otra abajo, ALTERNANDO. Todo el detector
-# está en backend/gesture_detect.py, que explica por qué se mide movimiento y
-# no color ni esqueleto.
-#
-# ⚠️ Los umbrales de abajo se midieron contra los dos videos del equipo Y
-# contra cinco negativos (quieto, una mano, dos manos a la vez, manos en
-# horizontal, alguien caminando). Si los tocás, volvé a pasar las dos listas:
-# `python scripts/probar_gesto67.py`. Aflojar para pillar un caso rompe el
-# otro lado enseguida.
-GESTURE67_ENABLED = _bool_env("GESTURE67_ENABLED", "true")
-# Cuántos segundos de gesto se miran a la vez. Más corto = reacciona antes
-# pero se confunde más; más largo = pide que insistan.
-GESTURE67_WINDOW = float(os.environ.get("GESTURE67_WINDOW", "1.6"))
-# Cuánto tiene que subir y bajar cada lado, como fracción del alto del cuadro.
-# Subilo si dispara con gestos pequeños; bajalo si hay que exagerar mucho.
-GESTURE67_MIN_AMPLITUDE = float(os.environ.get("GESTURE67_MIN_AMPLITUDE", "0.10"))
-# Correlación máxima entre las dos alturas. NEGATIVA a propósito: es lo que
-# exige la ANTIFASE (una sube mientras la otra baja) y lo que distingue este
-# gesto de levantar las dos manos a la vez. Más cerca de -1 = más estricto.
-GESTURE67_MAX_CORR = float(os.environ.get("GESTURE67_MAX_CORR", "-0.30"))
-# Cuántas veces tienen que intercambiarse (cuál va más arriba) dentro de la
-# ventana. Con 3 hace falta repetirlo; con 1 dispararía un cruce cualquiera.
-GESTURE67_MIN_ALTERNATIONS = int(os.environ.get("GESTURE67_MIN_ALTERNATIONS", "3"))
-# Movimiento mínimo en el cuadro (fracción de píxeles) para mirar siquiera.
-GESTURE67_MIN_MOTION = float(os.environ.get("GESTURE67_MIN_MOTION", "0.010"))
-# Equilibrio mínimo entre los dos lados (0-1). Es lo que descarta saludar con
-# UNA sola mano, que deja casi todo el movimiento de un lado.
-GESTURE67_BALANCE = float(os.environ.get("GESTURE67_BALANCE", "0.20"))
-# Segundos de descanso tras imitarlo, para no encadenar imitaciones.
-GESTURE67_COOLDOWN = float(os.environ.get("GESTURE67_COOLDOWN", "12"))
-# --- Cómo lo hace MECH con sus brazos (video 2 del equipo) ---------------
-# Un brazo arriba y el otro en reposo, intercambiándose. Sube solo por encima
-# de 90°: por debajo el brazo choca con el cuerpo (ver gestures.py).
-GESTURE67_ARM_HIGH = int(os.environ.get("GESTURE67_ARM_HIGH", "165"))
-# Lo que tarda CADA intercambio. Bajo = más enérgico; los MG996R no bajan
-# mucho de 0.3 s sin quedarse a medio camino.
-GESTURE67_ARM_SECONDS = float(os.environ.get("GESTURE67_ARM_SECONDS", "0.45"))
-# Cuántos intercambios hace (un "6-7" completo son 4-6).
-GESTURE67_REPEATS = int(os.environ.get("GESTURE67_REPEATS", "4"))
-# Si además lo dice en voz alta ("¡Seis... siete!"). Ver lang.py.
-GESTURE67_SAY = _bool_env("GESTURE67_SAY", "true")
-
 
 def assert_required() -> None:
     """Falla rápido si falta alguna API key crítica."""

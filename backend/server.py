@@ -940,21 +940,6 @@ async def move_greet():
     return {"ok": True}
 
 
-@app.post("/api/move/67")
-async def move_sixty_seven():
-    """Hace el gesto del "67" AHORA, sin cámara.
-
-    Es el botón para PROBAR la coreografía de los brazos (y para hacerlo a
-    propósito en el stand). El reconocimiento por cámara va aparte, en
-    backend/gesture_detect.py.
-    """
-    mech = get_app()
-    if mech.state.get("voice_phase") in ("speaking", "thinking"):
-        return {"ok": False, "reason": "MECH está narrando ahora mismo"}
-    threading.Thread(target=mech.do_sixty_seven, daemon=True).start()
-    return {"ok": True}
-
-
 # -- Playlist promo (marketing) ---------------------------------------------
 
 
@@ -1272,20 +1257,6 @@ _LIVE_KEYS = {
     "ADVANCE_MAX_SECONDS": float,
     "TURN_LATERAL_SPEED": int,
     "TURN_LATERAL_SECONDS": float,
-    # Gesto "67" (ver backend/gesture_detect.py). Todo en vivo: se calibra
-    # en el stand, con la luz y la distancia reales.
-    "GESTURE67_ENABLED": _to_bool,
-    "GESTURE67_WINDOW": float,
-    "GESTURE67_MIN_AMPLITUDE": float,
-    "GESTURE67_MAX_CORR": float,
-    "GESTURE67_MIN_ALTERNATIONS": int,
-    "GESTURE67_MIN_MOTION": float,
-    "GESTURE67_BALANCE": float,
-    "GESTURE67_COOLDOWN": float,
-    "GESTURE67_ARM_HIGH": int,
-    "GESTURE67_ARM_SECONDS": float,
-    "GESTURE67_REPEATS": int,
-    "GESTURE67_SAY": _to_bool,
     # Modo traductor.
     "TRANSLATOR_AUTO_DETECT": _to_bool,
     "TRIVIA_ENABLED": _to_bool,          # el juego de preguntas
@@ -1359,18 +1330,6 @@ async def get_config():
             "ADVANCE_MAX_SECONDS": config.ADVANCE_MAX_SECONDS,
             "TURN_LATERAL_SPEED": config.TURN_LATERAL_SPEED,
             "TURN_LATERAL_SECONDS": config.TURN_LATERAL_SECONDS,
-            "GESTURE67_ENABLED": config.GESTURE67_ENABLED,
-            "GESTURE67_WINDOW": config.GESTURE67_WINDOW,
-            "GESTURE67_MIN_AMPLITUDE": config.GESTURE67_MIN_AMPLITUDE,
-            "GESTURE67_MAX_CORR": config.GESTURE67_MAX_CORR,
-            "GESTURE67_MIN_ALTERNATIONS": config.GESTURE67_MIN_ALTERNATIONS,
-            "GESTURE67_MIN_MOTION": config.GESTURE67_MIN_MOTION,
-            "GESTURE67_BALANCE": config.GESTURE67_BALANCE,
-            "GESTURE67_COOLDOWN": config.GESTURE67_COOLDOWN,
-            "GESTURE67_ARM_HIGH": config.GESTURE67_ARM_HIGH,
-            "GESTURE67_ARM_SECONDS": config.GESTURE67_ARM_SECONDS,
-            "GESTURE67_REPEATS": config.GESTURE67_REPEATS,
-            "GESTURE67_SAY": config.GESTURE67_SAY,
             "TRANSLATOR_AUTO_DETECT": config.TRANSLATOR_AUTO_DETECT,
             "TRIVIA_ENABLED": config.TRIVIA_ENABLED,
             "TRIVIA_QUESTIONS": config.TRIVIA_QUESTIONS,

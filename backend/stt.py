@@ -87,6 +87,23 @@ _interrupt_model: WhisperModel | None = None
 _MIC_PREFERIDOS = ("steren", "wxmh", "wireless", "usb audio", "usb pnp", "usb")
 _MIC_EVITAR = ("c930", "webcam", "camera", "logitech")
 
+
+def _normalizar_nombre(nombre: str) -> str:
+    """Nombre de dispositivo listo para comparar.
+
+    PortAudio le pega al nombre el sufijo "(hw:X,Y)" con el número de tarjeta
+    ALSA de ese momento. Ese número CAMBIA cada vez que el USB re-enumera (la
+    cámara de puerto, el receptor se reenchufa, etc.), así que guardarla en
+    el .env y compararla literal es tener una bomba de tiempo: «WXMH mini:
+    USB Audio (hw:2,0)» y «WXMH mini: USB Audio (hw:0,2)» son EL MISMO mic.
+    Se compara en minúsculas y sin el paréntesis.
+    """
+    n = nombre.lower()
+    i = n.find("(hw:")
+    if i != -1:
+        n = n[:i].rstrip()
+    return n
+
 # Último aviso sobre el dispositivo, para no repetir el mismo en cada vuelta
 # del bucle (se graba cada pocos segundos).
 _ultimo_aviso_dispositivo: str = ""
@@ -175,11 +192,27 @@ def _resolve_input_device() -> int | str | None:
         motivo = (f"AUDIO_INPUT_DEVICE={pedido} ya no es un micrófono (los "
                   "números cambian al mover cosas de puerto USB)")
     else:
-        for i, nombre in entradas:
-            if dev.lower() in nombre.lower():
-                ultima_eleccion_mic = f"'{nombre}' (índice {i}, por nombre)"
-                return i
+        # Coincidencia por NOMBRE. Dos reglas que evitan el micrófono
+        # equivocado:
+        #   1. El sufijo "(hw:X,Y)" que PortAudio pega al nombre CAMBIA con
+        #      cada re-enumeración USB ("(hw:2,0)" hoy, "(hw:0,2)" mañana).
+        #      Si el .env quedó con el nombre viejo, comparar contra la parte
+        #      estable (antes del paréntesis) lo sigue encontrando.
+        #   2. El micrófono de la CÁMARA jamás se elige, ni siquiera si está
+        #      configurado explícitamente: la webcam queda solo para video.
+        pedido_norm = _normalizar_nombre(dev)
         motivo = f"no hay ningún micrófono que se llame '{dev}'"
+        for i, nombre in entradas:
+            if pedido_norm not in _normalizar_nombre(nombre):
+                continue
+            if any(e in _normalizar_nombre(nombre) for e in _MIC_EVITAR):
+                motivo = (
+                    f"AUDIO_INPUT_DEVICE={dev!r} coincide con el micrófono "
+                    f"de la CÁMARA ('{nombre}'), que MECH no usa"
+                )
+                continue
+            ultima_eleccion_mic = f"'{nombre}' (índice {i}, por nombre)"
+            return i
 
     otro = _buscar_microfono(entradas)
     if otro is not None:

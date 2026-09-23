@@ -20,8 +20,9 @@ PortAudioError = type("PortAudioError", (Exception,), {})
 
 DEVICE_LIST = [
     {"name": "WXMH mini: USB Audio (hw:2,0)", "max_input_channels": 2, "max_output_channels": 0},
-    {"name": "C930e (camera)", "max_input_channels": 0, "max_output_channels": 0},
+    {"name": "C930e (camera)", "max_input_channels": 1, "max_output_channels": 0},
     {"name": "Steren MIC-9010: USB PnP (hw:1,0)", "max_input_channels": 1, "max_output_channels": 0},
+    {"name": "Built-in Audio (hw:0,0)", "max_input_channels": 2, "max_output_channels": 2},
 ]
 
 INIT_COUNT = 0

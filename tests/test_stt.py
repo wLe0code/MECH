@@ -123,6 +123,24 @@ def test_dev_por_nombre(monkeypatch):
     assert stt._resolve_input_device() == 0
 
 
+def test_nombre_con_sufijo_hw_viejo_sigue_resolviendo(monkeypatch):
+    # El .env puede haber quedado con "WXMH mini: USB Audio (hw:2,0)" de
+    # cuando el receptor estaba en otra tarjeta. Aunque hoy aparezca como
+    # (hw:0,2), se encuentra: el sufijo no se compara.
+    monkeypatch.setattr(config, "AUDIO_INPUT_DEVICE", "WXMH mini: USB Audio (hw:2,0)")
+    assert stt._resolve_input_device() == 0
+
+
+def test_el_micro_de_la_camara_jamas_se_elige_aunque_este_configurado(monkeypatch):
+    # La C930e TIENE micrófono (índice 1) y está configurada EXPLÍCITAMENTE:
+    # aun así se descarta y se cae al receptor, con aviso por el camino.
+    monkeypatch.setattr(config, "AUDIO_INPUT_DEVICE", "C930e")
+    dev = stt._resolve_input_device()
+    assert dev != 1, "el mic de la cámara no puede elegirse"
+    assert dev in (0, 2)
+    assert "cámara" in stt._ultimo_aviso_dispositivo or "steren" in stt._ultimo_aviso_dispositivo.lower()
+
+
 def test_indice_que_ya_no_existe_busca_solo(monkeypatch):
     monkeypatch.setattr(config, "AUDIO_INPUT_DEVICE", "8")
     assert stt._resolve_input_device() == 2  # el Steren (nunca la webcam)

@@ -26,13 +26,12 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 >
 > Antes (20 sep 2026, §3.quindecies): cuatro cosas, **ninguna probada
 > todavía en la Pi** pero todas medidas en la laptop con scripts que quedan en
-> el repo. **(1) Gesto "67"**: MECH lo imita cuando alguien lo hace ante la
-> cámara — se reconoce por movimiento en ANTIFASE, no por la cara (con las
-> manos delante, Haar ve la cara en 1 de cada 45 fotogramas). **(2) Traductor
+> el repo. (El gesto "67" que venía primero aquí fue ELIMINADO el 23 sep 2026,
+> pedido del equipo.) **(1) Traductor
 > continuo**: «activa modo traductor» se queda traduciendo hasta «desactiva el
-> modo traductor»; «traduce MECH» sigue siendo una frase. **(3) El reposo que
+> modo traductor»; «traduce MECH» sigue siendo una frase. **(2) El reposo que
 > no dormía** — la causa era que la frase acababa en Claude, que improvisa una
-> despedida pero no puede dormir al robot; ahora hay tres redes. **(4)
+> despedida pero no puede dormir al robot; ahora hay tres redes. **(3)
 > `MECH Panel.exe`**: app de Windows que encuentra la Pi sola (construida y
 > probada de verdad, 10,5 MB). Más **`docs/USO.md`**, la guía del operador.
 >
@@ -91,7 +90,7 @@ Arduino para motores/servos). El nombre del robot es **MECH-1**.
 
 ## 2. Estado del repo
 
-- **Rama:** `main`. Lo de §3.quindecies (gesto 67, traductor continuo, reposo,
+- **Rama:** `main`. Lo de §3.quindecies (traductor continuo, reposo,
   app de Windows y las guías) está **commiteado pero puede estar SIN PUSHEAR**
   — comprobalo con `git log origin/main..main`. Hasta que no esté pusheado, la
   Pi no lo recoge.
@@ -985,6 +984,12 @@ Ajustes en el panel.
 
 ## 3.quindecies Gesto "67", traductor continuo, reposo y app de Windows (sep 2026)
 
+> ⚠️ **ELIMINADO (23 sep 2026, pedido del equipo)**: el gesto "67" completo
+> — detección por cámara (`gesture_detect.py`), imitación con brazos
+> (`gestures.sixty_seven`), frase «¡Seis... siete!», botón del panel y
+> ajustes — se quitó del código. La sección de abajo queda como HISTORIA de
+> lo que fue; nada de lo que nombra existe ya.
+
 Cuatro cosas pedidas por el equipo. **Nada probado en la Pi todavía**, pero
 todo medido en la laptop con scripts que quedan en el repo.
 
@@ -1526,16 +1531,6 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
 6f. ⚠️ **El `.env` de la Pi (§3.quaterdecies)**: pegar la salida de
    `grep -E "WHISPER|AUDIO_SAMPLE_RATE" ~/MECH/backend/.env`. Es lo que falta
    para cerrar lo del cambio de modelo de Whisper.
-6g. **Gesto "67" (§3.quindecies, recién hecho)**: encender la visión y
-   ponerse delante haciendo el gesto — MECH debe imitarlo con los brazos y
-   decir «¡Seis... siete!». Probar ANTES el botón «🙌 HACER EL 67» de la
-   vista Arduino, para separar "la coreografía no va" de "la cámara no lo
-   reconoce". Después, los falsos positivos: saludar con una mano, levantar
-   las dos a la vez y pasar caminando **no** deben dispararlo. Si hay que
-   exagerar mucho, bajar «Amplitud mínima» en Ajustes; si dispara de más,
-   subirla. ⚠️ Ojo con la luz de la proyección moviéndose: en teoría no
-   afecta (la visión se pausa al narrar) pero es lo primero a mirar si
-   dispara solo.
 6h. **Traductor continuo (§3.quindecies)**: «activa modo traductor» → par de
    idiomas → tres o cuatro frases seguidas **sin repetir el comando** →
    «desactiva el modo traductor». Lo que más puede fallar sigue siendo el
@@ -1573,7 +1568,7 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
      era eso. Ya no rompe nada (MECH lo busca solo al arrancar), pero conviene
      guardarlo en Ajustes → «Cámara nº».
 
-   Después, encender la visión y comprobar el saludo y el gesto del 67.
+   Después, encender la visión y comprobar el saludo.
 
 6l. **Arranque de voz (§3.septendecies)**: reiniciar el server y **pegar las
    líneas del panel desde «Bucle de voz iniciado» hasta «Voz lista»**. Ahí

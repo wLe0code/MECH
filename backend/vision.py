@@ -40,7 +40,6 @@ import threading
 import time
 
 import config
-from gesture_detect import SixtySevenDetector
 
 # Parámetros de cámara / estimación de distancia.
 FRAME_W = 640
@@ -177,10 +176,6 @@ class Vision:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._driving = False  # si fuimos nosotros los que mandamos MOVE
-        # Gesto "67": mira los mismos fotogramas, pero por su cuenta. NO
-        # depende de que se detecte la cara — con las manos delante, Haar casi
-        # nunca la encuentra (ver backend/gesture_detect.py).
-        self._gesto67 = SixtySevenDetector()
 
     @property
     def running(self) -> bool:
@@ -444,16 +439,10 @@ class Vision:
                         last_emit = now
                         self._publish(enabled=True, present=False, x=0.0,
                                       distance=None, paused=True)
-                    # Mientras narra tampoco miramos el gesto "67" (la luz de
-                    # la proyección moviéndose sería movimiento constante), y
-                    # se olvida lo acumulado para no arrastrar medias muestras.
-                    self._gesto67.reset()
+                    # Mientras narra tampoco miramos nada (la luz de la proyección
+                    # moviéndose sería movimiento constante).
                     time.sleep(0.15)
                     continue
-
-                # Gesto "67": va ANTES de detectar la cara y es independiente
-                # de ella. Si alguien lo hace, MECH se lo devuelve.
-                self._check_gesture_67(frame, now)
 
                 faces = detector.detect(frame)  # lista de (cx_rel, w_rel)
                 # La cara más grande = la persona más cercana.
@@ -496,28 +485,6 @@ class Vision:
             self._publish(enabled=False, present=False, x=0.0, distance=None)
 
     # ------------------------------------------------------------------
-
-    def _check_gesture_67(self, frame, now: float) -> None:
-        """Pasa el fotograma al detector del "67" y avisa a mech_app si acertó.
-
-        Va envuelto en try/except a propósito: un fallo del detector (un
-        fotograma raro, OpenCV que se queja) no puede tumbar el hilo de
-        visión, que es lo que hace el resto de las cosas.
-        """
-        if not config.GESTURE67_ENABLED:
-            return
-        try:
-            if self._gesto67.feed(frame, now):
-                medido = self._gesto67.debug
-                self.app.log(
-                    "¡Gesto 67 detectado! "
-                    f"(antifase {medido.get('correlacion')}, "
-                    f"{medido.get('alternancias')} alternancias)",
-                    "ok",
-                )
-                self.app.on_gesture_67()
-        except Exception as e:
-            self.app.log(f"Fallo el detector del gesto 67: {e}", "warn")
 
     def _on_detected(self) -> None:
         self.app.log("Usuario detectado por la cámara.", "ok")
