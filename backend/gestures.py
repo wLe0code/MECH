@@ -61,11 +61,11 @@ def _fisico(lado: str, angulo: float) -> int:
     """Pasa un ángulo LÓGICO al que hay que mandarle al servo de verdad.
 
     Todo el código de gestos piensa en ángulos lógicos: **90 = reposo y más
-    de 90 = brazo levantado**. Pero eso depende de cómo esté montado cada
-    servo en el robot: si la bocina está puesta del otro lado, el brazo sube
-    al BAJAR el ángulo, y todos los gestos salen al revés.
+    de 90 = brazo levantado hacia adelante**. Pero eso depende de cómo esté
+    montado cada servo: si la bocina está puesta del otro lado, el brazo sube
+    al BAJAR el ángulo y todos los gestos salen al revés (hacia atrás).
 
-    `ARM_INVERT_L` / `ARM_INVERT_R` arreglan eso sin tocar el firmware ni
+    `ARM_INVERT_L` / `ARM_INVERT_R` lo arreglan sin tocar el firmware ni
     desmontar nada: dan la vuelta al recorrido (90 sigue siendo 90, así que
     el reposo no se mueve). Es lo mismo que hacen `DIR_FL/FR/BL/BR` en el
     .ino con el sentido de giro de las ruedas.
@@ -117,21 +117,22 @@ def _g_neutral(link: ArduinoLink) -> None:
 def _g_wave(link: ArduinoLink) -> None:
     """PROTOCOLO DE SALUDO (video 1): arco completo, lento y amable.
 
-    Sube el brazo derecho desde el reposo pasando por la horizontal hasta
-    quedar en alto, pequeño vaivén arriba, y baja suave. Una sola vez.
+    Sube el brazo DERECHO hacia adelante desde el reposo, pasando por la
+    horizontal hasta quedar en alto, agita arriba y baja suave.
 
     Velocidad y AMPLITUD se configuran (ajustables en vivo desde el panel):
       - `ARM_WAVE_SECONDS` (2.2): lo que tarda en subir y en bajar. El equipo
         lo pidió lento (ago 2026): rápido se veía nervioso.
       - `ARM_WAVE_HIGH` (180): hasta dónde sube. Antes eran 170.
       - `ARM_WAVE_SWING` (65): cuánto baja y sube en cada agitada.
-      - `ARM_WAVE_REPEATS` (4): cuántas veces llega ARRIBA, contando la
-        subida inicial. 4 = sube, agita 3 veces más y baja. El equipo lo
-        pidió en "3 o 4 rotaciones" (sep 2026).
+      - `ARM_WAVE_REPEATS` (3): cuántas veces llega el brazo ARRIBA, contando
+        la subida inicial — las «rotaciones» que se cuentan mirando el robot.
+        3 = sube, agita 2 veces más y baja. Pedido del equipo (sep 2026):
+        "exactamente 3 rotaciones del brazo derecho hacia adelante".
 
-    Por defecto agita **solo el brazo DERECHO** (`ARM_WAVE_BOTH=false`,
-    sep 2026): con los dos se leía más como "manos arriba" que como un
-    saludo, y gasta el doble en el gesto que más se repite en el stand.
+    Por defecto saluda **solo el brazo DERECHO** (`ARM_WAVE_BOTH=false`).
+    "Hacia adelante" depende de cómo esté montado el servo: si sale hacia
+    atrás, se cambia `ARM_INVERT_R` en Ajustes (ver `_fisico`).
 
     Solo se mueve HACIA ARRIBA (90 → 180). Por debajo de 90 el brazo choca
     con el cuerpo del robot: no bajar de ahí."""
@@ -144,8 +145,8 @@ def _g_wave(link: ArduinoLink) -> None:
     # y saluda únicamente el derecho.
     izq = alto if config.ARM_WAVE_BOTH else _NEUTRAL
     # La subida inicial YA cuenta como una de las veces que el brazo llega
-    # arriba, así que arriba quedan REPEATS-1 agitadas. Así el número del
-    # panel coincide con las que se cuentan mirando el robot.
+    # arriba, así que arriba quedan REPEATS-1 agitadas. Con 3: sube, agita,
+    # agita, baja = el brazo llega arriba exactamente 3 veces.
     agitadas = max(1, config.ARM_WAVE_REPEATS - 1)
     _move_smooth(link, izq, alto, subida)   # suben en arco hasta arriba
     for _ in range(agitadas):
@@ -313,7 +314,7 @@ _OUTWARD_SWING = 30
 
 
 def _g_wave_outward(link: ArduinoLink) -> None:
-    """Saludo contenido: un brazo, arco medio, las mismas agitadas."""
+    """Saludo contenido: un brazo, arco medio, dos subidas."""
     subida = max(0.4, config.ARM_WAVE_SECONDS * 0.8)
     vaiven = max(0.25, subida * 0.35)
     alto = _OUTWARD_HIGH

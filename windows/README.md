@@ -29,7 +29,8 @@ los tres botones se habilitan:
 | **Panel a pantalla completa** | El panel en modo kiosko. Se sale con `Alt + F4`. |
 
 Si no la encuentra (redes con *client isolation*, muy común en colegios y
-eventos — ver `handoff.md` §6), escribe la dirección a mano en el campo y pulsa
+eventos: la laptop no ve a la Pi aunque estén en la misma wifi — el hotspot
+del celular es el respaldo), escribe la dirección a mano en el campo y pulsa
 **Probar**. Acepta cualquier forma: `192.168.1.42`, `mech`, `mech.local:8000`,
 `http://192.168.1.42:8000`. La recuerda para la próxima.
 

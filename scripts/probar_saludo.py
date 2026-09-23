@@ -89,7 +89,7 @@ config.ARM_INVERT_R = config.ARM_INVERT_L = False
 print("=== Defaults que pidió el equipo (sep 2026) ===")
 print(f"    ARM_WAVE_REPEATS = {config.ARM_WAVE_REPEATS}   (veces arriba)")
 print(f"    ARM_WAVE_BOTH    = {config.ARM_WAVE_BOTH}  (dos brazos)")
-check(config.ARM_WAVE_REPEATS in (3,4), "las rotaciones por defecto son 3 o 4")
+check(config.ARM_WAVE_REPEATS == 3, "las rotaciones por defecto son exactamente 3")
 check(config.ARM_WAVE_BOTH is False, "por defecto NO saluda con los dos brazos")
 
 print("\n=== Lo que llega al Arduino con los defaults ===")
@@ -110,7 +110,7 @@ for n in (2, 3, 4, 6):
     der, _ = correr()
     got = picos(der)
     check(got == n, f"REPEATS={n} -> llega arriba {got} veces")
-config.ARM_WAVE_REPEATS = 4
+config.ARM_WAVE_REPEATS = 3
 
 print("\n=== Con ARM_WAVE_BOTH=true vuelve el izquierdo ===")
 print("\n=== Sentido del brazo (ARM_INVERT_R) ===")

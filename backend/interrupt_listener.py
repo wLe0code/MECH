@@ -158,19 +158,6 @@ class InterruptListener:
                         energy_factor=config.INTERRUPT_ENERGY_FACTOR,
                         floor_average=True,
                     )
-                except stt.MicProcessCrashed as e:
-                    # El proceso del micrófono murió (bug de ALSA al caerse el
-                    # receptor). El server sigue vivo: esperamos un respiro y
-                    # seguimos escuchando para el resto de la narración.
-                    self._log(
-                        f"El micrófono se cortó durante la narración; lo "
-                        f"reabro en 3 s ({e})",
-                        "warn",
-                    )
-                    if cancel.is_set():
-                        return
-                    time.sleep(3.0)
-                    continue
                 except Exception as e:
                     # Típico: el micrófono ya está ocupado por otro hilo.
                     # No es fatal — MECH sigue narrando, solo sin interrupción.

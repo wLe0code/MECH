@@ -49,9 +49,7 @@ docs/
 
 ## Inicio rápido
 
-Para **usar** MECH en el stand: [`docs/USO.md`](docs/USO.md) — qué decirle y qué hace cada comando.
-
-Para **montarlo**: [`docs/GUIA.md`](docs/GUIA.md) (hardware) y [`docs/FRONTEND.md`](docs/FRONTEND.md) (servidor + panel). Resumen:
+Lee [`docs/GUIA.md`](docs/GUIA.md) (hardware) y [`docs/FRONTEND.md`](docs/FRONTEND.md) (servidor + panel). Resumen:
 
 1. Cablea el hardware según `docs/GUIA.md` §1.
 2. Sube `arduino/mech_controller/mech_controller.ino` al Arduino.

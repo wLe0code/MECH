@@ -109,41 +109,9 @@
             <i class="ti ti-hand-stop"></i>Interrumpir narración («oye MECH»)
           </button>
 
-          <!-- Trivia: el juego de preguntas que se proyecta. Corre en el
-               servidor (backend/trivia.py); aquí se lanza y se puede
-               responder sin micrófono, que es como se separa "el juego
-               falla" de "no te entendió al hablar". -->
-          <div class="trivia-box" id="trivia-box">
-            <div class="translator-head">
-              <span class="translator-label"><i class="ti ti-help-circle"></i> TRIVIA</span>
-              <span class="translator-state" id="trivia-state">APAGADA</span>
-            </div>
-            <div class="trivia-q" id="trivia-q"><span class="tq-empty">Sin partida en marcha.</span></div>
-            <div class="trivia-opts" id="trivia-opts"></div>
-            <div class="translator-row">
-              <button class="btn btn-purple" id="tv-start" onclick="API.triviaStart()"
-                      title="Escribe las preguntas sobre lo ÚLTIMO que MECH narró (si no ha narrado nada, sobre MECH) y empieza. Igual que decir «juguemos una trivia».">
-                <i class="ti ti-player-play"></i>Empezar trivia
-              </button>
-              <button class="btn" id="tv-stop" onclick="API.triviaStop()"
-                      title="Sale del juego («deja la trivia»).">
-                <i class="ti ti-player-stop"></i>Salir
-              </button>
-            </div>
-            <span class="translator-hint">
-              <b>«juguemos una trivia»</b> → empieza ·
-              se contesta <b>«la A»</b>, <b>«la segunda»</b> o diciendo la opción ·
-              <b>«deja la trivia»</b> → sale.
-              Al terminar de narrar una obra, MECH la ofrece él solo.
-            </span>
-          </div>
-
-          <!-- Modo traductor. Hay DOS formas (sep 2026):
-                 «traduce MECH»          -> UNA frase y se calla.
-                 «activa modo traductor» -> se queda traduciendo hasta que le
-                                            digan «desactiva el modo traductor».
-               El par de idiomas se recuerda; aquí se elige a mano para probar
-               sin voz. -->
+          <!-- Modo traductor, por TURNOS: «traduce MECH» -> pregunta qué
+               traducir -> escucha UNA frase -> la dice -> se calla. El par de
+               idiomas se recuerda; aquí se elige a mano para probar sin voz. -->
           <div class="translator-box" id="translator-box">
             <div class="translator-head">
               <span class="translator-label"><i class="ti ti-sphere"></i> TRADUCTOR</span>
@@ -163,24 +131,16 @@
                 <option value="fr">FRANCÉS</option>
                 <option value="pt">PORTUGUÉS</option>
               </select>
-              <button class="btn" id="tr-start" onclick="API.translateStart()"
-                      title="Un turno de traducción con este par: pregunta qué traducir, escucha una frase y la dice. Igual que decir «traduce MECH».">
+              <button class="btn btn-purple" id="tr-start" onclick="API.translateStart()"
+                      title="Un turno de traducción con este par: pregunta qué traducir, escucha una frase y la dice.">
                 <i class="ti ti-player-play"></i>Traducir una
               </button>
-              <button class="btn btn-purple" id="tr-continuous" onclick="API.translateStart(true)"
-                      title="Modo CONTINUO: se queda traduciendo frase tras frase hasta que se lo desactive. Igual que decir «activa modo traductor».">
-                <i class="ti ti-rotate"></i>Modo continuo
-              </button>
               <button class="btn" id="tr-stop" onclick="API.translateStop()"
-                      title="Sale del traductor y olvida el par de idiomas («desactiva el modo traductor»).">
-                <i class="ti ti-player-stop"></i>Desactivar
+                      title="Sale del traductor y olvida el par de idiomas («deja de traducir»).">
+                <i class="ti ti-player-stop"></i>Olvidar
               </button>
             </div>
-            <span class="translator-hint">
-              <b>«traduce MECH»</b> → traduce UNA frase y se calla ·
-              <b>«activa modo traductor»</b> → se queda traduciendo frase tras frase ·
-              <b>«desactiva el modo traductor»</b> → sale (el par de idiomas se recuerda entre turnos)
-            </span>
+            <span class="translator-hint">«traduce MECH» → pregunta qué traducir → traduce UNA frase → se calla. Para la siguiente, repetí el comando (el par de idiomas se recuerda) · «deja de traducir» lo olvida</span>
           </div>
 
           <div class="text-input-row">
@@ -496,18 +456,6 @@
             <span class="val" id="set-agc-val">-16 dBFS</span>
           </div>
           <div class="slider-row">
-            <label title="Sube el volumen de la VOZ de MECH por software, antes de mandarla al parlante. Con parlantes pequeños (Logitech S150: 1.2 W por canal) hace falta. Va con un limitador, así que no satura; por encima de +12 dB la voz empieza a sonar apretada.">Volumen voz</label>
-            <input type="range" min="0" max="18" step="1" value="0" id="set-ttsgain" oninput="UI.settingLabel('set-ttsgain','ttsgain')">
-            <span class="val" id="set-ttsgain-val">0 dB</span>
-          </div>
-          <div class="slider-row">
-            <label title="Deja cada frase al mismo nivel, pegada al máximo. ElevenLabs no entrega el audio a tope, así que esto solo ya sube ~8 dB y no cuesta nada en calidad. Déjalo encendido.">Nivelar voz</label>
-            <label class="switch">
-              <input type="checkbox" id="set-ttsnorm">
-              <span class="switch-text">Nivelar cada frase al máximo</span>
-            </label>
-          </div>
-          <div class="slider-row">
             <label title="Cuántas hipótesis explora Whisper. 1 = lo más rápido; 5 acierta bastante más en frases cortas con ruido, a cambio de unas décimas. Bájalo si la respuesta se siente lenta en el evento.">Precisión STT</label>
             <input type="range" min="1" max="5" step="1" value="5" id="set-beam" oninput="UI.settingLabel('set-beam','beam')">
             <span class="val" id="set-beam-val">5</span>
@@ -586,19 +534,19 @@
             <span class="val" id="set-waveswing-val">65°</span>
           </div>
           <div class="slider-row">
-            <label title="Cuántas veces llega el brazo ARRIBA al saludar (las «rotaciones» que se cuentan mirando el robot). Cuenta la subida inicial: 4 = sube, agita 3 veces más y baja. Vale para el saludo y para mirar hacia afuera.">Saludo rotaciones</label>
-            <input type="range" min="2" max="6" step="1" value="4" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
-            <span class="val" id="set-waverep-val">4</span>
+            <label title="Cuántas veces llega el brazo ARRIBA al saludar (las «rotaciones» que se cuentan mirando el robot). Cuenta la subida inicial: 3 = sube, agita 2 veces más y baja. Vale para el saludo y para mirar hacia afuera.">Saludo rotaciones</label>
+            <input type="range" min="2" max="6" step="1" value="3" id="set-waverep" oninput="UI.settingLabel('set-waverep','waverep')">
+            <span class="val" id="set-waverep-val">3</span>
           </div>
           <div class="slider-row">
-            <label title="Por defecto saluda SOLO EL BRAZO DERECHO (sep 2026). Activando esto, el izquierdo sube a acompañar — se lee más como «manos arriba» que como un saludo, y gasta el doble.">Saludo brazos</label>
+            <label title="Por defecto saluda SOLO EL BRAZO DERECHO. Activando esto, el izquierdo sube a acompañar (se lee más como «manos arriba» que como un saludo).">Saludo brazos</label>
             <label class="switch">
               <input type="checkbox" id="set-waveboth">
               <span class="switch-text">Saludar con los dos brazos</span>
             </label>
           </div>
           <div class="slider-row">
-            <label title="¿Hacia qué lado se mueven los brazos? Si el brazo saluda hacia el lado contrario al que debería, es que el servo está montado al revés: esto le da la vuelta al recorrido sin desmontar nada ni tocar el firmware. El reposo (90°) no cambia. Afecta a TODOS los gestos, no solo al saludo.">Sentido brazos</label>
+            <label title="¿Hacia qué lado se mueven los brazos? Si el brazo saluda hacia ATRÁS en vez de hacia adelante, es que el servo está montado al revés: esto le da la vuelta al recorrido sin desmontar nada ni tocar el firmware. El reposo (90°) no cambia. Afecta a TODOS los gestos, no solo al saludo.">Sentido brazos</label>
             <label class="switch">
               <input type="checkbox" id="set-invr">
               <span class="switch-text">Invertir brazo DERECHO</span>
@@ -622,10 +570,10 @@
             <span class="val" id="set-greetrearm-val">20 s</span>
           </div>
           <div class="slider-row">
-            <label title="Con esto activado, el saludo por cámara solo se dispara con MECH EN REPOSO. Despierto está narrando, conversando o traduciendo, y saludar encima corta la experiencia del visitante que ya está atendiendo. El botón «SALUDAR AHORA» TAMBIÉN respeta esta regla (sep 2026): para probar el saludo con MECH despierto, apaga esto.">Saludo</label>
+            <label title="Con esto activado, MECH solo saluda EN REPOSO. Despierto está narrando, conversando o traduciendo, y saludar encima corta la experiencia del visitante que ya está atendiendo. El botón «SALUDAR AHORA» respeta la misma regla. Y aunque se apague, MECH NUNCA saluda mientras presenta algo.">Saludo</label>
             <label class="switch">
               <input type="checkbox" id="set-greetdormant">
-              <span class="switch-text">Saludar por cámara solo en reposo</span>
+              <span class="switch-text">Saludar solo en reposo</span>
             </label>
           </div>
           <div class="slider-row">
@@ -636,68 +584,6 @@
               <option value="fr">FRANCÉS</option>
               <option value="pt">PORTUGUÉS</option>
             </select>
-          </div>
-          <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
-            <i class="ti ti-device-floppy"></i>Guardar y aplicar
-          </button>
-        </div>
-
-        <!-- Modo traductor -->
-        <div class="fw-card settings-live">
-          <div class="fw-key" style="margin-bottom:4px;color:#E5A54B">
-            <i class="ti ti-help-circle"></i> TRIVIA
-          </div>
-          <div class="section-sub" style="margin-bottom:10px">
-            El juego de preguntas que se proyecta. Se pide con
-            <b>«juguemos una trivia»</b> y MECH la ofrece solo al terminar de
-            narrar una obra.
-          </div>
-          <div class="slider-row">
-            <label title="Si lo apagas, MECH no ofrece ni acepta la trivia.">Trivia</label>
-            <label class="switch">
-              <input type="checkbox" id="set-trivia">
-              <span class="switch-text">Juego de preguntas activado</span>
-            </label>
-          </div>
-          <div class="slider-row">
-            <label title="Cuántas preguntas tiene cada partida. Tres es lo que aguanta la gente en un stand con cola.">Preguntas</label>
-            <input type="range" min="2" max="6" step="1" value="3" id="set-trivia-n" oninput="UI.settingLabel('set-trivia-n','trivian')">
-            <span class="val" id="set-trivia-n-val">3</span>
-          </div>
-          <div class="slider-row">
-            <label title="Al acabar de narrar una obra, MECH pregunta si quieren jugar. Si lo apagas, la trivia solo empieza si se la piden.">Ofrecerla</label>
-            <label class="switch">
-              <input type="checkbox" id="set-trivia-offer">
-              <span class="switch-text">Ofrecerla al terminar de narrar</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="fw-card settings-live">
-          <div class="fw-key" style="margin-bottom:4px;color:#5DCAA5">
-            <i class="ti ti-sphere"></i> TRADUCTOR
-          </div>
-          <div class="section-sub" style="margin-bottom:10px">
-            <b>«traduce MECH»</b> traduce una frase y se calla.
-            <b>«activa modo traductor»</b> se queda traduciendo hasta que le
-            digan <b>«desactiva el modo traductor»</b>.
-          </div>
-          <div class="slider-row">
-            <label title="Lo que espera tras cada traducción antes de volver a escuchar, en el modo CONTINUO. ⚠️ Es la PRIMERA perilla que hay que subir si MECH empieza a traducir su propia traducción: el parlante Bluetooth arrastra buffer y el micrófono se abre justo detrás de su voz.">Espera continuo</label>
-            <input type="range" min="0.3" max="4" step="0.1" value="1.2" id="set-trcont" oninput="UI.settingLabel('set-trcont','trcont')">
-            <span class="val" id="set-trcont-val">1.2 s</span>
-          </div>
-          <div class="slider-row">
-            <label title="Lo mismo, pero en el modo de UNA frase (ahí el micrófono se abre tras la pregunta, no tras la traducción, así que hace falta menos).">Espera una frase</label>
-            <input type="range" min="0.2" max="3" step="0.1" value="0.8" id="set-trdrain" oninput="UI.settingLabel('set-trdrain','trdrain')">
-            <span class="val" id="set-trdrain-val">0.8 s</span>
-          </div>
-          <div class="slider-row">
-            <label title="Con esto activado, Whisper detecta en cuál de los dos idiomas del par se dijo cada frase y MECH la pasa al otro (conversación en los dos sentidos). Apágalo para fijar el sentido: es menos cómodo pero no se equivoca nunca. Recomendado apagarlo si el par es español/portugués, que Whisper confunde en frases cortas.">Sentido</label>
-            <label class="switch">
-              <input type="checkbox" id="set-trauto">
-              <span class="switch-text">Traducir en los dos sentidos (detectar idioma)</span>
-            </label>
           </div>
           <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar
@@ -788,11 +674,6 @@
               <input type="checkbox" id="set-gate">
               <span class="switch-text">Proyectar solo con usuario cerca</span>
             </label>
-          </div>
-          <div class="slider-row">
-            <label title="Qué /dev/videoN usa la cámara. OJO: este número CAMBIA si se enchufa la cámara en otro puerto USB. Si no la encuentra, MECH busca sola en los índices 0 a 9 y dice en el log cuál funcionó — ese es el que hay que poner aquí. Hay que apagar y encender la visión para que el cambio valga.">Cámara nº</label>
-            <input type="range" min="0" max="9" step="1" value="0" id="set-camidx" oninput="UI.settingLabel('set-camidx','camidx')">
-            <span class="val" id="set-camidx-val">0</span>
           </div>
           <div style="font-size:11px;font-family:var(--font-mono);margin-top:8px" id="vision-status">
             <span style="color:var(--text-muted)">Cámara apagada</span>

@@ -26,9 +26,6 @@ Endpoints REST:
     POST /api/language/{es|en|fr|pt}    → cambia el idioma (voz + subtítulos)
     POST /api/translate/start           → modo traductor (?src=&dst= opcional)
     POST /api/translate/stop            → sale del modo traductor
-    POST /api/trivia/start              → arranca el juego de preguntas
-    POST /api/trivia/stop               → sale del juego
-    POST /api/trivia/answer/{a|b|c}     → responde sin micrófono (pruebas)
     POST /api/emergency/stop            → PARO DE EMERGENCIA
     GET  /api/state                     → estado completo (JSON)
 
@@ -64,7 +61,6 @@ import lang
 import maneuvers
 import stt
 import translator
-import trivia
 import tts
 import video_library
 import vision
@@ -103,106 +99,10 @@ def _voice_loop_worker():
     solo a español. Ver backend/lang.py.
     """
     app_state = get_app()
-    try:
-        _voice_loop_body(app_state)
-    except Exception as e:
-        # Sin esto, un fallo ANTES del bucle (cargar Whisper, el Arduino, el
-        # audio) mataba el hilo en silencio y dejaba `voice_loop_active` en
-        # True: el panel decía que la voz estaba encendida, el micrófono
-        # nunca se abría, y apagar/encender desde el botón era la única
-        # forma de salir. Ahora se ve el error y el estado dice la verdad.
-        app_state.log(f"El bucle de voz se cayó: {e}", "err")
-    finally:
-        app_state.state["voice_loop_active"] = False
-        try:
-            app_state.arduino.set_mode("IDLE")
-        except Exception:
-            pass
-        app_state.set_voice_phase("off")
-        app_state.emit("state", state=app_state.state)
-        app_state.log("Bucle de voz detenido", "info")
-
-
-def _reportar_microfono(app_state) -> None:
-    """Mide el micrófono y escribe el veredicto en el panel.
-
-    Tres desenlaces, y cada uno dice qué hacer:
-      - no se pudo abrir  -> el dispositivo del .env no existe o está ocupado.
-      - se abrió pero MUDO -> el micrófono está apagado, silenciado o es el
-        equipado equivocado (p. ej. el de la webcam, que ya no se usa).
-      - se abrió con señal -> todo bien; queda el nivel apuntado por si luego
-        hay que tocar el umbral.
-    """
-    try:
-        info = stt.probe_microphone(1.0)
-    except Exception as e:  # nunca puede impedir que MECH arranque
-        app_state.log(f"No pude probar el micrófono: {e}", "warn")
-        return
-
-    pedido = info.get("device") or "(el que tenga puesto el sistema)"
-    nombre = info.get("nombre") or "?"
-
-    if info.get("error"):
-        app_state.log(
-            f"NO pude abrir el micrófono ({pedido}): {info['error']}. "
-            "MECH no va a oír nada. Revisá que esté enchufado y que "
-            "AUDIO_INPUT_DEVICE del .env coincida con un dispositivo real "
-            "(la lista sale en Ajustes o con `python -m backend.preflight`).",
-            "err",
-        )
-        return
-
-    if not info.get("frames"):
-        app_state.log(
-            f"El micrófono '{nombre}' se abrió pero NO llegó audio. "
-            "Suele ser que está desenchufado o apagado.",
-            "err",
-        )
-        return
-
-    nivel, pico = info["nivel"], info["pico"]
-    app_state.log(
-        f"Micrófono: '{nombre}' a {info['rate']} Hz "
-        f"(pedido en .env: {pedido}) — nivel {nivel:.4f}, pico {pico:.4f}.",
-        "info",
-    )
-    # 0.0005 es ruido de fondo de un micrófono vivo en una sala en silencio.
-    # Por debajo de eso, lo que entra es literalmente silencio digital.
-    if pico < 0.0005:
-        app_state.log(
-            "El micrófono NO capta nada (silencio digital). MECH va a estar "
-            "sordo. Revisá: que sea el dispositivo correcto (el del proyecto "
-            "es el Steren, NO el de la cámara), que el receptor esté "
-            "encendido y con batería, y que no esté silenciado en el sistema.",
-            "err",
-        )
-    else:
-        app_state.log("Micrófono OK: capta señal.", "ok")
-
-
-def _voice_loop_body(app_state) -> None:
-    """El bucle en sí. Lo envuelve `_voice_loop_worker` para que un fallo no
-    deje el hilo muerto y el estado mintiendo."""
     app_state.log("Bucle de voz iniciado", "ok")
     app_state.arduino.set_mode("IDLE")
-    # ⚠️ ESTO TARDA, y mientras tanto el micrófono está CERRADO.
-    #
-    # Cargar los dos modelos de Whisper lleva de varios segundos a casi un
-    # minuto en la Pi (y la PRIMERA vez, si hay que descargarlos, mucho más).
-    # Antes esto no se decía en el panel: MECH aparecía "en reposo", que es
-    # su estado normal, así que parecía que estaba escuchando cuando todavía
-    # no. El equipo lo reportó como "al encender el server no oye 'ok MECH',
-    # pero si toco el botón sí" — el botón "arreglaba" el problema porque
-    # para entonces los modelos ya estaban cargados en memoria.
-    #
-    # Por eso ahora hay una fase propia ("loading") y se dice cuánto tardó.
-    app_state.set_voice_phase("loading")
-    app_state.log(
-        f"Cargando Whisper '{config.WHISPER_MODEL}' — MECH todavía NO "
-        "escucha. Espera a que diga «Voz lista».",
-        "warn",
-    )
-    t0 = time.monotonic()
+    # Precargamos Whisper para que el primer "despierta MECH" responda rápido
+    # (la primera vez puede tardar si tiene que descargar el modelo).
     try:
         stt.get_model()
         # El de las interrupciones también, para no cargarlo a mitad de una
@@ -211,15 +111,6 @@ def _voice_loop_body(app_state) -> None:
             stt.get_interrupt_model()
     except Exception as e:
         app_state.log(f"No se pudo precargar Whisper: {e}", "warn")
-    app_state.log(f"Whisper cargado en {time.monotonic() - t0:.1f} s.", "ok")
-    # PRUEBA REAL DEL MICRÓFONO antes de ponerse a escuchar.
-    #
-    # El equipo reportó "al inicio está sordo, como si no tuviera micrófono".
-    # Desde fuera, tres causas muy distintas se ven exactamente igual: el
-    # dispositivo equivocado, el micrófono mudo, o el umbral mal puesto.
-    # Esto las separa con un número y lo deja escrito en el panel en CADA
-    # arranque, así no hay que adivinar nunca más.
-    _reportar_microfono(app_state)
     # Sonido de "listo": a partir de aquí el micrófono está activo y ya se le
     # puede hablar / decir "despierta MECH".
     tts.play_chime()
@@ -227,12 +118,6 @@ def _voice_loop_body(app_state) -> None:
     if not app_state.state.get("voice_awake", True):
         app_state.set_voice_phase("dormant")
 
-    # Fallos SEGUIDOS al abrir el micrófono. Sirve para esperar cada vez más
-    # entre intentos (sin esto el bucle giraba a toda velocidad: cientos de
-    # «Error en bucle de voz» por segundo y la CPU a tope) y para avisar
-    # cuando el micrófono vuelve.
-    fallos_mic = 0
-    ultimo_aviso_mic = 0.0
     while app_state.state["voice_loop_active"]:
         try:
             awake = app_state.state.get("voice_awake", True)
@@ -282,13 +167,6 @@ def _voice_loop_body(app_state) -> None:
                 # que lo pueda usar el listener de interrupción.
                 cancel_event=app_state.mic_release,
             )
-            if fallos_mic:
-                app_state.log(
-                    f"Micrófono recuperado ({stt.ultima_eleccion_mic}). "
-                    "Vuelvo a escuchar.",
-                    "ok",
-                )
-                fallos_mic = 0
             if audio is None:
                 app_state.set_voice_phase(
                     "waiting" if app_state.state.get("voice_awake", True) else "dormant"
@@ -370,20 +248,11 @@ def _voice_loop_body(app_state) -> None:
             # es lo correcto, un intérprete no obedece lo que traduce (si no,
             # "mira hacia afuera" giraría el robot en vez de traducirse).
             if translator.is_active():
-                # OJO con el ORDEN: "desactiva el modo traductor" contiene
-                # "modo traductor", así que salir se comprueba PRIMERO. Los
-                # helpers de voice_phrases ya lo tienen en cuenta, pero el
-                # orden de aquí es la segunda red.
                 if voice_phrases.is_translate_stop(text):
                     app_state.stop_translator()
                     app_state.set_voice_phase("waiting")
                 elif voice_phrases.is_sleep_any(text):
                     app_state.go_dormant()
-                elif voice_phrases.is_translate_on(text):
-                    # "activa modo traductor" estando ya dentro: pasa a
-                    # continuo (o cambia el par si nombró idiomas).
-                    src, dst = voice_phrases.extract_language_pair(text)
-                    app_state.start_translator(src, dst, continuous=True)
                 elif voice_phrases.is_translate(text):
                     # Volvió a decir "traduce MECH": vuelve a preguntar (y si
                     # nombró idiomas, cambia el par sin salir del modo).
@@ -394,31 +263,6 @@ def _voice_loop_body(app_state) -> None:
                 else:
                     app_state.handle_translation(text, detected)
                 continue
-
-            # MODO TRIVIA: MECH acaba de ofrecer el juego, o de hacer una
-            # pregunta, y esto es la respuesta. Va ANTES que todo lo demás
-            # porque dentro del juego "la a" o "la segunda" no son comandos.
-            if trivia.is_active():
-                if voice_phrases.is_sleep_any(text):
-                    app_state.go_dormant()
-                    continue
-                if voice_phrases.is_trivia_stop(text):
-                    app_state.stop_trivia()
-                    app_state.set_voice_phase("waiting")
-                    continue
-                if trivia.is_asking():
-                    app_state.handle_trivia_answer(text)
-                    continue
-                if trivia.is_offering():
-                    # Si devuelve False es que cambió de tema: NO hacemos
-                    # `continue`, y el texto sigue su camino normal (ya se
-                    # canceló el ofrecimiento).
-                    if app_state.handle_trivia_offer(text):
-                        continue
-                else:
-                    # Entre pregunta y pregunta (revelando el resultado) el
-                    # micrófono debería estar cerrado; si algo entra, es eco.
-                    continue
 
             # Despierto: ¿pidió reposo? (se aceptan las frases de los 4 idiomas)
             if voice_phrases.is_sleep_any(text):
@@ -443,95 +287,23 @@ def _voice_loop_body(app_state) -> None:
                 app_state.handle_text_command(pendiente)
                 pendiente = app_state.take_pending_command()
         except Exception as e:
-            if stt.is_audio_device_error(e):
-                # NO SE PUDO USAR EL MICRÓFONO. Casi nunca es un fallo del
-                # programa: el receptor está desenchufado, se movió de
-                # puerto USB (y el número guardado apunta a otra cosa) o
-                # PortAudio aún no lo ha visto. Se espera, se le pide a
-                # PortAudio que vuelva a mirar la lista de dispositivos y se
-                # reintenta — así se recupera SOLO al enchufarlo.
-                fallos_mic += 1
-                ahora = time.time()
-                if fallos_mic == 1 or ahora - ultimo_aviso_mic > 30:
-                    ultimo_aviso_mic = ahora
-                    if isinstance(e, stt.MicProcessCrashed) and e.silencioso:
-                        # Distinto del de abajo: el dispositivo SE ABRIÓ pero
-                        # no entrega audio. Son otras causas y otra guía.
-                        app_state.log(
-                            "El micrófono se abre pero NO llega audio. "
-                            "Revisá, en orden: 1) que el TRANSMISOR de "
-                            "solapa esté encendido y con batería (el "
-                            "receptor puede estar enchufado pero SIN señal "
-                            "inalámbrica); 2) que AUDIO_INPUT_DEVICE apunte "
-                            "al receptor y no al micrófono de la cámara; "
-                            "3) que no esté silenciado en el sistema "
-                            "(alsamixer). Sigo intentándolo solo cada pocos "
-                            "segundos.",
-                            "err",
-                        )
-                        # Diagnóstico concreto: qué cree ver PortAudio.
-                        # Solo de vez en cuando, para no llenar el panel.
-                        if fallos_mic in (3, 9):
-                            visibles = stt._entradas()
-                            app_state.log(
-                                "Micrófonos que veo ahora: "
-                                + (
-                                    ", ".join(f"[{i}] {n}" for i, n in visibles)
-                                    or "ninguno"
-                                ),
-                                "warn",
-                            )
-                    else:
-                        app_state.log(
-                            f"No puedo abrir el micrófono: {e}. Revisá que el "
-                            "RECEPTOR USB del Steren esté enchufado (si solo "
-                            "está apagado el micrófono de solapa, el receptor "
-                            "sigue apareciendo y esto no pasaría). Sigo "
-                            "intentándolo solo cada pocos segundos.",
-                            "err",
-                        )
-                app_state.set_voice_phase("nomic")
-                time.sleep(min(6.0, 1.0 + fallos_mic))
-                stt.reset_audio()
-                continue
             app_state.log(f"Error en bucle de voz: {e}", "err")
-            # Nunca girar en vacío: un error que se repite en cada vuelta
-            # llenaba el panel y dejaba a la Pi sin CPU para lo demás.
-            time.sleep(0.5)
-    # El apagado (modo IDLE, fase "off", log) lo hace el `finally` de
-    # `_voice_loop_worker`, para que valga también si esto se cae.
+    app_state.arduino.set_mode("IDLE")
+    app_state.set_voice_phase("off")
+    app_state.log("Bucle de voz detenido", "info")
 
 
 _voice_thread: threading.Thread | None = None
 
 
-def _loop_vivo() -> bool:
-    """¿Hay de verdad un hilo de voz corriendo?
-
-    `voice_loop_active` es solo una bandera: si el hilo muere, se queda en
-    True y el panel muestra la voz como encendida aunque el micrófono esté
-    cerrado. Mirar el hilo es lo único que no miente.
-    """
-    return _voice_thread is not None and _voice_thread.is_alive()
-
-
 def start_voice_loop(awake: bool = True):
     global _voice_thread
     app_state = get_app()
-    if app_state.state["voice_loop_active"] and _loop_vivo():
+    if app_state.state["voice_loop_active"]:
         # Ya corriendo: si estaba en reposo y se pide despierto, lo despertamos.
         if awake and not app_state.state.get("voice_awake", True):
             app_state.go_awake()
         return
-    if app_state.state["voice_loop_active"]:
-        # La bandera decía que sí, pero el hilo no existe: se cayó. Lo
-        # decimos y arrancamos otro, en vez de no hacer nada (que es lo que
-        # obligaba a pulsar el botón dos veces).
-        app_state.log(
-            "El bucle de voz estaba marcado como activo pero el hilo no "
-            "existía. Lo arranco de nuevo.",
-            "warn",
-        )
     app_state.state["voice_awake"] = awake
     app_state.state["voice_loop_active"] = True
     _voice_thread = threading.Thread(target=_voice_loop_worker, daemon=True)
@@ -588,33 +360,10 @@ async def lifespan(app: FastAPI):
                else " (sentido fijo: origen → destino)."),
             "ok",
         )
-    if config.TRIVIA_ENABLED:
-        # Misma idea que las líneas de arriba: si esto NO sale en el panel, la
-        # Pi está corriendo código viejo (hicieron git pull sin reiniciar).
-        mech.log(
-            f"Trivia: {config.TRIVIA_QUESTIONS} preguntas por partida"
-            + (" · la ofrece sola al terminar de narrar"
-               if config.TRIVIA_OFFER_AFTER_PLAN else " · solo si la piden")
-            + " — decí «juguemos una trivia».",
-            "ok",
-        )
     # Autostart en reposo: MECH queda escuchando solo "ok MECH".
     if config.VOICE_AUTOSTART:
         mech.log("Voz en reposo: di 'ok MECH' para activarlo.", "info")
         start_voice_loop(awake=False)
-    else:
-        # ⚠️ Antes esto era SILENCIO ABSOLUTO: con VOICE_AUTOSTART=false el
-        # bucle no arrancaba y el arranque no lo mencionaba, así que MECH
-        # parecía "sordo, como si no tuviera micrófono" — y pulsar el botón
-        # del panel lo "arreglaba" porque era lo único que lo encendía.
-        # Recordá que el .env de la Pi TAPA el default del código.
-        mech.log(
-            "VOICE_AUTOSTART=false: el bucle de voz NO arranca solo, así que "
-            "MECH no va a oír nada todavía. Pulsá el micrófono del panel (o "
-            "la tecla V) para encenderlo. Para que arranque solo, poné "
-            "VOICE_AUTOSTART=true en backend/.env.",
-            "warn",
-        )
     # Slots de proyección directa (marketing): decir cuántos videos hay, para
     # que se vea de un vistazo si están subidos y si esta es la versión nueva.
     for slug in (s for s in video_library.WORKS if video_library.is_promo(s)):
@@ -925,17 +674,12 @@ async def move_greet():
     """Dispara el saludo de bienvenida AHORA (sin esperar a la cámara).
 
     Útil para probar el arco del brazo y la frase sin tener que entrar y
-    salir del campo de visión. Se salta el cooldown, pero NO la regla de
-    "solo en reposo" (ver mech_app.greet_now)."""
+    salir del campo de visión. Se salta el cooldown, pero NO las reglas de
+    "solo en reposo" y "nunca mientras presenta" (ver mech_app.greet_now)."""
     mech = get_app()
-    if mech.state.get("voice_phase") in ("speaking", "thinking"):
-        return {"ok": False, "reason": "MECH está narrando ahora mismo"}
-    if config.GREETING_ONLY_DORMANT and mech.state.get("voice_awake", True):
-        return {
-            "ok": False,
-            "reason": "MECH está despierto y el saludo solo va en reposo. "
-                      "Dormilo, o apagá la regla en Ajustes.",
-        }
+    motivo = mech._greeting_blocked()
+    if motivo:
+        return {"ok": False, "reason": motivo}
     threading.Thread(target=mech.greet_now, daemon=True).start()
     return {"ok": True}
 
@@ -1080,20 +824,12 @@ async def set_language(code: str):
 
 
 @app.post("/api/translate/start")
-async def translate_start(
-    src: str | None = None,
-    dst: str | None = None,
-    continuous: bool = False,
-):
-    """Arranca el traductor desde el panel.
+async def translate_start(src: str | None = None, dst: str | None = None):
+    """Arranca UN turno de traducción (lo mismo que decir «traduce MECH»).
 
-    - `continuous=false` (por defecto) = lo mismo que decir «traduce MECH»:
-      MECH traduce UNA frase y se calla.
-    - `continuous=true` = lo mismo que «activa modo traductor»: se queda
-      traduciendo hasta que le digan que lo desactive (o hasta `/stop`).
-
-    Sin `src`/`dst` reutiliza el par de la vez anterior y, si no hay ninguno,
-    pregunta por los idiomas en voz alta.
+    MECH pregunta qué hay que traducir, escucha una frase, la dice en el otro
+    idioma y se calla. Sin `src`/`dst` reutiliza el par de la vez anterior y,
+    si no hay ninguno, pregunta por los idiomas en voz alta.
     """
     if not config.TRANSLATOR_ENABLED:
         raise HTTPException(400, "El modo traductor está desactivado (TRANSLATOR_ENABLED).")
@@ -1107,72 +843,19 @@ async def translate_start(
     mech = get_app()
     # En un hilo: habla (bloqueante) y no queremos colgar la petición HTTP.
     threading.Thread(
-        target=mech.start_translator,
-        args=(src, dst),
-        kwargs={"continuous": continuous},
-        daemon=True,
+        target=mech.start_translator, args=(src, dst), daemon=True
     ).start()
-    return {"ok": True, "continuous": continuous}
+    return {"ok": True}
 
 
 @app.post("/api/translate/stop")
 async def translate_stop():
-    """Sale del traductor Y olvida el par («desactiva el modo traductor»)."""
+    """Sale del traductor Y olvida el par de idiomas («deja de traducir»)."""
     mech = get_app()
     if not (translator.is_active() or translator.has_pair()):
         return {"ok": False, "reason": "El modo traductor no está activo."}
     threading.Thread(target=mech.stop_translator, daemon=True).start()
     return {"ok": True}
-
-
-@app.post("/api/trivia/start")
-async def trivia_start():
-    """Arranca el juego de preguntas desde el panel.
-
-    Pregunta sobre lo ÚLTIMO que MECH narró; si todavía no ha contado nada,
-    la partida va sobre MECH y su proyecto. Generar las preguntas tarda unos
-    segundos (una llamada a Claude), así que va en un hilo: la petición HTTP
-    contesta enseguida y el juego arranca solo.
-    """
-    if not config.TRIVIA_ENABLED:
-        raise HTTPException(400, "La trivia está desactivada (TRIVIA_ENABLED).")
-    mech = get_app()
-    if trivia.is_active():
-        return {"ok": False, "reason": "Ya hay una trivia en marcha."}
-    threading.Thread(target=mech.start_trivia, daemon=True).start()
-    return {"ok": True}
-
-
-@app.post("/api/trivia/stop")
-async def trivia_stop():
-    """Sale del juego («deja la trivia»)."""
-    mech = get_app()
-    if not trivia.is_active():
-        return {"ok": False, "reason": "No hay ninguna trivia en marcha."}
-    threading.Thread(target=mech.stop_trivia, daemon=True).start()
-    return {"ok": True}
-
-
-@app.post("/api/trivia/answer/{choice}")
-async def trivia_answer(choice: str):
-    """Responde la pregunta actual SIN micrófono (letra A/B/C o número).
-
-    Es el equivalente del botón «Interrumpir narración»: separa "el juego
-    funciona" de "el micrófono no te entendió". Si por aquí responde bien y
-    hablando no, el problema es de audio.
-    """
-    mech = get_app()
-    crudo = (choice or "").strip().lower()
-    letras = [l.lower() for l in trivia.LETTERS]
-    if crudo in letras:
-        idx = letras.index(crudo)
-    elif crudo.isdigit():
-        idx = int(crudo) - 1 if int(crudo) > 0 else 0
-    else:
-        raise HTTPException(400, f"Respuesta inválida: {choice}. Usa A, B o C.")
-    if not mech.answer_trivia_from_panel(idx):
-        return {"ok": False, "reason": "Ahora mismo no hay ninguna pregunta esperando."}
-    return {"ok": True, "choice": idx}
 
 
 @app.post("/api/emergency/stop")
@@ -1211,8 +894,6 @@ _LIVE_KEYS = {
     # Cadena de audio antes de Whisper (ver docs/AUDIO.md).
     "AUDIO_HIGHPASS_HZ": float,   # quita continua y retumbe
     "AUDIO_TARGET_DBFS": float,   # nivel objetivo ("AGC")
-    "TTS_GAIN_DB": float,         # empuje de volumen de la VOZ
-    "TTS_NORMALIZE": _to_bool,
     "WHISPER_BEAM_SIZE": int,     # hipótesis que explora Whisper
     "AUDIO_LEAD_SILENCE": float,
     "AUDIO_LISTEN_MAX_SECONDS": float,  # se guarda en config.LISTEN_MAX_SECONDS
@@ -1227,9 +908,6 @@ _LIVE_KEYS = {
     "VISION_FOLLOW": _to_bool,
     "VISION_PROJECT_GATE": _to_bool,
     "VISION_MAX_SPEED": int,
-    # Índice de la cámara. Cambiarlo NO reabre la que ya está en uso:
-    # hay que apagar y encender la visión (o reiniciar) para que valga.
-    "VISION_CAMERA_INDEX": int,
     "GESTURE_WHEELS": _to_bool,
     "ARM_GESTURE_MODE": str,
     "NARRATION_GESTURE_MODE": str,  # gestos simples (un brazo) al proyectar
@@ -1239,7 +917,7 @@ _LIVE_KEYS = {
     "ARM_WAVE_REPEATS": int,
     "GREETING_COOLDOWN": float,
     "GREETING_ONLY_DORMANT": _to_bool,  # saludar solo con MECH en reposo
-    "GREETING_LANGUAGE": str,       # idioma del saludo por cámara
+    "GREETING_LANGUAGE": str,       # idioma del saludo (inglés por defecto)
     "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
     "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos
@@ -1257,13 +935,6 @@ _LIVE_KEYS = {
     "ADVANCE_MAX_SECONDS": float,
     "TURN_LATERAL_SPEED": int,
     "TURN_LATERAL_SECONDS": float,
-    # Modo traductor.
-    "TRANSLATOR_AUTO_DETECT": _to_bool,
-    "TRIVIA_ENABLED": _to_bool,          # el juego de preguntas
-    "TRIVIA_QUESTIONS": int,             # cuántas por partida
-    "TRIVIA_OFFER_AFTER_PLAN": _to_bool,  # ¿la ofrece sola al terminar?
-    "TRANSLATOR_DRAIN_SECONDS": float,
-    "TRANSLATOR_CONTINUOUS_DRAIN_SECONDS": float,
 }
 # Claves que solo tienen efecto tras reiniciar el servidor.
 _RESTART_KEYS = {
@@ -1291,8 +962,6 @@ async def get_config():
             "WHISPER_LANGUAGE": config.WHISPER_LANGUAGE,
             "AUDIO_HIGHPASS_HZ": config.AUDIO_HIGHPASS_HZ,
             "AUDIO_TARGET_DBFS": config.AUDIO_TARGET_DBFS,
-            "TTS_GAIN_DB": config.TTS_GAIN_DB,
-            "TTS_NORMALIZE": config.TTS_NORMALIZE,
             "WHISPER_BEAM_SIZE": config.WHISPER_BEAM_SIZE,
             "TTS_DRY_RUN": config.TTS_DRY_RUN,
             "SUBTITLES_ENABLED": config.SUBTITLES_ENABLED,
@@ -1303,7 +972,6 @@ async def get_config():
             "VISION_APPROACH": config.VISION_APPROACH,
             "VISION_FOLLOW": config.VISION_FOLLOW,
             "VISION_PROJECT_GATE": config.VISION_PROJECT_GATE,
-            "VISION_CAMERA_INDEX": config.VISION_CAMERA_INDEX,
             "GESTURE_WHEELS": config.GESTURE_WHEELS,
             "ARM_GESTURE_MODE": config.ARM_GESTURE_MODE,
             "NARRATION_GESTURE_MODE": config.NARRATION_GESTURE_MODE,
@@ -1330,13 +998,6 @@ async def get_config():
             "ADVANCE_MAX_SECONDS": config.ADVANCE_MAX_SECONDS,
             "TURN_LATERAL_SPEED": config.TURN_LATERAL_SPEED,
             "TURN_LATERAL_SECONDS": config.TURN_LATERAL_SECONDS,
-            "TRANSLATOR_AUTO_DETECT": config.TRANSLATOR_AUTO_DETECT,
-            "TRIVIA_ENABLED": config.TRIVIA_ENABLED,
-            "TRIVIA_QUESTIONS": config.TRIVIA_QUESTIONS,
-            "TRIVIA_OFFER_AFTER_PLAN": config.TRIVIA_OFFER_AFTER_PLAN,
-            "TRANSLATOR_DRAIN_SECONDS": config.TRANSLATOR_DRAIN_SECONDS,
-            "TRANSLATOR_CONTINUOUS_DRAIN_SECONDS":
-                config.TRANSLATOR_CONTINUOUS_DRAIN_SECONDS,
         },
         "restart": {
             "AUDIO_INPUT_DEVICE": config.AUDIO_INPUT_DEVICE,

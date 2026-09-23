@@ -13,35 +13,22 @@ Cada escena trae dos cosas:
 
 | # | Título | Época | Archivo |
 |---|---|---|---|
-| 1 | El misterio de la luz | 1865 – 1887 | **seg01** |
-| 2 | El empleado de patentes | 1895 – 1905 | **seg01** |
-| 3 | El tiempo no es igual para todos | 1905 | **seg01** |
-| 4 | Las transformaciones de Lorentz | 1892 – 1905 | **seg01** |
-| 5 | E = mc² | 1905 | **seg02** |
-| 6 | La gravedad es espacio curvo | 1907 – 1915 | **seg02** |
-| 7 | El eclipse que lo cambió todo | 1919 | **seg02** |
-| 8 | La relatividad hoy | 2015 – hoy | **seg02** |
+| 1 | El misterio de la luz | 1865 – 1887 | `seg01.mp4` |
+| 2 | El empleado de patentes | 1895 – 1905 | `seg02.mp4` |
+| 3 | El tiempo no es igual para todos | 1905 | `seg03.mp4` |
+| 4 | Las transformaciones de Lorentz | 1892 – 1905 | `seg04.mp4` |
+| 5 | E = mc² | 1905 | `seg05.mp4` |
+| 6 | La gravedad es espacio curvo | 1907 – 1915 | `seg06.mp4` |
+| 7 | El eclipse que lo cambió todo | 1919 | `seg07.mp4` |
+| 8 | La relatividad hoy | 2015 – hoy | `seg08.mp4` |
 
-## ⚠️ Son OCHO escenas pero solo DOS archivos
+**Un archivo por escena.** En la biblioteca, la obra `relatividad` tiene **8
+segmentos**: en `/library` sale su tarjeta con 8 botones, y cada escena se
+sube en el suyo. El orden importa: MECH narra el tramo N sobre `segNN`.
 
-Gemini ahora **junta las escenas en un solo video**, y el equipo generó unas
-en una cuenta y otras en otra. Así que de las ocho escenas salen **dos
-archivos**:
-
-| Archivo | Escenas | De qué va |
-|---|---|---|
-| `seg01.mp4` | 1 a 4 | El problema y la relatividad **especial** |
-| `seg02.mp4` | 5 a 8 | **E = mc²**, la general, la prueba y el hoy |
-
-Eso es lo que hay en la biblioteca: la obra `relatividad` tiene **2
-segmentos**, no ocho. MECH narra varios tramos seguidos sobre el mismo
-video, que va en bucle por debajo — exactamente lo que ya hace con las demás
-obras, solo que el clip es más largo.
-
-El corte va entre la escena 4 y la 5 a propósito: ahí termina la relatividad
-**especial** (la del tiempo y el espacio) y empieza todo lo demás. Si se
-reparte de otra forma, hay que cambiar el reparto en
-[`backend/video_library.py`](../backend/video_library.py) también.
+Mientras falte alguno de los ocho, la obra se sigue ofreciendo a Claude (con
+su sinopsis y sus datos verificados), pero narrando con imágenes generadas en
+vivo, como cualquier obra sin video.
 
 > **Por qué ocho escenas y no menos.** La relatividad son DOS teorías (la
 > especial, de 1905, y la general, de 1915) y cada una necesita su "idea
@@ -404,18 +391,16 @@ Newton. Así MECH no inventa fechas ni atribuye cosas a quien no toca.
 
 ## Cómo subirlos
 
-La obra `relatividad` **ya está en la biblioteca** con sus **dos** espacios.
+La obra `relatividad` **ya está en la biblioteca** con sus **ocho** espacios.
 
 1. `http://mech:8000/library` (o la IP de la Pi).
-2. Tarjeta **La teoría de la relatividad** → dos casillas:
-   - **`seg01`** = el video con las escenas **1 a 4** (el problema y la
-     relatividad especial, incluidas las fórmulas de Lorentz).
-   - **`seg02`** = el video con las escenas **5 a 8** (E = mc², la general,
-     el eclipse y el hoy).
-   **El orden importa**: MECH narra la primera mitad sobre `seg01`.
-3. La obra se le ofrece a Claude solo cuando estén **los dos**. Mientras
-   falte uno, MECH la cuenta igual pero generando imágenes en vivo — no se
-   rompe nada, solo se ve distinto.
+2. Tarjeta **La teoría de la relatividad** → ocho casillas, una por escena:
+   la escena 1 va en **`seg01`**, la 2 en **`seg02`**... hasta la 8 en
+   **`seg08`** (ver la tabla del principio).
+   **El orden importa**: MECH narra el tramo N sobre el video N.
+3. La obra se le ofrece a Claude con video solo cuando estén **los ocho**.
+   Mientras falte uno, MECH la cuenta igual pero generando imágenes en vivo —
+   no se rompe nada, solo se ve distinto.
 4. Reinicia el servidor después de subirlos: la lista de obras con video se
    arma al arrancar.
 

@@ -151,20 +151,11 @@ class ArduinoLink:
 
         def _loop():
             while not self._closing:
-                try:
-                    if not self.is_connected:
-                        try:
-                            self.connect()
-                        except Exception as e:
-                            # Cualquier fallo (no solo SerialException): sin
-                            # Arduino a la vista todavía, se reintenta luego.
-                            # Lo importante es que ESTE hilo nunca muera: si
-                            # se muere, el Arduino ya no se reconecta solo.
-                            print(f"[Arduino] Reintento de conexión falló: {e}")
-                except Exception as e:
-                    # Barrera final: un fallo inesperado no puede matar el
-                    # hilo que mantiene viva la reconexión automática.
-                    print(f"[Arduino] El hilo de reconexión falló: {e}")
+                if not self.is_connected:
+                    try:
+                        self.connect()
+                    except (serial.SerialException, FileNotFoundError, OSError):
+                        pass  # sin Arduino todavía; reintentamos luego
                 time.sleep(interval)
 
         self._reconnect_thread = threading.Thread(target=_loop, daemon=True)

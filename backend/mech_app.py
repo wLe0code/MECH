@@ -27,14 +27,12 @@ import sounddevice as sd
 import config
 import gestures
 import image_gen
-import informacion_nuestra
 import lang
 import llm
 import maneuvers
 import background_audio
 import subtitles
 import translator
-import trivia
 import voice_phrases
 import tts
 import video_library
@@ -85,9 +83,11 @@ class MechApp:
         # Throttle del aviso "no saludo porque estoy despierto": la visión
         # detecta a ~10 fps y si no llenaría el panel de logs iguales.
         self._last_greeting_skip_log: float = 0.0
-        # Lo último que MECH narró (título, texto y obra), que es sobre lo
-        # que van las preguntas de la trivia.
-        self._last_presentation: dict | None = None
+        # Cuántas presentaciones hay en curso (narración de un plan o
+        # playlist de marketing). Mientras sea > 0, MECH NO saluda: la fase
+        # de voz puede cambiar a mitad de una presentación, esto no.
+        self._presenting = 0
+        self._presenting_lock = threading.Lock()
         # Subtítulos: hilo que va sacando las líneas al ritmo real de la voz.
         self._subs_cancel: threading.Event | None = None
         # Mientras esto está activo, las RUEDAS están en medio de una maniobra
@@ -147,11 +147,6 @@ class MechApp:
             # {active, awaiting_pair, src, dst, auto_detect}. Ver
             # backend/translator.py.
             "translator": translator.snapshot(),
-            # Estado del juego de preguntas. OJO: esto es lo que se PINTA en
-            # la proyección, no la verdad del juego — el marcador final se
-            # queda unos segundos en pantalla cuando la partida ya terminó.
-            # Para saber si se está jugando, `trivia.is_active()`.
-            "trivia": trivia.snapshot(),
             # Estado de la visión (lo actualiza backend/vision.py).
             "vision": {
                 "enabled": False,
@@ -232,13 +227,6 @@ class MechApp:
     # Patrón del aro de LEDs (estilo Alexa) para cada fase de voz.
     _LED_BY_PHASE = {
         "off": "OFF",
-        # Arrancando (cargando Whisper): el aro pulsa como "pensando", que es
-        # lo que de verdad está haciendo. No "IDLE", que es el de reposo y
-        # daría a entender que ya escucha.
-        "loading": "THINK",
-        # Sin micrófono (no se pudo abrir): rojo, como el paro. Es un fallo
-        # que hay que ver desde lejos.
-        "nomic": "ERR",
         "dormant": "IDLE",
         "waiting": "LISTEN",
         "listening": "LISTEN",
@@ -250,10 +238,7 @@ class MechApp:
     def set_voice_phase(self, phase: str) -> None:
         """Actualiza la fase del ciclo de voz y la difunde al panel.
 
-        Fases: off | loading | dormant | waiting | listening | transcribing |
-        thinking | speaking. "loading" es mientras carga Whisper al arrancar:
-        ahí el micrófono está CERRADO, y decirlo evita el susto de "MECH no
-        me oye al encender el server".
+        Fases: off | waiting | listening | transcribing | thinking | speaking.
         `voice_listening` se mantiene en sincronía (True solo cuando el
         micrófono está realmente abierto) para no romper indicadores viejos.
         También sincroniza el aro de LEDs del robot (como un Alexa Echo:
@@ -332,33 +317,30 @@ class MechApp:
                 "waiting" if self.state.get("voice_awake", True) else "dormant"
             )
 
-    def start_translator(
-        self,
-        src: str | None = None,
-        dst: str | None = None,
-        continuous: bool = False,
-    ) -> None:
-        """Arranca el traductor: pregunta lo que falte y se queda escuchando.
+    def start_translator(self, src: str | None = None, dst: str | None = None) -> None:
+        """Arranca UN turno de traducción: pregunta y se queda escuchando.
 
-        `continuous=False` («traduce MECH») traduce UNA frase y se calla; hay
-        que repetir el comando para la siguiente. `continuous=True` («activa
-        modo traductor») se queda traduciendo hasta que le digan que lo
-        desactive. Ver backend/translator.py para por qué el continuo necesita
-        más cuidado con el eco.
+        Es un turno por comando a propósito (ver backend/translator.py): al
+        terminar de traducir una frase MECH se calla y hay que volver a
+        decirle «traduce MECH». Así el micrófono nunca está abierto justo
+        después de que él hable, que era lo que hacía que se tradujera a sí
+        mismo en bucle.
 
-        Si ya sabe el par de idiomas (de una vez anterior, porque lo eligieron
-        en el panel o porque lo dijeron en el propio comando), va directo a
-        pedir la frase. Si no, pregunta primero por los idiomas.
+        Si ya sabe el par de idiomas (de un «traduce MECH» anterior, o porque
+        lo eligieron en el panel / lo dijeron en el propio comando), va
+        directo a pedir la frase. Si no, pregunta primero por los idiomas.
         """
         src, dst = self._resolve_pair(src, dst)
-        etapa = translator.begin(src, dst, continuous=continuous)
+        etapa = translator.begin(src, dst)
         with self._talking_alone():
-            if etapa == "phrase":
-                # Ya hay par: lo confirma (o va al grano) y se pone a escuchar.
-                self._announce_pair(nuevo=bool(src and dst))
+            if etapa == "phrase" and src and dst:
+                # Par nuevo: lo confirma y pide la frase de una vez.
+                self._announce_pair()
+            elif etapa == "phrase":
+                # Ya lo sabía de antes: al grano.
+                self._ask_phrase()
             else:
-                modo = "continuo" if continuous else "de una frase"
-                self.log(f"Modo traductor {modo}: pregunto el par de idiomas.", "ok")
+                self.log("Modo traductor: pregunto el par de idiomas.", "ok")
                 self._emit_translator()
                 tts.speak(lang.say("translate_ask"), blocking=True)
                 time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
@@ -385,38 +367,28 @@ class MechApp:
             return None, None
         return src, dst
 
-    def _announce_pair(self, nuevo: bool = True) -> None:
-        """Confirma el par de idiomas y se queda escuchando.
-
-        `nuevo` distingue "acabamos de fijar este par" de "ya lo sabía de
-        antes". En el segundo caso va al grano, que en un stand se agradece.
-        En modo CONTINUO lo anuncia distinto: hay que decirle al visitante que
-        no tiene que repetir el comando en cada frase.
-        """
+    def _announce_pair(self) -> None:
+        """Confirma el par de idiomas Y pide la frase, en una sola frase."""
         src, dst = translator.pair()
-        continuo = translator.is_continuous()
         self.log(
             f"Traduzco entre {lang.label(src)} y {lang.label(dst)}"
-            f"{' (los dos sentidos)' if config.TRANSLATOR_AUTO_DETECT else ''}"
-            f"{' — modo CONTINUO' if continuo else ''}.",
+            f"{' (los dos sentidos)' if config.TRANSLATOR_AUTO_DETECT else ''}.",
             "ok",
         )
         self._emit_translator()
-        if continuo:
-            texto = lang.say(
-                "translate_on_continuous",
-                src=lang.language_name(src),
-                dst=lang.language_name(dst),
-            )
-        elif nuevo:
-            texto = lang.say(
-                "translate_ready",
-                src=lang.language_name(src),
-                dst=lang.language_name(dst),
-            )
-        else:
-            texto = lang.say("translate_ask_phrase")
+        texto = lang.say(
+            "translate_ready",
+            src=lang.language_name(src),
+            dst=lang.language_name(dst),
+        )
         self._say_and_listen(texto)
+
+    def _ask_phrase(self) -> None:
+        """Pide la frase a traducir (el par ya se sabe de antes)."""
+        src, dst = translator.pair()
+        self.log(f"Traductor listo ({lang.label(src)} / {lang.label(dst)}).", "ok")
+        self._emit_translator()
+        self._say_and_listen(lang.say("translate_ask_phrase"))
 
     def _say_and_listen(self, texto: str) -> None:
         """Dice una pregunta del traductor y deja el micrófono listo.
@@ -451,7 +423,7 @@ class MechApp:
             self.set_voice_phase("waiting")
             return
         translator.set_pair(src, dst)
-        self._announce_pair(nuevo=True)
+        self._announce_pair()
         self.set_voice_phase("waiting")
 
     def handle_translation(self, text: str, detected: str | None = None) -> None:
@@ -464,20 +436,10 @@ class MechApp:
         pantalla (no se borra al terminar) para que dé tiempo a leerlo.
         """
         text = (text or "").strip()
-        # Guarda anti-eco: si lo que oyó es casi algo que él mismo acaba de
-        # decir (la pregunta, o la traducción anterior en modo continuo), es
-        # su propio parlante. Se descarta y se vuelve a escuchar SIN DECIR
-        # NADA — eso es lo que impide que el modo continuo se realimente.
+        # Guarda anti-eco: si lo que oyó es casi lo último que él mismo dijo
+        # (la pregunta), es su propio parlante. Se vuelve a pedir la frase.
         if text and translator.looks_like_own_echo(text, voice_phrases.normalize):
             self.log(f"Ignoro mi propio eco: {text!r}", "info")
-            seguidos = translator.echo_streak()
-            if seguidos >= 3:
-                self.log(
-                    f"Llevo {seguidos} ecos seguidos: me estoy oyendo a mí "
-                    "mismo. Sube «Espera del traductor continuo» en Ajustes "
-                    "(TRANSLATOR_CONTINUOUS_DRAIN_SECONDS).",
-                    "warn",
-                )
             text = ""
         if not text:
             self.set_voice_phase("waiting")
@@ -501,30 +463,17 @@ class MechApp:
         self.state["last_ai_response"] = traduccion
         self.emit("ai_response", text=traduccion)
         self.set_subtitle(traduccion, destino)
-        # La traducción también se recuerda para la guarda anti-eco. En modo
-        # continuo esto es IMPRESCINDIBLE: el micrófono se abre justo después
-        # de decirla, así que es lo que más se puede colar.
-        translator.remember_spoken(traduccion)
         self.set_voice_phase("speaking")
         tts.speak(traduccion, blocking=True)
-        sigue = translator.finish()
+        # Y aquí SE CALLA: el turno terminó. Para traducir otra frase hay que
+        # volver a decir «traduce MECH». El par de idiomas se recuerda.
+        translator.finish()
         self._emit_translator()
-        if sigue:
-            # CONTINUO: no dice nada más (cada frase suya es eco en potencia),
-            # solo espera más tiempo a que el parlante drene y vuelve a
-            # escuchar. El chime avisa al visitante de que le toca.
-            self.log("Traducción lista. Sigo escuchando (modo continuo).", "info")
-            time.sleep(config.TRANSLATOR_CONTINUOUS_DRAIN_SECONDS)
-            self.chime_pending = True
-        else:
-            # UNA FRASE: aquí se calla. Para la siguiente hay que volver a
-            # decir «traduce MECH». El par de idiomas se recuerda.
-            self.log(
-                "Traducción lista. Decí «traduce MECH» otra vez para la "
-                "siguiente, o «activa modo traductor» para que no pare.",
-                "info",
-            )
-            time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
+        self.log(
+            "Traducción lista. Decí «traduce MECH» otra vez para la siguiente.",
+            "info",
+        )
+        time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
         self.set_voice_phase("waiting")
 
     def stop_translator(self, announce: bool = True) -> None:
@@ -544,297 +493,6 @@ class MechApp:
             with self._talking_alone():
                 tts.speak(lang.say("translate_off"), blocking=True)
                 time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
-
-    # ------------------------------------------------------------------
-    # Modo TRIVIA — el juego de preguntas (ver backend/trivia.py)
-    # ------------------------------------------------------------------
-
-    def _emit_trivia(self, snap: dict | None = None) -> None:
-        """Manda a la proyección y al panel lo que hay que pintar.
-
-        Va por evento WS **y** por `state`: el evento pinta al instante, y el
-        estado hace que una pantalla que se recargue a media partida vuelva a
-        la pregunta correcta sin preguntar nada.
-        """
-        snap = snap if snap is not None else trivia.snapshot()
-        self.state["trivia"] = snap
-        self.emit("trivia", **snap)
-
-    def _clear_trivia_screen(self) -> None:
-        """Quita el juego de la pantalla (la partida ya terminó)."""
-        self._emit_trivia({"active": False, "stage": "off"})
-
-    def _say_trivia(self, texto: str, listen: bool = True) -> None:
-        """Dice algo del juego y deja el micrófono listo para contestar.
-
-        Guarda lo dicho para la guarda anti-eco: el micrófono se abre justo
-        después de hablar y el parlante arrastra buffer, así que sin esto
-        MECH acabaría contestándose a sí mismo.
-        """
-        trivia.remember_spoken(texto)
-        tts.speak(texto, blocking=True)
-        time.sleep(config.TRIVIA_DRAIN_SECONDS)
-        if listen:
-            self.chime_pending = True  # chime de "te toca", como tras "ok MECH"
-
-    def _remember_presentation(self, plan: "llm.Plan", narrados: list[str]) -> None:
-        """Se queda con lo que MECH acaba de contar, para preguntar sobre eso.
-
-        `narrados` son los segmentos que de verdad sonaron: si lo
-        interrumpieron a la mitad, no tiene sentido preguntar por lo que el
-        visitante no llegó a oír.
-        """
-        if not narrados:
-            return
-        slug = next((s.video_slug for s in plan.segments if s.video_slug), None)
-        self._last_presentation = {
-            "title": plan.title,
-            "text": "\n".join(narrados),
-            "slug": slug,
-        }
-
-    def _trivia_source(self) -> tuple[str, str]:
-        """(título, material) sobre el que se escriben las preguntas.
-
-        Lo normal es lo último que narró, más los **datos verificados** de esa
-        obra (`facts` de video_library): así las preguntas salen de material
-        comprobado y no de lo que el modelo recuerde. Si todavía no ha contado
-        nada, la partida va sobre MECH y su proyecto.
-        """
-        pres = self._last_presentation
-        if pres and pres.get("text"):
-            partes = [pres["text"]]
-            meta = video_library.WORKS.get(pres.get("slug") or "", {})
-            datos = meta.get("facts") or []
-            if datos:
-                partes.append("Datos verificados de la obra:\n- " + "\n- ".join(datos))
-            return pres.get("title") or meta.get("title", ""), "\n\n".join(partes)
-        return (
-            "MECH y su equipo",
-            informacion_nuestra.system_prompt_section(),
-        )
-
-    def should_offer_trivia(self, plan: "llm.Plan") -> bool:
-        """¿Toca ofrecer el juego al acabar esta narración?
-
-        Solo tras una presentación de verdad (`immersive`): tras una respuesta
-        suelta o una orden de movimiento, ofrecer un juego queda fuera de
-        lugar. Y nunca si hay otra cosa en marcha (traductor) o si el bucle de
-        voz está apagado, porque entonces nadie podría contestar.
-        """
-        return bool(
-            config.TRIVIA_ENABLED
-            and config.TRIVIA_OFFER_AFTER_PLAN
-            and getattr(plan, "mode", "") == "immersive"
-            and self._last_presentation
-            and self.state["voice_loop_active"]
-            and self.state.get("voice_awake", True)
-            and not translator.is_active()
-            and not trivia.is_active()
-        )
-
-    def offer_trivia(self, title: str = "") -> None:
-        """Ofrece jugar y se queda esperando un sí o un no."""
-        trivia.offer(title or (self._last_presentation or {}).get("title", ""))
-        self.log("Ofrezco la trivia: espero un sí o un no.", "ok")
-        self._emit_trivia()
-        self._say_trivia(lang.say("trivia_offer"))
-
-    def handle_trivia_offer(self, text: str) -> bool:
-        """Interpreta la respuesta a "¿jugamos?".
-
-        Devuelve True si la consumió. **False significa "esto no era para
-        mí"**: el visitante cambió de tema («cuéntame otra cosa»), así que se
-        cancela el ofrecimiento y quien llama lo procesa como un comando
-        normal. Sin esto, decir cualquier otra cosa dejaría a MECH atascado
-        preguntando por un juego que ya no interesa.
-        """
-        if self._trivia_echo(text):
-            return True
-        if voice_phrases.is_trivia_stop(text) or voice_phrases.is_no(text):
-            trivia.reset()
-            self._clear_trivia_screen()
-            self.log("No quieren jugar: sigo normal.", "info")
-            with self._talking_alone():
-                self._say_trivia(lang.say("trivia_declined"))
-            return True
-        if voice_phrases.is_yes(text) or voice_phrases.is_trivia(text):
-            self.start_trivia()
-            return True
-        # Cualquier otra cosa: no era una respuesta al ofrecimiento.
-        trivia.reset()
-        self._clear_trivia_screen()
-        self.log("Cambió de tema: cancelo el ofrecimiento de la trivia.", "info")
-        return False
-
-    def _trivia_echo(self, text: str) -> bool:
-        """¿Lo que oyó es su propia voz saliendo del parlante?"""
-        if any(voice_phrases.sounds_like_same(text, d) for d in trivia.spoken()):
-            self.log(f"Ignoro mi propio eco: {text!r}", "info")
-            return True
-        return False
-
-    def start_trivia(self) -> None:
-        """Genera las preguntas y lanza la primera.
-
-        Avisa por voz antes de pedirle las preguntas a Claude: son varios
-        segundos y, sin avisar, parece que MECH se colgó.
-        """
-        titulo, material = self._trivia_source()
-        with self._talking_alone():
-            trivia.reset()
-            self._emit_trivia()
-            tts.speak(lang.say("trivia_preparing"), blocking=True)
-            self.set_voice_phase("thinking")
-            try:
-                preguntas = llm.make_quiz(
-                    material,
-                    title=titulo,
-                    n=config.TRIVIA_QUESTIONS,
-                    language=lang.current(),
-                )
-            except Exception as e:
-                self.log(f"No pude preparar la trivia: {e}", "err")
-                preguntas = []
-            if not preguntas or not trivia.load(preguntas, titulo):
-                trivia.reset()
-                self._clear_trivia_screen()
-                self._say_trivia(lang.say("trivia_failed"))
-                return
-            self.log(
-                f"Trivia lista: {trivia.total()} preguntas sobre «{titulo}».", "ok"
-            )
-            self.set_voice_phase("speaking")
-            tts.speak(lang.say("trivia_intro", total=trivia.total()), blocking=True)
-            self._ask_trivia_question()
-
-    def _ask_trivia_question(self) -> None:
-        """Proyecta la pregunta actual y la lee en voz alta con sus opciones."""
-        pregunta = trivia.current()
-        if pregunta is None:
-            self._finish_trivia()
-            return
-        self._emit_trivia()
-        letras = trivia.LETTERS
-        opciones = ". ".join(
-            f"{letras[i]}. {op}" for i, op in enumerate(pregunta["options"])
-        )
-        texto = (
-            lang.say("trivia_question_header", n=trivia.number(), total=trivia.total())
-            + " " + pregunta["question"] + " " + opciones + "."
-        )
-        self.log(
-            f"Pregunta {trivia.number()}/{trivia.total()}: {pregunta['question']}",
-            "info",
-        )
-        self._say_trivia(texto)
-
-    def handle_trivia_answer(self, text: str) -> None:
-        """Interpreta la respuesta del visitante y revela el resultado."""
-        if self._trivia_echo(text):
-            return
-        pregunta = trivia.current()
-        if pregunta is None:
-            self._finish_trivia()
-            return
-        self.state["last_transcript"] = text
-        self.emit("transcript", text=text)
-        eleccion = voice_phrases.parse_answer(text, pregunta["options"])
-        if eleccion is None:
-            # No se entendió (o dijo que no lo sabe). A la segunda se revela
-            # la respuesta y se sigue: insistir con "decí A, B o C" a alguien
-            # que no te entiende es la peor experiencia posible en un stand.
-            if trivia.miss() >= 2:
-                trivia.give_up()
-                self._reveal_trivia()
-            else:
-                self.log(f"No entendí la respuesta: {text!r}", "warn")
-                with self._talking_alone():
-                    self._say_trivia(lang.say("trivia_repeat"))
-            return
-        acerto = trivia.answer(eleccion)
-        self.log(
-            f"Respondió {trivia.LETTERS[eleccion]} — "
-            f"{'correcto' if acerto else 'incorrecto'}.",
-            "ok" if acerto else "warn",
-        )
-        self._reveal_trivia()
-
-    def _reveal_trivia(self) -> None:
-        """Enseña el resultado en pantalla, lo dice, y pasa a la siguiente."""
-        pregunta = trivia.current()
-        snap = trivia.snapshot()
-        self._emit_trivia(snap)          # la pantalla celebra o revela
-        correcta = pregunta["correct"] if pregunta else 0
-        letra = trivia.LETTERS[correcta]
-        respuesta = pregunta["options"][correcta] if pregunta else ""
-        if snap["result"] == "correct":
-            texto = lang.say("trivia_correct")
-        elif snap["result"] == "pass":
-            texto = lang.say("trivia_pass", letter=letra, answer=respuesta)
-        else:
-            texto = lang.say("trivia_wrong", letter=letra, answer=respuesta)
-        with self._talking_alone():
-            # `listen=False`: aquí no toca contestar nada, y el chime sonaría
-            # a destiempo justo antes de la siguiente pregunta.
-            self._say_trivia(texto, listen=False)
-            if trivia.advance():
-                self._ask_trivia_question()
-            else:
-                self._finish_trivia()
-
-    def _finish_trivia(self) -> None:
-        """Marcador final: lo proyecta, lo dice y limpia la pantalla luego."""
-        snap = trivia.snapshot()
-        aciertos, total = snap["score"], snap["total"]
-        self._emit_trivia(snap)
-        if total and aciertos == total:
-            texto = lang.say("trivia_perfect", total=total)
-        elif not aciertos:
-            texto = lang.say("trivia_zero")
-        else:
-            texto = lang.say("trivia_final", score=aciertos, total=total)
-        self.log(f"Fin de la trivia: {aciertos} de {total}.", "ok")
-        tts.speak(texto, blocking=True)
-        trivia.reset()
-        # El marcador se queda unos segundos en pantalla mientras MECH ya
-        # vuelve a escuchar: por eso se limpia con un temporizador y no aquí.
-        threading.Timer(
-            config.TRIVIA_FINAL_SECONDS, self._clear_trivia_screen
-        ).start()
-        time.sleep(config.TRIVIA_DRAIN_SECONDS)
-        self.chime_pending = True
-
-    def stop_trivia(self, announce: bool = True) -> None:
-        """Sale del juego (lo pidieron, se durmió, o paro de emergencia)."""
-        if not trivia.is_active():
-            return
-        trivia.reset()
-        self.log("Trivia cancelada.", "info")
-        self._clear_trivia_screen()
-        if announce:
-            with self._talking_alone():
-                tts.speak(lang.say("trivia_off"), blocking=True)
-                time.sleep(config.TRIVIA_DRAIN_SECONDS)
-
-    def answer_trivia_from_panel(self, choice: int) -> bool:
-        """Responde desde el panel, sin micrófono (para probar el juego).
-
-        Devuelve False si ahora mismo no hay una pregunta esperando.
-        """
-        pregunta = trivia.current()
-        if not trivia.is_asking() or pregunta is None:
-            return False
-        if not (0 <= choice < len(pregunta["options"])):
-            return False
-        acerto = trivia.answer(choice)
-        self.log(
-            f"Respuesta desde el panel: {trivia.LETTERS[choice]} — "
-            f"{'correcto' if acerto else 'incorrecto'}.",
-            "ok" if acerto else "warn",
-        )
-        self._reveal_trivia()
-        return True
 
     # ------------------------------------------------------------------
     # Subtítulos de la proyección (estilo cine: abajo, centrados)
@@ -978,10 +636,9 @@ class MechApp:
     def start_subtitles(self, text: str, info: dict, code: str | None = None) -> None:
         """Arranca los subtítulos de `text` sincronizados con la voz.
 
-        `code` fuerza el idioma del subtítulo. Hace falta para el saludo por
-        cámara, que sale en `GREETING_LANGUAGE` (inglés) aunque MECH esté en
-        español: sin esto, el subtítulo diría que es español y la pantalla lo
-        etiquetaría mal. None = el idioma activo, que es lo normal.
+        `code` fuerza el idioma del subtítulo. Hace falta para el saludo, que
+        sale en `GREETING_LANGUAGE` (inglés) aunque MECH esté en español.
+        None = el idioma activo, que es lo normal.
 
         Lo llama `tts.speak` en el instante EXACTO en que empieza a sonar el
         audio, con su duración real (y, si ElevenLabs lo dio, el segundo de
@@ -1029,10 +686,9 @@ class MechApp:
         en reposo y, por el eco del parlante, captaría su propia voz diciendo
         "despierta MECH" y se despertaría solo."""
         self.state["voice_awake"] = False
-        # Dormirse también saca del modo traductor y de la trivia (sin
-        # anunciarlo: ya va a decir la frase de reposo justo aquí abajo).
+        # Dormirse también saca del modo traductor (sin anunciarlo: ya va a
+        # decir la frase de reposo justo aquí abajo).
         self.stop_translator(announce=False)
-        self.stop_trivia(announce=False)
         self.log(
             "MECH en reposo. Di 'ok MECH' (o 'wake up MECH' para inglés).",
             "info",
@@ -1077,20 +733,49 @@ class MechApp:
 
     # Fases en las que MECH está ocupado con alguien: no se le puede soltar
     # un saludo encima. `listening` incluida: está GRABANDO a un visitante.
-    # Fases en las que MECH NO puede ponerse a saludar: está hablando,
-    # procesando, grabando a alguien... o todavía arrancando ("loading",
-    # mientras carga Whisper). Saludar recién encendido, antes de poder
-    # escuchar la respuesta, deja al visitante hablándole a un robot sordo.
-    _BUSY_PHASES = ("speaking", "thinking", "transcribing", "listening", "loading")
+    _BUSY_PHASES = ("speaking", "thinking", "transcribing", "listening")
+
+    @contextmanager
+    def _presentation(self):
+        """Marca que hay una presentación en curso (narración o playlist).
+
+        Mientras dure, MECH no saluda, pase lo que pase con la fase de voz.
+        Es un contador y no un booleano por si una presentación arranca
+        dentro de otra; el `finally` garantiza que siempre vuelve a bajar.
+        """
+        with self._presenting_lock:
+            self._presenting += 1
+        try:
+            yield
+        finally:
+            with self._presenting_lock:
+                self._presenting -= 1
+
+    def _greeting_blocked(self) -> str | None:
+        """¿Por qué NO puede saludar ahora? None = puede.
+
+        Dos reglas, las mismas para la cámara y para el botón del panel:
+          1. NUNCA mientras presenta algo (narra, proyecta marketing, piensa
+             o graba a alguien). No es configurable: saludar encima de una
+             presentación es justo lo que el equipo pidió evitar.
+          2. Solo EN REPOSO (`GREETING_ONLY_DORMANT`, default true). Despierto
+             está atendiendo a alguien.
+        """
+        if self._presenting > 0 or self.state.get("voice_phase") in self._BUSY_PHASES:
+            return "MECH está presentando o hablando con alguien ahora mismo"
+        if config.GREETING_ONLY_DORMANT and self.state.get("voice_awake", True):
+            return "MECH está despierto y el saludo solo va en reposo"
+        return None
 
     def on_user_detected(self) -> None:
         """Alguien entró al campo de la cámara: MECH lo saluda.
 
-        **Solo saluda EN REPOSO** (`GREETING_ONLY_DORMANT`, decisión del
-        equipo de sep 2026). Despierto está narrando una obra, conversando o
-        traduciendo, y soltar "¡Hola! Soy MECH" encima de eso le corta la
-        experiencia al visitante que ya está atendiendo. En reposo es justo
-        lo contrario: alguien se acerca al stand y MECH lo recibe.
+        **Solo saluda EN REPOSO y nunca mientras presenta algo** (decisión
+        del equipo, sep 2026; ver `_greeting_blocked`). Despierto está
+        narrando una obra, conversando o traduciendo, y soltar "Hello! I am
+        MECH" encima de eso le corta la experiencia al visitante que ya está
+        atendiendo. En reposo es justo lo contrario: alguien se acerca al
+        stand y MECH lo recibe.
 
         Con cooldown (`GREETING_COOLDOWN`) para no saludar en bucle a la
         misma persona. El gesto y la voz van JUNTOS y bajo el MISMO cooldown
@@ -1099,14 +784,10 @@ class MechApp:
         narración volvía a "detectar" y el brazo se movía solo, sin decir
         nada).
         """
-        if config.GREETING_ONLY_DORMANT and self.state.get("voice_awake", True):
-            self._log_greeting_skip(
-                "No saludo al visitante: MECH está despierto (atendiendo a "
-                "alguien). Se saluda solo en reposo."
-            )
+        motivo = self._greeting_blocked()
+        if motivo:
+            self._log_greeting_skip(f"No saludo al visitante: {motivo}.")
             return
-        if self.state.get("voice_phase") in self._BUSY_PHASES:
-            return  # no interrumpir una narración ni una grabación en curso
         if not self._greeting_rearmed():
             return  # es el mismo de antes, no un visitante nuevo
         now = time.time()
@@ -1145,11 +826,11 @@ class MechApp:
         self.log(mensaje, "info")
 
     def _greeting_language(self) -> str:
-        """Idioma en el que sale el saludo por cámara.
+        """Idioma en el que sale el saludo.
 
         `GREETING_LANGUAGE` (inglés por defecto). Si está vacío o trae algo
-        que no reconocemos, se usa el idioma activo — que es como funcionaba
-        antes, así que una clave mal escrita no deja a MECH mudo.
+        que no reconocemos, se usa el idioma activo, así que una clave mal
+        escrita no deja a MECH mudo.
         """
         code = (config.GREETING_LANGUAGE or "").strip().lower()
         return code if code in lang.SUPPORTED else lang.current()
@@ -1169,12 +850,12 @@ class MechApp:
             # Ventana provisional amplia mientras habla; al terminar se
             # ajusta a un margen corto para drenar el eco del parlante.
             self.greeting_until = time.time() + 20
-            # El saludo sale en `GREETING_LANGUAGE` (inglés por defecto), NO
-            # en el idioma activo. Es lo primero que oye quien llega al
-            # stand, y conviene que lo entienda cualquiera; el idioma de la
-            # conversación lo sigue decidiendo la frase con que lo despierten.
+            # Sale en `GREETING_LANGUAGE` (inglés por defecto), NO en el
+            # idioma activo: es lo primero que oye quien llega al stand. El
+            # idioma de la conversación lo sigue decidiendo la frase con la
+            # que despierten a MECH.
             idioma = self._greeting_language()
-            texto = lang.say("greeting", code=idioma)
+            texto = lang.say("greeting", idioma)
             try:
                 tts.speak(
                     texto,
@@ -1195,25 +876,13 @@ class MechApp:
         Se salta el COOLDOWN y la regla de "visitante nuevo" — para eso está,
         para poder probarlo sin salir y entrar del campo de la cámara.
 
-        Pero **respeta la regla de "solo en reposo"** igual que el saludo por
-        cámara (sep 2026, pedido del equipo: "que solo pueda saludar si está
-        en reposo"). Antes era una excepción, y eso hacía que MECH saludara
-        estando despierto cuando alguien pulsaba el botón — justo lo que se
-        quería evitar. Ahora la regla es UNA y vale para todos los caminos.
-
-        Para probar el saludo con MECH despierto, se apaga la regla en
-        Ajustes → «Saludar por cámara solo en reposo».
+        Pero respeta las MISMAS reglas que el saludo por cámara: solo en
+        reposo y nunca mientras presenta algo (`_greeting_blocked`). Para
+        probarlo con MECH despierto, se apaga la regla de reposo en Ajustes.
         """
-        if self.state.get("voice_phase") in self._BUSY_PHASES:
-            self.log("No saludo: MECH está hablando o grabando ahora mismo.", "warn")
-            return
-        if config.GREETING_ONLY_DORMANT and self.state.get("voice_awake", True):
-            self.log(
-                "No saludo: MECH está DESPIERTO y el saludo solo va en "
-                "reposo. Dormilo («duérmete MECH») o apagá la regla en "
-                "Ajustes → «Saludar por cámara solo en reposo».",
-                "warn",
-            )
+        motivo = self._greeting_blocked()
+        if motivo:
+            self.log(f"No saludo: {motivo}.", "warn")
             return
         self._perform_greeting()
 
@@ -1275,15 +944,9 @@ class MechApp:
             pass
         # Voz
         self.state["voice_loop_active"] = False
-        # Modo traductor y trivia: se apagan sin anunciarlo (el TTS acaba de
-        # cortarse, así que no habría con qué decirlo).
+        # Modo traductor: se apaga sin anunciarlo (el TTS acaba de cortarse).
         try:
             self.stop_translator(announce=False)
-        except Exception:
-            pass
-        try:
-            trivia.reset()
-            self._clear_trivia_screen()
         except Exception:
             pass
         # Proyección
@@ -1407,6 +1070,11 @@ class MechApp:
     # ------------------------------------------------------------------
 
     def play_playlist(self, slug: str) -> bool:
+        """Proyecta un slot promo; mientras dura, MECH no saluda."""
+        with self._presentation():
+            return self._play_playlist(slug)
+
+    def _play_playlist(self, slug: str) -> bool:
         """Reproduce un slot promo (ej. "marketing") de principio a fin.
 
         A diferencia de una historia normal, aquí MECH **no narra**: los
@@ -1605,6 +1273,11 @@ class MechApp:
             self.wheels_busy.clear()
 
     def execute_plan(self, plan: "llm.Plan") -> None:
+        """Ejecuta el plan de Claude; mientras dura, MECH no saluda."""
+        with self._presentation():
+            self._execute_plan(plan)
+
+    def _execute_plan(self, plan: "llm.Plan") -> None:
         """Ejecuta el plan de Claude (varios segmentos)."""
         # Si quedó de espaldas ("mira hacia afuera"), primero vuelve a mirar a
         # la proyección: no tiene sentido narrar una historia proyectando
@@ -1645,9 +1318,6 @@ class MechApp:
         guion = " ".join(seg.narration for seg in plan.segments)
         if self.interrupts.start(guard_text=guion):
             self.log("Puedes decir 'oye MECH' para interrumpirme.", "info")
-        # Lo que de verdad llegó a sonar. Es lo que se usa para la trivia: si
-        # lo interrumpen a la mitad, preguntar por lo que no oyó sería injusto.
-        narrados: list[str] = []
         try:
             for i, seg in enumerate(plan.segments, 1):
                 if self._narration_interrupted:
@@ -1696,7 +1366,6 @@ class MechApp:
                     on_playback=lambda info, t=seg.narration: self.start_subtitles(t, info),
                 )
                 self.stop_subtitles()  # calló: fuera el texto hasta el próximo
-                narrados.append(seg.narration)
         finally:
             self.interrupts.stop()
             background_audio.stop()
@@ -1729,13 +1398,6 @@ class MechApp:
                     time.sleep(0.5)  # que el parlante drene antes de escuchar
                     self.chime_pending = True
                     self.log("Te escucho: dime de qué quieres que hable.", "ok")
-            # Lo narrado se recuerda SIEMPRE (también si lo interrumpieron):
-            # así un "juguemos una trivia" posterior pregunta sobre esto.
-            self._remember_presentation(plan, narrados)
-            if not self._narration_interrupted and self.should_offer_trivia(plan):
-                # Se acabó la presentación y nadie la cortó: el mejor momento
-                # para proponer el juego.
-                self.offer_trivia(plan.title)
             self.arduino.set_mode("IDLE")
 
     def _start_background_music(self, plan: "llm.Plan") -> None:
@@ -1787,48 +1449,15 @@ class MechApp:
         self.state["last_transcript"] = text
         self.emit("transcript", text=text)
         self.log(f"Comando: {text!r}", "info")
-        # REPOSO: "duérmete MECH". Va lo PRIMERO de todo y no pasa por Claude.
-        #
-        # ⚠️ Esto está aquí porque el equipo reportó (sep 2026) que a veces
-        # MECH "decía una frase larga sobre que se iba a modo reposo, pero
-        # volvía a abrir el micrófono". Era exactamente eso: la frase no
-        # casaba con la lista, el texto llegaba a Claude, Claude improvisaba
-        # una despedida bonita... y MECH NO se dormía, porque dormirse no es
-        # algo que un plan pueda hacer. Interceptándolo aquí, cualquier
-        # camino que llegue a un comando de texto (voz, panel, petición
-        # pendiente tras un "oye MECH") duerme a MECH de verdad.
-        if voice_phrases.is_sleep_any(text):
-            self.log("Me piden reposo: me duermo (sin pasar por Claude).", "info")
-            self.go_dormant()
+        # "traduce MECH": arranca UN turno de traducción. Va ANTES que todo
+        # lo demás y no pasa por Claude. Si el comando nombra los idiomas
+        # ("traduce MECH del inglés al portugués"), se toman de ahí; si no,
+        # se reutiliza el par de la vez anterior y, si tampoco lo hay, MECH
+        # pregunta.
+        if config.TRANSLATOR_ENABLED and voice_phrases.is_translate(text):
+            src, dst = voice_phrases.extract_language_pair(text)
+            self.start_translator(src, dst)
             return
-        # Traductor. El ORDEN importa: "desactiva el modo traductor" contiene
-        # "modo traductor", así que apagar se mira antes que encender.
-        if config.TRANSLATOR_ENABLED:
-            if voice_phrases.is_translate_stop(text):
-                self.stop_translator()
-                return
-            # "activa modo traductor": se queda traduciendo hasta que le digan
-            # que lo desactive.
-            if voice_phrases.is_translate_on(text):
-                src, dst = voice_phrases.extract_language_pair(text)
-                self.start_translator(src, dst, continuous=True)
-                return
-            # "traduce MECH": UNA frase y se calla. Si el comando nombra los
-            # idiomas ("traduce MECH del inglés al portugués"), se toman de
-            # ahí; si no, se reutiliza el par de la vez anterior y, si tampoco
-            # lo hay, MECH pregunta.
-            if voice_phrases.is_translate(text):
-                src, dst = voice_phrases.extract_language_pair(text)
-                self.start_translator(src, dst)
-                return
-        # Trivia. Igual que el traductor, salir se mira ANTES que entrar.
-        if config.TRIVIA_ENABLED:
-            if voice_phrases.is_trivia_stop(text):
-                self.stop_trivia()
-                return
-            if voice_phrases.is_trivia(text):
-                self.start_trivia()
-                return
         # Órdenes de movimiento: se atienden aquí mismo, sin llamar a Claude.
         if self.handle_movement_command(text):
             if self.state["voice_loop_active"]:
@@ -1848,15 +1477,6 @@ class MechApp:
                 language=lang.current(),
             )
             self.log(f"Plan: {plan.mode} — {plan.title}", "ok")
-            # Tercera red del modo reposo: la frase no casó con ninguna lista
-            # (Whisper la deformó), pero Claude sí entendió que le pedían
-            # callarse. Nos dormimos aquí, SIN narrar el plan: si no, MECH
-            # soltaría una despedida improvisada y seguiría despierto — el
-            # fallo exacto que reportó el equipo (sep 2026).
-            if plan.mode == "sleep":
-                self.log("Claude entendió que me piden reposo: me duermo.", "info")
-                self.go_dormant()
-                return
             self.execute_plan(plan)
             self.history = llm.append_turn(self.history, text, plan)
             if len(self.history) > 12:

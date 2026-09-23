@@ -353,10 +353,6 @@ Si los 5 pasan, el bucle completo va a funcionar.
 
 ## 6. Operación normal
 
-> 📖 **Para USAR MECH en el stand** (qué decirle, qué hace cada comando, qué
-> tocar cuando algo falla) la guía es **[`USO.md`](USO.md)**. Esta sección es
-> cómo arrancarlo; aquélla es cómo manejarlo.
-
 **Recomendado:** usa el servidor completo (`backend/server.py`) que sirve también el panel de control web. Lee [`FRONTEND.md`](FRONTEND.md) para la operación completa con frontend y control desde Windows.
 
 ### Modo recomendado — servidor + panel web
@@ -375,10 +371,8 @@ chromium-browser --kiosk --autoplay-policy=no-user-gesture-required             
 ```
 
 ```
-# Desde Windows: doble click en "MECH Panel.exe" — encuentra la Pi sola.
-# (Se construye una vez con windows\construir_exe.ps1; ver windows/README.md.)
-# Alternativa sin construir nada: editar windows\config.txt con la IP de la
-# Pi y doble click en windows\MECH Control.bat
+# Desde Windows: edita windows\config.txt con la IP de la Pi
+# y doble click en windows\MECH Control.bat
 ```
 
 El panel da control sobre voz, proyectores, Arduino, y un botón de **PARO DE EMERGENCIA** siempre visible (también con barra espaciadora).

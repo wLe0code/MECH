@@ -12,11 +12,8 @@ de hablar, así no grabamos silencio innecesario.
 from __future__ import annotations
 
 import collections
-import json
 import os
 import queue
-import select
-import subprocess
 import sys
 import time
 from typing import Callable, Iterator
@@ -80,213 +77,19 @@ _model: WhisperModel | None = None
 _interrupt_model: WhisperModel | None = None
 
 
-# Nombres de micrófonos que preferimos cuando el configurado no sirve (el del
-# proyecto es el receptor USB del Steren MIC-9010, que se anuncia de varias
-# formas según el sistema) y nombres que NO queremos: el micrófono de la
-# webcam, que el proyecto dejó de usar a propósito.
-_MIC_PREFERIDOS = ("steren", "wxmh", "wireless", "usb audio", "usb pnp", "usb")
-_MIC_EVITAR = ("c930", "webcam", "camera", "logitech")
-
-
-def _normalizar_nombre(nombre: str) -> str:
-    """Nombre de dispositivo listo para comparar.
-
-    PortAudio le pega al nombre el sufijo "(hw:X,Y)" con el número de tarjeta
-    ALSA de ese momento. Ese número CAMBIA cada vez que el USB re-enumera (la
-    cámara de puerto, el receptor se reenchufa, etc.), así que guardarla en
-    el .env y compararla literal es tener una bomba de tiempo: «WXMH mini:
-    USB Audio (hw:2,0)» y «WXMH mini: USB Audio (hw:0,2)» son EL MISMO mic.
-    Se compara en minúsculas y sin el paréntesis.
-    """
-    n = nombre.lower()
-    i = n.find("(hw:")
-    if i != -1:
-        n = n[:i].rstrip()
-    return n
-
-# Último aviso sobre el dispositivo, para no repetir el mismo en cada vuelta
-# del bucle (se graba cada pocos segundos).
-_ultimo_aviso_dispositivo: str = ""
-# Por qué se eligió el micrófono la última vez (lo lee el panel).
-ultima_eleccion_mic: str = ""
-
-
-def _avisar_dispositivo(texto: str) -> None:
-    global _ultimo_aviso_dispositivo
-    if texto != _ultimo_aviso_dispositivo:
-        _ultimo_aviso_dispositivo = texto
-        print(f"[STT] {texto}", file=sys.stderr)
-
-
-def _entradas() -> list[tuple[int, str]]:
-    """`(índice, nombre)` de los dispositivos que PUEDEN grabar ahora mismo."""
-    try:
-        todos = sd.query_devices()
-    except Exception:
-        return []
-    return [
-        (i, str(d.get("name", "")))
-        for i, d in enumerate(todos)
-        if int(d.get("max_input_channels", 0) or 0) > 0
-    ]
-
-
-def _buscar_microfono(entradas: list[tuple[int, str]]) -> int | None:
-    """El mejor micrófono de la lista, sin contar el de la webcam."""
-    for clave in _MIC_PREFERIDOS:
-        for i, nombre in entradas:
-            n = nombre.lower()
-            if clave in n and not any(e in n for e in _MIC_EVITAR):
-                return i
-    return None
-
-
 def _resolve_input_device() -> int | str | None:
-    """Qué micrófono abrir. None = el que tenga puesto el sistema.
+    """Dispositivo de micrófono configurado (índice o nombre), o None=default.
 
     El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda
     solo para video. Se configura con AUDIO_INPUT_DEVICE en .env.
-
-    ⚠️ Antes esto devolvía el valor del .env TAL CUAL, sin comprobar nada. Con
-    un NÚMERO eso es frágil: los índices de audio cambian cuando se enchufa,
-    desenchufa o cambia de puerto cualquier cosa USB (el equipo lo vivió
-    moviendo la cámara), y el número guardado pasa a apuntar a OTRO
-    dispositivo — a veces uno que ni siquiera graba. PortAudio responde con
-    errores tan poco claros como «Illegal combination of I/O devices».
-
-    Ahora se comprueba contra la lista real de dispositivos que graban:
-      - si lo configurado sigue siendo un micrófono, se usa;
-      - si no, se busca uno por nombre (el Steren, "USB"...), evitando el de
-        la webcam, y se avisa;
-      - si no hay ninguno reconocible, se deja al sistema elegir.
-
-    Con el .env VACÍO ya no se confía al default del sistema (que suele ser
-    el mic de la cámara o el built-in): se busca el receptor automáticamente
-    (Steren/WXMH/USB) y solo si no hay ningún candidato se usa el sistema.
     """
-    global ultima_eleccion_mic
     dev = config.AUDIO_INPUT_DEVICE.strip()
     if not dev:
-        # Sin valor en el .env: en vez de confiar a ciegas en el "default del
-        # sistema" (que suele ser el micrófono de la cámara o el built-in),
-        # se busca el receptor automáticamente (Steren/WXMH/USB, nunca la
-        # webcam). Solo si no hay ningún candidato reconocible se deja el
-        # default del sistema.
-        entradas = _entradas()
-        if entradas:
-            auto = _buscar_microfono(entradas)
-            if auto is not None:
-                nombre = dict(entradas)[auto]
-                ultima_eleccion_mic = f"'{nombre}' (índice {auto}, buscado solo)"
-                _avisar_dispositivo(
-                    "AUDIO_INPUT_DEVICE vacío: uso el receptor "
-                    f"('{nombre}', índice {auto}). Si no es el que querés, "
-                    "poné su nombre en el .env."
-                )
-                return auto
-        ultima_eleccion_mic = "el del sistema (AUDIO_INPUT_DEVICE vacío)"
         return None
-
-    entradas = _entradas()
-    if not entradas:
-        # Ni un solo dispositivo que grabe: que PortAudio lo intente con lo
-        # configurado y dé su error; el bucle de voz lo explicará.
-        ultima_eleccion_mic = "ninguno (no hay micrófonos a la vista)"
-        try:
-            return int(dev)
-        except ValueError:
-            return dev
-
     try:
-        pedido = int(dev)
+        return int(dev)  # índice numérico
     except ValueError:
-        pedido = None
-
-    if pedido is not None:
-        for i, nombre in entradas:
-            if i == pedido:
-                ultima_eleccion_mic = f"'{nombre}' (índice {i}, del .env)"
-                return i
-        motivo = (f"AUDIO_INPUT_DEVICE={pedido} ya no es un micrófono (los "
-                  "números cambian al mover cosas de puerto USB)")
-    else:
-        # Coincidencia por NOMBRE. Dos reglas que evitan el micrófono
-        # equivocado:
-        #   1. El sufijo "(hw:X,Y)" que PortAudio pega al nombre CAMBIA con
-        #      cada re-enumeración USB ("(hw:2,0)" hoy, "(hw:0,2)" mañana).
-        #      Si el .env quedó con el nombre viejo, comparar contra la parte
-        #      estable (antes del paréntesis) lo sigue encontrando.
-        #   2. El micrófono de la CÁMARA jamás se elige, ni siquiera si está
-        #      configurado explícitamente: la webcam queda solo para video.
-        pedido_norm = _normalizar_nombre(dev)
-        motivo = f"no hay ningún micrófono que se llame '{dev}'"
-        for i, nombre in entradas:
-            if pedido_norm not in _normalizar_nombre(nombre):
-                continue
-            if any(e in _normalizar_nombre(nombre) for e in _MIC_EVITAR):
-                motivo = (
-                    f"AUDIO_INPUT_DEVICE={dev!r} coincide con el micrófono "
-                    f"de la CÁMARA ('{nombre}'), que MECH no usa"
-                )
-                continue
-            ultima_eleccion_mic = f"'{nombre}' (índice {i}, por nombre)"
-            return i
-
-    otro = _buscar_microfono(entradas)
-    if otro is not None:
-        nombre = dict(entradas)[otro]
-        ultima_eleccion_mic = f"'{nombre}' (índice {otro}, buscado solo)"
-        _avisar_dispositivo(f"{motivo}. Uso '{nombre}' (índice {otro}).")
-        return otro
-    ultima_eleccion_mic = "el del sistema (el configurado no existe)"
-    _avisar_dispositivo(f"{motivo}. Pruebo con el del sistema.")
-    return None
-
-
-def is_audio_device_error(exc: BaseException) -> bool:
-    """¿Este error es "no se pudo abrir el micrófono"?
-
-    Sirve para que el bucle de voz lo trate distinto de un fallo cualquiera:
-    no tiene sentido reintentarlo cien veces por segundo, hay que esperar a
-    que el micrófono vuelva (se enchufe, se encienda el receptor...).
-
-    Incluye `MicProcessCrashed`: el proceso aislado del micrófono murió (el
-    bug de ALSA que aborta el proceso cuando el receptor desaparece). Es un
-    problema del DISPOSITIVO, no del programa, y se trata igual.
-    """
-    if isinstance(exc, MicProcessCrashed):
-        return True
-    texto = str(exc)
-    return (
-        isinstance(exc, getattr(sd, "PortAudioError", ()))
-        or "Error opening" in texto
-        or "PaErrorCode" in texto
-        or "No input device" in texto
-        or "Invalid device" in texto
-    )
-
-
-def reset_audio() -> bool:
-    """Vuelve a pedirle a PortAudio la lista de dispositivos.
-
-    PortAudio la lee UNA vez al arrancar y no se entera de lo que se enchufa
-    después. Si el receptor del micrófono se conectó (o se reconectó) con el
-    server ya corriendo, sin esto MECH no lo vería nunca.
-
-    Solo es seguro sin ninguna grabación ni reproducción de PortAudio en
-    curso; si hay una, no hace nada y devuelve False.
-    """
-    try:
-        if sd.get_stream() is not None and sd.get_stream().active:
-            return False
-    except Exception:
-        pass  # no hay ningún stream "por defecto": es justo lo que queremos
-    try:
-        sd._terminate()
-        sd._initialize()
-        return True
-    except Exception:
-        return False
+        return dev  # nombre (sounddevice acepta coincidencia parcial)
 
 
 # Filtro anti-aliasing para bajar de la tasa de captura a los 16 kHz de
@@ -497,17 +300,13 @@ def get_interrupt_model() -> WhisperModel:
     return _interrupt_model
 
 
-def _frame_generator(chunk_iter: Iterator[bytes]) -> Iterator[bytes]:
-    """Convierte los chunks del micrófono en frames de 30ms para el VAD.
-
-    `chunk_iter` puede ser la cola histórica (objetos con `.get()`) o el
-    generador del worker aislado; el buffer interno junta los pedazos hasta
-    completar frames de FRAME_BYTES.
-    """
+def _frame_generator(audio_queue: queue.Queue) -> Iterator[bytes]:
+    """Convierte el stream del micrófono en frames de 30ms para el VAD."""
     buffer = b""
-    for chunk in chunk_iter:
-        if not chunk:
-            continue
+    while True:
+        chunk = audio_queue.get()
+        if chunk is None:
+            return
         buffer += chunk
         while len(buffer) >= FRAME_BYTES:
             yield buffer[:FRAME_BYTES]
@@ -529,341 +328,6 @@ def _frame_rms(frame: bytes) -> float:
         return 0.0
     samples = samples - samples.mean()
     return float(np.sqrt(np.mean(samples * samples)) / 32768.0)
-
-
-# ---------------------------------------------------------------------------
-# Micrófono a prueba de crashes (sep 2026)
-# ---------------------------------------------------------------------------
-# El bug que había: ALSA (vía PortAudio) puede ABORTAR todo el proceso con una
-# aserción en C (`pa_linux_alsa.c: PaAlsaStream_Initialize`) si el dispositivo
-# USB desaparece EN EL MOMENTO de abrir el stream — por ejemplo, si el receptor
-# del Steren se desenchufa, la corriente del bus se cae un instante, o la
-# cámara re-arranca el USB compartido. Ese abort NO se puede capturar desde
-# Python: era el "El servidor de MECH se detuvo" con el crash de ALSA en
-# pantalla, y había que ir a la Pi a reiniciar a mano ("recuperar los
-# sistemas").
-#
-# Ahora el stream del micrófono vive en un proceso hijo (backend/_mic_worker
-# .py). Si el bug de ALSA lo mata, muere solo el hijo; el server lo detecta
-# (EOF del pipe), lo registra como un error del dispositivo y reabre. El
-# servicio de voz puede caerse y recuperarse todas las veces que quiera sin
-# tumbar el server. En sistemas no-POSIX (solo desarrollo en Windows) se cae al
-# modo histórico, SIN aislamiento: queda documentado que ahí no hay protección.
-class MicProcessCrashed(RuntimeError):
-    """El proceso aislado del micrófono murió (seguramente por el bug de ALSA
-    al desaparecer el dispositivo). Es un error del dispositivo, no del
-    programa: el server sigue vivo y solo falta reabrir.
-
-    `silencioso=True` distingue el caso «se abrió pero NO llega audio» (el
-    receptor puede estar enchufado pero sin señal, o es el dispositivo
-    equivocado): el bucle de voz muestra una guía distinta.
-    """
-
-    def __init__(self, mensaje: str, silencioso: bool = False) -> None:
-        super().__init__(mensaje)
-        self.silencioso = silencioso
-
-
-class _MicInProcess:
-    """Igual interfaz que `_MicWorker`, pero en el mismo proceso.
-
-    Solo se usa en sistemas no-POSIX (desarrollo en Windows), donde no se
-    puede heredar descriptores con `pass_fds`. NO protege del abort de ALSA —
-    en la Pi (Linux) siempre se usa `_MicWorker`.
-    """
-
-    def __init__(self, device, samplerate: int, blocksize: int) -> None:
-        self._device = device
-        self._samplerate = samplerate
-        self._blocksize = blocksize
-        self._q: queue.Queue = queue.Queue()
-        self._stream = None
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, *exc) -> bool:
-        self.close()
-        return False
-
-    def start(self) -> None:
-        self._q = queue.Queue()
-
-        def cb(indata, frames, time_info, status):
-            if status:
-                print(f"[STT] sounddevice: {status}", file=sys.stderr)
-            self._q.put(bytes(indata))
-
-        self._stream = sd.RawInputStream(
-            samplerate=self._samplerate,
-            blocksize=self._blocksize,
-            dtype="int16",
-            channels=1,
-            device=self._device,
-            callback=cb,
-        )
-
-    def read_chunk(self, timeout: float) -> bytes | None:
-        try:
-            item = self._q.get(timeout=timeout)
-        except queue.Empty:
-            return None
-        return item
-
-    def close(self) -> None:
-        if self._stream is not None:
-            try:
-                self._stream.close()
-            except Exception:
-                pass
-            self._stream = None
-        self._q.put(None)  # despierta a cualquiera que esté esperando
-
-
-class _MicWorker:
-    """Abre el micrófono en un proceso aparte (a prueba de crashes de ALSA).
-
-    El hijo (`python -m backend._mic_worker`) recibe un descriptor de pipe por
-    `pass_fds` y manda por él los bloques int16 crudos. La interfaz es la misma
-    que `_MicInProcess`: `read_chunk(timeout) -> bytes | None`, `close()`.
-    """
-
-    def __init__(self, device, samplerate: int, blocksize: int) -> None:
-        self._device = device
-        self._samplerate = samplerate
-        self._blocksize = blocksize
-        self._proc: subprocess.Popen | None = None
-        self._r: int | None = None
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, *exc) -> bool:
-        self.close()
-        return False
-
-    def start(self) -> None:
-        r, w = os.pipe()
-        spec = json.dumps({
-            "device": self._device,
-            "samplerate": int(self._samplerate),
-            "blocksize": int(self._blocksize),
-        })
-        self._proc = subprocess.Popen(
-            [sys.executable, "-m", "backend._mic_worker", str(w), spec],
-            pass_fds=(w,),
-            close_fds=True,
-        )
-        os.close(w)  # el padre solo conserva el extremo de lectura
-        self._r = r
-
-    @property
-    def alive(self) -> bool:
-        return self._proc is not None and self._proc.poll() is None
-
-    def read_chunk(self, timeout: float) -> bytes | None:
-        """Un bloque de bytes, None si no llegó nada en `timeout`, o
-        `MicProcessCrashed` si el hijo murió (p. ej. el abort de ALSA)."""
-        if self._r is None:
-            raise MicProcessCrashed("El micrófono no está abierto.")
-        if self._proc is not None and not self.alive:
-            self._raise_crash()
-        try:
-            ready, _, _ = select.select([self._r], [], [], timeout)
-        except OSError:
-            raise MicProcessCrashed("Se cerró el pipe del micrófono.")
-        if not ready:
-            return None
-        try:
-            data = os.read(self._r, 65536)
-        except OSError:
-            data = b""
-        if not data:
-            self._raise_crash()
-        return data
-
-    def _raise_crash(self) -> None:
-        rc = self._proc.poll() if self._proc is not None else None
-        raise MicProcessCrashed(
-            f"El proceso del micrófono murió (código {rc}). Es el bug de ALSA "
-            "cuando el receptor desaparece; el server sigue vivo y reabre."
-        )
-
-    def close(self) -> None:
-        # Primero el pipe: el hijo ve EPIPE en la próxima escritura y sale solo
-        # (~30 ms). Se le da UNA vuelta de callback para que salga limpio por
-        # EPIPE; solo si sigue vivo, SIGTERM y por último SIGKILL.
-        if self._r is not None:
-            try:
-                os.close(self._r)
-            except OSError:
-                pass
-            self._r = None
-        proc, self._proc = self._proc, None
-        if proc is not None and proc.poll() is None:
-            try:
-                proc.wait(timeout=0.5)  # chance de salir solo por EPIPE
-            except subprocess.TimeoutExpired:
-                pass
-            if proc.poll() is None:
-                try:
-                    proc.terminate()
-                    try:
-                        proc.wait(timeout=2.0)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                        proc.wait(timeout=2.0)
-                except Exception:
-                    pass
-
-
-# En pruebas se fuerza con `_FORZAR_INPROCESS = True` (sin tocar `os.name`,
-# que rompería pathlib/pytest por todos lados).
-_FORZAR_INPROCESS = False
-
-
-def abrir_mic_stream(device: int | str | None):
-    """Contexto que abre el micrófono; devuelve un objeto con `read_chunk()`.
-
-    En POSIX (la Pi) corre en un proceso aparte, a prueba del abort de ALSA.
-    En otros sistemas (o con `_FORZAR_INPROCESS`) cae al modo histórico, sin
-    aislamiento (solo desarrollo/pruebas).
-    """
-    if not _FORZAR_INPROCESS and os.name == "posix":
-        return _MicWorker(device, config.AUDIO_SAMPLE_RATE, FRAME_BYTES // 2)
-    return _MicInProcess(device, config.AUDIO_SAMPLE_RATE, FRAME_BYTES // 2)
-
-
-def _worker_chunks(mic, idle_limit: float = 8.0, gracia_inicial: float = 3.0) -> Iterator[bytes]:
-    """Genera los chunks que entrega `mic`, detectando caídas silenciosas.
-
-    Si el dispositivo muere sin cerrar el pipe (quedó abierto pero no entrega
-    más audio), `read_chunk` devolvería None para siempre y la escucha colgaría
-    sin remedio. Pasado `idle_limit` sin un solo byte se declara caído: es un
-    error recuperable, no un congelamiento.
-
-    `gracia_inicial`: las primeras veces (recién abierto) se aguanta más:
-    tras un bajón del USB, el receptor tarda en volver a transmitir y un corte
-    prematuro reiniciaría el intento justo cuando iba a arrancar.
-    """
-    arranque = time.monotonic()
-    ultimo = arranque
-    hay_bytes = False
-    while True:
-        chunk = mic.read_chunk(timeout=0.5)
-        ahora = time.monotonic()
-        if chunk is None:
-            tope = idle_limit + (gracia_inicial if not hay_bytes else 0.0)
-            referencia = arranque if not hay_bytes else ultimo
-            if ahora - referencia > tope:
-                raise MicProcessCrashed(
-                    "El micrófono se abrió pero NO llega audio (lleva "
-                    f"{ahora - referencia:.0f} s sin datos). Puede ser que el "
-                    "transmisor de solapa esté apagado, que el receptor esté "
-                    "sin señal, que AUDIO_INPUT_DEVICE apunte a otro "
-                    "dispositivo, o que el receptor haya quedado a mitad de "
-                    "arrancar tras un bajón del USB. Lo reabro y sigo.",
-                    silencioso=True,
-                )
-            continue
-        hay_bytes = True
-        ultimo = ahora
-        yield chunk
-
-
-# ---------------------------------------------------------------------------
-# Detección de cambios en las tarjetas ALSA (índices que quedan viejos)
-# ---------------------------------------------------------------------------
-# PortAudio cachea la lista de dispositivos y no se entera de enchufes/
-# desenchufes. Si el receptor se mueve de puerto (o se re-enumera el bus USB),
-# los índices cambian y abrir "hw:2,0" viejo da exactamente el error del crash
-# de antes. En vez de adivinar, miramos `/proc/asound/cards` (gratis, ~1 KB):
-# si cambió, re-inicializamos PortAudio para que vuelva a ver la realidad.
-_ultimo_alsa: str = ""
-
-
-def _snapshot_alsa() -> str:
-    try:
-        with open("/proc/asound/cards", "rb") as f:
-            return f.read(4096).decode("utf-8", "replace")
-    except OSError:
-        return "?"
-
-
-def _rescan_si_cambio_alsa() -> bool:
-    """Re-inicializa PortAudio si la lista de tarjetas ALSA cambió.
-
-    Devuelve True si reseteó. Si no pudo (había un stream ocupado), NO marca
-    el snapshot: la próxima llamada reintenta.
-    """
-    global _ultimo_alsa
-    ahora = _snapshot_alsa()
-    if ahora == _ultimo_alsa:
-        return False
-    if reset_audio():
-        _ultimo_alsa = ahora
-        return True
-    return False
-
-
-def probe_microphone(seconds: float = 1.0) -> dict:
-    """Abre el micrófono un momento y MIDE lo que entra.
-
-    Por qué existe: cuando alguien dice "MECH está sordo, es como si no
-    tuviera micrófono", hay tres causas muy distintas y desde fuera se ven
-    igual — el dispositivo equivocado, el micrófono apagado/silenciado, o un
-    umbral mal puesto. Esto las separa con un número, y corre en CADA
-    arranque del bucle de voz, así que el panel lo dice solo.
-
-    Devuelve un dict con:
-      - `device`: lo que pidió el .env (None = el que tenga el sistema puesto)
-      - `nombre`: el dispositivo que de VERDAD se abrió
-      - `rate`: la tasa de captura
-      - `nivel`: RMS medio (0..1) de lo que se oyó
-      - `pico`: RMS máximo
-      - `frames`: cuántos bloques llegaron (0 = el micrófono no da datos)
-      - `error`: texto del fallo, si no se pudo abrir
-
-    No lanza excepciones: un fallo aquí NO puede impedir que MECH arranque.
-    """
-    info: dict = {
-        "device": config.AUDIO_INPUT_DEVICE.strip() or None,
-        "nombre": None,
-        "rate": config.AUDIO_SAMPLE_RATE,
-        "nivel": 0.0,
-        "pico": 0.0,
-        "frames": 0,
-        "error": None,
-    }
-    try:
-        _rescan_si_cambio_alsa()
-        dev = _resolve_input_device()
-        try:
-            info["nombre"] = sd.query_devices(dev, "input").get("name")
-        except Exception:
-            pass
-
-        # Corre en el proceso aislado: si ALSA aborta al abrir (el bug de
-        # siempre), muere solo el hijo y acá queda un error, no un crash.
-        with abrir_mic_stream(dev) as mic:
-            fin = time.monotonic() + max(0.2, seconds)
-            while time.monotonic() < fin:
-                chunk = mic.read_chunk(timeout=0.3)
-                if chunk is None:
-                    continue
-                if len(chunk) < FRAME_BYTES:
-                    continue
-                rms = _frame_rms(chunk[:FRAME_BYTES])
-                info["frames"] += 1
-                info["pico"] = max(info["pico"], rms)
-                info["nivel"] += rms
-        if info["frames"]:
-            info["nivel"] /= info["frames"]
-    except Exception as e:
-        info["error"] = str(e)
-    return info
 
 
 def record_until_silence(
@@ -931,6 +395,13 @@ def record_until_silence(
                 pass
 
     vad = webrtcvad.Vad(config.VAD_AGGRESSIVENESS)
+    audio_q: queue.Queue = queue.Queue()
+
+    def callback(indata, frames, time_info, status):
+        if status:
+            print(f"[STT] sounddevice: {status}", file=sys.stderr)
+        # int16 little-endian, como espera webrtcvad
+        audio_q.put(bytes(indata))
 
     silencio = config.VAD_SILENCE_TIMEOUT if silence_timeout is None else silence_timeout
     silence_frames_needed = max(4, int(silencio * 1000 / FRAME_DURATION_MS))
@@ -955,13 +426,16 @@ def record_until_silence(
     # amplitud caiga significativamente para considerar que terminó la frase.
     end_factor = 1.0 + (start_factor - 1.0) * 0.5
 
-    # Se re-chequea ALSA antes de abrir: si el receptor cambió de puerto (o se
-    # re-enumeró el USB), los índices viejos apuntan a hw muertos y esa es la
-    # receta exacta del crash de antes.
-    _rescan_si_cambio_alsa()
-    with abrir_mic_stream(_resolve_input_device()) as mic:
+    with sd.RawInputStream(
+        samplerate=config.AUDIO_SAMPLE_RATE,
+        blocksize=FRAME_BYTES // 2,  # frames de int16
+        dtype="int16",
+        channels=1,
+        device=_resolve_input_device(),  # Steren MIC-9010 si está configurado
+        callback=callback,
+    ):
         _phase("waiting")  # micrófono abierto: ya se puede hablar
-        for frame in _frame_generator(_worker_chunks(mic)):
+        for frame in _frame_generator(audio_q):
             # Cancelación externa (ej. terminó la narración): soltamos el mic ya.
             if cancel_event is not None and cancel_event.is_set():
                 return None

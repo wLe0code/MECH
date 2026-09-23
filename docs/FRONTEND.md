@@ -114,25 +114,11 @@ journalctl -u mech-server -f   # ver logs
 
 ## Operar desde Windows
 
-Lee [`windows/README.md`](../windows/README.md) — cubre las cuatro formas (la
-app `.exe`, el instalador, los `.bat` y la PWA).
+Lee [`windows/README.md`](../windows/README.md) — cubre los tres modos (.bat app, .bat kiosko, PWA instalada).
 
-Resumen ultra rápido: **doble click en `MECH Panel.exe`**. Busca la Pi sola
-(prueba `mech.local`, `mech`, la última dirección que funcionó y, si hace
-falta, barre la red) y abre el panel en una ventana sin barras de navegador.
-
-Ese .exe se construye **una vez**, en cualquier máquina con Python:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File windows\construir_exe.ps1
-```
-
-Sale `windows\dist\MECH Panel.exe` (~10 MB, sin dependencias: se copia y
-funciona). Para un instalador con menú inicio y desinstalador, compila
-`windows\MECH-Panel.iss` con Inno Setup.
-
-Alternativa sin construir nada (lo de siempre): editar `windows/config.txt`
-con `http://192.168.1.42:8000` y doble click a `windows/MECH Control.bat`.
+Resumen ultra rápido:
+1. Edita `windows/config.txt` con la URL: `http://192.168.1.42:8000` (la IP de tu Pi).
+2. Doble click a `windows/MECH Control.bat`.
 
 ## Lo que hace el panel
 

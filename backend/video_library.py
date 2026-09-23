@@ -321,28 +321,20 @@ WORKS: dict[str, WorkMeta] = {
             "y todo lo que hoy depende de ella: el GPS, las ondas "
             "gravitacionales y la primera imagen de un agujero negro."
         ),
-        # ⚠️ SOLO DOS SEGMENTOS, y no es un recorte del guion.
-        #
-        # El guion de docs/GUIONES_RELATIVIDAD.md tiene OCHO escenas, pero
-        # Gemini ahora junta las escenas en un único video y el equipo las
-        # generó en dos cuentas distintas. Resultado: dos archivos.
-        #
-        #   seg01 = escenas 1-4  -> el problema y la relatividad ESPECIAL
-        #   seg02 = escenas 5-8  -> E=mc², la general, el eclipse y el hoy
-        #
-        # El corte cae donde termina la relatividad especial, así que cada
-        # archivo es coherente por sí mismo. Claude puede narrar VARIOS
-        # tramos sobre el mismo video (el clip va en bucle por debajo), que
-        # es justo lo que le pide la nota de abajo.
-        "segments": 2,
+        # OCHO segmentos, uno por escena del guion (docs/GUIONES_RELATIVIDAD.md).
+        # Ocho es justo el máximo de segmentos que admite un plan de Claude.
+        "segments": 8,
         "facts": [
-            "ESTA OBRA TIENE SOLO DOS VIDEOS, pero la historia es larga: usa "
-            "video_segment 1 para los primeros tramos de la narración (el "
-            "éter, Einstein en la oficina de patentes, el tiempo que se "
-            "estira y las transformaciones de Lorentz) y video_segment 2 "
-            "para el resto (E=mc², la relatividad general, el eclipse de "
-            "1919 y las aplicaciones de hoy). Varios segmentos de narración "
-            "pueden compartir el mismo video.",
+            "Los OCHO videos van en este orden, uno por segmento de "
+            "narración: 1) el misterio de la luz y el éter (Maxwell, "
+            "Michelson-Morley, 1865-1887); 2) Einstein en la oficina de "
+            "patentes (1895-1905); 3) el tiempo no es igual para todos, la "
+            "relatividad especial (1905); 4) las transformaciones de Lorentz, "
+            "con sus fórmulas en una pizarra; 5) E=mc² (1905); 6) la gravedad "
+            "es espacio curvo, la relatividad general (1907-1915); 7) el "
+            "eclipse de 1919; 8) la relatividad hoy: GPS, ondas "
+            "gravitacionales y la foto del agujero negro. Narra cada tramo "
+            "sobre su video.",
             "Albert Einstein nació el 14 de marzo de 1879 en Ulm, Alemania, "
             "y murió el 18 de abril de 1955 en Princeton, Estados Unidos.",
             "James Clerk Maxwell publicó su teoría del campo "

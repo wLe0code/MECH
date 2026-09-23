@@ -51,22 +51,6 @@ FOCAL_PX = (FRAME_W / 2) / math.tan(math.radians(HFOV_DEG / 2))  # ≈ 320
 
 # Tiempo sin ver caras para declarar que el usuario se fue.
 LOST_AFTER_S = 1.5
-
-# --- Aguante de la cámara (sep 2026) ---------------------------------------
-# El equipo vio "la cámara se enciende un momento y se apaga". Había dos
-# puntos donde el código se rendía a la primera:
-#   1. al abrirla, si el PRIMER fotograma no llegaba enseguida;
-#   2. ya funcionando, un solo read() fallido apagaba la visión entera.
-# En la Pi los fallos sueltos pasan (USB compartido con el micrófono y el
-# Arduino, un bajón de corriente de un instante), así que ahora se aguanta.
-#
-# Segundos que se le dan a la cámara para dar su primer fotograma.
-_CALENTAMIENTO_S = 2.5
-# Segundos seguidos SIN fotogramas antes de dar la cámara por caída y
-# reabrirla. Menos que esto es un tropiezo y se ignora.
-_SIN_IMAGEN_S = 2.0
-# Cuántas veces seguidas se intenta reabrirla antes de rendirse del todo.
-_REINTENTOS_REABRIR = 5
 # Margen sobre la distancia mínima para no oscilar (histéresis).
 APPROACH_MARGIN_M = 0.15
 
@@ -154,20 +138,6 @@ def _make_detector(app):
     )
 
 
-class _CamaraMuerta:
-    """Sustituto de una cámara que no se pudo reabrir: read() siempre falla.
-
-    Así el bucle sigue por el mismo camino (espera, reintenta, y al final se
-    rinde) en vez de necesitar un caso especial para "no hay cámara".
-    """
-
-    def read(self):
-        return False, None
-
-    def release(self):
-        pass
-
-
 class Vision:
     """Hilo de visión. Publica su estado en mech_app.state["vision"]."""
 
@@ -238,96 +208,23 @@ class Vision:
             and s.get("current_mode") != "STOP"
         )
 
-    def _abrir(self, cv2, indice: int):
-        """Intenta abrir una cámara por índice y CONFIRMA que da imagen.
+    def _loop(self) -> None:
+        import cv2
 
-        ⚠️ `isOpened()` NO basta. En Linux, una misma webcam expone VARIOS
-        `/dev/videoN`: el primero es la imagen y los siguientes son nodos de
-        metadatos. OpenCV "abre" esos nodos sin protestar y luego no entrega
-        un solo fotograma — que por fuera se ve igual que una cámara rota.
-        Por eso aquí se pide un fotograma de verdad antes de dar el índice
-        por bueno.
-        """
-        cap = cv2.VideoCapture(indice)
-        if not cap.isOpened():
-            cap.release()
-            return None
+        cap = cv2.VideoCapture(config.VISION_CAMERA_INDEX)
         # Forzar MJPG: sin esto la C930e negocia YUYV y cae a ~5 fps en la Pi.
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
         cap.set(cv2.CAP_PROP_FPS, TARGET_FPS)
-        # CALENTAMIENTO: tras cambiarle el formato, la C930e tarda en dar su
-        # primer fotograma (en la Pi, a veces más de medio segundo). Pedir UNO
-        # solo y rendirse era el síntoma exacto que vio el equipo: «la cámara
-        # se enciende un momento y se apaga» — se encendía al abrirla, el
-        # primer read() fallaba por impaciencia, se cerraba y se probaba la
-        # siguiente. Ahora se le dan hasta `_CALENTAMIENTO_S` segundos.
-        limite = time.monotonic() + _CALENTAMIENTO_S
-        while time.monotonic() < limite:
-            ok, _ = cap.read()
-            if ok:
-                return cap
-            time.sleep(0.1)
-        cap.release()
-        return None
-
-    def _buscar_camara(self, cv2):
-        """Abre la cámara, buscándola si el índice configurado no sirve.
-
-        **Por qué hace falta** (sep 2026): el equipo cambió la cámara de
-        puerto USB y dejó de funcionar. La causa es que `VISION_CAMERA_INDEX`
-        era un número FIJO, y en Linux el número de `/dev/videoN` depende del
-        orden en que se enchufan los dispositivos: al cambiar de puerto (o al
-        reiniciar con el receptor del micrófono puesto) la cámara pasa de
-        `video0` a `video2` y el índice guardado apunta a otra cosa.
-
-        Es el mismo problema que ya tenía el Arduino con su puerto serie, y
-        se resuelve igual: se prueba primero lo configurado y, si no da
-        imagen, se barren los índices. Devuelve `(cap, indice)` o
-        `(None, None)`.
-        """
-        preferido = config.VISION_CAMERA_INDEX
-        cap = self._abrir(cv2, preferido)
-        if cap is not None:
-            return cap, preferido
-
-        self.app.log(
-            f"La cámara {preferido} no da imagen; busco en los demás puertos…",
-            "warn",
-        )
-        for indice in range(0, 10):
-            if indice == preferido:
-                continue
-            cap = self._abrir(cv2, indice)
-            if cap is not None:
-                self.app.log(
-                    f"Cámara encontrada en el índice {indice} (el .env dice "
-                    f"{preferido}). Funciona igual, pero para que no tenga que "
-                    f"buscarla cada vez, poné VISION_CAMERA_INDEX={indice} en "
-                    "Ajustes. OJO: si volvés a cambiarla de puerto USB, el "
-                    "número cambia otra vez.",
-                    "warn",
-                )
-                return cap, indice
-        return None, None
-
-    def _loop(self) -> None:
-        import cv2
-
-        cap, indice = self._buscar_camara(cv2)
-        if cap is None:
+        if not cap.isOpened():
             self.app.log(
-                "No encontré NINGUNA cámara (probé los índices 0 a 9). "
-                "Revisá que la C930e esté enchufada y que la Pi la vea: "
-                "`v4l2-ctl --list-devices` o `ls /dev/video*`. Si la lista "
-                "sale vacía, es cosa del cable, del puerto o de la corriente "
-                "— no del programa.",
+                f"No se pudo abrir la cámara {config.VISION_CAMERA_INDEX}. "
+                "¿Está enchufada la C930e? Revisa con: v4l2-ctl --list-devices",
                 "err",
             )
             self._publish(enabled=False, present=False, x=0.0, distance=None)
             return
-        self.app.log(f"Cámara abierta en el índice {indice}.", "ok")
 
         try:
             detector, warn = _make_detector(self.app)
@@ -349,76 +246,14 @@ class Vision:
         present = False
         last_emit = 0.0
         frame_interval = 1.0 / TARGET_FPS
-        # Aguante (ver _SIN_IMAGEN_S): desde cuándo no llega un fotograma, y
-        # cuándo arrancó esta cámara (para decir cuánto aguantó si se cae:
-        # si siempre dura lo mismo, huele a corriente, no a programa).
-        sin_imagen_desde: float | None = None
-        abierta_en = time.monotonic()
-        reintentos = 0
 
         try:
             while not self._stop.is_set():
                 t0 = time.monotonic()
                 ok, frame = cap.read()
                 if not ok:
-                    ahora = time.monotonic()
-                    if sin_imagen_desde is None:
-                        sin_imagen_desde = ahora
-                    if ahora - sin_imagen_desde < _SIN_IMAGEN_S:
-                        # Un tropiezo: se ignora. Antes, UNO solo apagaba la
-                        # visión entera («se enciende y se apaga»).
-                        time.sleep(0.05)
-                        continue
-                    # Lleva un rato sin imagen: la damos por caída y se reabre.
-                    duro = ahora - abierta_en
-                    cap.release()
-                    self._release_drive()
-                    reintentos += 1
-                    if reintentos == _REINTENTOS_REABRIR + 1:
-                        self.app.log(
-                            f"La cámara se cayó {_REINTENTOS_REABRIR} veces "
-                            "seguidas. Casi seguro es CORRIENTE o CABLE, no "
-                            "el programa: mirá `dmesg | tail -20` en la Pi "
-                            "(si sale 'over-current' o 'disconnect', es la "
-                            "corriente; un hub USB con alimentación propia "
-                            "lo arregla). NO me rindo: sigo reabriéndola "
-                            "sola en segundo plano.",
-                            "err",
-                        )
-                    # Tras los primeros 5 intentos, los avisos se espacian
-                    # (cada 5 reintentos) para no llenar el panel.
-                    if reintentos <= _REINTENTOS_REABRIR or reintentos % 5 == 0:
-                        self.app.log(
-                            f"La cámara dejó de dar imagen tras {duro:.0f} s. "
-                            f"La reabro (intento {reintentos})…",
-                            "warn",
-                        )
-                    self._publish(enabled=True, present=False, x=0.0,
-                                  distance=None)
-                    # Se le da un respiro antes de reabrir: si fue un bajón
-                    # de corriente o el USB se reinició, el /dev/video tarda
-                    # en volver a aparecer. La espera crece con los fallos
-                    # (hasta 30 s) para no martillar un bus convaleciente.
-                    if self._stop.wait(min(30.0, 1.5 * reintentos)):
-                        break
-                    nuevo, indice = self._buscar_camara(cv2)
-                    if nuevo is None:
-                        # Sin cámara a la vista todavía: seguimos esperando
-                        # en la próxima vuelta (con el contador de fallos
-                        # corriendo, así la espera crece).
-                        sin_imagen_desde = time.monotonic() - _SIN_IMAGEN_S
-                        cap = _CamaraMuerta()
-                        continue
-                    cap = nuevo
-                    self.app.log(f"Cámara recuperada (índice {indice}).", "ok")
-                    sin_imagen_desde = None
-                    abierta_en = time.monotonic()
-                    continue
-                # Llegó un fotograma: si veníamos de fallos, todo en orden.
-                sin_imagen_desde = None
-                if reintentos and time.monotonic() - abierta_en > 30:
-                    # Aguantó medio minuto seguido: el contador vuelve a cero.
-                    reintentos = 0
+                    self.app.log("La cámara dejó de dar frames; visión detenida.", "err")
+                    break
 
                 now = time.monotonic()
 
@@ -439,8 +274,6 @@ class Vision:
                         last_emit = now
                         self._publish(enabled=True, present=False, x=0.0,
                                       distance=None, paused=True)
-                    # Mientras narra tampoco miramos nada (la luz de la proyección
-                    # moviéndose sería movimiento constante).
                     time.sleep(0.15)
                     continue
 

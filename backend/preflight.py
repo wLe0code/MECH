@@ -296,30 +296,24 @@ def check_audio() -> None:
                 "Entradas: " + ", ".join(f"[{i}] {d['name']}" for i, d in entradas))
 
     # Abrirlo de verdad: los mics USB baratos no aceptan cualquier sample rate.
-    # Se usa stt.probe_microphone, que corre el stream en un proceso aparte:
-    # si ALSA aborta al abrir (el bug cuando el receptor desaparece), el
-    # chequeo se entera con un error — no revienta el diagnóstico.
     try:
-        import stt  # noqa: F401
-
-        info = stt.probe_microphone(0.4)
+        import sounddevice as sd
+        grab = sd.rec(
+            int(0.3 * config.AUDIO_SAMPLE_RATE),
+            samplerate=config.AUDIO_SAMPLE_RATE,
+            channels=1, dtype="int16",
+            device=(buscado if buscado else None),
+        )
+        sd.wait()
+        pico = int(abs(grab).max())
+        _di(_OK, f"Grabé 0.3 s a {config.AUDIO_SAMPLE_RATE} Hz (pico {pico})",
+            "Pico muy bajo puede ser normal en silencio; si al hablar sigue "
+            "en cero, revisá el micrófono."
+            if pico < 50 else "")
     except Exception as e:
-        _di(_FAIL, "No pude probar el micrófono", str(e))
-    else:
-        if info.get("error"):
-            _di(_FAIL, f"No pude abrir el micrófono a {config.AUDIO_SAMPLE_RATE} Hz",
-                f"{info['error']}\n-> Muchos mics USB no abren a 16000. Probá "
-                "AUDIO_SAMPLE_RATE=48000 en backend/.env.")
-        elif not info["frames"]:
-            _di(_FAIL, f"El micrófono se abrió pero no entregó audio",
-                "-> ¿Está enchufado y encendido el receptor del Steren?")
-        else:
-            _di(_OK, f"Grabé {info['frames']} bloques a "
-                     f"{config.AUDIO_SAMPLE_RATE} Hz (nivel {info['nivel']:.4f}, "
-                     f"pico {info['pico']:.4f})",
-                "Nivel muy bajo puede ser normal en silencio; si al hablar "
-                "sigue en cero, revisá el micrófono."
-                if info["pico"] < 0.0015 else "")
+        _di(_FAIL, f"No pude grabar a {config.AUDIO_SAMPLE_RATE} Hz",
+            f"{e}\n-> Muchos mics USB no abren a 16000. Probá "
+            "AUDIO_SAMPLE_RATE=48000 en backend/.env.")
 
     # Salida: el TTS prueba varios reproductores en orden.
     players = [p for p in ("pw-play", "paplay", "ffplay", "aplay") if shutil.which(p)]
@@ -545,77 +539,6 @@ def check_frontend() -> None:
 # 9. El .env que tapa los defaults (gotcha histórico del proyecto)
 # ---------------------------------------------------------------------------
 
-def check_camara() -> None:
-    """¿Ve la Pi la cámara, y en qué índice?
-
-    Existe porque el equipo cambió la C930e de puerto USB y dejó de
-    funcionar: en Linux el número de /dev/videoN depende del ORDEN en que se
-    enchufan los dispositivos, así que cambiar de puerto cambia el índice.
-    Aquí se dice cuál funciona de verdad, probando a leer un fotograma.
-    """
-    _titulo("10. Cámara (visión)")
-
-    if not config.VISION_ENABLED:
-        _di(_WARN, "La visión está APAGADA (VISION_ENABLED=false)",
-            "MECH no va a saludar a nadie por cámara ni a imitar el gesto "
-            "del 67. Se enciende en Ajustes.")
-
-    try:
-        import cv2
-    except ImportError:
-        _di(_WARN, "Sin OpenCV: no hay visión",
-            'pip install "opencv-python-headless<5"')
-        return
-
-    # Qué ve el sistema, antes de abrir nada.
-    nodos = sorted(Path("/dev").glob("video*")) if os.name != "nt" else []
-    if os.name != "nt":
-        if nodos:
-            _di(_OK, f"El sistema ve {len(nodos)} nodo(s) de video",
-                ", ".join(n.name for n in nodos))
-        else:
-            _di(_FAIL, "NO hay ningún /dev/video*",
-                "La Pi no ve la cámara: es cosa del cable, del puerto USB o "
-                "de la corriente, NO del programa.\n"
-                "-> Probá otro puerto y mirá `dmesg | tail -20` al "
-                "enchufarla.")
-            return
-
-    funcionan = []
-    for indice in range(0, 10):
-        cap = cv2.VideoCapture(indice)
-        try:
-            if cap.isOpened():
-                # isOpened() NO basta: los nodos de metadatos también "abren"
-                # y luego no entregan un fotograma.
-                ok, _ = cap.read()
-                if ok:
-                    funcionan.append(indice)
-        finally:
-            cap.release()
-
-    if not funcionan:
-        _di(_FAIL, "Ningún índice de cámara (0-9) entrega imagen",
-            "Si arriba SÍ salen nodos /dev/video*, la cámara está conectada "
-            "pero no da imagen: suele ser falta de corriente (un hub USB con "
-            "alimentación lo arregla) o que otro programa la tiene abierta "
-            "(¿está el server corriendo? este chequeo va con el server "
-            "APAGADO).")
-        return
-
-    _di(_OK, f"Cámara(s) con imagen en el índice: {funcionan}")
-    if config.VISION_CAMERA_INDEX in funcionan:
-        _di(_OK, f"VISION_CAMERA_INDEX={config.VISION_CAMERA_INDEX} es correcto")
-    else:
-        _di(_WARN,
-            f"VISION_CAMERA_INDEX={config.VISION_CAMERA_INDEX} NO da imagen",
-            f"El que funciona es el {funcionan[0]}. MECH lo busca solo al "
-            f"arrancar, así que va a funcionar igual, pero para que no tenga "
-            f"que buscarlo poné VISION_CAMERA_INDEX={funcionan[0]} en "
-            "Ajustes.\n"
-            "OJO: ese número CAMBIA si volvés a mover la cámara de puerto.")
-
-
 def check_env_sombra() -> None:
     _titulo("9. Claves del .env que TAPAN los defaults del código")
     env = Path(__file__).resolve().parent / ".env"
@@ -627,52 +550,14 @@ def check_env_sombra() -> None:
         "VOICE_WAKE_PHRASES_EN": "afecta a 'wake up MECH'",
         "VOICE_WAKE_PHRASES_FR": "afecta a 'bonjour MECH'",
         "VOICE_WAKE_PHRASES_PT": "afecta a 'bom dia MECH'",
-        # Una lista vieja aquí es la causa MÁS repetida de "le digo X y no
-        # hace nada". Ya pasó con el despertar; en sep 2026 volvió a pasar
-        # con el reposo: MECH soltaba una despedida larga y seguía despierto.
-        "VOICE_SLEEP_PHRASES": (
-            "afecta a dormirlo — si tenés la lista vieja, 'duérmete MECH' "
-            "se va a Claude y MECH NO se duerme"
-        ),
-        "VOICE_SLEEP_PHRASES_EN": "afecta a dormirlo en inglés",
-        "VOICE_SLEEP_PHRASES_FR": "afecta a dormirlo en francés",
-        "VOICE_SLEEP_PHRASES_PT": "afecta a dormirlo en portugués",
+        "VOICE_SLEEP_PHRASES": "afecta a dormirlo",
         "VOICE_INTERRUPT_PHRASES": "afecta a 'oye MECH'",
         "VOICE_OUTWARD_PHRASES": "afecta a 'mira hacia afuera'",
         "VOICE_PROJECT_PHRASES": "afecta a 'regresa a proyectar'",
         "VOICE_MARKETING_PHRASES": "afecta a 'proyecta marketing'",
-        "VOICE_TRANSLATE_PHRASES": "afecta a 'traduce MECH' (una frase)",
-        "VOICE_TRANSLATE_ON_PHRASES": (
-            "afecta a 'activa modo traductor' (continuo) — es una lista "
-            "NUEVA de sep 2026, si la tenés escrita a mano revisala"
-        ),
-        "VOICE_TRANSLATE_STOP_PHRASES": "afecta a 'desactiva el modo traductor'",
-        # La trivia es de sep 2026: estas listas casi nunca estarán en el
-        # .env, pero si alguien las copia de una versión vieja, MECH ofrece
-        # el juego y después no entiende ni el "sí".
-        "VOICE_TRIVIA_PHRASES": "afecta a 'juguemos una trivia'",
-        "VOICE_TRIVIA_STOP_PHRASES": "afecta a 'deja la trivia'",
-        "VOICE_YES_PHRASES": (
-            "afecta a contestar 'sí' cuando MECH ofrece la trivia"
-        ),
-        "VOICE_NO_PHRASES": "afecta a contestar 'no' al ofrecimiento",
+        "VOICE_TRANSLATE_PHRASES": "afecta a 'traduce MECH'",
+        "VOICE_TRANSLATE_STOP_PHRASES": "afecta a 'deja de traducir'",
         "ARM_GESTURE_MODE": "en 'subtle' los gestos casi no se ven",
-        # El equipo pidió (sep 2026) que MECH solo salude en reposo, con el
-        # brazo derecho y 3 agitadas. Si el .env trae los valores viejos,
-        # tapa esos defaults y parece que el cambio no se aplicó.
-        "GREETING_ONLY_DORMANT": (
-            "si está en false, MECH saluda también DESPIERTO (el equipo "
-            "pidió que solo salude en reposo)"
-        ),
-        "ARM_WAVE_BOTH": (
-            "si está en true, el saludo levanta los DOS brazos (el equipo "
-            "pidió solo el derecho)"
-        ),
-        "ARM_WAVE_REPEATS": "cuántas agitadas hace el brazo al saludar",
-        "VOICE_AUTOSTART": (
-            "si está en false, el bucle de voz NO arranca solo y MECH parece "
-            "sordo al encender el server"
-        ),
     }
     encontradas = []
     for linea in env.read_text(encoding="utf-8").splitlines():
@@ -696,28 +581,25 @@ def check_env_sombra() -> None:
             "Los gestos quedan en un vaivén de pocos grados. El SALUDO ya no\n"
             "se encoge, pero el resto sí. Ponelo en 'full' para el evento.")
 
-    # Las listas de frases tienen que seguir siendo distinguibles entre sí.
-    # Se comprueba con el .env YA aplicado, que es lo que va a correr de
-    # verdad: si alguien escribió una lista a mano, aquí se ve el efecto.
-    import voice_phrases as vp
-    choques = []
-    for frase, etiqueta, debe in (
-        ("duermete mech", "reposo", vp.is_sleep_any),
-        ("activa modo traductor", "traductor continuo", vp.is_translate_on),
-        ("desactiva el modo traductor", "apagar traductor", vp.is_translate_stop),
-        ("traduce mech", "traducir una", vp.is_translate),
-        ("ok mech", "despertar", lambda t: vp.wake_language(t) == "es"),
-    ):
-        if not debe(frase):
-            choques.append(f"«{frase}» ya NO activa: {etiqueta}")
-    # Y al revés: apagar el traductor no puede encenderlo.
-    if vp.is_translate_on("desactiva el modo traductor"):
-        choques.append("«desactiva el modo traductor» ENCIENDE el traductor "
-                       "(las listas se pisan)")
-    if choques:
-        _di(_FAIL, "Hay comandos que dejaron de funcionar", "\n".join(choques))
+    # El saludo que pidió el equipo (sep 2026): 3 rotaciones, solo el brazo
+    # derecho, solo en reposo y en inglés. «Guardar y aplicar» del panel
+    # escribe TODAS sus perillas en el .env, así que un valor viejo de ahí
+    # gana al código y parece que el cambio no se aplicó.
+    saludo = []
+    if config.ARM_WAVE_REPEATS != 3:
+        saludo.append(f"ARM_WAVE_REPEATS={config.ARM_WAVE_REPEATS} (pedido: 3 rotaciones)")
+    if config.ARM_WAVE_BOTH:
+        saludo.append("ARM_WAVE_BOTH=true (pedido: solo el brazo derecho)")
+    if not config.GREETING_ONLY_DORMANT:
+        saludo.append("GREETING_ONLY_DORMANT=false (pedido: solo en reposo)")
+    if config.GREETING_LANGUAGE != "en":
+        saludo.append(f"GREETING_LANGUAGE={config.GREETING_LANGUAGE!r} (pedido: inglés)")
+    if saludo:
+        _di(_WARN, "El saludo no está como lo pidió el equipo",
+            "\n".join(saludo) + "\n"
+            "Se arregla en el panel: Ajustes → sección del saludo → «Guardar y aplicar».")
     else:
-        _di(_OK, "Los comandos principales se reconocen con este .env")
+        _di(_OK, "Saludo: 3 rotaciones, brazo derecho, solo en reposo, en inglés")
 
 
 # ---------------------------------------------------------------------------
@@ -752,7 +634,7 @@ def main() -> int:
     for fn in (
         check_dependencias, check_whisper, check_claves, check_red,
         check_audio, check_arduino, check_biblioteca, check_frontend,
-        check_camara, check_env_sombra, check_disco,
+        check_env_sombra, check_disco,
     ):
         try:
             fn()
