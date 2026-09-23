@@ -803,6 +803,11 @@
               <span class="switch-text">Proyectar solo con usuario cerca</span>
             </label>
           </div>
+          <div class="slider-row">
+            <label title="Qué /dev/videoN usa la cámara. OJO: este número CAMBIA si se enchufa la cámara en otro puerto USB. Si no la encuentra, MECH busca sola en los índices 0 a 9 y dice en el log cuál funcionó — ese es el que hay que poner aquí. Hay que apagar y encender la visión para que el cambio valga.">Cámara nº</label>
+            <input type="range" min="0" max="9" step="1" value="0" id="set-camidx" oninput="UI.settingLabel('set-camidx','camidx')">
+            <span class="val" id="set-camidx-val">0</span>
+          </div>
           <div style="font-size:11px;font-family:var(--font-mono);margin-top:8px" id="vision-status">
             <span style="color:var(--text-muted)">Cámara apagada</span>
           </div>

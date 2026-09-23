@@ -1086,6 +1086,9 @@ _LIVE_KEYS = {
     "VISION_FOLLOW": _to_bool,
     "VISION_PROJECT_GATE": _to_bool,
     "VISION_MAX_SPEED": int,
+    # Índice de la cámara. Cambiarlo NO reabre la que ya está en uso:
+    # hay que apagar y encender la visión (o reiniciar) para que valga.
+    "VISION_CAMERA_INDEX": int,
     "GESTURE_WHEELS": _to_bool,
     "ARM_GESTURE_MODE": str,
     "NARRATION_GESTURE_MODE": str,  # gestos simples (un brazo) al proyectar
@@ -1170,6 +1173,7 @@ async def get_config():
             "VISION_APPROACH": config.VISION_APPROACH,
             "VISION_FOLLOW": config.VISION_FOLLOW,
             "VISION_PROJECT_GATE": config.VISION_PROJECT_GATE,
+            "VISION_CAMERA_INDEX": config.VISION_CAMERA_INDEX,
             "GESTURE_WHEELS": config.GESTURE_WHEELS,
             "ARM_GESTURE_MODE": config.ARM_GESTURE_MODE,
             "NARRATION_GESTURE_MODE": config.NARRATION_GESTURE_MODE,

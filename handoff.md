@@ -11,7 +11,14 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
 > está en `web/`.
 >
-> Lo último (20 sep 2026, §3.quindecies): cuatro cosas, **ninguna probada
+> **Lo último (22 sep 2026, §3.septendecies): lo que salió de probarlo en el
+> robot** — el arranque de voz (MECH parecía sordo al encender el server y el
+> panel no lo decía), el micrófono que ahora se MIDE solo al arrancar, el
+> saludo (4 rotaciones, un brazo, solo en reposo, en inglés), el **sentido de
+> giro por brazo** y la **cámara que se perdía al cambiarla de puerto USB**
+> (el índice ahora se busca solo). Más los guiones de la relatividad.
+>
+> Antes (20 sep 2026, §3.quindecies): cuatro cosas, **ninguna probada
 > todavía en la Pi** pero todas medidas en la laptop con scripts que quedan en
 > el repo. **(1) Gesto "67"**: MECH lo imita cuando alguien lo hace ante la
 > cámara — se reconoce por movimiento en ANTIFASE, no por la cara (con las
@@ -1135,6 +1142,185 @@ la comprobación que habría pillado el fallo del reposo antes del evento.
 
 ---
 
+## 3.septendecies Arranque de voz, saludo, brazos y cámara (22 sep 2026)
+
+Todo lo que salió de probar MECH en el robot y reportar fallos. **Nada de
+esto está probado en la Pi todavía**; está medido en la laptop con scripts
+que quedan en el repo.
+
+### 🔇 «Al encender el server no oye "ok MECH", pero con el botón sí»
+
+Reportado dos veces, y NO era el micrófono.
+
+**Causa (primera pasada):** al arrancar, el hilo de voz carga **dos modelos
+de Whisper** antes de abrir el micrófono. En la Pi eso tarda de segundos a
+casi un minuto, y durante toda esa espera el panel mostraba la fase
+`dormant`, que es el estado NORMAL de MECH escuchando. O sea: **parecía
+listo cuando el micrófono seguía cerrado**. El botón "arreglaba" el problema
+solo porque para cuando se pulsaba los modelos ya estaban en memoria.
+
+Arreglos:
+
+1. **Fase nueva `loading`**: el banner dice «⏳ Cargando Whisper… MECH
+   TODAVÍA NO ESCUCHA» en vez de fingir reposo. El aro de LEDs pulsa como
+   "pensando".
+2. El panel loguea la carga y **cuánto tardó** («Whisper cargado en N s»).
+   Ese número es el que hay que mirar: si es alto, la palanca es
+   `WHISPER_INTERRUPT_MODEL=tiny`.
+3. ⚠️ **El arranque del hilo NO tenía try/except.** Un fallo antes del bucle
+   (Arduino, audio, modelo) mataba el hilo **en silencio** y dejaba
+   `voice_loop_active` en True: el panel mostraba la voz encendida, el
+   micrófono nunca se abría, y como el botón es un toggle hacía falta
+   apagar y encender. Ahora el `finally` deja el estado en False y el error
+   se ve en el panel.
+4. `start_voice_loop()` comprueba que el hilo esté **VIVO**, no solo la
+   bandera: si se cayó, arranca otro y lo avisa.
+
+**Segunda pasada — el equipo dijo que seguía sordo.** Ahí dejé de adivinar:
+
+- **`stt.probe_microphone()`** abre el micrófono un segundo al arrancar y
+  **mide** lo que entra. `server._reportar_microfono()` escribe el veredicto
+  en el panel en CADA arranque y distingue los cuatro casos, que desde fuera
+  se ven idénticos:
+
+  | Mensaje | Qué significa |
+  |---|---|
+  | `Micrófono OK: capta señal` | funciona → si no despierta, es el **umbral** |
+  | `NO pude abrir el micrófono (…)` | el dispositivo del `.env` no existe o está ocupado |
+  | `se abrió pero NO llegó audio` | desenchufado o apagado |
+  | `NO capta nada (silencio digital)` | dispositivo equivocado, sin batería o silenciado |
+
+  También dice **qué dispositivo abrió de verdad** y el nivel medido. Si el
+  nombre no es el Steren, ahí está el problema.
+
+- ⚠️ **`VOICE_AUTOSTART=false` ya no es silencio absoluto.** Es la causa más
+  probable de todo esto y el arranque no la mencionaba en ningún sitio: con
+  esa clave apagada el bucle no arranca solo, MECH parece sordo, y el botón
+  del panel lo "arregla" porque es lo único que lo enciende. Ahora se avisa.
+
+**Sigue SIN confirmar cuál de las dos era.** Falta que el equipo pegue las
+líneas del panel desde «Bucle de voz iniciado» hasta «Voz lista».
+
+### 👋 El saludo: 4 rotaciones, un brazo y solo en reposo
+
+Tres cosas que pidió el equipo:
+
+1. **`ARM_WAVE_REPEATS` pasa de 2 a 4** (mínimo 2). Cuenta **las veces que
+   el brazo llega ARRIBA**, incluida la subida inicial — que es lo que se
+   cuenta mirando el robot.
+   ⚠️ Al hacerlo intenté que el número contara "solo las agitadas" y el
+   script nuevo demostró que estaba mal: **la subida inicial también se ve
+   como una**, así que el brazo llegaba arriba una vez MÁS de lo que decía
+   el panel. No lo vuelvas a cambiar sin medirlo.
+2. **`ARM_WAVE_BOTH` pasa a false**: saluda solo el brazo DERECHO. Con los
+   dos se leía más como "manos arriba" que como un saludo, y gasta el doble
+   en el gesto que más se repite en el stand.
+3. **La regla de "solo en reposo" ya no tiene excepciones.** El botón
+   «SALUDAR AHORA» se la saltaba a propósito, y por ahí MECH saludaba
+   despierto — justo lo que se quería evitar. Ahora se niega y explica por
+   qué. Para probarlo despierto se apaga la regla en Ajustes.
+
+**`scripts/probar_saludo.py`** (nuevo) cuenta las órdenes que el saludo
+manda de verdad al Arduino. Es el que pilló el error del punto 1.
+
+### 🦾 Sentido de giro por brazo
+
+El equipo reportó que el brazo derecho saluda **hacia el lado contrario**.
+Es de MONTAJE: si la bocina del servo está puesta del otro lado, el brazo
+sube al BAJAR el ángulo y **todos** los gestos salen al revés.
+
+Se resuelve como ya se hacía con las ruedas (`DIR_FL/FR/BL/BR` en el .ino):
+`gestures._fisico()` traduce el ángulo LÓGICO (90 = reposo, más = levantado)
+al que ve el servo. **`ARM_INVERT_R` viene en true** y `ARM_INVERT_L` en
+false; los dos en vivo desde Ajustes → «Sentido brazos». El reposo son 90 en
+los dos sentidos, así que cambiarlo no obliga a recalibrar nada más.
+
+### 🇬🇧 El saludo por cámara, en inglés
+
+`GREETING_LANGUAGE` (default `en`): el saludo que MECH suelta al ver llegar
+a alguien sale en inglés, porque es lo primero que se oye en un stand
+internacional. **NO cambia el idioma de MECH** — eso lo sigue decidiendo la
+frase con la que se le despierta, y en reposo vuelve siempre a español.
+Una clave vacía o mal escrita cae al idioma activo, así que una errata no
+deja a MECH mudo. Selector en Ajustes → «Idioma del saludo».
+
+### 📷 La cámara deja de funcionar al cambiarla de puerto USB
+
+Reportado al final de la sesión. **`VISION_CAMERA_INDEX` era un número
+FIJO**, y en Linux el número de `/dev/videoN` depende del ORDEN en que se
+enchufan los dispositivos: al cambiar de puerto USB (o al reiniciar con el
+receptor del micrófono puesto), la cámara pasa de `video0` a `video2` y el
+índice guardado apunta a otra cosa.
+
+Es exactamente el mismo problema que ya tenía el Arduino con su puerto
+serie, y se resuelve igual:
+
+- **`vision._buscar_camara()`** prueba primero el índice configurado y, si no
+  da imagen, **barre los índices 0 a 9**. Dice en el panel cuál encontró y
+  sugiere guardarlo.
+- ⚠️ **`isOpened()` NO basta**: en Linux una misma webcam expone VARIOS
+  `/dev/videoN` (el primero es imagen, los demás metadatos). OpenCV "abre"
+  esos nodos sin protestar y luego no entrega un fotograma — por fuera se ve
+  igual que una cámara rota. Por eso `_abrir()` pide un fotograma de verdad
+  antes de dar el índice por bueno.
+- **`VISION_CAMERA_INDEX` ahora es una clave en vivo** (Ajustes → «Cámara
+  nº»). Hay que apagar y encender la visión para que valga.
+- **El preflight tiene un chequeo nuevo (§10)**: lista los `/dev/video*`,
+  prueba qué índices entregan imagen de verdad y avisa si el configurado no
+  es uno de ellos. Distingue "la Pi no ve la cámara" (cable/puerto/corriente)
+  de "la ve pero no da imagen" (corriente o programa que la tiene abierta).
+
+⚠️ **Lo que esto NO arregla**: si la Pi no ve ningún `/dev/video*`, el
+problema es eléctrico o de cable, no del programa. La C930e a 1080p pide
+bastante corriente y la Pi 5 la reparte entre los cuatro puertos: con el
+receptor del micrófono, el Arduino y la cámara colgando, un hub USB **con
+alimentación propia** puede ser la diferencia. Ver §4 para qué pedirle al
+equipo.
+
+### 🌌 Relatividad: guion + obra en la biblioteca
+
+- **`docs/GUIONES_RELATIVIDAD.md`**: ocho escenas con narración y prompt de
+  Veo. El **segmento 4 (transformaciones de Lorentz) es el único con
+  FÓRMULAS en pantalla**, a pedido del equipo; el resto va sin texto porque
+  la IA escribe letras deformes. La sección explica cómo conseguir que
+  salgan (pizarra y tiza, `sqrt(...)` en vez de √, tres líneas máximo) y el
+  plan B: generar la pizarra vacía y poner las fórmulas en la edición.
+- **Obra `relatividad` en la biblioteca, con DOS segmentos, no ocho**:
+  Gemini junta las escenas en un solo video y el equipo las generó en dos
+  cuentas. `seg01` = escenas 1-4 (la relatividad especial), `seg02` =
+  escenas 5-8. El corte cae donde termina la especial.
+  ⚠️ El **primer `fact`** de la obra le dice a Claude que puede usar el
+  mismo `video_segment` en varios tramos de narración. Sin eso intentaría
+  contar toda la historia en dos segmentos de 25 s.
+  22 `facts` verificados, incluidas las trampas: el Nobel de 1921 fue por el
+  efecto fotoeléctrico y **no** por la relatividad, y el papel de Mileva
+  Marić es un debate que MECH no debe afirmar ni negar.
+
+### 🪟 `MECH Panel.exe` — dónde está
+
+El .exe construido está en **`windows/dist/MECH Panel.exe`** (10,5 MB).
+Esa carpeta está en `.gitignore`, así que **NO viaja en el repo**: cada
+máquina lo construye con `windows\construir_exe.ps1`, o alguien lo pasa por
+USB. Si el equipo prefiere que viaje en git, hay que sacar `windows/dist/`
+del `.gitignore`.
+
+### Dos sesiones a la vez — ojo con los commits
+
+Esta sesión y otra (la de la TRIVIA) estuvieron tocando el repo **al mismo
+tiempo**, y las dos editaron `CLAUDE.md`, `handoff.md`, `config.py`,
+`voice_phrases.py` y `.env.example`.
+
+⚠️ **No uses `git add -A`.** Yo lo hice una vez y me llevé `trivia.py` a un
+commit que no era suyo; hubo que deshacerlo con `git reset --soft`. Si hay
+otra sesión abierta:
+
+- commitea **por rutas concretas**;
+- si un archivo está mezclado, extraé tus hunks con
+  `git diff <archivo> > x.patch`, filtralos y `git apply --cached`;
+- y comprobá con `git show --stat` que no se coló nada ajeno.
+
+---
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
 La última corrección (el lag) **no se ha probado todavía**. En la Pi:
@@ -1216,6 +1402,45 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
 6j. **El `.env` de la Pi, de una vez**: `python -m backend.preflight` con el
    server apagado. El §9 ahora PRUEBA los comandos con el `.env` puesto y
    falla si alguno dejó de reconocerse. Es el chequeo que cierra §3.quaterdecies.
+6k. **LA CÁMARA (§3.septendecies) — es lo más urgente.** El equipo la
+   cambió de puerto USB y dejó de funcionar. Con el server APAGADO, en la Pi:
+
+   ```bash
+   ls /dev/video*
+   v4l2-ctl --list-devices
+   python -m backend.preflight      # el chequeo 10 es el de la cámara
+   ```
+
+   Y con eso ya se sabe de qué lado está el problema:
+   - **No sale ningún `/dev/video*`** → la Pi no la ve: es CABLE, PUERTO o
+     CORRIENTE, no el programa. Probar otro puerto, otro cable, y `dmesg |
+     tail -20` justo al enchufarla. La C930e a 1080p pide bastante: con el
+     receptor del micrófono y el Arduino colgando, un **hub USB con
+     alimentación propia** puede ser la diferencia.
+   - **Salen nodos pero ningún índice da imagen** → está conectada pero no
+     entrega video: casi siempre corriente, o que el server estaba abierto
+     (este chequeo va con el server APAGADO).
+   - **El preflight dice que el índice que funciona NO es el del `.env`** →
+     era eso. Ya no rompe nada (MECH lo busca solo al arrancar), pero conviene
+     guardarlo en Ajustes → «Cámara nº».
+
+   Después, encender la visión y comprobar el saludo y el gesto del 67.
+
+6l. **Arranque de voz (§3.septendecies)**: reiniciar el server y **pegar las
+   líneas del panel desde «Bucle de voz iniciado» hasta «Voz lista»**. Ahí
+   está la respuesta a lo del micrófono: el dispositivo que abrió de verdad,
+   el nivel medido y cuánto tardó Whisper. Si NO aparece «Bucle de voz
+   iniciado», es `VOICE_AUTOSTART=false` en el `.env`.
+
+6m. **Saludo (§3.septendecies)**: dormir a MECH y pasar por delante. Tiene que
+   levantar **solo el brazo derecho**, agitarlo **4 veces** y decirlo **en
+   inglés**. Si el brazo va hacia el lado contrario, Ajustes → «Sentido
+   brazos» → invertir el derecho. Y despierto NO debe saludar, ni siquiera
+   con el botón «SALUDAR AHORA».
+   ⚠️ Si sigue saludando con los dos brazos, es el `.env`:
+   `grep -E "ARM_WAVE|GREETING" ~/MECH/backend/.env` — esas claves tapan los
+   defaults nuevos. El preflight ahora las vigila.
+
 7. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
    siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
    vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el

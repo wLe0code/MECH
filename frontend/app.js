@@ -713,6 +713,7 @@
       setSlider('set-dist', 'dist', L.VISION_MIN_DISTANCE);
       if ($('set-approach')) $('set-approach').checked = !!L.VISION_APPROACH;
       if ($('set-gate')) $('set-gate').checked = !!L.VISION_PROJECT_GATE;
+      setSlider('set-camidx', 'camidx', L.VISION_CAMERA_INDEX);
       // Reinicio
       if ($('set-rate'))    $('set-rate').value = String(R.AUDIO_SAMPLE_RATE ?? 48000);
       if ($('set-whisper')) $('set-whisper').value = R.WHISPER_MODEL || 'base';
@@ -775,6 +776,7 @@
         VISION_MIN_DISTANCE: $('set-dist').value,
         VISION_APPROACH: $('set-approach').checked ? 'true' : 'false',
         VISION_PROJECT_GATE: $('set-gate').checked ? 'true' : 'false',
+        VISION_CAMERA_INDEX: String(parseInt($('set-camidx').value)),
         GESTURE67_ENABLED: $('set-g67').checked ? 'true' : 'false',
         GESTURE67_SAY: $('set-g67say').checked ? 'true' : 'false',
         GESTURE67_MIN_AMPLITUDE: $('set-g67amp').value,
@@ -838,7 +840,7 @@
                           // Gesto "67" y traductor
                           g67amp: '', g67corr: '', g67alt: '', g67win: ' s',
                           g67cd: ' s', g67high: '°', g67sec: ' s', g67rep: '',
-                          trcont: ' s', trdrain: ' s' };
+                          trcont: ' s', trdrain: ' s', camidx: '' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;

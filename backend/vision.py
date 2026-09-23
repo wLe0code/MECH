@@ -213,23 +213,87 @@ class Vision:
             and s.get("current_mode") != "STOP"
         )
 
-    def _loop(self) -> None:
-        import cv2
+    def _abrir(self, cv2, indice: int):
+        """Intenta abrir una cámara por índice y CONFIRMA que da imagen.
 
-        cap = cv2.VideoCapture(config.VISION_CAMERA_INDEX)
+        ⚠️ `isOpened()` NO basta. En Linux, una misma webcam expone VARIOS
+        `/dev/videoN`: el primero es la imagen y los siguientes son nodos de
+        metadatos. OpenCV "abre" esos nodos sin protestar y luego no entrega
+        un solo fotograma — que por fuera se ve igual que una cámara rota.
+        Por eso aquí se pide un fotograma de verdad antes de dar el índice
+        por bueno.
+        """
+        cap = cv2.VideoCapture(indice)
+        if not cap.isOpened():
+            cap.release()
+            return None
         # Forzar MJPG: sin esto la C930e negocia YUYV y cae a ~5 fps en la Pi.
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
         cap.set(cv2.CAP_PROP_FPS, TARGET_FPS)
-        if not cap.isOpened():
+        ok, _ = cap.read()
+        if not ok:
+            cap.release()
+            return None
+        return cap
+
+    def _buscar_camara(self, cv2):
+        """Abre la cámara, buscándola si el índice configurado no sirve.
+
+        **Por qué hace falta** (sep 2026): el equipo cambió la cámara de
+        puerto USB y dejó de funcionar. La causa es que `VISION_CAMERA_INDEX`
+        era un número FIJO, y en Linux el número de `/dev/videoN` depende del
+        orden en que se enchufan los dispositivos: al cambiar de puerto (o al
+        reiniciar con el receptor del micrófono puesto) la cámara pasa de
+        `video0` a `video2` y el índice guardado apunta a otra cosa.
+
+        Es el mismo problema que ya tenía el Arduino con su puerto serie, y
+        se resuelve igual: se prueba primero lo configurado y, si no da
+        imagen, se barren los índices. Devuelve `(cap, indice)` o
+        `(None, None)`.
+        """
+        preferido = config.VISION_CAMERA_INDEX
+        cap = self._abrir(cv2, preferido)
+        if cap is not None:
+            return cap, preferido
+
+        self.app.log(
+            f"La cámara {preferido} no da imagen; busco en los demás puertos…",
+            "warn",
+        )
+        for indice in range(0, 10):
+            if indice == preferido:
+                continue
+            cap = self._abrir(cv2, indice)
+            if cap is not None:
+                self.app.log(
+                    f"Cámara encontrada en el índice {indice} (el .env dice "
+                    f"{preferido}). Funciona igual, pero para que no tenga que "
+                    f"buscarla cada vez, poné VISION_CAMERA_INDEX={indice} en "
+                    "Ajustes. OJO: si volvés a cambiarla de puerto USB, el "
+                    "número cambia otra vez.",
+                    "warn",
+                )
+                return cap, indice
+        return None, None
+
+    def _loop(self) -> None:
+        import cv2
+
+        cap, indice = self._buscar_camara(cv2)
+        if cap is None:
             self.app.log(
-                f"No se pudo abrir la cámara {config.VISION_CAMERA_INDEX}. "
-                "¿Está enchufada la C930e? Revisa con: v4l2-ctl --list-devices",
+                "No encontré NINGUNA cámara (probé los índices 0 a 9). "
+                "Revisá que la C930e esté enchufada y que la Pi la vea: "
+                "`v4l2-ctl --list-devices` o `ls /dev/video*`. Si la lista "
+                "sale vacía, es cosa del cable, del puerto o de la corriente "
+                "— no del programa.",
                 "err",
             )
             self._publish(enabled=False, present=False, x=0.0, distance=None)
             return
+        self.app.log(f"Cámara abierta en el índice {indice}.", "ok")
 
         try:
             detector, warn = _make_detector(self.app)

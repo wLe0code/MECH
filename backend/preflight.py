@@ -539,6 +539,77 @@ def check_frontend() -> None:
 # 9. El .env que tapa los defaults (gotcha histórico del proyecto)
 # ---------------------------------------------------------------------------
 
+def check_camara() -> None:
+    """¿Ve la Pi la cámara, y en qué índice?
+
+    Existe porque el equipo cambió la C930e de puerto USB y dejó de
+    funcionar: en Linux el número de /dev/videoN depende del ORDEN en que se
+    enchufan los dispositivos, así que cambiar de puerto cambia el índice.
+    Aquí se dice cuál funciona de verdad, probando a leer un fotograma.
+    """
+    _titulo("10. Cámara (visión)")
+
+    if not config.VISION_ENABLED:
+        _di(_WARN, "La visión está APAGADA (VISION_ENABLED=false)",
+            "MECH no va a saludar a nadie por cámara ni a imitar el gesto "
+            "del 67. Se enciende en Ajustes.")
+
+    try:
+        import cv2
+    except ImportError:
+        _di(_WARN, "Sin OpenCV: no hay visión",
+            'pip install "opencv-python-headless<5"')
+        return
+
+    # Qué ve el sistema, antes de abrir nada.
+    nodos = sorted(Path("/dev").glob("video*")) if os.name != "nt" else []
+    if os.name != "nt":
+        if nodos:
+            _di(_OK, f"El sistema ve {len(nodos)} nodo(s) de video",
+                ", ".join(n.name for n in nodos))
+        else:
+            _di(_FAIL, "NO hay ningún /dev/video*",
+                "La Pi no ve la cámara: es cosa del cable, del puerto USB o "
+                "de la corriente, NO del programa.\n"
+                "-> Probá otro puerto y mirá `dmesg | tail -20` al "
+                "enchufarla.")
+            return
+
+    funcionan = []
+    for indice in range(0, 10):
+        cap = cv2.VideoCapture(indice)
+        try:
+            if cap.isOpened():
+                # isOpened() NO basta: los nodos de metadatos también "abren"
+                # y luego no entregan un fotograma.
+                ok, _ = cap.read()
+                if ok:
+                    funcionan.append(indice)
+        finally:
+            cap.release()
+
+    if not funcionan:
+        _di(_FAIL, "Ningún índice de cámara (0-9) entrega imagen",
+            "Si arriba SÍ salen nodos /dev/video*, la cámara está conectada "
+            "pero no da imagen: suele ser falta de corriente (un hub USB con "
+            "alimentación lo arregla) o que otro programa la tiene abierta "
+            "(¿está el server corriendo? este chequeo va con el server "
+            "APAGADO).")
+        return
+
+    _di(_OK, f"Cámara(s) con imagen en el índice: {funcionan}")
+    if config.VISION_CAMERA_INDEX in funcionan:
+        _di(_OK, f"VISION_CAMERA_INDEX={config.VISION_CAMERA_INDEX} es correcto")
+    else:
+        _di(_WARN,
+            f"VISION_CAMERA_INDEX={config.VISION_CAMERA_INDEX} NO da imagen",
+            f"El que funciona es el {funcionan[0]}. MECH lo busca solo al "
+            f"arrancar, así que va a funcionar igual, pero para que no tenga "
+            f"que buscarlo poné VISION_CAMERA_INDEX={funcionan[0]} en "
+            "Ajustes.\n"
+            "OJO: ese número CAMBIA si volvés a mover la cámara de puerto.")
+
+
 def check_env_sombra() -> None:
     _titulo("9. Claves del .env que TAPAN los defaults del código")
     env = Path(__file__).resolve().parent / ".env"
@@ -666,7 +737,7 @@ def main() -> int:
     for fn in (
         check_dependencias, check_whisper, check_claves, check_red,
         check_audio, check_arduino, check_biblioteca, check_frontend,
-        check_env_sombra, check_disco,
+        check_camara, check_env_sombra, check_disco,
     ):
         try:
             fn()
