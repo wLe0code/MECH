@@ -27,12 +27,14 @@ import sounddevice as sd
 import config
 import gestures
 import image_gen
+import informacion_nuestra
 import lang
 import llm
 import maneuvers
 import background_audio
 import subtitles
 import translator
+import trivia
 import voice_phrases
 import tts
 import video_library
@@ -88,6 +90,9 @@ class MechApp:
         # de voz puede cambiar a mitad de una presentación, esto no.
         self._presenting = 0
         self._presenting_lock = threading.Lock()
+        # Lo último que MECH narró (título, texto y obra), que es sobre lo
+        # que van las preguntas de la trivia.
+        self._last_presentation: dict | None = None
         # Subtítulos: hilo que va sacando las líneas al ritmo real de la voz.
         self._subs_cancel: threading.Event | None = None
         # Mientras esto está activo, las RUEDAS están en medio de una maniobra
@@ -147,6 +152,11 @@ class MechApp:
             # {active, awaiting_pair, src, dst, auto_detect}. Ver
             # backend/translator.py.
             "translator": translator.snapshot(),
+            # Estado del juego de preguntas. OJO: esto es lo que se PINTA en
+            # la proyección, no la verdad del juego — el marcador final se
+            # queda unos segundos en pantalla cuando la partida ya terminó.
+            # Para saber si se está jugando, `trivia.is_active()`.
+            "trivia": trivia.snapshot(),
             # Estado de la visión (lo actualiza backend/vision.py).
             "vision": {
                 "enabled": False,
@@ -495,6 +505,303 @@ class MechApp:
                 time.sleep(config.TRANSLATOR_DRAIN_SECONDS)
 
     # ------------------------------------------------------------------
+    # Modo TRIVIA — el juego de preguntas (ver backend/trivia.py)
+    # ------------------------------------------------------------------
+
+    def _emit_trivia(self, snap: dict | None = None) -> None:
+        """Manda a la proyección y al panel lo que hay que pintar.
+
+        Va por evento WS **y** por `state`: el evento pinta al instante, y el
+        estado hace que una pantalla que se recargue a media partida vuelva a
+        la pregunta correcta sin preguntar nada.
+        """
+        snap = dict(snap if snap is not None else trivia.snapshot())
+        # Los textos fijos de la pantalla ("¿Jugamos?", "¡Correcto!") salen en
+        # el idioma activo, igual que lo que dice MECH.
+        snap["lang"] = lang.current()
+        self.state["trivia"] = snap
+        self.emit("trivia", **snap)
+
+    def _clear_trivia_screen(self) -> None:
+        """Quita el juego de la pantalla (la partida ya terminó)."""
+        self._emit_trivia({"active": False, "stage": "off"})
+
+    def _say_trivia(self, texto: str, listen: bool = True) -> None:
+        """Dice algo del juego y deja el micrófono listo para contestar.
+
+        Guarda lo dicho para la guarda anti-eco: el micrófono se abre justo
+        después de hablar y el parlante arrastra buffer, así que sin esto
+        MECH acabaría contestándose a sí mismo.
+        """
+        trivia.remember_spoken(texto)
+        tts.speak(texto, blocking=True)
+        time.sleep(config.TRIVIA_DRAIN_SECONDS)
+        if listen:
+            self.chime_pending = True  # chime de "te toca", como tras "ok MECH"
+
+    def _remember_presentation(self, plan: "llm.Plan", narrados: list[str]) -> None:
+        """Se queda con lo que MECH acaba de contar, para preguntar sobre eso.
+
+        `narrados` son los segmentos que de verdad sonaron: si lo
+        interrumpieron a la mitad, no tiene sentido preguntar por lo que el
+        visitante no llegó a oír.
+        """
+        if not narrados:
+            return
+        slug = next((s.video_slug for s in plan.segments if s.video_slug), None)
+        self._last_presentation = {
+            "title": plan.title,
+            "text": "\n".join(narrados),
+            "slug": slug,
+        }
+
+    def _trivia_source(self) -> tuple[str, str]:
+        """(título, material) sobre el que se escriben las preguntas.
+
+        Lo normal es lo último que narró, más los **datos verificados** de esa
+        obra (`facts` de video_library): así las preguntas salen de material
+        comprobado y no de lo que el modelo recuerde. Si todavía no ha contado
+        nada, la partida va sobre MECH y su proyecto.
+        """
+        pres = self._last_presentation
+        if pres and pres.get("text"):
+            partes = [pres["text"]]
+            meta = video_library.WORKS.get(pres.get("slug") or "", {})
+            datos = meta.get("facts") or []
+            if datos:
+                partes.append("Datos verificados de la obra:\n- " + "\n- ".join(datos))
+            return pres.get("title") or meta.get("title", ""), "\n\n".join(partes)
+        return (
+            "MECH y su equipo",
+            informacion_nuestra.system_prompt_section(),
+        )
+
+    def should_offer_trivia(self, plan: "llm.Plan", completa: bool = True) -> bool:
+        """¿Toca ofrecer el juego al acabar esta narración?
+
+        Solo tras una presentación de verdad (`immersive`): tras una respuesta
+        suelta o una orden de movimiento, ofrecer un juego queda fuera de
+        lugar. Y nunca si hay otra cosa en marcha (traductor) o si el bucle de
+        voz está apagado, porque entonces nadie podría contestar.
+        """
+        return bool(
+            completa
+            and config.TRIVIA_ENABLED
+            and config.TRIVIA_OFFER_AFTER_PLAN
+            and getattr(plan, "mode", "") == "immersive"
+            and self._last_presentation
+            and self.state["voice_loop_active"]
+            and self.state.get("voice_awake", True)
+            and not translator.is_active()
+            and not trivia.is_active()
+        )
+
+    def offer_trivia(self, title: str = "") -> None:
+        """Ofrece jugar y se queda esperando un sí o un no."""
+        trivia.offer(title or (self._last_presentation or {}).get("title", ""))
+        self.log("Ofrezco la trivia: espero un sí o un no.", "ok")
+        self._emit_trivia()
+        self._say_trivia(lang.say("trivia_offer"))
+
+    def handle_trivia_offer(self, text: str) -> bool:
+        """Interpreta la respuesta a "¿jugamos?".
+
+        Devuelve True si la consumió. **False significa "esto no era para
+        mí"**: el visitante cambió de tema («cuéntame otra cosa»), así que se
+        cancela el ofrecimiento y quien llama lo procesa como un comando
+        normal. Sin esto, decir cualquier otra cosa dejaría a MECH atascado
+        preguntando por un juego que ya no interesa.
+        """
+        if self._trivia_echo(text):
+            return True
+        if voice_phrases.is_trivia_stop(text) or voice_phrases.is_no(text):
+            trivia.reset()
+            self._clear_trivia_screen()
+            self.log("No quieren jugar: sigo normal.", "info")
+            with self._talking_alone():
+                self._say_trivia(lang.say("trivia_declined"))
+            return True
+        if voice_phrases.is_yes(text) or voice_phrases.is_trivia(text):
+            self.start_trivia()
+            return True
+        # Cualquier otra cosa: no era una respuesta al ofrecimiento.
+        trivia.reset()
+        self._clear_trivia_screen()
+        self.log("Cambió de tema: cancelo el ofrecimiento de la trivia.", "info")
+        return False
+
+    def _trivia_echo(self, text: str) -> bool:
+        """¿Lo que oyó es su propia voz saliendo del parlante?"""
+        if any(voice_phrases.sounds_like_same(text, d) for d in trivia.spoken()):
+            self.log(f"Ignoro mi propio eco: {text!r}", "info")
+            return True
+        return False
+
+    def start_trivia(self) -> None:
+        """Genera las preguntas y lanza la primera.
+
+        Avisa por voz antes de pedirle las preguntas a Claude: son varios
+        segundos y, sin avisar, parece que MECH se colgó.
+        """
+        titulo, material = self._trivia_source()
+        with self._talking_alone():
+            trivia.reset()
+            # Pantalla de "preparando": generar las preguntas tarda unos
+            # segundos y, con la pantalla vacía, parecería que no pasa nada.
+            self._emit_trivia({"active": True, "stage": "loading", "title": titulo})
+            tts.speak(lang.say("trivia_preparing"), blocking=True)
+            self.set_voice_phase("thinking")
+            try:
+                preguntas = llm.make_quiz(
+                    material,
+                    title=titulo,
+                    n=config.TRIVIA_QUESTIONS,
+                    language=lang.current(),
+                )
+            except Exception as e:
+                self.log(f"No pude preparar la trivia: {e}", "err")
+                preguntas = []
+            if not preguntas or not trivia.load(preguntas, titulo):
+                trivia.reset()
+                self._clear_trivia_screen()
+                self._say_trivia(lang.say("trivia_failed"))
+                return
+            self.log(
+                f"Trivia lista: {trivia.total()} preguntas sobre «{titulo}».", "ok"
+            )
+            self.set_voice_phase("speaking")
+            tts.speak(lang.say("trivia_intro", total=trivia.total()), blocking=True)
+            self._ask_trivia_question()
+
+    def _ask_trivia_question(self) -> None:
+        """Proyecta la pregunta actual y la lee en voz alta con sus opciones."""
+        pregunta = trivia.current()
+        if pregunta is None:
+            self._finish_trivia()
+            return
+        self._emit_trivia()
+        letras = trivia.LETTERS
+        opciones = ". ".join(
+            f"{letras[i]}. {op}" for i, op in enumerate(pregunta["options"])
+        )
+        texto = (
+            lang.say("trivia_question_header", n=trivia.number(), total=trivia.total())
+            + " " + pregunta["question"] + " " + opciones + "."
+        )
+        self.log(
+            f"Pregunta {trivia.number()}/{trivia.total()}: {pregunta['question']}",
+            "info",
+        )
+        self._say_trivia(texto)
+
+    def handle_trivia_answer(self, text: str) -> None:
+        """Interpreta la respuesta del visitante y revela el resultado."""
+        if self._trivia_echo(text):
+            return
+        pregunta = trivia.current()
+        if pregunta is None:
+            self._finish_trivia()
+            return
+        self.state["last_transcript"] = text
+        self.emit("transcript", text=text)
+        eleccion = voice_phrases.parse_answer(text, pregunta["options"])
+        if eleccion is None:
+            # No se entendió (o dijo que no lo sabe). A la segunda se revela
+            # la respuesta y se sigue: insistir con "decí A, B o C" a alguien
+            # que no te entiende es la peor experiencia posible en un stand.
+            if trivia.miss() >= 2:
+                trivia.give_up()
+                self._reveal_trivia()
+            else:
+                self.log(f"No entendí la respuesta: {text!r}", "warn")
+                with self._talking_alone():
+                    self._say_trivia(lang.say("trivia_repeat"))
+            return
+        acerto = trivia.answer(eleccion)
+        self.log(
+            f"Respondió {trivia.LETTERS[eleccion]} — "
+            f"{'correcto' if acerto else 'incorrecto'}.",
+            "ok" if acerto else "warn",
+        )
+        self._reveal_trivia()
+
+    def _reveal_trivia(self) -> None:
+        """Enseña el resultado en pantalla, lo dice, y pasa a la siguiente."""
+        pregunta = trivia.current()
+        snap = trivia.snapshot()
+        self._emit_trivia(snap)          # la pantalla celebra o revela
+        correcta = pregunta["correct"] if pregunta else 0
+        letra = trivia.LETTERS[correcta]
+        respuesta = pregunta["options"][correcta] if pregunta else ""
+        if snap["result"] == "correct":
+            texto = lang.say("trivia_correct")
+        elif snap["result"] == "pass":
+            texto = lang.say("trivia_pass", letter=letra, answer=respuesta)
+        else:
+            texto = lang.say("trivia_wrong", letter=letra, answer=respuesta)
+        with self._talking_alone():
+            # `listen=False`: aquí no toca contestar nada, y el chime sonaría
+            # a destiempo justo antes de la siguiente pregunta.
+            self._say_trivia(texto, listen=False)
+            if trivia.advance():
+                self._ask_trivia_question()
+            else:
+                self._finish_trivia()
+
+    def _finish_trivia(self) -> None:
+        """Marcador final: lo proyecta, lo dice y limpia la pantalla luego."""
+        snap = trivia.snapshot()
+        aciertos, total = snap["score"], snap["total"]
+        self._emit_trivia(snap)
+        if total and aciertos == total:
+            texto = lang.say("trivia_perfect", total=total)
+        elif not aciertos:
+            texto = lang.say("trivia_zero")
+        else:
+            texto = lang.say("trivia_final", score=aciertos, total=total)
+        self.log(f"Fin de la trivia: {aciertos} de {total}.", "ok")
+        tts.speak(texto, blocking=True)
+        trivia.reset()
+        # El marcador se queda unos segundos en pantalla mientras MECH ya
+        # vuelve a escuchar: por eso se limpia con un temporizador y no aquí.
+        threading.Timer(
+            config.TRIVIA_FINAL_SECONDS, self._clear_trivia_screen
+        ).start()
+        time.sleep(config.TRIVIA_DRAIN_SECONDS)
+        self.chime_pending = True
+
+    def stop_trivia(self, announce: bool = True) -> None:
+        """Sale del juego (lo pidieron, se durmió, o paro de emergencia)."""
+        if not trivia.is_active():
+            return
+        trivia.reset()
+        self.log("Trivia cancelada.", "info")
+        self._clear_trivia_screen()
+        if announce:
+            with self._talking_alone():
+                tts.speak(lang.say("trivia_off"), blocking=True)
+                time.sleep(config.TRIVIA_DRAIN_SECONDS)
+
+    def answer_trivia_from_panel(self, choice: int) -> bool:
+        """Responde desde el panel, sin micrófono (para probar el juego).
+
+        Devuelve False si ahora mismo no hay una pregunta esperando.
+        """
+        pregunta = trivia.current()
+        if not trivia.is_asking() or pregunta is None:
+            return False
+        if not (0 <= choice < len(pregunta["options"])):
+            return False
+        acerto = trivia.answer(choice)
+        self.log(
+            f"Respuesta desde el panel: {trivia.LETTERS[choice]} — "
+            f"{'correcto' if acerto else 'incorrecto'}.",
+            "ok" if acerto else "warn",
+        )
+        self._reveal_trivia()
+        return True
+
+    # ------------------------------------------------------------------
     # Subtítulos de la proyección (estilo cine: abajo, centrados)
     # ------------------------------------------------------------------
 
@@ -689,6 +996,7 @@ class MechApp:
         # Dormirse también saca del modo traductor (sin anunciarlo: ya va a
         # decir la frase de reposo justo aquí abajo).
         self.stop_translator(announce=False)
+        self.stop_trivia(announce=False)
         self.log(
             "MECH en reposo. Di 'ok MECH' (o 'wake up MECH' para inglés).",
             "info",
@@ -761,7 +1069,8 @@ class MechApp:
           2. Solo EN REPOSO (`GREETING_ONLY_DORMANT`, default true). Despierto
              está atendiendo a alguien.
         """
-        if self._presenting > 0 or self.state.get("voice_phase") in self._BUSY_PHASES:
+        if (self._presenting > 0 or trivia.is_active()
+                or self.state.get("voice_phase") in self._BUSY_PHASES):
             return "MECH está presentando o hablando con alguien ahora mismo"
         if config.GREETING_ONLY_DORMANT and self.state.get("voice_awake", True):
             return "MECH está despierto y el saludo solo va en reposo"
@@ -947,6 +1256,12 @@ class MechApp:
         # Modo traductor: se apaga sin anunciarlo (el TTS acaba de cortarse).
         try:
             self.stop_translator(announce=False)
+        except Exception:
+            pass
+        # Trivia: se apaga sin anunciarlo (el TTS acaba de cortarse).
+        try:
+            trivia.reset()
+            self._clear_trivia_screen()
         except Exception:
             pass
         # Proyección
@@ -1318,6 +1633,9 @@ class MechApp:
         guion = " ".join(seg.narration for seg in plan.segments)
         if self.interrupts.start(guard_text=guion):
             self.log("Puedes decir 'oye MECH' para interrumpirme.", "info")
+        # Lo que de verdad llegó a sonar. Es lo que se usa para la trivia: si
+        # lo interrumpen a la mitad, preguntar por lo que no oyó sería injusto.
+        narrados: list[str] = []
         try:
             for i, seg in enumerate(plan.segments, 1):
                 if self._narration_interrupted:
@@ -1366,6 +1684,7 @@ class MechApp:
                     on_playback=lambda info, t=seg.narration: self.start_subtitles(t, info),
                 )
                 self.stop_subtitles()  # calló: fuera el texto hasta el próximo
+                narrados.append(seg.narration)
         finally:
             self.interrupts.stop()
             background_audio.stop()
@@ -1398,6 +1717,14 @@ class MechApp:
                     time.sleep(0.5)  # que el parlante drene antes de escuchar
                     self.chime_pending = True
                     self.log("Te escucho: dime de qué quieres que hable.", "ok")
+            # Lo narrado se recuerda SIEMPRE (también si lo interrumpieron):
+            # así un "juguemos una trivia" posterior pregunta sobre esto.
+            self._remember_presentation(plan, narrados)
+            completa = len(narrados) == len(plan.segments)
+            if not self._narration_interrupted and self.should_offer_trivia(plan, completa):
+                # Se acabó la presentación entera y nadie la cortó: el mejor
+                # momento para proponer el juego.
+                self.offer_trivia(plan.title)
             self.arduino.set_mode("IDLE")
 
     def _start_background_music(self, plan: "llm.Plan") -> None:
@@ -1458,6 +1785,14 @@ class MechApp:
             src, dst = voice_phrases.extract_language_pair(text)
             self.start_translator(src, dst)
             return
+        # Trivia. Igual que el traductor, salir se mira ANTES que entrar.
+        if config.TRIVIA_ENABLED:
+            if voice_phrases.is_trivia_stop(text):
+                self.stop_trivia()
+                return
+            if voice_phrases.is_trivia(text):
+                self.start_trivia()
+                return
         # Órdenes de movimiento: se atienden aquí mismo, sin llamar a Claude.
         if self.handle_movement_command(text):
             if self.state["voice_loop_active"]:

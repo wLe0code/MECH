@@ -558,6 +558,13 @@ def check_env_sombra() -> None:
         "VOICE_TRANSLATE_PHRASES": "afecta a 'traduce MECH'",
         "VOICE_TRANSLATE_STOP_PHRASES": "afecta a 'deja de traducir'",
         "ARM_GESTURE_MODE": "en 'subtle' los gestos casi no se ven",
+        # La trivia es de sep 2026: estas listas casi nunca estarán en el
+        # .env, pero si alguien las copia de una versión vieja, MECH ofrece
+        # el juego y después no entiende ni el "sí".
+        "VOICE_TRIVIA_PHRASES": "afecta a 'juguemos una trivia'",
+        "VOICE_TRIVIA_STOP_PHRASES": "afecta a 'deja la trivia'",
+        "VOICE_YES_PHRASES": "afecta a contestar 'sí' cuando MECH ofrece la trivia",
+        "VOICE_NO_PHRASES": "afecta a contestar 'no' al ofrecimiento",
     }
     encontradas = []
     for linea in env.read_text(encoding="utf-8").splitlines():

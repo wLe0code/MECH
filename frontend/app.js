@@ -130,6 +130,7 @@
       case 'image':       msg.url ? applyAIImage(msg.url) : clearImmersivePreview(); break;
       case 'video':       msg.url ? applyAIVideo(msg.url) : clearImmersivePreview(); break;
       case 'vision':      applyVision(msg); break;
+      case 'trivia':      applyTrivia(msg); break;
       case 'facing':      applyFacing(msg.facing); break;
       case 'mic_level':   applyMicLevel(msg); break;
       case 'pong':        break;
@@ -273,6 +274,59 @@
     });
   }
 
+  // ─── Trivia (el juego de preguntas) ───────────────────────────────
+  // El estado manda: aquí solo se pinta. Los botones A/B/C responden sin
+  // micrófono, que es como se separa "el juego falla" de "no te entendió".
+  const TRIVIA_ETAPAS = {
+    offer:    { texto: '¿JUGAMOS?',  cls: 'tr-waiting' },
+    loading:  { texto: 'PREPARANDO', cls: 'tr-waiting' },
+    question: { texto: 'TU TURNO',   cls: 'tr-on' },
+    result:   { texto: 'REVELANDO',  cls: 'tr-on' },
+    final:    { texto: 'RESULTADO',  cls: 'tr-idle' },
+  };
+
+  function applyTrivia(t) {
+    t = t || {};
+    const box = $('trivia-box');
+    if (!box) return;
+    const activa = !!t.active;
+    box.classList.toggle('active', activa);
+    const et = TRIVIA_ETAPAS[t.stage] || { texto: 'APAGADA', cls: '' };
+    const badge = $('trivia-state');
+    badge.textContent = activa
+      ? (t.total ? `${et.texto} · ${t.number}/${t.total}` : et.texto)
+      : 'APAGADA';
+    badge.className = 'translator-state ' + (activa ? et.cls : '');
+
+    const q = $('trivia-q');
+    if (activa && t.question) {
+      const marcador = t.total ? ` <span style="color:var(--text-muted)">· aciertos: ${t.score}/${t.total}</span>` : '';
+      q.innerHTML = escapeHTML(t.question) + marcador;
+    } else if (activa && t.stage === 'final') {
+      q.innerHTML = `Resultado: <b>${t.score}/${t.total}</b>`;
+    } else if (activa && t.stage === 'offer') {
+      q.innerHTML = '<span class="tq-empty">Esperando un sí o un no…</span>';
+    } else if (activa && t.stage === 'loading') {
+      q.innerHTML = '<span class="tq-empty">Claude está escribiendo las preguntas…</span>';
+    } else {
+      q.innerHTML = '<span class="tq-empty">Sin partida en marcha.</span>';
+    }
+
+    const cont = $('trivia-opts');
+    cont.innerHTML = '';
+    (t.options || []).forEach((op, i) => {
+      const b = document.createElement('button');
+      b.className = 'trivia-opt';
+      b.innerHTML = `<b>${escapeHTML((t.letters || [])[i] || '')}</b>${escapeHTML(op)}`;
+      b.disabled = t.stage !== 'question';
+      b.title = t.stage === 'question'
+        ? 'Responder esta opción sin micrófono'
+        : 'Solo se puede responder mientras la pregunta está en pantalla';
+      b.onclick = () => API.triviaAnswer((t.letters || [])[i] || String(i + 1));
+      cont.appendChild(b);
+    });
+  }
+
   function applyState(s) {
     state.backend = s;
     // Idioma activo (español por defecto; los demás solo si lo despiertan
@@ -321,6 +375,9 @@
 
     // Visión
     if (s.vision) applyVision(s.vision);
+
+    // Trivia
+    applyTrivia(s.trivia);
 
     // Hacia dónde mira (maniobra de 180°)
     applyFacing(s.facing || 'projection');
@@ -504,6 +561,22 @@
       else if (res) log(res.reason || 'MECH no está narrando ahora.', 'warn');
     },
 
+    async triviaStart() {
+      log('Preparando las preguntas de la trivia…', 'info');
+      const res = await fetchJSON('/api/trivia/start');
+      if (res && !res.ok) log(res.reason || 'No se pudo empezar la trivia.', 'warn');
+    },
+
+    async triviaStop() {
+      const res = await fetchJSON('/api/trivia/stop');
+      if (res && !res.ok) log(res.reason || 'No hay ninguna trivia en marcha.', 'warn');
+    },
+
+    async triviaAnswer(letra) {
+      const res = await fetchJSON(`/api/trivia/answer/${encodeURIComponent(letra)}`);
+      if (res && !res.ok) log(res.reason || 'Ahora no hay ninguna pregunta esperando.', 'warn');
+    },
+
     async sendTextCommand() {
       const input = $('text-cmd');
       const text = input.value.trim();
@@ -634,6 +707,9 @@
       if ($('set-dryrun')) $('set-dryrun').checked = !!L.TTS_DRY_RUN;
       if ($('set-subs')) $('set-subs').checked = L.SUBTITLES_ENABLED !== false;
       if ($('set-interrupt')) $('set-interrupt').checked = L.VOICE_INTERRUPT_ENABLED !== false;
+      if ($('set-trivia')) $('set-trivia').checked = L.TRIVIA_ENABLED !== false;
+      if ($('set-trivia-offer')) $('set-trivia-offer').checked = L.TRIVIA_OFFER_AFTER_PLAN !== false;
+      setSlider('set-trivia-n', 'trivian', L.TRIVIA_QUESTIONS);
       setSlider('set-ienergy', 'ienergy', L.INTERRUPT_ENERGY_FACTOR);
       if ($('set-armmode')) $('set-armmode').value = L.ARM_GESTURE_MODE || 'full';
       if ($('set-wheels')) $('set-wheels').checked = !!L.GESTURE_WHEELS;
@@ -700,6 +776,9 @@
         TTS_DRY_RUN: $('set-dryrun').checked ? 'true' : 'false',
         SUBTITLES_ENABLED: $('set-subs').checked ? 'true' : 'false',
         VOICE_INTERRUPT_ENABLED: $('set-interrupt').checked ? 'true' : 'false',
+        TRIVIA_ENABLED: $('set-trivia').checked ? 'true' : 'false',
+        TRIVIA_OFFER_AFTER_PLAN: $('set-trivia-offer').checked ? 'true' : 'false',
+        TRIVIA_QUESTIONS: String(parseInt($('set-trivia-n').value)),
         INTERRUPT_ENERGY_FACTOR: $('set-ienergy').value,
         ARM_GESTURE_MODE: $('set-armmode').value,
         GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
@@ -771,6 +850,7 @@
 
   // Helpers de sliders de ajustes (texto con unidad).
   const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', ienergy: '×', dist: ' m',
+                          trivian: ' preguntas',
                           wave: ' s', greetcd: ' s', turnsec: ' s', latsec: ' s', turnvel: '', latvel: '',
                           wavehigh: '°', waveswing: '°', waverep: '', kick: ' s',
                           advsec: ' s', advvel: '', advmax: ' s',

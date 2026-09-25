@@ -148,6 +148,94 @@ _PHRASES: dict[str, dict[str, str]] = {
     # --- Modo traductor (ver backend/translator.py) ------------------------
     # Lo que pregunta al entrar. Es una PREGUNTA: justo después suena el
     # chime de "puedes hablar", igual que al interrumpirlo.
+    # --- Modo TRIVIA (ver backend/trivia.py) ---
+    # ⚠️ Estas frases las DICE MECH con el micrófono a punto de abrirse, así
+    # que son eco en potencia. La guarda de `trivia.py` las descarta si
+    # vuelven a entrar, pero conviene que no repitan literalmente un comando.
+    "trivia_offer": {
+        "es": "¿Te gustaría realizar una trivia para comprobar tu conocimiento?",
+        "en": "Would you like to take a trivia to test your knowledge?",
+        "fr": "Aimerais-tu faire un quiz pour tester tes connaissances ?",
+        "pt": "Gostarias de fazer uma trivia para testar o teu conhecimento?",
+    },
+    "trivia_preparing": {
+        "es": "Dame un momento, preparo las preguntas.",
+        "en": "Give me a moment, I'm writing the questions.",
+        "fr": "Un instant, je prépare les questions.",
+        "pt": "Um momento, estou a preparar as perguntas.",
+    },
+    "trivia_intro": {
+        "es": "Allá vamos. Son {total} preguntas.",
+        "en": "Here we go. {total} questions.",
+        "fr": "C'est parti. {total} questions.",
+        "pt": "Vamos lá. São {total} perguntas.",
+    },
+    "trivia_failed": {
+        "es": "No pude preparar las preguntas. ¿Te cuento otra cosa?",
+        "en": "I couldn't put the questions together. Shall I tell you something else?",
+        "fr": "Je n'ai pas pu préparer les questions. Je te raconte autre chose ?",
+        "pt": "Não consegui preparar as perguntas. Conto-te outra coisa?",
+    },
+    "trivia_question_header": {
+        "es": "Pregunta {n} de {total}.",
+        "en": "Question {n} of {total}.",
+        "fr": "Question {n} sur {total}.",
+        "pt": "Pergunta {n} de {total}.",
+    },
+    "trivia_correct": {
+        "es": "¡Correcto!",
+        "en": "That's right!",
+        "fr": "Exact !",
+        "pt": "Certo!",
+    },
+    "trivia_wrong": {
+        "es": "No has acertado. La respuesta correcta es la {letter}: {answer}.",
+        "en": "You didn't get it. The correct answer is {letter}: {answer}.",
+        "fr": "Raté. La bonne réponse est la {letter} : {answer}.",
+        "pt": "Não acertaste. A resposta certa é a {letter}: {answer}.",
+    },
+    "trivia_pass": {
+        "es": "Te la dejo: la respuesta correcta es la {letter}: {answer}.",
+        "en": "I'll give you that one: the right answer is {letter}: {answer}.",
+        "fr": "Je te la donne : la bonne réponse est la {letter} : {answer}.",
+        "pt": "Fica esta: a resposta certa é a {letter}: {answer}.",
+    },
+    "trivia_repeat": {
+        "es": "Contesta diciendo la letra, por ejemplo: la A.",
+        "en": "Answer with a letter, for example: A.",
+        "fr": "Réponds avec une lettre, par exemple : la A.",
+        "pt": "Responde com uma letra, por exemplo: a A.",
+    },
+    "trivia_final": {
+        "es": "Fin del juego. Acertaste {score} de {total}.",
+        "en": "Game over. You got {score} out of {total}.",
+        "fr": "Fin du jeu. Tu as {score} bonnes réponses sur {total}.",
+        "pt": "Fim do jogo. Acertaste {score} de {total}.",
+    },
+    "trivia_perfect": {
+        "es": "¡Perfecto! Las {total} correctas. Estabas atento.",
+        "en": "Perfect! All {total} correct. You were paying attention.",
+        "fr": "Parfait ! Les {total} bonnes. Tu étais attentif.",
+        "pt": "Perfeito! As {total} certas. Estavas atento.",
+    },
+    "trivia_zero": {
+        "es": "Ninguna esta vez, pero ahora ya te las sabes.",
+        "en": "None this time, but now you know them.",
+        "fr": "Aucune cette fois, mais maintenant tu les connais.",
+        "pt": "Nenhuma desta vez, mas agora já as sabes.",
+    },
+    "trivia_off": {
+        "es": "Listo, dejamos el juego.",
+        "en": "All right, we'll stop the game.",
+        "fr": "D'accord, on arrête le jeu.",
+        "pt": "Pronto, paramos o jogo.",
+    },
+    "trivia_declined": {
+        "es": "Sin problema. ¿Qué más quieres saber?",
+        "en": "No problem. What else would you like to know?",
+        "fr": "Pas de souci. Que veux-tu savoir d'autre ?",
+        "pt": "Sem problema. Que mais queres saber?",
+    },
     "translate_ask": {
         "es": "Modo traductor. ¿De qué idioma a qué idioma traduzco?",
         "en": "Translator mode. Which language should I translate from and into?",

@@ -111,6 +111,46 @@ imágenes en el momento — no se rompe nada, solo se ve distinto.
 Mientras narra, MECH **solo** escucha esa frase. Todo lo demás lo ignora
 (casi siempre es el eco de su propio parlante). En inglés es «hey MECH».
 
+### La trivia al terminar
+
+Cuando MECH **termina de contar una obra entera**, pregunta él solo:
+
+> «¿Te gustaría realizar una trivia para comprobar tu conocimiento?»
+
+(en el idioma en que lo despertaron). Se contesta **«sí»** o **«no»**. Con un
+sí, prepara tres preguntas sobre lo que acaba de contar y las **proyecta**,
+estilo Kahoot: la pregunta arriba y una ficha de color por opción.
+
+```
+¿Cómo se llama el escudero de don Quijote?
+  ▲ A  Rocinante     ◆ B  Sancho Panza     ● C  Dulcinea
+```
+
+El visitante contesta **hablando**, como le salga:
+
+| Se le dice | Vale |
+|---|---|
+| «la A» · «be» · «opción C» | Por la letra |
+| «la primera» · «la segunda» | Por el orden |
+| «Sancho Panza» | Diciendo la opción |
+
+- **Si acierta**, la ficha salta, cae confeti y MECH dice «¡Correcto!».
+- **Si falla**, MECH dice «No has acertado. La respuesta correcta es la B:
+  Sancho Panza» y la pantalla marca la buena en verde.
+- **Si dice «no sé»** (o no se le entiende dos veces), MECH le da la
+  respuesta y sigue con la siguiente.
+- Al final proyecta el marcador: **2/3**, con confeti si acertó.
+
+También se pide en cualquier momento con **«juguemos una trivia»** (sobre lo
+último que contó; si no ha contado nada, sobre MECH) y se sale con **«deja la
+trivia»**. Si en vez de contestar al «¿te gustaría…?» piden otra cosa, MECH
+deja el juego y atiende eso.
+
+Para probarla **sin micrófono**: panel → vista **Voz** → tarjeta TRIVIA
+(«Empezar trivia» y un botón por opción). Si por ahí funciona y hablando no,
+el problema es de audio, no del juego. Se apaga o se cambia el número de
+preguntas en Ajustes → TRIVIA.
+
 ---
 
 ## 4. Modo traductor
@@ -328,4 +368,8 @@ en su sitio de proyección. También olvida el par de idiomas del traductor.
 | «deja de traducir» | Olvida el par de idiomas |
 | «mira hacia afuera» / «regresa a proyectar» | Gira 180° y vuelve |
 | «avanza N segundos» / «retrocede N segundos» | Se desplaza |
+| «sí» / «no» (tras terminar una obra) | Juega o no la trivia |
+| «juguemos una trivia» | Empieza el juego de preguntas |
+| «la A» / «la segunda» / «Sancho Panza» | Responde la pregunta en pantalla |
+| «deja la trivia» | Sale del juego |
 | «proyecta marketing» | Los videos promocionales, con su audio |

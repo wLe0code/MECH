@@ -585,6 +585,142 @@ CLAUDE_TRANSLATE_MODEL = os.environ.get("CLAUDE_TRANSLATE_MODEL", "") or CLAUDE_
 # Sin esto MECH se oye a sí mismo y traduce su propia traducción en bucle.
 TRANSLATOR_DRAIN_SECONDS = float(os.environ.get("TRANSLATOR_DRAIN_SECONDS", "0.8"))
 
+# --- Modo TRIVIA: el juego de preguntas (ver backend/trivia.py) ----------
+# Al terminar de narrar una obra, MECH ofrece jugar una trivia sobre lo que
+# acaba de contar. Se proyecta la pregunta con tres opciones y el visitante
+# contesta en voz alta ("la A", "la segunda", o diciendo la opción).
+TRIVIA_ENABLED = os.environ.get("TRIVIA_ENABLED", "true").strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+# Cuántas preguntas por partida. Tres es lo que aguanta la gente en un stand
+# con cola; con más, se van a la mitad.
+TRIVIA_QUESTIONS = int(os.environ.get("TRIVIA_QUESTIONS", "3"))
+# ¿Ofrecerla sola al terminar una narración? Si se apaga, la trivia sigue
+# disponible pidiéndola ("juguemos una trivia").
+TRIVIA_OFFER_AFTER_PLAN = os.environ.get(
+    "TRIVIA_OFFER_AFTER_PLAN", "true"
+).strip().lower() in (
+    "1", "true", "yes", "on", "si", "sí",
+)
+# Segundos de espera tras cada cosa que dice MECH antes de volver a escuchar.
+# Es el mismo problema del traductor: el parlante (sobre todo por Bluetooth)
+# arrastra buffer y se oiría a sí mismo contestando.
+TRIVIA_DRAIN_SECONDS = float(os.environ.get("TRIVIA_DRAIN_SECONDS", "0.8"))
+# Cuánto se queda en pantalla el marcador final antes de limpiar.
+TRIVIA_FINAL_SECONDS = float(os.environ.get("TRIVIA_FINAL_SECONDS", "8.0"))
+# Modelo para GENERAR las preguntas. Vacío = el mismo de las narraciones.
+CLAUDE_TRIVIA_MODEL = (
+    os.environ.get("CLAUDE_TRIVIA_MODEL", "").strip() or CLAUDE_MODEL
+)
+
+# Frases para pedir la trivia en cualquier momento.
+VOICE_TRIVIA_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_PHRASES",
+        "juguemos una trivia,jugamos una trivia,quiero jugar la trivia,"
+        "hagamos una trivia,empieza la trivia,inicia la trivia,"
+        "ponme una trivia,quiero una trivia,modo trivia,juego de preguntas",
+    ).split(",") if p.strip()
+]
+VOICE_TRIVIA_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_PHRASES_EN",
+        "let's play a trivia,play the trivia,start the trivia,"
+        "quiz me,trivia mode,i want a quiz",
+    ).split(",") if p.strip()
+]
+VOICE_TRIVIA_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_PHRASES_FR",
+        "jouons au quiz,lance le quiz,mode quiz,je veux un quiz",
+    ).split(",") if p.strip()
+]
+VOICE_TRIVIA_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_PHRASES_PT",
+        "vamos jogar o quiz,comeca o quiz,modo quiz,quero um quiz",
+    ).split(",") if p.strip()
+]
+# Frases para SALIR del juego. Dormirlo y el paro también lo sacan.
+VOICE_TRIVIA_STOP_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_STOP_PHRASES",
+        "sal de la trivia,salir de la trivia,deja la trivia,"
+        "termina la trivia,para la trivia,ya no quiero jugar,"
+        "cancela la trivia,basta de trivia",
+    ).split(",") if p.strip()
+]
+VOICE_TRIVIA_STOP_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_STOP_PHRASES_EN",
+        "stop the trivia,quit the trivia,exit the trivia,"
+        "stop the quiz,i don't want to play",
+    ).split(",") if p.strip()
+]
+VOICE_TRIVIA_STOP_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_STOP_PHRASES_FR",
+        "arrete le quiz,quitte le quiz,je ne veux plus jouer",
+    ).split(",") if p.strip()
+]
+VOICE_TRIVIA_STOP_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_TRIVIA_STOP_PHRASES_PT",
+        "para o quiz,sai do quiz,nao quero mais jogar",
+    ).split(",") if p.strip()
+]
+# Sí / no, para contestar a "¿quieres jugar una trivia?". Cortas a propósito:
+# solo se miran cuando MECH acaba de preguntar algo.
+VOICE_YES_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_YES_PHRASES",
+        "si,claro,dale,vale,bueno,de acuerdo,por supuesto,obvio,"
+        "esta bien,me apunto,juguemos,vamos,ok",
+    ).split(",") if p.strip()
+]
+VOICE_YES_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_YES_PHRASES_EN",
+        "yes,yeah,sure,of course,okay,let's go,why not",
+    ).split(",") if p.strip()
+]
+VOICE_YES_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_YES_PHRASES_FR",
+        "oui,bien sur,d'accord,allons y,pourquoi pas",
+    ).split(",") if p.strip()
+]
+VOICE_YES_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_YES_PHRASES_PT",
+        "sim,claro,vamos,esta bem,com certeza",
+    ).split(",") if p.strip()
+]
+VOICE_NO_PHRASES = [
+    p.strip() for p in os.environ.get(
+        "VOICE_NO_PHRASES",
+        "no,no gracias,ahora no,mejor no,paso,otro dia,no quiero",
+    ).split(",") if p.strip()
+]
+VOICE_NO_PHRASES_EN = [
+    p.strip() for p in os.environ.get(
+        "VOICE_NO_PHRASES_EN",
+        "no,no thanks,not now,maybe later,nope",
+    ).split(",") if p.strip()
+]
+VOICE_NO_PHRASES_FR = [
+    p.strip() for p in os.environ.get(
+        "VOICE_NO_PHRASES_FR",
+        "non,non merci,pas maintenant,plus tard",
+    ).split(",") if p.strip()
+]
+VOICE_NO_PHRASES_PT = [
+    p.strip() for p in os.environ.get(
+        "VOICE_NO_PHRASES_PT",
+        "nao,nao obrigado,agora nao,depois",
+    ).split(",") if p.strip()
+]
+
 # --- Idiomas extra: inglés, francés y portugués (opcionales) -------------
 # MECH vive en español. Los demás idiomas se activan SI Y SOLO SI se le
 # despierta en ese idioma; a partir de ahí entiende, narra y subtitula en él

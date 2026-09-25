@@ -362,6 +362,215 @@ def extract_language_pair(text: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+# ---------------------------------------------------------------------------
+# Modo TRIVIA (ver backend/trivia.py)
+# ---------------------------------------------------------------------------
+
+def is_trivia(text: str) -> bool:
+    """¿Piden jugar la trivia? ("juguemos una trivia")"""
+    if is_trivia_stop(text):
+        return False
+    return matches_any(text, _todos_los_idiomas("VOICE_TRIVIA_PHRASES"))
+
+
+def is_trivia_stop(text: str) -> bool:
+    """¿Piden salir del juego? ("deja la trivia")"""
+    return matches_any(text, _todos_los_idiomas("VOICE_TRIVIA_STOP_PHRASES"))
+
+
+def is_yes(text: str) -> bool:
+    """¿Es un sí? Solo se mira cuando MECH acaba de preguntar algo."""
+    return matches_any(text, _todos_los_idiomas("VOICE_YES_PHRASES"))
+
+
+def is_no(text: str) -> bool:
+    """¿Es un no? Se comprueba ANTES que el sí: "no, gracias" trae los dos."""
+    return matches_any(text, _todos_los_idiomas("VOICE_NO_PHRASES"))
+
+
+# Cómo suena cada letra de opción al decirla. La clave es el índice (0 = A).
+#
+# ⚠️ Todas son AMBIGUAS en español y por eso no basta con verlas en la frase:
+# "a" es una preposición, "ve" y "se" son verbos corrientes, "de" es la
+# preposición más común del idioma. Solo cuentan si la frase es CORTA (una
+# respuesta suelta, "la a") o si delante va una palabra que las presenta
+# ("la", "opción", "letra"). Ver `_letra_en()`.
+_LETRA_TOKENS: dict[int, tuple[str, ...]] = {
+    0: ("a", "ah", "ha"),
+    1: ("b", "be", "ve", "uve", "bee"),
+    2: ("c", "ce", "se", "cee"),
+    3: ("d", "de", "dee"),
+}
+
+# Palabras que PRESENTAN una letra o un número de opción.
+_MARCADORES = (
+    "la", "el", "opcion", "letra", "respuesta", "numero", "eleccion", "elijo",
+    "escojo", "digo", "creo", "es", "seria", "pongo", "marco",
+    "option", "letter", "answer", "number", "choose", "pick", "say",
+    "lettre", "reponse", "numero", "choix", "opcao", "resposta", "escolho",
+)
+
+# Ordinales y números por índice, en los cuatro idiomas.
+_ORDINAL_TOKENS: dict[int, tuple[str, ...]] = {
+    0: ("primera", "primero", "primer", "uno", "una", "1", "first", "one",
+        "premiere", "premier", "un", "primeira", "primeiro"),
+    1: ("segunda", "segundo", "dos", "2", "second", "two", "deuxieme",
+        "deux", "segunda", "duas"),
+    2: ("tercera", "tercero", "tres", "3", "third", "three", "troisieme",
+        "trois", "terceira", "terceiro"),
+    3: ("cuarta", "cuarto", "cuatro", "4", "fourth", "four", "quatrieme",
+        "quatre", "quarta", "quarto"),
+}
+
+# Palabras que no aportan nada al comparar el TEXTO de una opción.
+_VACIAS = {
+    "de", "del", "la", "el", "los", "las", "un", "una", "unos", "unas", "y",
+    "o", "en", "con", "por", "para", "que", "es", "al", "se", "su", "sus",
+    "the", "of", "and", "a", "an", "in", "on", "to", "is", "it",
+    "le", "les", "des", "du", "et", "dans", "est",
+    "do", "da", "dos", "das", "em", "com", "para", "que",
+}
+
+
+# "No sé" no es una opción: es rendirse. Hay que reconocerlo ANTES que las
+# letras porque en español lleva dentro un "se" que suena igual que la C — sin
+# esto, quien admite que no lo sabe estaría contestando la opción C.
+_NO_SE = (
+    ("no", "se"), ("no", "lo", "se"), ("ni", "idea"), ("no", "tengo", "idea"),
+    ("paso",), ("ni", "idea", "mech"), ("no", "sabria"),
+    ("i", "dont", "know"), ("no", "idea"), ("dunno"), ("pass",),
+    ("je", "ne", "sais", "pas"), ("aucune", "idee"),
+    ("nao", "sei"), ("nem", "ideia"),
+)
+
+
+def is_dont_know(text: str) -> bool:
+    """¿Está diciendo que no lo sabe? (no cuenta como respuesta)"""
+    tokens = normalize(text).split()
+    if not tokens:
+        return False
+    juego = set(tokens)
+    for frase in _NO_SE:
+        if isinstance(frase, str):
+            frase = (frase,)
+        if all(w in juego for w in frase):
+            return True
+    return False
+
+
+def _letra_en(tokens: list[str], corta: bool) -> int | None:
+    """Índice de la opción nombrada por su LETRA, o None.
+
+    `corta` = la frase entera es una respuesta suelta. Con frases largas se
+    exige que delante de la letra vaya un marcador ("la a", "opción b"), o si
+    no "se dice que..." se leería como la C.
+    """
+    for i, tok in enumerate(tokens):
+        for idx, formas in _LETRA_TOKENS.items():
+            if tok in formas:
+                if corta or (i > 0 and tokens[i - 1] in _MARCADORES):
+                    return idx
+    return None
+
+
+def _ordinal_en(tokens: list[str], corta: bool) -> int | None:
+    """Índice de la opción nombrada por su ORDEN ("la segunda", "la 3")."""
+    for i, tok in enumerate(tokens):
+        for idx, formas in _ORDINAL_TOKENS.items():
+            if tok in formas:
+                # Los ordinales de verdad ("segunda") son inequívocos; los
+                # números sueltos ("dos") pueden ser parte de una opción, así
+                # que esos piden frase corta o marcador delante.
+                claro = len(tok) > 4 and not tok.isdigit()
+                if claro or corta or (i > 0 and tokens[i - 1] in _MARCADORES):
+                    return idx
+    return None
+
+
+def _peso_opcion(opcion: str, tokens: list[str]) -> float:
+    """Cuánto se parece lo que se oyó al TEXTO de una opción (0 a 1).
+
+    Se mide por las palabras con contenido de la opción: cuántas aparecen en
+    lo que dijo el visitante. Así "el año 1605" acierta la opción "1605" y
+    "Sancho Panza" acierta aunque diga "creo que Sancho Panza".
+    """
+    palabras = [w for w in normalize(opcion).split() if w not in _VACIAS]
+    if not palabras:
+        palabras = normalize(opcion).split()
+    if not palabras:
+        return 0.0
+    aciertos = sum(1 for w in palabras if any(_word_matches(w, t) for t in tokens))
+    return aciertos / len(palabras)
+
+
+def parse_answer(text: str, options: list[str]) -> int | None:
+    """Qué opción eligió el visitante, o None si no se entendió.
+
+    Acepta las tres formas naturales de contestar:
+      - por el texto      -> "mil seiscientos cinco", "Sancho Panza"
+      - por la letra      -> "la a", "opción B", "ce"
+      - por el orden      -> "la segunda", "la 3"
+
+    El TEXTO se mira PRIMERO a propósito: si alguien responde diciendo la
+    opción, dentro de esa frase puede aparecer un "se" o un "de" que se
+    confundiría con una letra.
+    """
+    if not text or not options:
+        return None
+    if is_dont_know(text):
+        return None  # se rindió: no es la opción C aunque lleve un "se"
+    tokens = normalize(text).split()
+    if not tokens:
+        return None
+    corta = len(tokens) <= 4
+
+    # 1) ¿Dijo el texto de una opción? Si la frase CONTIENE la opción entera,
+    #    no hay más que discutir.
+    norm_text = " ".join(tokens)
+    for i, opcion in enumerate(options):
+        norm_op = normalize(opcion)
+        if norm_op and len(norm_op) >= 4 and norm_op in norm_text:
+            return i
+    pesos = [_peso_opcion(op, tokens) for op in options]
+    mejor = max(range(len(pesos)), key=lambda i: pesos[i])
+    ordenados = sorted(pesos, reverse=True)
+    segundo = ordenados[1] if len(ordenados) > 1 else 0.0
+    # Basta con media opción ("Dulcinea" por "Dulcinea del Toboso"), pero
+    # tiene que ganar con CLARIDAD: si dos opciones comparten palabras
+    # ("Miguel de Cervantes" / "Miguel de Unamuno"), mejor no adivinar.
+    if pesos[mejor] >= 0.5 and pesos[mejor] - segundo >= 0.2:
+        return mejor
+
+    # 2) Por ORDEN, y 3) por letra.
+    #
+    # ⚠️ El orden importa: en español y portugués el artículo que acompaña al
+    # ordinal ES una letra de opción ("a terceira", "la a"). Mirando primero
+    # el ordinal, "a terceira" es la tercera; al revés era la A.
+    idx = _ordinal_en(tokens, corta)
+    if idx is None:
+        idx = _letra_en(tokens, corta)
+    if idx is not None and idx < len(options):
+        return idx
+    return None
+
+
+def sounds_like_same(a: str, b: str) -> bool:
+    """¿Dos frases son prácticamente la misma cosa dicha?
+
+    Se usa como guarda anti-eco: lo que entra por el micrófono justo después
+    de que MECH hable suele ser su propio parlante, pero recortado, no
+    idéntico. Por eso se compara por contención con un mínimo de longitud,
+    igual que en el traductor.
+    """
+    na, nb = normalize(a or ""), normalize(b or "")
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    corto, largo = (na, nb) if len(na) <= len(nb) else (nb, na)
+    return corto in largo and len(corto) >= 0.6 * len(largo) and len(corto) >= 8
+
+
 def is_sleep(text: str) -> bool:
     """Frase de reposo en español."""
     return matches_any(text, config.VOICE_SLEEP_PHRASES)

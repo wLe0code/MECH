@@ -36,6 +36,12 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > biblioteca). **Falta confirmar en el robot** que LATERAL (`w`) desplace de
 > lado y que izquierda/derecha no salgan espejados.
 >
+> **25 sep: TRIVIA recuperada a pedido del equipo**, estilo Kahoot (ver
+> CLAUDE.md → «Modo TRIVIA»). Al terminar una obra entera MECH pregunta
+> «¿Te gustaría realizar una trivia para comprobar tu conocimiento?».
+> Probada sin robot (50/50 respuestas, partida simulada, pantallas vistas);
+> falta probarla en la Pi.
+>
 > Y la relatividad **recorta sola al subir** (campo `trim`): seg 1 → primeros
 > 20 s, seg 2 → primeros 10 s, seg 3-7 → últimos 10 s, seg 8 entero. Usa
 > ffmpeg en la Pi; sin ffmpeg deja el video entero y avisa.
