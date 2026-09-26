@@ -1010,9 +1010,19 @@ con estas dos órdenes se pone de cara al público y vuelve.
   CALIBRARLO en el robot real — Ajustes → "Giro de 180° — Calibración"
   (en vivo, sin reiniciar). Junto con `TURN_180_SPEED`,
   `TURN_LATERAL_SECONDS`, `TURN_LATERAL_SPEED`.
-- **Estado**: `state["facing"]` = `"projection"` | `"outward"`, evento WS
-  `facing`, visible en la vista Arduino del panel. Un `look_outward` estando
-  ya afuera no gira otra vez (un giro doble a ciegas sería irrecuperable).
+- **Estado**: `state["facing"]` = `"projection"` | `"outward"` | **`"manual"`**,
+  evento WS `facing`, visible en la vista Arduino del panel. Un `look_outward`
+  estando ya afuera no gira otra vez, ni un `back_to_projection` estando ya en
+  la proyección (así una orden repetida no lo da vuelta de nuevo).
+  ⚠️ **`"manual"` = NO LO SABE** (26 sep 2026). El equipo reportó que
+  «regresa a proyectar» no giraba: lo habían dado vuelta con el panel
+  (botones GIRO/LATERAL, comando crudo con giro o «PROBAR MEDIA VUELTA»), MECH
+  seguía creyendo que miraba a la proyección y contestaba «ya estoy en
+  posición». Ahora esos movimientos llaman a `maneuvers.mark_manual()`, y en
+  "manual" las dos órdenes EXPLÍCITAS obedecen siempre (quien las da ve el
+  robot; un giro de 180° acaba en la misma orientación por cualquier lado).
+  Lo AUTOMÁTICO (volver solo antes de narrar) NO gira en "manual": solo con
+  `"outward"`. Avanzar/retroceder no cambia la orientación.
 - **`execute_plan` se da vuelta solo**: si le piden una historia estando de
   espaldas, vuelve a la posición de proyección antes de narrar.
 - **Paro de emergencia** = `maneuvers.assume_projection()`: tras un paro no
@@ -1100,6 +1110,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Inno Setup (`windows/MECH-Panel.iss`). Es lo único que se conservó al
   revertir a `c0e0310` (ver el aviso de arriba). Desde el 23 sep tiene un
   cuarto botón, **«Biblioteca de videos (en el navegador)»**.
+- **«Regresa a proyectar» que no giraba, arreglado (26 sep 2026)** — tres
+  causas: girarlo a mano desde el panel no le decía a MECH que ya no miraba a
+  la proyección (estado nuevo `"manual"`), «vuelve a la proyección» no se
+  entendía (frases nuevas en `VOICE_PROJECT_PHRASES`) y en inglés «go back to
+  projecting» lo hacía RETROCEDER (el giro se comprueba ahora antes). Medido
+  en simulación con el código real. Movilidad **v4**.
 - **Controles de movimiento del panel corregidos (23 sep 2026)** — AVANZAR
   iba hacia atrás y los LATERAL giraban. Ver la actualización de la
   cinemática (arriba): `DRIVE_INVERT_FORWARD` + botones GIRO = `vy`,
@@ -1603,7 +1619,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     Pi está corriendo el CÓDIGO VIEJO.** Sin el intercept de
     `handle_movement_command`, la frase se la come Claude como un plan
     `mode="movement"` → gesto `wave` → solo comandos `ARM`. Se verifica en el
-    arranque del server: si NO sale la línea `Movilidad v2 (sep 2026): ...`,
+    arranque del server: si NO sale la línea `Movilidad v4 (sep 2026): ...`,
     hicieron `git pull` pero no reiniciaron. Ver `MOVILIDAD_VERSION` en
     server.py — **súbela cuando cambies algo de movimiento**.
     Además, cada tramo de la maniobra loguea `Ruedas: MOVE:x:y:z durante N s`
@@ -1625,6 +1641,13 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     en Ajustes (en vivo). Cambiar de batería, de suelo o de ruedas obliga a
     recalibrarlo. Si el giro sale al revés (gira hacia el lado equivocado),
     voltear el signo de `w` en `driveOmni()` del .ino, no en `maneuvers.py`.
+22b. **Si «regresa a proyectar» dice «ya estoy en posición» y no gira**,
+    MECH cree que ya mira a la proyección. Desde el 26 sep, girarlo a mano
+    desde el panel lo pone en "no sé" y entonces sí obedece; si aun así pasa,
+    es que lo movieron sin el panel (a mano de verdad) o tras un paro de
+    emergencia (`assume_projection`). ⚠️ En `handle_movement_command` el
+    GIRO se comprueba ANTES que avanzar/retroceder: «go BACK to projecting»
+    casaba con «go back» y MECH retrocedía. No cambies ese orden.
 23. **`VOICE_OUTWARD_PHRASES` / `VOICE_PROJECT_PHRASES` en el `.env` de la Pi
     tapan el default**, igual que las de wake/sleep/interrupt.
 24. **El slot `marketing` NO va al system prompt, y es a propósito.**

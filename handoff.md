@@ -43,6 +43,11 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > Probada sin robot (50/50 respuestas, partida simulada, pantallas vistas);
 > falta probarla en la Pi.
 >
+> **26 sep: «regresa a proyectar» que no giraba, arreglado** (Movilidad v4):
+> girarlo a mano desde el panel pone el estado en `"manual"` (no sabe hacia
+> dónde mira) y entonces obedece; «vuelve a la proyección» ya se entiende;
+> y «go back to projecting» ya no lo hace retroceder. Falta probar en el robot.
+>
 > Y la relatividad **recorta sola al subir** (campo `trim`): seg 1 → primeros
 > 20 s, seg 2 → primeros 10 s, seg 3-7 → últimos 10 s. Usa
 > ffmpeg en la Pi; sin ffmpeg deja el video entero y avisa.

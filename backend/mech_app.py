@@ -1749,17 +1749,20 @@ class MechApp:
             "mira hacia afuera"   -> gira 180° y saluda al público.
             "regresa a proyectar" -> deshace el giro.
         """
-        # "avanza diez segundos" / "retrocede cinco segundos". El número es
-        # opcional: sin él se usa el configurado en Ajustes.
-        if voice_phrases.is_advance(text) or voice_phrases.is_retreat(text):
-            atras = voice_phrases.is_retreat(text)
-            maneuvers.advance(self, voice_phrases.extract_seconds(text), backwards=atras)
-            return True
+        # El giro va ANTES que avanzar/retroceder: las frases de volver
+        # contienen palabras de retroceder («go BACK to projecting» casaba
+        # con «go back» y MECH retrocedía en vez de girar).
         if voice_phrases.is_look_outward(text):
             maneuvers.look_outward(self)
             return True
         if voice_phrases.is_back_to_projection(text):
             maneuvers.back_to_projection(self)
+            return True
+        # "avanza diez segundos" / "retrocede cinco segundos". El número es
+        # opcional: sin él se usa el configurado en Ajustes.
+        if voice_phrases.is_advance(text) or voice_phrases.is_retreat(text):
+            atras = voice_phrases.is_retreat(text)
+            maneuvers.advance(self, voice_phrases.extract_seconds(text), backwards=atras)
             return True
         # "proyecta marketing": la playlist promo, con su propio audio y sin
         # narración. Va aquí (y no por Claude) porque el modelo la contaría

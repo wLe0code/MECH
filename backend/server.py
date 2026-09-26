@@ -349,7 +349,7 @@ def stop_voice_loop():
 # Versión del subsistema de MOVILIDAD (giro de 180°, saludo, gestos). Se
 # loguea al arrancar para poder confirmar QUÉ código está corriendo en la Pi.
 # Súbela cuando cambies algo de movimiento.
-MOVILIDAD_VERSION = "v3 (sep 2026)"
+MOVILIDAD_VERSION = "v4 (sep 2026)"
 
 
 # -- FastAPI lifespan --------------------------------------------------------
@@ -582,9 +582,28 @@ class RawCommand(BaseModel):
     cmd: str
 
 
+def _gira_a_mano(cmd: str) -> bool:
+    """¿Este comando crudo puede cambiar hacia dónde mira el robot?
+
+    `MOVE:vx:vy:w` con giro o lateral, o `WHEEL:` moviendo una sola rueda.
+    Adelante/atrás puro no cambia la orientación."""
+    partes = cmd.strip().upper().split(":")
+    try:
+        if partes[0] == "MOVE" and len(partes) >= 4:
+            return int(partes[2]) != 0 or int(partes[3]) != 0
+        if partes[0] == "WHEEL" and len(partes) >= 3:
+            return int(partes[2]) != 0
+    except ValueError:
+        pass
+    return False
+
+
 @app.post("/api/arduino/raw")
 async def arduino_raw(c: RawCommand):
-    get_app().arduino.send(c.cmd)
+    mech = get_app()
+    mech.arduino.send(c.cmd)
+    if _gira_a_mano(c.cmd):
+        maneuvers.mark_manual(mech)
     return {"ok": True}
 
 
@@ -596,7 +615,13 @@ class MoveCmd(BaseModel):
 
 @app.post("/api/arduino/move")
 async def arduino_move(m: MoveCmd):
-    get_app().arduino.move(m.vx, m.vy, m.w)
+    mech = get_app()
+    mech.arduino.move(m.vx, m.vy, m.w)
+    # Los botones GIRO/LATERAL cambian hacia dónde mira sin decir cuánto:
+    # desde aquí MECH ya no lo sabe, y «regresa a proyectar» debe obedecer
+    # aunque crea que ya está en su sitio. Ver maneuvers.mark_manual().
+    if m.vy or m.w:
+        maneuvers.mark_manual(mech)
     return {"ok": True}
 
 

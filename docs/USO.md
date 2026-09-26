@@ -234,6 +234,7 @@ Todo va a potencia máxima: con estos motores, a menos solo zumban.
 |---|---|
 | AVANZAR va hacia atrás | Ajustes → **«Adelante/atrás invertido»**. Arregla a la vez los botones, «avanza diez segundos» y el acercarse al visitante. |
 | La media vuelta gira hacia el lado contrario | Ajustes → **«Girar hacia el otro lado»**. |
+| «Regresa a proyectar» dice «ya estoy en posición» y no gira | MECH cree que ya mira a la proyección. Si lo giraste con el panel (GIRO, LATERAL o «PROBAR MEDIA VUELTA»), ya lo sabe y obedece; si lo moviste empujándolo a mano, gíralo con los botones GIRO. En el panel, «Ahora mira a» dice lo que MECH cree. |
 | LATERAL o GIRO salen espejados (izquierda ↔ derecha) | Avisar para cambiarlo en el código (es una línea). |
 
 Se aplican en vivo, sin reiniciar nada.

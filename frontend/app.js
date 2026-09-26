@@ -140,12 +140,18 @@
   // ─── Orientación del robot (maniobra de 180°) ─────────────────────
   // "projection" = mirando a donde proyecta (su sitio de trabajo).
   // "outward"    = de espaldas, saludando al público.
+  // "manual"     = lo giraron a mano desde el panel: MECH no sabe hacia
+  //                dónde mira, y «regresa a proyectar» gira igual.
   function applyFacing(facing) {
     const el = $('facing-val');
     if (!el) return;
-    const outward = facing === 'outward';
-    el.textContent = outward ? 'AFUERA (al público)' : 'la proyección';
-    el.style.color = outward ? 'var(--amber)' : 'var(--text)';
+    const textos = {
+      outward: ['AFUERA (al público)', 'var(--amber)'],
+      manual:  ['NO LO SÉ (lo giraste a mano)', 'var(--amber)'],
+    };
+    const [texto, color] = textos[facing] || ['la proyección', 'var(--text)'];
+    el.textContent = texto;
+    el.style.color = color;
   }
 
   // ─── Visión (cámara) ──────────────────────────────────────────────

@@ -167,8 +167,39 @@ class _WheelsHeld:
 
 
 def facing(app) -> str:
-    """"projection" (mirando a donde proyecta) o "outward" (al público)."""
+    """Hacia dónde mira MECH, según lo que él sabe:
+
+    - "projection": mirando a donde proyecta (su sitio de trabajo).
+    - "outward":    de espaldas, mirando al público.
+    - "manual":     NO LO SABE. Alguien lo giró a mano desde el panel (los
+                    botones GIRO/LATERAL, el comando crudo o «PROBAR MEDIA
+                    VUELTA»), y esos giros no le dicen cuánto giró.
+    """
     return app.state.get("facing", "projection")
+
+
+def mark_manual(app) -> None:
+    """Lo movieron a mano: ya no sabemos hacia dónde mira.
+
+    Sin esto pasaba lo que reportó el equipo (sep 2026): lo daban vuelta con
+    el panel, MECH seguía creyendo que miraba a la proyección, y al decirle
+    «regresa a proyectar» contestaba «ya estoy en posición» y NO giraba.
+
+    Con el estado en "manual", las dos órdenes EXPLÍCITAS («regresa a
+    proyectar» / «mira hacia afuera») obedecen siempre: quien las da está
+    viendo el robot. Lo AUTOMÁTICO (volver solo antes de narrar) NO gira en
+    este estado, porque ahí nadie está mirando y un giro a ciegas podría
+    dejar la proyección apuntando al público.
+    """
+    if facing(app) == "manual":
+        return
+    app.state["facing"] = "manual"
+    app.emit("facing", facing="manual")
+    app.log(
+        "Me giraste a mano: ya no sé hacia dónde miro. «Regresa a proyectar» "
+        "y «mira hacia afuera» girarán igual cuando me lo pidas.",
+        "info",
+    )
 
 
 def look_outward(app, greet: bool = True) -> bool:
@@ -181,6 +212,8 @@ def look_outward(app, greet: bool = True) -> bool:
         return False
     try:
         if facing(app) == "outward":
+            # Solo se niega si SABE que ya está afuera: evita que un «mira
+            # hacia afuera» repetido lo deje otra vez mirando a la proyección.
             app.log("Ya estoy mirando hacia afuera.", "info")
             if greet:
                 tts.speak(_SAY["already_outward"].get(lang.current(), ""), blocking=True)
@@ -220,9 +253,17 @@ def back_to_projection(app, announce: bool = True) -> bool:
         app.log("Ya estoy girando; espera a que termine.", "warn")
         return False
     try:
+        # Solo se niega si SABE que ya está proyectando (así un «regresa a
+        # proyectar» repetido no lo da vuelta de nuevo). Si lo giraron a mano
+        # ("manual"), obedece: quien lo pide está viendo el robot.
         if facing(app) == "projection":
             if announce:
-                app.log("Ya estoy en posición de proyectar.", "info")
+                app.log(
+                    "Ya estoy en posición de proyectar (si no es así, gírame "
+                    "desde el panel o pulsa «REGRESA A PROYECTAR» otra vez "
+                    "después de moverme a mano).",
+                    "info",
+                )
                 tts.speak(
                     _SAY["already_projecting"].get(lang.current(), ""), blocking=True
                 )
@@ -303,6 +344,10 @@ def test_half_turn(app) -> None:
         )
         with _WheelsHeld(app):
             _turn(app, +1)
+        # La prueba NO cambia hacia dónde "cree" que mira, a propósito (así
+        # se puede repetir para calibrar). Pero tras ella ya no lo sabemos:
+        # sin esto, un «regresa a proyectar» después de probar se negaba.
+        mark_manual(app)
     finally:
         _lock.release()
 

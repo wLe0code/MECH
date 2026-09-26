@@ -442,7 +442,9 @@ VOICE_PROJECT_PHRASES = [
     p.strip() for p in os.environ.get(
         "VOICE_PROJECT_PHRASES",
         "regresa a proyectar,vuelve a proyectar,regresa a tu posicion,"
-        "vuelve a tu posicion,regresa a la proyeccion,ponte a proyectar",
+        "vuelve a tu posicion,regresa a la proyeccion,ponte a proyectar,"
+        "vuelve a la proyeccion,voltea hacia la proyeccion,"
+        "mira hacia la proyeccion,mira a la proyeccion",
     ).split(",") if p.strip()
 ]
 VOICE_PROJECT_PHRASES_EN = [
