@@ -362,8 +362,8 @@ docs/
                         reescribió el 23 sep tras la reversión).
   GUIONES_NEWTON.md   ← Guiones (narración + prompt de video) de Newton.
   GUIONES_RELATIVIDAD.md ← Los 8 guiones de la relatividad, uno por segmento.
-  GUIONES_CRISPR.md   ← 5 guiones de CRISPR y Cas9 + datos verificados. La
-                        obra `crispr` AÚN NO está en video_library.py.
+  GUIONES_CRISPR.md   ← 5 guiones de CRISPR y Cas9 + datos verificados
+                        (los mismos que van en `facts` de la obra `crispr`).
 
 scripts/
   probar_trivia.py    ← Cómo entiende las RESPUESTAS de la trivia (letra,
@@ -1124,9 +1124,11 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `probar_trivia.py` 50/50, 0 choques con otras órdenes, una partida
   completa simulada con el código real y las 6 pantallas vistas en el
   navegador a 1280×720. Sin probar en la Pi.
-- **Guiones de CRISPR y Cas9** — [`docs/GUIONES_CRISPR.md`](docs/GUIONES_CRISPR.md),
-  5 escenas + 18 datos verificados con fuentes. Falta añadir la obra `crispr`
-  a la biblioteca cuando el equipo lo pida.
+- **CRISPR y Cas9** — guiones en [`docs/GUIONES_CRISPR.md`](docs/GUIONES_CRISPR.md)
+  (5 escenas + datos verificados con fuentes) y, desde el 26 sep, la obra
+  `crispr` en la biblioteca con **5 segmentos** y 18 `facts` (el primero le
+  dice a Claude qué escena va en cada video; los dos últimos son trampas que
+  NO debe decir). Sin recorte automático.
 - Documentación (GUIA.md, FRONTEND.md, PRUEBAS_HARDWARE.md, windows/README.md).
 - **Biblioteca de videos pre-renderizados (Opción B)** — manifest, schema, dispatch
   en execute_plan, fallback a NanoBanana, UI `/library` para subir mp4s,
@@ -1134,10 +1136,11 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `don_quijote`, `campana_1856`, `jimenez_deredia`, `malpais`,
   `isidro_con_wong` (4 segmentos c/u), `isaac_newton` (5 segmentos:
   contexto, vida, annus mirabilis, Principia, legado; 17 `facts`
-  verificados) y `relatividad` (**8 segmentos**, uno por escena del guion,
-  22 `facts`). Guiones para generar sus videos en
-  [`docs/GUIONES_NEWTON.md`](docs/GUIONES_NEWTON.md) y
-  [`docs/GUIONES_RELATIVIDAD.md`](docs/GUIONES_RELATIVIDAD.md). El primer
+  verificados), `relatividad` (**8 segmentos**, uno por escena del guion,
+  22 `facts`) y `crispr` (**5 segmentos**, 18 `facts`). Guiones para generar
+  sus videos en [`docs/GUIONES_NEWTON.md`](docs/GUIONES_NEWTON.md),
+  [`docs/GUIONES_RELATIVIDAD.md`](docs/GUIONES_RELATIVIDAD.md) y
+  [`docs/GUIONES_CRISPR.md`](docs/GUIONES_CRISPR.md). El primer
   `fact` de la relatividad le dice a Claude qué escena va en cada video, y
   el segmento 4 (transformaciones de Lorentz) es el único con fórmulas en
   pantalla. Ocho es el máximo de segmentos de un plan (`max_length=8`).

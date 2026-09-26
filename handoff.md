@@ -32,8 +32,8 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > panel corregidos (AVANZAR iba hacia atrás → `DRIVE_INVERT_FORWARD`; los
 > botones LATERAL giraban → ahora GIRO manda `vy` y LATERAL manda `w`); botón
 > «Biblioteca de videos» en `MECH Panel.exe`; y guiones de **CRISPR y Cas9**
-> (`docs/GUIONES_CRISPR.md`, 5 escenas — la obra aún no está en la
-> biblioteca). **Falta confirmar en el robot** que LATERAL (`w`) desplace de
+> (`docs/GUIONES_CRISPR.md`, 5 escenas — desde el 26 sep la obra `crispr`
+> ya está en la biblioteca con 5 segmentos). **Falta confirmar en el robot** que LATERAL (`w`) desplace de
 > lado y que izquierda/derecha no salgan espejados.
 >
 > **25 sep: TRIVIA recuperada a pedido del equipo**, estilo Kahoot (ver

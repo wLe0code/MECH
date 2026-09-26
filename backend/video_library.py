@@ -445,6 +445,104 @@ WORKS: dict[str, WorkMeta] = {
             "https://www.gps.gov/systems/gps/performance/accuracy/",
         ],
     },
+    "crispr": {
+        "title": "CRISPR y Cas9: las tijeras genéticas",
+        "author": "Emmanuelle Charpentier y Jennifer Doudna (Nobel de Química 2020)",
+        "synopsis": (
+            "CRISPR contado en el orden en que se descubrió: unas repeticiones "
+            "raras en el ADN de las bacterias que resultaron ser una memoria "
+            "contra los virus, la proteína Cas9 que Charpentier y Doudna "
+            "convirtieron en unas tijeras genéticas programables en 2012, "
+            "cómo busca y corta una secuencia exacta del ADN, el primer "
+            "tratamiento aprobado para la anemia falciforme y la gran "
+            "pregunta ética de editar embriones humanos."
+        ),
+        # CINCO segmentos, uno por escena del guion (docs/GUIONES_CRISPR.md).
+        "segments": 5,
+        "facts": [
+            "Los CINCO videos van en este orden, uno por segmento de "
+            "narración: 1) el misterio en el ADN de las bacterias y su "
+            "sistema inmune (1987-2007); 2) las tijeras genéticas: "
+            "Charpentier, Doudna y Cas9 (2011-2012); 3) cómo funciona: la "
+            "guía busca la secuencia, Cas9 corta y la célula repara; 4) del "
+            "laboratorio al hospital (2013-2023); 5) la gran pregunta ética "
+            "(2018-hoy). Narra cada tramo sobre su video.",
+            "CRISPR son las siglas en inglés de 'repeticiones palindrómicas "
+            "cortas agrupadas y regularmente espaciadas'. Cas significa "
+            "'asociada a CRISPR': son las proteínas que trabajan con esas "
+            "repeticiones.",
+            "En 1987 el equipo de Yoshizumi Ishino, en la Universidad de "
+            "Osaka (Japón), describió por primera vez esas repeticiones raras "
+            "en el ADN de la bacteria Escherichia coli. No supieron para qué "
+            "servían.",
+            "Francisco Mojica, de la Universidad de Alicante (España), estudió "
+            "esas repeticiones desde 1993 en microbios de las salinas de "
+            "Santa Pola. El nombre CRISPR lo acordaron Mojica y el holandés "
+            "Ruud Jansen, y se publicó por primera vez en 2002.",
+            "En 2005 Mojica publicó que los fragmentos entre las repeticiones "
+            "coinciden con ADN de virus, y propuso que son una memoria "
+            "inmunitaria de las bacterias. Otros dos grupos llegaron a la "
+            "misma idea ese año.",
+            "En 2007 Rodolphe Barrangou y Philippe Horvath, de la empresa "
+            "Danisco, demostraron con la bacteria que se usa para hacer yogur "
+            "y queso que CRISPR la protege de verdad contra los virus.",
+            "En 2011 el grupo de la francesa Emmanuelle Charpentier describió "
+            "el ARN llamado tracrRNA, una pieza clave del sistema. Ese mismo "
+            "año Charpentier y la estadounidense Jennifer Doudna (Universidad "
+            "de California en Berkeley) se conocieron en un congreso en "
+            "Puerto Rico.",
+            "En junio de 2012 Doudna, Charpentier y su equipo publicaron en "
+            "la revista Science que Cas9 se puede programar con un ARN guía "
+            "para cortar el ADN en el sitio que uno elija.",
+            "La Cas9 más usada viene de la bacteria Streptococcus pyogenes. "
+            "La guía lleva unas 20 letras genéticas que buscan su pareja en "
+            "el ADN, y Cas9 corta las dos hebras.",
+            "Después del corte la célula repara el ADN. Si lo repara 'a lo "
+            "rápido' suele meter pequeños errores y el gen queda apagado; si "
+            "se le da una copia corregida como molde, puede usarla para "
+            "arreglar el gen.",
+            "En enero de 2013 los equipos de Feng Zhang (Instituto Broad) y "
+            "George Church (Harvard) publicaron edición con CRISPR en células "
+            "humanas.",
+            "El 7 de octubre de 2020 Emmanuelle Charpentier y Jennifer Doudna "
+            "ganaron el Premio Nobel de Química 'por el desarrollo de un "
+            "método para la edición del genoma'. Fue la primera vez que dos "
+            "mujeres compartían, solas, un Nobel de ciencias.",
+            "En julio de 2019 Victoria Gray, de Mississippi, fue la primera "
+            "persona de Estados Unidos tratada con CRISPR para la anemia "
+            "falciforme, dentro de un ensayo clínico.",
+            "Casgevy es el primer tratamiento con CRISPR aprobado: el Reino "
+            "Unido lo autorizó el 16 de noviembre de 2023 y Estados Unidos el "
+            "8 de diciembre de 2023, para la anemia falciforme. Se extraen "
+            "células madre de la sangre del paciente, se editan en el "
+            "laboratorio y se le devuelven.",
+            "En noviembre de 2018 el científico chino He Jiankui anunció el "
+            "nacimiento de dos gemelas con un gen editado antes de nacer. Lo "
+            "condenó la comunidad científica mundial y en diciembre de 2019 "
+            "un tribunal chino lo sentenció a tres años de cárcel.",
+            "La diferencia clave de la ética: editar células del cuerpo de un "
+            "paciente no se hereda; editar embriones o células reproductoras "
+            "sí pasa a los hijos, y eso está prohibido o muy restringido en "
+            "muchos países.",
+            "NO digas que Mojica ganó el Nobel (no lo ganó, aunque su trabajo "
+            "fue fundamental) ni que CRISPR 'cura cualquier enfermedad "
+            "genética': hoy hay un tratamiento aprobado y muchos ensayos en "
+            "marcha.",
+            "NO digas que Doudna y Charpentier 'inventaron CRISPR': CRISPR "
+            "existe en las bacterias desde hace muchísimo tiempo. Lo que "
+            "ellas hicieron fue convertirlo en una herramienta programable.",
+        ],
+        "sources": [
+            "https://www.nobelprize.org/prizes/chemistry/2020/press-release/",
+            "https://www.science.org/doi/10.1126/science.1225829",
+            "https://www.science.org/doi/10.1126/science.1138140",
+            "https://en.wikipedia.org/wiki/Francisco_Mojica",
+            "https://en.wikipedia.org/wiki/CRISPR",
+            "https://www.fda.gov/news-events/press-announcements/fda-approves-first-gene-therapies-treat-patients-sickle-cell-disease",
+            "https://www.gov.uk/government/news/mhra-authorises-world-first-gene-therapy-that-aims-to-cure-sickle-cell-disease-and-transfusion-dependent-thalassemia",
+            "https://en.wikipedia.org/wiki/He_Jiankui_affair",
+        ],
+    },
 }
 
 

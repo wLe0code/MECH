@@ -92,6 +92,7 @@ Despierto, se le pide cualquier cosa en lenguaje normal:
 «Cuéntame la historia de Malpaís»
 «¿Quién fue Isaac Newton?»
 «Explícame la teoría de la relatividad»
+«¿Qué es CRISPR?»
 «¿Qué eres tú?»  /  «¿Quién te construyó?»
 ```
 
@@ -292,6 +293,7 @@ video 1, el 2 sobre el 2…
 | Don Quijote, Campaña de 1856, Jiménez Deredia, Malpaís, Isidro Con Wong | 4 cada una | — |
 | Isaac Newton | 5 | [`GUIONES_NEWTON.md`](GUIONES_NEWTON.md) |
 | La teoría de la relatividad | 8 | [`GUIONES_RELATIVIDAD.md`](GUIONES_RELATIVIDAD.md) |
+| CRISPR y Cas9: las tijeras genéticas | 5 | [`GUIONES_CRISPR.md`](GUIONES_CRISPR.md) |
 | Marketing | hasta 12 (ninguno obligatorio) | — |
 
 **La relatividad recorta sola** (los segmentos con ✂ en su tarjeta): se sube
@@ -302,10 +304,6 @@ se pierde: queda guardado aparte. Tarda unos segundos más en subir.
 Una obra se proyecta con sus videos solo cuando están **todos** sus
 segmentos. **Después de subirlos, reinicia el servidor** (Apagar MECH →
 Iniciar MECH): la lista de obras con video se arma al arrancar.
-
-> También hay guiones listos para **CRISPR y Cas9** (5 segmentos) en
-> [`GUIONES_CRISPR.md`](GUIONES_CRISPR.md), pero esa obra **todavía no está
-> en la biblioteca**: hay que añadirla antes de poder subir sus videos.
 
 ---
 

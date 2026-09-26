@@ -19,10 +19,9 @@ Cada escena trae dos cosas:
 | 4 | Del laboratorio al hospital | 2013 – 2023 | `seg04.mp4` |
 | 5 | Reescribir la vida: la gran pregunta | 2018 – hoy | `seg05.mp4` |
 
-> ⚠️ **Todavía NO hay espacio `crispr` en la biblioteca de videos.** Cuando
-> estén los clips, hay que añadir la obra a `backend/video_library.py` (con 5
-> segmentos y los datos verificados de abajo) para que aparezca su tarjeta en
-> `/library`.
+La obra **`crispr` ya está en la biblioteca** con sus **5 espacios** (tarjeta
+«CRISPR y Cas9: las tijeras genéticas» en `/library`), y los datos
+verificados de abajo ya van en su campo `facts`.
 
 ---
 
@@ -205,8 +204,10 @@ but hopeful mood.
 
 ## Datos verificados
 
-Para el campo `facts` de la obra cuando se añada a la biblioteca. Son los
-que MECH puede afirmar sin miedo — y las trampas que NO debe decir.
+Los que MECH puede afirmar sin miedo — y las trampas que NO debe decir.
+Ya están en el campo `facts` de la obra `crispr` en
+[`backend/video_library.py`](../backend/video_library.py): si corriges uno
+aquí, corrígelo también allí.
 
 1. **CRISPR** son las siglas en inglés de *Clustered Regularly Interspaced
    Short Palindromic Repeats*: repeticiones palindrómicas cortas agrupadas y
@@ -292,16 +293,14 @@ que MECH puede afirmar sin miedo — y las trampas que NO debe decir.
 
 ## Cómo subirlos
 
-1. Primero hay que **añadir la obra `crispr`** a la biblioteca (ver el aviso
-   del principio). Hasta entonces no hay dónde subirlos.
-2. `http://mech:8000/library` (o la IP de la Pi, o el botón «Biblioteca de
+1. `http://mech:8000/library` (o la IP de la Pi, o el botón «Biblioteca de
    videos» de la app de Windows).
-3. Tarjeta **CRISPR y Cas9** → la escena 1 en **`seg01`**, la 2 en
-   **`seg02`**... hasta la 5 en **`seg05`**. **El orden importa**: MECH narra
-   el tramo N sobre el video N.
-4. La obra se le ofrece a Claude con video solo cuando estén **los cinco**.
+2. Tarjeta **CRISPR y Cas9: las tijeras genéticas** → la escena 1 en
+   **`seg01`**, la 2 en **`seg02`**... hasta la 5 en **`seg05`**. **El orden
+   importa**: MECH narra el tramo N sobre el video N.
+3. La obra se le ofrece a Claude con video solo cuando estén **los cinco**.
    Mientras falte uno, MECH la cuenta igual pero generando imágenes en vivo.
-5. Reinicia el servidor después de subirlos: la lista de obras con video se
+4. Reinicia el servidor después de subirlos: la lista de obras con video se
    arma al arrancar.
 
 Si Gemini da `.webm` o algo raro, conviértelo a mp4 H.264 (van mudos, así que
