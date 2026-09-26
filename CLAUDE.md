@@ -21,7 +21,7 @@ Este archivo es tu primer punto de referencia al abrir una sesión nueva en este
 > (`windows/`, solo control remoto, no toca el audio). Encima de la
 > reversión se hizo: el saludo nuevo (3 rotaciones del brazo derecho hacia
 > adelante, solo en reposo, en inglés — ver «Saludo» en Estado actual) y la
-> obra `relatividad` con **8 segmentos**. Después (23 sep): `docs/USO.md`
+> obra `relatividad` (hoy con **7 segmentos**). Después (23 sep): `docs/USO.md`
 > **reescrita desde cero** con lo que SÍ hay ahora, los controles de
 > movimiento del panel corregidos, el botón de la biblioteca en la app y los
 > guiones de CRISPR.
@@ -363,7 +363,7 @@ docs/
                         botón, va aquí también (y SOLO lo que existe: se
                         reescribió el 23 sep tras la reversión).
   GUIONES_NEWTON.md   ← Guiones (narración + prompt de video) de Newton.
-  GUIONES_RELATIVIDAD.md ← Los 8 guiones de la relatividad, uno por segmento.
+  GUIONES_RELATIVIDAD.md ← Los 7 guiones de la relatividad, uno por segmento.
   GUIONES_CRISPR.md   ← 5 guiones de CRISPR y Cas9 + datos verificados
                         (los mismos que van en `facts` de la obra `crispr`).
 
@@ -1110,7 +1110,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 - **Recorte automático al subir (23 sep 2026)** — campo `trim` de `WORKS`
   (`{segmento: ("inicio"|"final", segundos)}`). La relatividad lo usa a
   pedido del equipo: seg 1 → primeros 20 s, seg 2 → primeros 10 s,
-  **seg 3-7 → ÚLTIMOS 10 s**, seg 8 entero. Lo hace
+  **seg 3-7 → ÚLTIMOS 10 s**. Lo hace
   `video_library.trim_uploaded()` con ffmpeg justo después de
   `POST /api/library/{slug}/{seg}` (en `asyncio.to_thread`, re-codificando a
   H.264: copiando solo se puede cortar en fotogramas clave). El original
@@ -1138,8 +1138,9 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `don_quijote`, `campana_1856`, `jimenez_deredia`, `malpais`,
   `isidro_con_wong` (4 segmentos c/u), `isaac_newton` (5 segmentos:
   contexto, vida, annus mirabilis, Principia, legado; 17 `facts`
-  verificados), `relatividad` (**8 segmentos**, uno por escena del guion,
-  22 `facts`) y `crispr` (**5 segmentos**, 18 `facts`). Guiones para generar
+  verificados), `relatividad` (**7 segmentos**, uno por escena del guion,
+  22 `facts`; el 8, «la relatividad hoy», se quitó el 26 sep a pedido del
+  equipo, pero sus datos siguen en los `facts`) y `crispr` (**5 segmentos**, 18 `facts`). Guiones para generar
   sus videos en [`docs/GUIONES_NEWTON.md`](docs/GUIONES_NEWTON.md),
   [`docs/GUIONES_RELATIVIDAD.md`](docs/GUIONES_RELATIVIDAD.md) y
   [`docs/GUIONES_CRISPR.md`](docs/GUIONES_CRISPR.md). El primer

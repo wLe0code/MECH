@@ -1,9 +1,9 @@
 # Guiones de video — La teoría de la relatividad
 
-Ocho escenas que cuentan la relatividad **en el orden en que se descubrió**:
+Siete escenas que cuentan la relatividad **en el orden en que se descubrió**:
 primero el problema que nadie sabía resolver, después las ideas de Einstein
-(con las fórmulas de Lorentz), y al final cómo se comprobó y dónde la usamos
-hoy.
+(con las fórmulas de Lorentz), y al final cómo se comprobó con el eclipse de
+1919.
 
 Cada escena trae dos cosas:
 
@@ -20,29 +20,32 @@ Cada escena trae dos cosas:
 | 5 | E = mc² | 1905 | `seg05.mp4` | **los ÚLTIMOS 10 s** |
 | 6 | La gravedad es espacio curvo | 1907 – 1915 | `seg06.mp4` | **los ÚLTIMOS 10 s** |
 | 7 | El eclipse que lo cambió todo | 1919 | `seg07.mp4` | **los ÚLTIMOS 10 s** |
-| 8 | La relatividad hoy | 2015 – hoy | `seg08.mp4` | entero |
+
+La escena 8 («La relatividad hoy»: GPS, ondas gravitacionales y la foto del
+agujero negro) **se quitó el 26 sep 2026 a pedido del equipo**. Su guion
+sigue en el historial de git, y sus datos siguen en los `facts` de la obra
+por si alguien pregunta.
 
 > ✂ **El recorte es automático** (pedido del equipo, 23 sep 2026). Se sube
 > el video completo en `/library` y la Pi se queda solo con la parte de la
 > última columna: del 3 al 7, **los últimos 10 segundos**; el 1 y el 2, sus
-> primeros 20 y 10 s (si ya duran eso, no se tocan); el 8, entero. El
+> primeros 20 y 10 s (si ya duran eso, no se tocan). El
 > original se guarda en `video_library/relatividad/originales/`, por si hay
 > que recortarlo distinto. Necesita `ffmpeg` en la Pi: sin él se usa el video
 > entero y el panel lo avisa.
 
-**Un archivo por escena.** En la biblioteca, la obra `relatividad` tiene **8
-segmentos**: en `/library` sale su tarjeta con 8 botones (los que recortan
+**Un archivo por escena.** En la biblioteca, la obra `relatividad` tiene **7
+segmentos**: en `/library` sale su tarjeta con 7 botones (los que recortan
 llevan la marca ✂), y cada escena se sube en el suyo. El orden importa: MECH narra el tramo N sobre `segNN`.
 
-Mientras falte alguno de los ocho, la obra se sigue ofreciendo a Claude (con
+Mientras falte alguno de los siete, la obra se sigue ofreciendo a Claude (con
 su sinopsis y sus datos verificados), pero narrando con imágenes generadas en
 vivo, como cualquier obra sin video.
 
-> **Por qué ocho escenas y no menos.** La relatividad son DOS teorías (la
+> **Por qué tantas escenas.** La relatividad son DOS teorías (la
 > especial, de 1905, y la general, de 1915) y cada una necesita su "idea
 > clave" y su "prueba". Juntarlas en cuatro obliga a narraciones de un
 > minuto, y en un stand la gente no se queda un minuto mirando lo mismo.
-> Ocho es justo el máximo de segmentos que admite un plan de Claude.
 
 ---
 
@@ -74,7 +77,7 @@ Igual que los de [Isaac Newton](GUIONES_NEWTON.md):
 
 ## Estilo común
 
-Pega este bloque **al final de cada prompt** para que los ocho clips parezcan
+Pega este bloque **al final de cada prompt** para que los siete clips parezcan
 del mismo documental:
 
 ```
@@ -295,31 +298,6 @@ historic mood.
 
 ---
 
-## Segmento 8 — La relatividad hoy (2015 – hoy)
-
-**Narración:**
-
-> Hoy la relatividad está en tu bolsillo. Los relojes de los satélites GPS se
-> adelantan unos treinta y ocho microsegundos al día; sin corregirlo, el mapa
-> de tu teléfono se equivocaría varios kilómetros cada día. En 2015
-> detectamos por primera vez las ondas gravitacionales que Einstein predijo,
-> y en 2019 vimos la primera imagen de un agujero negro. Más de un siglo
-> después, su idea sigue superando cada prueba.
-
-**Prompt de video:**
-
-```
-The night side of planet Earth seen from orbit, city lights glowing, with
-several small satellites drifting in slow orbit and faint signal pulses
-reaching down to the surface. The camera drifts away from Earth into deep
-space, where two black holes spiral around each other and send gentle
-glowing ripples through space, and a glowing orange ring of light
-surrounds a dark center. Slow, continuous, awe-inspiring.
-```
-*(+ bloque de estilo común)*
-
----
-
 ## Datos verificados
 
 Si se añade la obra a la biblioteca de MECH, estos van al campo `facts` en
@@ -399,14 +377,14 @@ Newton. Así MECH no inventa fechas ni atribuye cosas a quien no toca.
 
 ## Cómo subirlos
 
-La obra `relatividad` **ya está en la biblioteca** con sus **ocho** espacios.
+La obra `relatividad` **ya está en la biblioteca** con sus **siete** espacios.
 
 1. `http://mech:8000/library` (o la IP de la Pi).
-2. Tarjeta **La teoría de la relatividad** → ocho casillas, una por escena:
-   la escena 1 va en **`seg01`**, la 2 en **`seg02`**... hasta la 8 en
-   **`seg08`** (ver la tabla del principio).
+2. Tarjeta **La teoría de la relatividad** → siete casillas, una por escena:
+   la escena 1 va en **`seg01`**, la 2 en **`seg02`**... hasta la 7 en
+   **`seg07`** (ver la tabla del principio).
    **El orden importa**: MECH narra el tramo N sobre el video N.
-3. La obra se le ofrece a Claude con video solo cuando estén **los ocho**.
+3. La obra se le ofrece a Claude con video solo cuando estén **los siete**.
    Mientras falte uno, MECH la cuenta igual pero generando imágenes en vivo —
    no se rompe nada, solo se ve distinto.
 4. Reinicia el servidor después de subirlos: la lista de obras con video se
@@ -421,8 +399,8 @@ ffmpeg -i original.webm -c:v libx264 -crf 23 -preset slow -an seg01.mp4
 
 ## Si hacen el video por separado (fuera de MECH)
 
-Las ocho narraciones leídas seguidas son un video de ~3 minutos y medio, u
-ocho cortos de ~25 s para redes. En ese caso sí conviene **extender cada clip** a
+Las siete narraciones leídas seguidas son un video de ~3 minutos, o siete
+cortos de ~25 s para redes. En ese caso sí conviene **extender cada clip** a
 la duración de su narración (o encadenar dos generaciones del mismo prompt)
 en vez de dejarlo en bucle, y ahí se pueden añadir las fórmulas como
 texto en la edición — con un editor, no pidiéndosela a la IA.

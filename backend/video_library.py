@@ -330,12 +330,14 @@ WORKS: dict[str, WorkMeta] = {
             "y todo lo que hoy depende de ella: el GPS, las ondas "
             "gravitacionales y la primera imagen de un agujero negro."
         ),
-        # OCHO segmentos, uno por escena del guion (docs/GUIONES_RELATIVIDAD.md).
-        # Ocho es justo el máximo de segmentos que admite un plan de Claude.
-        "segments": 8,
+        # SIETE segmentos, uno por escena del guion (docs/GUIONES_RELATIVIDAD.md).
+        # Eran ocho; el 8 («la relatividad hoy») se quitó el 26 sep 2026 a
+        # pedido del equipo. Sus datos (GPS, LIGO, el agujero negro) siguen
+        # abajo como facts, por si alguien pregunta.
+        "segments": 7,
         # Duraciones que pidió el equipo (23 sep 2026): el 1 dura 20 s y el 2
         # dura 10 s; del 3 al 7 los videos traen más de lo necesario y solo
-        # se conservan sus ÚLTIMOS 10 s. El 8 se usa entero.
+        # se conservan sus ÚLTIMOS 10 s.
         "trim": {
             1: ("inicio", 20),
             2: ("inicio", 10),
@@ -346,16 +348,15 @@ WORKS: dict[str, WorkMeta] = {
             7: ("final", 10),
         },
         "facts": [
-            "Los OCHO videos van en este orden, uno por segmento de "
+            "Los SIETE videos van en este orden, uno por segmento de "
             "narración: 1) el misterio de la luz y el éter (Maxwell, "
             "Michelson-Morley, 1865-1887); 2) Einstein en la oficina de "
             "patentes (1895-1905); 3) el tiempo no es igual para todos, la "
             "relatividad especial (1905); 4) las transformaciones de Lorentz, "
             "con sus fórmulas en una pizarra; 5) E=mc² (1905); 6) la gravedad "
             "es espacio curvo, la relatividad general (1907-1915); 7) el "
-            "eclipse de 1919; 8) la relatividad hoy: GPS, ondas "
-            "gravitacionales y la foto del agujero negro. Narra cada tramo "
-            "sobre su video.",
+            "eclipse de 1919, que es el final de la historia. Narra cada "
+            "tramo sobre su video.",
             "Albert Einstein nació el 14 de marzo de 1879 en Ulm, Alemania, "
             "y murió el 18 de abril de 1955 en Princeton, Estados Unidos.",
             "James Clerk Maxwell publicó su teoría del campo "

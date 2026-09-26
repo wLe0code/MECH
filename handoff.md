@@ -23,7 +23,8 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 >   brazo va hacia atrás: Ajustes → «Sentido brazos» → `ARM_INVERT_R`.
 >   ⚠️ El `.env` de la Pi puede tapar los defaults (el panel guarda todas sus
 >   perillas): el preflight lo avisa.
-> - **Relatividad** en la biblioteca con **8 segmentos**, uno por escena de
+> - **Relatividad** en la biblioteca con **7 segmentos** (el 8 se quitó el
+>   26 sep a pedido del equipo), uno por escena de
 >   `docs/GUIONES_RELATIVIDAD.md`.
 >
 > El equipo lo probó en la Pi y **funciona** (23 sep).
@@ -43,7 +44,7 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 > falta probarla en la Pi.
 >
 > Y la relatividad **recorta sola al subir** (campo `trim`): seg 1 → primeros
-> 20 s, seg 2 → primeros 10 s, seg 3-7 → últimos 10 s, seg 8 entero. Usa
+> 20 s, seg 2 → primeros 10 s, seg 3-7 → últimos 10 s. Usa
 > ffmpeg en la Pi; sin ffmpeg deja el video entero y avisa.
 
 > ✅ **Estado (3 sep 2026):** el robot FUNCIONA casi entero en la Pi — audio

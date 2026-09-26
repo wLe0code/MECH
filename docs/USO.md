@@ -292,13 +292,13 @@ video 1, el 2 sobre el 2…
 |---|---|---|
 | Don Quijote, Campaña de 1856, Jiménez Deredia, Malpaís, Isidro Con Wong | 4 cada una | — |
 | Isaac Newton | 5 | [`GUIONES_NEWTON.md`](GUIONES_NEWTON.md) |
-| La teoría de la relatividad | 8 | [`GUIONES_RELATIVIDAD.md`](GUIONES_RELATIVIDAD.md) |
+| La teoría de la relatividad | 7 | [`GUIONES_RELATIVIDAD.md`](GUIONES_RELATIVIDAD.md) |
 | CRISPR y Cas9: las tijeras genéticas | 5 | [`GUIONES_CRISPR.md`](GUIONES_CRISPR.md) |
 | Marketing | hasta 12 (ninguno obligatorio) | — |
 
 **La relatividad recorta sola** (los segmentos con ✂ en su tarjeta): se sube
 el video completo y la Pi se queda con los **últimos 10 s** del 3 al 7, los
-primeros 20 s del 1 y los primeros 10 s del 2. El 8 va entero. El original no
+primeros 20 s del 1 y los primeros 10 s del 2. El original no
 se pierde: queda guardado aparte. Tarda unos segundos más en subir.
 
 Una obra se proyecta con sus videos solo cuando están **todos** sus
