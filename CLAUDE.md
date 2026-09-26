@@ -286,13 +286,15 @@ branding/stand/       ← Assets para el STAND físico (PNG TRANSPARENTES, alta
 web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
                         MULTIPÁGINA (sep 2026): un .html por sección, pensado
                         para desplegar en Vercel con Root Directory = web.
-  index.html          ← Inicio: hero + barra de patrocinadores + cifras clave.
+  index.html          ← Inicio: hero + patrocinadores + SALÓN DE TROFEOS +
+                        cifras clave.
   empresa.html        ← 01 · M.E.C.H, propuesta de valor, equipo, colaboradores.
   problema.html       ← 02 · Indiferencia, crisis educativa de CR, escuelas
                         unidocentes, neurociencia de la atención + referencias.
   robot.html          ← 03 · Cómo funciona, hardware por capas, construcción,
                         mecanismo, código, retos y bitácora de fotos.
-  evolucion.html      ← 04 · MECH-1 → MECH-2 → MECH-3 (actual) → MECH-4.
+  evolucion.html      ← 04 · MECH-1 → MECH-2 → MECH-3 (actual, campeón
+                        nacional) → MECH-4 (por lanzar) → MECH-5.
   aplicaciones.html   ← 05 · Áreas de uso + modelo de negocio (costos/ingresos).
   contacto.html       ← 06 · Contacto + patrocinadores (rejilla + marquesina).
   404.html            ← Página de error (Vercel la sirve sola).
@@ -1260,6 +1262,32 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   el retrato oficial (26) en `empresa.html` y el BMC en `aplicaciones.html`.
   Sustituyeron a los `build-0*.jpg`/`robot-final.jpg`/`canvas-negocio.png`
   del PDF viejo, que ya se borraron.
+  **Actualización con `MECH California.docx` (26 sep 2026)** — el trabajo
+  escrito nuevo (en inglés) añade las figuras **26–45**; salen del `.docx`
+  (más resolución que el PDF) con el mismo `prep_figuras.py` (`MAPA_DOCX`,
+  mapeo `imageNN.jpeg → figura` verificado a mano). La numeración cambió: el
+  retrato del equipo pasó de figura 26 a **44** (`fig44-miembros.jpg`) y la
+  26 es ahora MECH-2 desarmado. En `robot.html` los pies siguen al documento
+  (Fig. 1 arquitectura, **Fig. 2 caso de uso**; los flujos van como
+  «DIAGRAMA ·», porque no están en el documento).
+  ⚠️ `vercel.json` sirve `/assets` como `immutable` (1 año): si una figura
+  cambia de contenido, **nombre nuevo**, nunca pisar el archivo.
+  **Salón de trofeos** (`index.html#trofeos`, pedido del equipo) — SOLO
+  estos tres títulos, todos primer lugar: **campeones nacionales WRO 2026
+  Future Innovators** (con MECH-3), **campeones regionales de Guanacaste
+  WRO 2026 Future Innovators** (con MECH-2) y **campeones del Torneo STEAM
+  Luvá – Electrotec** (con **TitoBot**, otro robot del equipo, no MECH).
+  La regional de Alajuela (MECH-1, 7.º lugar según el documento) aparece en
+  Evolución como «debut», **sin el puesto** — a propósito; no lo pongas sin
+  preguntar. Distintivo «CAMPEONES NACIONALES · WRO FUTURE INNOVATORS» en
+  el hero que enlaza al salón.
+  **`evolucion.html` = cinco generaciones**: MECH-1/2/3 lanzados (MECH-3 =
+  actual y campeón nacional), MECH-4 «por lanzar» (4 idiomas, trivia,
+  traductor, «Hey MECH», parlante alámbrico, cargador el doble de rápido,
+  diseño más moderno) y MECH-5 «en preparación». Secciones: comparación
+  (fig. 38), línea de tiempo, en competencia (39–41), MECH-2, MECH-3 (seis
+  mejoras, render vs. real, desarmable/cargador/circuito, bitácora 26–34,
+  diseño 3D 21–25), MECH-4 y MECH-5.
   **Interruptor de idioma ES/EN** (`web/js/i18n.js`): el sitio se escribe en
   español y el inglés vive en un diccionario `{texto español: HTML inglés}`.
   El botón va en la barra de navegación (inyectado por JS, así aparece en las

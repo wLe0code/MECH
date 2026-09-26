@@ -41,10 +41,32 @@
       'We spark interest in <em class="grad">what truly matters.</em>',
     'Construimos espacios inmersivos que combinan inteligencia artificial, proyección y movimiento físico. Nuestros robots convierten cualquier tema —cultura, educación, salud, historia— en una experiencia que se vive, no que se lee.':
       'We build immersive spaces that combine artificial intelligence, projection and physical movement. Our robots turn any subject —culture, education, health, history— into an experience that is <b>lived, not just read</b>.',
-    '« si es inmersivo, es MECH »': '« if it’s immersive, it’s MECH »',
+    // norm() pega las comillas « » al texto, así que la clave va sin espacios
+    '«si es inmersivo, es MECH»': '« if it’s immersive, it’s MECH »',
     'Conocer el robot': 'Meet the robot',
     'Por qué existe': 'Why it exists',
     'CON EL APOYO DE': 'SUPPORTED BY',
+    'CAMPEONES NACIONALES · WRO FUTURE INNOVATORS': 'NATIONAL CHAMPIONS · WRO FUTURE INNOVATORS',
+    'SALÓN DE TROFEOS': 'TROPHY ROOM',
+    'Tres torneos. Tres títulos.': 'Three tournaments.<br>Three titles.',
+    'Cada prototipo se ha puesto a prueba frente a jurados y otros equipos. Estos son los títulos que ha ganado el equipo — el más reciente, la final nacional de Costa Rica.':
+      'Every prototype has been put to the test in front of judges and other teams. These are the titles the team has won — the latest, the <b>Costa Rica national final</b>.',
+    'Ver cada modelo en competencia': 'See each model in competition',
+    'FIGURA 45 · PREMIOS GANADOS POR EL EQUIPO MECH': 'FIGURE 45 · AWARDS WON BY THE MECH TEAM',
+    'PRIMER LUGAR · NACIONAL': 'FIRST PLACE · NATIONAL',
+    'PRIMER LUGAR · REGIONAL': 'FIRST PLACE · REGIONAL',
+    'PRIMER LUGAR': 'FIRST PLACE',
+    'Campeones nacionales': 'National champions',
+    'Campeones regionales': 'Regional champions',
+    'Campeones': 'Champions',
+    'Final Nacional de la WRO 2026 en Costa Rica, categoría Future Innovators.':
+      'Costa Rica’s WRO 2026 National Final, Future Innovators category.',
+    'Regional de Guanacaste de la WRO 2026, categoría Future Innovators.':
+      'WRO 2026 Guanacaste Regional, Future Innovators category.',
+    'Torneo STEAM Luvá — Electrotec.': 'STEAM Luvá Tournament — Electrotec.',
+    'CON MECH‑3': 'WITH MECH‑3',
+    'CON MECH‑2': 'WITH MECH‑2',
+    'CON TITOBOT': 'WITH TITOBOT',
     'EL PROBLEMA, EN CIFRAS': 'THE PROBLEM, IN NUMBERS',
     'Cuando falta contexto, el interés se apaga.': 'When context is missing,<br>interest fades.',
     'No es una intuición: es lo que dicen los datos sobre educación, cultura y atención. Y también lo que dicen sobre la solución.':
@@ -62,8 +84,8 @@
       'Indifference, Costa Rica’s education crisis and the science of attention.',
     'Cómo funciona, de qué está hecho y cómo se construyó desde cero.':
       'How it works, what it is made of and how it was built from scratch.',
-    'De MECH‑1 a MECH‑4: qué aprendimos y qué mejora cada generación.':
-      'From MECH‑1 to MECH‑4: what we learned and what each generation improves.',
+    'De MECH‑1 a MECH‑5: qué aprendimos y qué mejora cada generación.':
+      'From MECH‑1 to MECH‑5: what we learned and what each generation improves.',
     'Museos, aulas, farmacéuticas y empresas — con su modelo de negocio.':
       'Museums, classrooms, pharma and business — with the business model.',
     'Hablemos. Y conoce a quienes hacen posible el proyecto.':
@@ -126,7 +148,7 @@
     'El puente entre la estructura y el cerebro del robot. Desarrolló los sistemas de movimiento, energía, comunicación, sonido y visión, elementos clave para el correcto funcionamiento y la sincronización del prototipo.':
       'The <b>bridge between the structure and the brain</b> of the robot. He developed the movement, power, communication, sound and vision systems — key elements for the prototype to work and stay in sync.',
     'MECH · ALAJUELA, COSTA RICA': 'MECH · ALAJUELA, COSTA RICA',
-    'FIGURA 26 · MIEMBROS DE MECH': 'FIGURE 26 · MEMBERS OF MECH',
+    'FIGURA 44 · MIEMBROS DE MECH': 'FIGURE 44 · MEMBERS OF MECH',
 
     /* ── Problema ──────────────────────────────────────────────────── */
     'EL PROBLEMA': 'THE PROBLEM',
@@ -245,9 +267,9 @@
     'Cómo se planificó.': 'How it was planned.',
     'El proyecto arrancó con diagramas que definieron las funciones e ideas principales del robot antes de construir nada.':
       'The project started with diagrams that defined the robot’s main functions and ideas before anything was built.',
-    'FIGURA 2 · FLUJO DE HARDWARE': 'FIGURE 2 · HARDWARE FLOW',
-    'FIGURA 3 · FLUJO DE SOFTWARE': 'FIGURE 3 · SOFTWARE FLOW',
-    'FIGURA 4 · DIAGRAMA DE CASO DE USO': 'FIGURE 4 · USE CASE DIAGRAM',
+    'DIAGRAMA · FLUJO DE HARDWARE': 'DIAGRAM · HARDWARE FLOW',
+    'DIAGRAMA · FLUJO DE SOFTWARE': 'DIAGRAM · SOFTWARE FLOW',
+    'FIGURA 2 · DIAGRAMA DE CASO DE USO': 'FIGURE 2 · USE CASE DIAGRAM',
     'CONSTRUCCIÓN': 'CONSTRUCTION',
     'De qué está hecho.': 'What it is made of.',
     'Estructura metálica de aluminio, ensamblada con soportes y tornillos.': 'An <b>aluminium</b> metal frame, assembled with brackets and screws.',
@@ -312,26 +334,40 @@
 
     /* ── Evolución ─────────────────────────────────────────────────── */
     'LA EVOLUCIÓN': 'THE EVOLUTION',
-    'Cuatro generaciones. Una misma misión.': 'Four generations.<br>One same mission.',
-    'Cada modelo aprende del anterior. Hoy MECH‑3 está en desarrollo y el equipo ya prepara el siguiente paso.':
-      'Each model learns from the previous one. Today <b>MECH‑3 is in development</b> and the team is already preparing the next step.',
+    'Cinco generaciones. Una misma misión.': 'Five generations.<br>One same mission.',
+    'Tres modelos lanzados, MECH‑4 a punto de salir y MECH‑5 en preparación. Cada uno aprende del anterior — y el más reciente es campeón nacional.':
+      'Three models launched, <b>MECH‑4</b> about to come out and <b>MECH‑5</b> in the works. Each one learns from the last — and the latest is a national champion.',
+    'FIGURA 38 · COMPARACIÓN VISUAL DE LA EVOLUCIÓN': 'FIGURE 38 · VISUAL COMPARISON OF THE EVOLUTION',
     'LANZADO': 'LAUNCHED',
-    'COMPLETADO': 'COMPLETED',
-    'EN DESARROLLO': 'IN DEVELOPMENT',
-    'PLANEADO': 'PLANNED',
+    'LANZADO · ACTUAL': 'LAUNCHED · CURRENT',
+    'POR LANZAR': 'COMING SOON',
+    'EN PREPARACIÓN': 'IN THE WORKS',
     'BASE DEL PROYECTO': 'PROJECT FOUNDATION',
     '+ AUTONOMÍA': '+ BATTERY LIFE',
-    'NUEVO DISEÑO': 'NEW DESIGN',
     '+ SUBTÍTULOS': '+ SUBTITLES',
     '+ PORTABILIDAD': '+ PORTABILITY',
     '+ IDIOMAS': '+ LANGUAGES',
+    '+ TRADUCTOR': '+ TRANSLATOR',
+    '🏆 CAMPEÓN REGIONAL': '🏆 REGIONAL CHAMPION',
+    '🏆 CAMPEÓN NACIONAL': '🏆 NATIONAL CHAMPION',
     'El modelo de lanzamiento: voz, proyección, movimiento y narración con IA. Estableció toda la base — estructura de aluminio y coroplast, orquestador en Python y firmware en Arduino.':
       'The launch model: voice, projection, movement and AI narration. It set the whole foundation — aluminium and coroplast structure, Python orchestrator and Arduino firmware.',
-    'Cuatro incorporaciones que lo hicieron mucho más versátil y llamativo.': 'Four additions that made it far more versatile and eye-catching.',
-    'Más accesible, más portátil y más resistente. El modelo en el que trabaja el equipo actualmente.':
-      'More accessible, more portable and more durable. The model the team is currently working on.',
-    'Un modelo aún más universal, con mayor variedad de idiomas e indicadores más precisos.':
-      'An even more universal model, with a wider range of languages and more precise indicators.',
+    'Lentes de realidad virtual, batería propia de 8 horas y un diseño nuevo: mucho más versátil y llamativo.':
+      'A virtual reality headset, its own 8-hour battery and a new design: far more versatile and eye-catching.',
+    'Más accesible, portátil y resistente: subtítulos, batería de litio recargable y un cuerpo que se desarma para viajar.':
+      'More accessible, portable and durable: subtitles, a rechargeable lithium battery and a body that comes apart for travel.',
+    'Habla cuatro idiomas, juega trivia con el público y traduce conversaciones en tiempo real.':
+      'It speaks four languages, plays trivia with the audience and translates conversations in real time.',
+    'Un modelo aún más universal, con más idiomas e indicadores más precisos.':
+      'An even more universal model, with more languages and more precise indicators.',
+    'EN COMPETENCIA': 'IN COMPETITION',
+    'Cada modelo, puesto a prueba.': 'Every model,<br>put to the test.',
+    'MECH ha competido en tres eventos oficiales de la WRO, y cada modelo llegó más lejos que el anterior: MECH‑2 ganó la regional de Guanacaste y MECH‑3, la final nacional de Costa Rica en la categoría Future Innovators.':
+      'MECH has competed in three official WRO events, and each model went further than the last: MECH‑2 won the Guanacaste regional and MECH‑3 won the <b>Costa Rica national final</b> in the Future Innovators category.',
+    'FIGURA 39 MECH‑1 debuta en la regional WRO de Alajuela': '<span class="mono">FIGURE 39</span> MECH‑1 debuts at the Alajuela WRO regional',
+    'FIGURA 40 MECH‑2, campeón de la regional WRO de Guanacaste': '<span class="mono">FIGURE 40</span> MECH‑2, champion of the Guanacaste WRO regional',
+    'FIGURA 41 MECH‑3, campeón de la final nacional WRO': '<span class="mono">FIGURE 41</span> MECH‑3, champion of the WRO national final',
+    'Ver el salón de trofeos': 'See the trophy room',
     'MECH‑2 · QUÉ CAMBIÓ': 'MECH‑2 · WHAT CHANGED',
     'Del prototipo funcional al robot autónomo.': 'From working prototype<br>to autonomous robot.',
     'Lentes de realidad virtual': 'Virtual reality headset',
@@ -341,8 +377,8 @@
     'Una apariencia más atractiva para el público general, adaptada a los sistemas y sensores mejorados.':
       'A more appealing look for the general public, adapted to the upgraded systems and sensors.',
     'Batería propia': 'Its own battery',
-    'Capacidad energética suficiente para sostener todos los sistemas con excelente autonomía durante un día.':
-      'Enough energy capacity to sustain every system with excellent battery life through a whole day.',
+    'Energía suficiente para sostener todos los sistemas con una autonomía de 8 horas: un día completo.':
+      'Enough energy to power every system with <b>8 hours</b> of battery life: a full day.',
     'Mejor orquestador': 'Better orchestrator',
     'Mayor compatibilidad con las funciones de audio, para evitar errores en la respuesta o en el guion.':
       'Greater compatibility with the audio functions, to avoid errors in the response or the script.',
@@ -352,36 +388,81 @@
     'FIGURA 18 Lentes de realidad virtual': '<span class="mono">FIGURE 18</span> Virtual reality headset',
     'FIGURA 19 Movilidad finalizada': '<span class="mono">FIGURE 19</span> Mobility completed',
     'FIGURA 20 MECH‑2 completo': '<span class="mono">FIGURE 20</span> MECH‑2 complete',
-    'MECH‑3 · EN DESARROLLO': 'MECH‑3 · IN DEVELOPMENT',
+    'MECH‑3 · EL MODELO ACTUAL': 'MECH‑3 · THE CURRENT MODEL',
     'Más accesible. Más resistente. Más portátil.': 'More accessible.<br>More durable. More portable.',
-    'Los cinco aspectos que convierten a MECH‑3 en una versión más eficiente que sus predecesores.':
-      'The five aspects that make MECH‑3 a more efficient version than its predecessors.',
-    'Modo subtítulos — para personas con dificultad auditiva, o simplemente por preferencia de uso.':
-      '<b>Subtitle mode</b> — for people with hearing difficulties, or simply out of preference.',
+    'Los seis aspectos que lo convierten en una versión más eficiente que sus predecesores — y el modelo con el que el equipo ganó la final nacional.':
+      'The six aspects that make it a more efficient version than its predecessors — and the model the team won the national final with.',
+    'Modo subtítulos — para personas con dificultad auditiva, o que simplemente lo prefieran.':
+      '<b>Subtitle mode</b> — for people with hearing difficulties, or who simply prefer it.',
     'Mayor portabilidad — para que el usuario pueda transportarlo con más libertad.':
       '<b>Greater portability</b> — so the user can move it around more freely.',
-    'Cambio de diseño — ajusta la posición de los componentes y mejora la apariencia.':
-      '<b>Design change</b> — it repositions the components and improves the look.',
-    'Materiales más resistentes — mayor durabilidad ante golpes o accidentes físicos.':
-      '<b>Tougher materials</b> — greater durability against knocks or physical accidents.',
-    'Componentes optimizados — modificación estratégica de la electrónica para mejorar la autonomía.':
+    'Diseño más compacto — acomoda mejor los componentes y su apariencia atrae más al público joven.':
+      '<b>A more compact design</b> — it arranges the components better and its look appeals more to a younger audience.',
+    'Materiales más resistentes — más durabilidad ante golpes o accidentes, sin disparar los costos.':
+      '<b>Tougher materials</b> — more durability against knocks or accidents, without driving up costs.',
+    'Componentes optimizados — cambios estratégicos en la electrónica para mejorar la autonomía.':
       '<b>Optimised components</b> — strategic changes to the electronics to improve battery life.',
-    'Diseño 3D en curso': '3D design in progress',
-    'La base inferior, la coraza, la parte superior y la nueva estructura interna de MECH‑3 se están modelando en Autodesk Fusion, incluida la estructura que sostiene la cabeza.':
-      'The lower base, the shell, the upper section and MECH‑3’s new internal structure are being modelled in <b>Autodesk Fusion</b>, including the structure that holds the head.',
-    'Accesibilidad como criterio': 'Accessibility as a criterion',
-    'El modo subtítulos convierte al robot en una herramienta utilizable por más personas — un principio que el equipo quiere mantener en las siguientes generaciones.':
-      'Subtitle mode turns the robot into a tool more people can use — a principle the team wants to keep in the generations to come.',
+    'Batería de litio — una nueva fuente de energía, ahora recargable.':
+      '<b>Lithium battery</b> — a new power source, now rechargeable.',
+    'FIGURA 35 Render 3D de MECH‑3': '<span class="mono">FIGURE 35</span> 3D render of MECH‑3',
+    'FIGURA 37 MECH‑3 completo': '<span class="mono">FIGURE 37</span> MECH‑3 complete',
+    'FIGURA 36': 'FIGURE 36',
+    'FIGURA 42': 'FIGURE 42',
+    'FIGURA 43': 'FIGURE 43',
+    'Se desarma para viajar': 'Comes apart for travel',
+    'El tercer modelo se separa en piezas para transportarlo con facilidad de un evento a otro.':
+      'The third model breaks down into pieces so it can easily travel from one event to the next.',
+    'Cargador propio': 'Its own charger',
+    'Un cargador de batería incluido, para que el usuario pueda usarlo con total versatilidad.':
+      'A battery charger is included, so the user can use it with full versatility.',
+    'Todo en su lugar': 'Everything in its place',
+    'Vista superior de los sistemas y circuitos internos, reorganizados de forma más compacta.':
+      'Top view of the internal systems and circuits, rearranged more compactly.',
+    'BITÁCORA DE MECH‑3': 'MECH‑3 BUILD LOG',
+    'Del desarme de MECH‑2 al lanzamiento.': 'From taking MECH‑2 apart<br>to launch day.',
+    'FIGURA 26 MECH‑2 desarmado para el rediseño': '<span class="mono">FIGURE 26</span> MECH‑2 taken apart for the redesign',
+    'FIGURA 27 Modelado 3D de la nueva versión': '<span class="mono">FIGURE 27</span> 3D model of the new version',
+    'FIGURA 28 Nuevo sistema de movimiento': '<span class="mono">FIGURE 28</span> New movement system',
+    'FIGURA 29 Circuito reubicado y mejorado': '<span class="mono">FIGURE 29</span> Relocated, improved circuit',
+    'FIGURA 30 Rediseño de la cara': '<span class="mono">FIGURE 30</span> Face redesign',
+    'FIGURA 31 Nuevo frente': '<span class="mono">FIGURE 31</span> New front',
+    'FIGURA 32 Cuerpo ensamblado': '<span class="mono">FIGURE 32</span> Body assembled',
+    'FIGURA 33 Construcción de la cabeza': '<span class="mono">FIGURE 33</span> Building the head',
+    'FIGURA 34 Cabeza montada en el cuerpo': '<span class="mono">FIGURE 34</span> Head mounted on the body',
     'DISEÑO 3D DE MECH‑3': 'MECH‑3 3D DESIGN',
-    'Las piezas que se están modelando.': 'The parts being modelled.',
+    'Modelado pieza por pieza en Autodesk Fusion.': 'Modelled piece by piece in Autodesk Fusion.',
     'FIGURA 21 · BASE INFERIOR': 'FIGURE 21 · LOWER BASE',
     'FIGURA 22 · CORAZA': 'FIGURE 22 · SHELL',
     'FIGURA 23 · PARTE SUPERIOR': 'FIGURE 23 · UPPER SECTION',
     'FIGURA 24 · ESTRUCTURA INTERNA': 'FIGURE 24 · INTERNAL STRUCTURE',
     'FIGURA 25 · SOPORTE DE CABEZA': 'FIGURE 25 · HEAD MOUNT',
+    'MECH‑4 · A PUNTO DE LANZARSE': 'MECH‑4 · ABOUT TO LAUNCH',
+    'Habla cuatro idiomas. Y juega contigo.': 'It speaks four languages.<br>And plays with you.',
+    'Las siete mejoras que ya se implementaron en el próximo modelo.': 'The seven improvements already built into the next model.',
+    'Cuatro idiomas': 'Four languages',
+    'Español, inglés, francés y portugués: el robot ya puede usarse en otras regiones del mundo.':
+      'Spanish, English, French and Portuguese: the robot can now be used in other regions of the world.',
+    'Modo trivia': 'Trivia mode',
+    'Hace preguntas sobre lo que acaba de contar, para un aprendizaje dinámico, interactivo y eficiente.':
+      'It asks questions about what it has just presented, for dynamic, interactive and efficient learning.',
+    'Traductor en tiempo real': 'Real-time translator',
+    'Permite conversar a dos personas que hablan idiomas distintos.':
+      'It lets two people who speak different languages hold a conversation.',
+    'Comando «Hey MECH»': 'The “Hey MECH” command',
+    'Pausa la presentación en cualquier momento para cambiar el tema de conversación.':
+      'It pauses the presentation at any moment to change the topic of conversation.',
+    'Parlante alámbrico': 'Wired speaker',
+    'Para que el robot dependa al 100% de una sola fuente de energía.':
+      'So the robot runs 100% on a single power source.',
+    'Carga en la mitad del tiempo': 'Charges in half the time',
+    'Un cargador nuevo que completa la carga el doble de rápido y mejora la vida de la batería.':
+      'A new charger that delivers a full charge twice as fast and improves battery life.',
+    'Diseño más moderno': 'A more modern design',
+    'Ligeros cambios de diseño que realzan su aspecto moderno.':
+      'Slight design changes that enhance its modern look.',
     'LO QUE VIENE': 'WHAT COMES NEXT',
-    'Un modelo aún más universal, con una mayor variedad de idiomas a los que puede acceder e indicadores más precisos que lo hagan todavía más versátil. El equipo seguirá buscando nuevas funciones según lo que reporten los usuarios.':
-      'An even more <b>universal</b> model, with a wider range of languages it can speak and <b>more precise indicators</b> that make it more versatile still. The team will keep looking for new features based on what users report.',
+    'El equipo ya prepara un modelo aún más universal: más idiomas a los que puede acceder e indicadores más precisos que lo hagan todavía más versátil. Y seguirá buscando nuevas funciones según lo que reporten los usuarios o lo que el equipo considere importante.':
+      'The team is already preparing an even more <b>universal</b> model: more languages it can speak and <b>more precise indicators</b> that make it more versatile still. And it will keep looking for new features based on what users report or what the team considers important.',
     'Proponer una idea': 'Suggest an idea',
 
     /* ── Aplicaciones ──────────────────────────────────────────────── */
@@ -516,12 +597,13 @@
     '.nav-links a,.footer-col h4,.pager .dir,.pager .ttl,.kicker,.tag,' +
     '.tl-status,.tl-tags span,.work-tags span,.sponsors-label,.stat span,' +
     '.stat b,.btn,.profile-kicker,.profile-role,.card-icon,.chip,.pipe-tag,' +
-    '.sponsor-tile span,.versus-tag,.team-role,.skip,caption,.stat-src';
+    '.sponsor-tile span,.versus-tag,.team-role,.skip,caption,.stat-src,' +
+    '.award-txt,.trophy-rank,.card-fig';
   // no se traducen (marcas, nombres propios, siglas)
   const SKIP = new Set(['MECH', 'Arduino', 'Backend', 'Frontend', 'Multisensory',
     'Engineering', 'Cyberphysical', 'Humanized', 'M', 'E', 'C', 'H', 'VR',
     'Py', 'JS', 'Doc', 'IG', 'wromech@gmail.com', 'Logitech C920', 'JBL Charge 5',
-    'MECH‑1', 'MECH‑2', 'MECH‑3', 'MECH‑4']);
+    'MECH‑1', 'MECH‑2', 'MECH‑3', 'MECH‑4', 'MECH‑5']);
 
   const norm = (s) => s
     .replace(/ /g, ' ')

@@ -11,7 +11,7 @@ web/
   empresa.html        ← 01 · La empresa, equipo y colaboradores
   problema.html       ← 02 · El problema (crisis educativa, estudios)
   robot.html          ← 03 · El robot (cómo funciona, hardware, construcción)
-  evolucion.html      ← 04 · MECH-1 → MECH-4
+  evolucion.html      ← 04 · MECH-1 → MECH-5 (y en competencia)
   aplicaciones.html   ← 05 · Aplicaciones y modelo de negocio
   contacto.html       ← 06 · Contacto y patrocinadores
   404.html            ← Página de error (Vercel la sirve automáticamente)

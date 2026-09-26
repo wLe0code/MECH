@@ -402,7 +402,7 @@ blockquote.pull cite {
 }
 
 /* Timeline de evolución */
-.timeline { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.timeline { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
 .tl {
   position: relative; background: var(--surface); border: 1px solid var(--border);
   border-radius: 18px; padding: 26px 22px;
@@ -430,6 +430,42 @@ blockquote.pull cite {
   border-radius: 6px; border: 1px solid var(--border); color: var(--muted);
 }
 .tl-now .tl-tags span { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+/* título ganado por ese modelo (se anida de más para ganarle a .tl-now) */
+.tl .tl-tags span.win {
+  color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, transparent);
+  background: color-mix(in srgb, var(--amber) 9%, transparent);
+}
+
+/* Comparación de modelos (la figura viene sobre fondo negro) */
+.compare { background: #000; border: 1px solid var(--border); border-radius: 22px; overflow: hidden; }
+.compare img { width: 100%; max-width: 980px; margin: 0 auto; }
+.compare figcaption {
+  font-size: 10px; letter-spacing: 2px; color: var(--dim);
+  padding: 4px 20px 18px; text-align: center;
+}
+
+/* Foto con pie (competencias, render vs. real) */
+.shot {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+  overflow: hidden; transition: transform .3s var(--ease-out), border-color .3s ease;
+}
+.shot img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+.shot figcaption { padding: 14px 18px 16px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+.shot figcaption .mono { font-size: 10px; letter-spacing: 2px; color: var(--red); font-weight: 700; }
+.pair .shot img { aspect-ratio: 3 / 4; }
+.pair .shot figcaption { font-size: 13px; padding: 12px 14px 14px; }
+@media (hover: hover) and (pointer: fine) { .shot:hover { transform: translateY(-5px); border-color: var(--purple-mid); } }
+
+/* Tarjeta con foto arriba */
+.card.media-card { padding: 0; overflow: hidden; }
+.media-card img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.media-body { padding: 18px 22px 22px; }
+.card-fig {
+  display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  font-weight: 700; color: var(--tint, var(--red)); margin-bottom: 6px;
+}
+/* tarjeta que ocupa dos columnas (se deshace en móvil, ver abajo) */
+.span2 { grid-column: span 2; }
 
 /* Tira horizontal */
 .strip {
@@ -443,6 +479,70 @@ blockquote.pull cite {
 .strip figcaption { padding: 14px 18px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
 .strip figcaption .mono { font-size: 10px; letter-spacing: 2px; color: var(--red); font-weight: 700; }
 @media (hover: hover) and (pointer: fine) { .strip figure:hover { transform: translateY(-5px); border-color: var(--purple-mid); } }
+
+/* ═══ SALÓN DE TROFEOS ══════════════════════════════════════════════ */
+/* distintivo del hero: enlaza al salón */
+.award-pill {
+  display: inline-flex; align-items: center; gap: 10px; margin-bottom: 20px;
+  padding: 8px 17px 8px 11px; border-radius: 999px; text-decoration: none;
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 2px; font-weight: 700;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  box-shadow: 0 0 28px -10px var(--amber);
+  transition: transform .14s var(--ease-out), border-color .2s ease, background .2s ease;
+}
+.award-pill svg { width: 18px; height: 18px; flex: 0 0 18px; }
+.award-pill:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) {
+  .award-pill:hover { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+}
+
+.trophy-hall { position: relative; overflow: hidden; }
+.trophy-hall::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 55% 50% at 78% 20%, rgba(239,159,39,.12), transparent 70%),
+              radial-gradient(ellipse 45% 40% at 10% 90%, rgba(239,159,39,.06), transparent 70%);
+}
+.trophy-hall .container { position: relative; }
+.hall-head { grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; margin-bottom: 44px; }
+.hall-photo {
+  border-radius: 22px; overflow: hidden; background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--amber) 32%, transparent);
+  box-shadow: 0 30px 60px -34px rgba(239,159,39,.55);
+}
+.hall-photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.hall-photo figcaption { font-size: 10px; letter-spacing: 2px; color: var(--dim); padding: 12px 18px 14px; }
+
+.trophies { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.trophies > * { min-width: 0; }
+.trophy {
+  position: relative; border-radius: 20px; padding: 26px 24px 24px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--amber) 7%, var(--surface)), var(--surface) 65%);
+  border: 1px solid color-mix(in srgb, var(--amber) 26%, transparent);
+  transition: transform .3s var(--ease-out), border-color .3s ease;
+}
+.trophy-main {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  box-shadow: 0 0 34px -12px var(--amber), inset 0 0 30px -22px var(--amber);
+}
+.trophy-top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.medal {
+  width: 50px; height: 50px; flex: 0 0 50px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: #3a2400;
+  background: radial-gradient(circle at 34% 28%, #ffe6ae, var(--amber) 55%, #a8630b);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 16%, transparent),
+              0 10px 26px -10px var(--amber);
+}
+.medal svg { width: 25px; height: 25px; }
+.trophy-rank { font-family: var(--mono); font-size: 10.5px; letter-spacing: 2.5px; color: var(--amber); font-weight: 700; }
+/* anidado para ganarle a `.section h3` / `.section p` */
+.trophies .trophy h3 { font-size: 23px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 8px; }
+.trophies .trophy p { font-size: 14.5px; }
+.trophy .tl-tags span { color: var(--text); border-color: color-mix(in srgb, var(--amber) 30%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .trophy:hover { transform: translateY(-5px); border-color: var(--amber); }
+}
 
 /* ═══ PERFILES DEL EQUIPO ═══════════════════════════════════════════ */
 .profiles { display: flex; flex-direction: column; }
@@ -582,7 +682,9 @@ details.box img { border-radius: 12px; }
 
 /* ═══ RESPONSIVE ════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
-  .g3, .g4, .stats, .timeline, .sponsor-grid { grid-template-columns: repeat(2, 1fr); }
+  .g3, .g4, .stats, .sponsor-grid { grid-template-columns: repeat(2, 1fr); }
+  /* cinco generaciones: 3 + 2 se lee mejor que 2 + 2 + 1 */
+  .timeline { grid-template-columns: repeat(3, 1fr); }
   .footer-inner { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 900px) {
@@ -614,6 +716,11 @@ details.box img { border-radius: 12px; }
 
   .section { padding: 62px 0; }
   .g2, .g3, .g4, .stats, .timeline, .sponsor-grid, .pager { grid-template-columns: 1fr; }
+  /* en una sola columna, span 2 crearía una columna fantasma y desbordaría */
+  .span2 { grid-column: auto; }
+  .trophies { grid-template-columns: 1fr; }
+  .hall-head { grid-template-columns: 1fr; gap: 34px; }
+  .award-pill { font-size: 10px; letter-spacing: 1.2px; padding: 7px 14px 7px 9px; }
   .footer-inner { grid-template-columns: 1fr; gap: 30px; }
   .marquee-row { gap: 44px; padding-right: 44px; }
   .marquee-row img { height: 34px; }
