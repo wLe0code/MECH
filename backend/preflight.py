@@ -550,6 +550,12 @@ def check_env_sombra() -> None:
         "VOICE_WAKE_PHRASES_EN": "afecta a 'wake up MECH'",
         "VOICE_WAKE_PHRASES_FR": "afecta a 'bonjour MECH'",
         "VOICE_WAKE_PHRASES_PT": "afecta a 'bom dia MECH'",
+        "VOICE_WAKE_PHRASES_DE": "afecta a 'guten Tag MECH'",
+        "VOICE_WAKE_PHRASES_IT": "afecta a 'ciao MECH'",
+        "VOICE_WAKE_PHRASES_JA": "afecta a 'こんにちは MECH'",
+        "VOICE_WAKE_PHRASES_RU": "afecta a 'привет MECH'",
+        "VOICE_WAKE_PHRASES_ZH": "afecta a '你好 MECH'",
+        "VOICE_NAME_ALIASES": "cómo se reconoce 'MECH' en japonés, ruso y chino",
         "VOICE_SLEEP_PHRASES": "afecta a dormirlo",
         "VOICE_INTERRUPT_PHRASES": "afecta a 'oye MECH'",
         "VOICE_OUTWARD_PHRASES": "afecta a 'mira hacia afuera'",
@@ -630,6 +636,47 @@ def check_disco() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 11. Idiomas que no se escriben con letras latinas
+# ---------------------------------------------------------------------------
+
+def check_idiomas() -> None:
+    _titulo("11. Idiomas: fuente para los subtítulos en japonés y chino")
+    import lang
+
+    _di(_OK, "Idiomas encendidos: "
+        + ", ".join(lang.label(c) for c in lang.enabled_languages()))
+    activos = [c for c in ("ja", "zh") if c in lang.enabled_languages()]
+    if not activos:
+        return
+    if not shutil.which("fc-list"):
+        # En Windows no existe fc-list, y ahí el sistema ya trae esas fuentes.
+        _di(_OK, "Sin 'fc-list' para mirar las fuentes (normal fuera de la Pi)")
+        return
+    import subprocess
+
+    faltan = []
+    for code in activos:
+        try:
+            sale = subprocess.run(
+                ["fc-list", f":lang={code}", "family"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout.strip()
+        except Exception:
+            sale = "?"  # si fc-list falla no acusamos a la fuente
+        if not sale:
+            faltan.append(lang.label(code))
+    if faltan:
+        _di(_WARN, "No hay fuente instalada para " + " ni ".join(faltan),
+            "Los subtítulos y la trivia saldrían como CUADRITOS vacíos en la\n"
+            "proyección (MECH hablaría bien, pero no se podría leer).\n"
+            "-> sudo apt install fonts-noto-cjk     (y volver a abrir Chromium)\n"
+            "-> o apagar esos idiomas en backend/.env:\n"
+            "   WAKE_JAPANESE_ENABLED=false   WAKE_CHINESE_ENABLED=false")
+    else:
+        _di(_OK, "Hay fuente para japonés y chino (subtítulos y trivia)")
+
+
+# ---------------------------------------------------------------------------
 
 def main() -> int:
     _print("=" * 68)
@@ -641,7 +688,7 @@ def main() -> int:
     for fn in (
         check_dependencias, check_whisper, check_claves, check_red,
         check_audio, check_arduino, check_biblioteca, check_frontend,
-        check_env_sombra, check_disco,
+        check_env_sombra, check_disco, check_idiomas,
     ):
         try:
             fn()

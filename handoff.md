@@ -5,119 +5,307 @@ de tocar nada. Contexto de fondo (arquitectura/hardware/decisiones): **CLAUDE.md
 en la raíz — este handoff no lo reemplaza, lo complementa con el estado *vivo*.
 CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 
-> ⚠️ **REVERSIÓN (23 sep 2026).** El equipo pidió volver al código del
-> commit `c0e0310` («trasluce mech»), que funcionaba bien. Este handoff es
-> el de ese commit: todo lo que el historial de git tiene DESPUÉS (volumen
-> para los parlantes alámbricos S150, gesto 67, traductor continuo, trivia,
-> arreglos del arranque del micrófono y de la cámara, `docs/USO.md`, y los
-> 4 commits «Conexiones a prueba de todo»: micrófono en proceso aparte
-> `_mic_worker.py`, `wav_play.py`, carpeta `tests/`, `LEEME-ARREGLOS.md`)
-> **se quitó a propósito** — no lo vuelvas a meter sin que lo pidan. Ya no se
-> usan los parlantes alámbricos.
->
-> Lo único que se conservó: la app **`MECH Panel.exe`** (`windows/`, solo
-> control remoto). Encima de la reversión:
-> - **Saludo**: el brazo DERECHO sube hacia adelante y llega arriba
->   **exactamente 3 veces**, solo en **reposo**, **nunca mientras presenta**
->   (narración o marketing), y la frase sale en **inglés**. Si en el robot el
->   brazo va hacia atrás: Ajustes → «Sentido brazos» → `ARM_INVERT_R`.
->   ⚠️ El `.env` de la Pi puede tapar los defaults (el panel guarda todas sus
->   perillas): el preflight lo avisa.
-> - **Relatividad** en la biblioteca con **7 segmentos** (el 8 se quitó el
->   26 sep a pedido del equipo), uno por escena de
->   `docs/GUIONES_RELATIVIDAD.md`.
->
-> El equipo lo probó en la Pi y **funciona** (23 sep).
->
-> Después, el mismo día: `docs/USO.md` reescrita al día; los controles del
-> panel corregidos (AVANZAR iba hacia atrás → `DRIVE_INVERT_FORWARD`; los
-> botones LATERAL giraban → ahora GIRO manda `vy` y LATERAL manda `w`); botón
-> «Biblioteca de videos» en `MECH Panel.exe`; y guiones de **CRISPR y Cas9**
-> (`docs/GUIONES_CRISPR.md`, 5 escenas — desde el 26 sep la obra `crispr`
-> ya está en la biblioteca con 5 segmentos). **Falta confirmar en el robot** que LATERAL (`w`) desplace de
-> lado y que izquierda/derecha no salgan espejados.
->
-> **25 sep: TRIVIA recuperada a pedido del equipo**, estilo Kahoot (ver
-> CLAUDE.md → «Modo TRIVIA»). Al terminar una obra entera MECH pregunta
-> «¿Te gustaría realizar una trivia para comprobar tu conocimiento?».
-> Probada sin robot (50/50 respuestas, partida simulada, pantallas vistas);
-> falta probarla en la Pi.
->
-> **26 sep: «regresa a proyectar» que no giraba, arreglado** (Movilidad v4):
-> girarlo a mano desde el panel pone el estado en `"manual"` (no sabe hacia
-> dónde mira) y entonces obedece; «vuelve a la proyección» ya se entiende;
-> y «go back to projecting» ya no lo hace retroceder. Falta probar en el robot.
->
-> Y la relatividad **recorta sola al subir** (campo `trim`): seg 1 → primeros
-> 20 s, seg 2 → primeros 10 s, seg 3-7 → últimos 10 s. Usa
-> ffmpeg en la Pi; sin ffmpeg deja el video entero y avisa.
+**Última actualización: 6 oct 2026.** Lo del 5 oct (§2.quinquies) se subió
+el 6 oct en dos commits encima de `62f3ebb`: «Panel con estética nueva…» y
+«Cinco idiomas más…». ⚠️ **Subido, pero SIN probar en la Pi.**
 
-> ✅ **Estado (3 sep 2026):** el robot FUNCIONA casi entero en la Pi — audio
-> (mic Steren → Whisper local → Claude → voz por parlante Bluetooth),
-> movimiento (Arduino Uno + 2× L298N + 4 motores mecanum), proyección, visión
-> (cámara C930e) y proyección VR para Google Cardboard. La web de presentación
-> está en `web/`.
->
-> Lo último (sep 2026, §3.decies): **cadena de audio** — MECH entiende mejor
-> (se arregló un defecto real de aliasing en el remuestreo y un offset que lo
-> dejaba sordo para el «ok MECH»). Antes (§3.nonies): el **saludo por cámara
-> solo va en reposo**, para que no corte presentaciones ni conversaciones.
-> Antes
-> (§3.octies): **modo TRADUCTOR** — «traduce MECH» y
-> MECH hace de intérprete entre dos personas en cualquiera de los cuatro
-> idiomas, **una frase por comando** (así no se traduce a sí mismo). Sin probar en la Pi. Antes (§3.septies): **francés y portugués**
-> — MECH ya habla cuatro idiomas y el que manda lo decide la frase con que
-> lo despiertan. Antes (§3.sexies): **giro recalibrado a 4.5 s**,
-> **chequeo previo** (`python -m backend.preflight`) y el **panel ya no
-> depende de internet**. Antes (§3.quinquies): el **giro es solo lateral** (se quitó la
-> rotación, que hacía un movimiento raro), la **VR ya no reinicia el video** al
-> salir y volver de la página, y los **brazos al girar afuera van a medio gas**. Antes de eso (§3.ter), el **slot de MARKETING**: videos promocionales
-> que se proyectan enteros y con su propio audio con «proyecta marketing».
-> Sin probar en la Pi; ojo con el flag de autoplay de Chromium (§3.ter).
->
-> Antes (sep 2026, §3.bis), **movilidad**: giro de 180° con «mira hacia
-> afuera» / «regresa a proyectar», el saludo por cámara arreglado, saludo más
-> amplio y brazos mínimos al proyectar. En la primera prueba en el robot las
-> ruedas NO se movían: eran `MODE:LISTEN` frenando los motores + media
-> potencia; las dos cosas están arregladas pero **falta volver a probarlo**.
-> El giro HAY QUE CALIBRARLO (§3.bis).
->
-> Antes de eso (ago 2026, §3) fueron tres cosas nuevas: **modo inglés**,
-> **subtítulos** e **interrupción por voz**. Las tres están implementadas y
-> pusheadas; la interrupción se probó cuatro veces en el robot real y se fue
-> corrigiendo, pero **la última corrección (el lag) todavía NO se ha probado
-> en la Pi** — ver §4. El frente abierto de hardware sigue siendo el cambio de
-> motores/ruedas (§5).
+---
+
+## 0. En un minuto
+
+1. **El código es el del commit `c0e0310` («trasluce mech») + lo que el
+   equipo pidió después** (§2.bis). El 23 sep se REVIRTIÓ todo lo que había
+   entre medias — ver §2.ter antes de proponer nada «nuevo» que en realidad
+   ya se quitó.
+2. **Probado en la Pi y funcionando (23 sep):** la reversión, el saludo de
+   3 rotaciones y la relatividad en la biblioteca.
+3. **Hecho pero SIN probar en el robot** (§4, es lo primero que toca):
+   controles del panel (sobre todo LATERAL), trivia estilo Kahoot, recorte
+   automático de los videos de la relatividad, y el arreglo de «regresa a
+   proyectar» (Movilidad **v4**).
+4. **Preguntas sin contestar del equipo** (§2.quater), entre ellas qué
+   hacer con el **modo de alerta de sismos** (investigado, sin implementar).
+5. **Otra sesión de Claude trabaja en `web/` en paralelo.** `git fetch`
+   antes de subir y commitear por rutas (§2).
+6. **5 oct, subido el 6 oct y sin probar en la Pi** (§2.quinquies): cinco
+   idiomas más (alemán, italiano, japonés, ruso, mandarín) y la estética
+   nueva del panel (fondo grafito, acento cian; mismos controles).
 
 ---
 
 ## 1. Objetivo del proyecto (MECH)
 
-Robot interactivo para la **WRO 2026 — Robots and Culture**. En un stand, narra
-obras culturales (Don Quijote, Campaña de 1856, Jiménez Deredia, Malpaís, Isidro
-Con Wong) con **voz + proyección inmersiva + movimiento físico**, reaccionando a
-usuarios que se acercan y le hablan. Claude devuelve un Plan estructurado; Python
-lo ejecuta (STT local, TTS ElevenLabs, videos pre-renderizados o imágenes Gemini,
-Arduino para motores/servos). El nombre del robot es **MECH-1**.
+Robot interactivo para la **WRO 2026**. En un stand, narra obras con
+**voz + proyección inmersiva + movimiento físico**, reaccionando a quien se
+acerca y le habla. Claude devuelve un Plan estructurado; Python lo ejecuta
+(STT local con faster-whisper, TTS de ElevenLabs, videos pre-renderizados o
+imágenes de Gemini, Arduino para motores y servos).
+
+- Obras en la biblioteca: `don_quijote`, `campana_1856`, `jimenez_deredia`,
+  `malpais`, `isidro_con_wong` (4 segmentos c/u), `isaac_newton` (5),
+  `relatividad` (**7**), `crispr` (**5**) y el slot `marketing` (12
+  espacios, con audio propio, no pasa por Claude).
+- Habla nueve idiomas (es/en/fr/pt y, desde el 5 oct, de/it/ja/ru/zh; lo
+  decide la frase con que lo despiertan), hace de traductor por turnos y,
+  desde el 25 sep, ofrece una **trivia** al terminar una obra.
+- El equipo ya es **campeón nacional WRO 2026 Future Innovators**. En la web
+  la generación actual se llama MECH-3; en el código y la voz es «MECH».
 
 ---
 
 ## 2. Estado del repo
 
-- **Rama:** `main`, **todo pusheado** a `origin/main` (incluido este handoff).
-  Último commit: `6f432ec` (quitar el lag de la interrupción).
+- **Rama:** `main` = `origin/main` (comprobado el 6 oct, tras subir los dos
+  commits del 5 oct). Todo pusheado salvo este handoff si se acaba de editar.
 - Remoto: `https://github.com/wLe0code/MECH.git`
 - Sin trackear y **NO se commitean**: `.agents/`, `skills-lock.json`. Tampoco
-  `windows/config.txt` (tiene la IP local del usuario).
+  `windows/config.txt` (tiene la IP local del usuario) ni
+  `windows/dist/MECH Panel.exe` (se construye, no va a git).
 - Dev en **Windows 11** (OneDrive sincroniza el repo); el robot corre en
   **Raspberry Pi 5** (hostname `mech`, ej. `http://mech:8000`). El Arduino se
   flashea desde el laptop.
 - **Python de la Pi: 3.13** (¡no 3.11!). Importa para dependencias — ver §6.
-- **No hay tests ni linter.** Validación manual E2E. Chequeo rápido sin
-  hardware: `python -m py_compile backend/*.py` y `node --check frontend/app.js`.
-  Para lógica sin hardware se han usado scripts con stubs (`unittest.mock`) que
-  simulan micrófono/voz/APIs — funcionan bien y valen la pena antes de pedirle
-  al usuario que pruebe en el robot.
+- **En la laptop NO hay `fastapi` ni `ffmpeg` instalados.** Para simular el
+  servidor hace falta un stub mínimo de FastAPI; el recorte de videos se
+  probó con un ffmpeg simulado.
+- **No hay suite de tests ni linter.** Chequeo rápido sin hardware:
+  `python -m py_compile backend/*.py` y `node --check frontend/app.js`.
+  Lo que sí hay, y conviene correr al tocar esas partes:
+  - `python scripts/probar_saludo.py` — cuenta las órdenes del saludo (3
+    llegadas arriba, el izquierdo quieto, nunca por debajo de 90).
+  - `python scripts/probar_trivia.py` — cómo se entienden las respuestas
+    (tiene que dar 50/50).
+  - `python scripts/probar_idiomas.py` — los nueve idiomas: despertar,
+    órdenes, colisiones entre idiomas, traductor, trivia, subtítulos y
+    tablas (tiene que decir «TODO BIEN»).
+  - Simulaciones con el código real: `MechApp.__new__` + stubs (la cabecera
+    de `scripts/probar_saludo.py` muestra cómo). En Windows, correrlas con
+    `PYTHONIOENCODING=utf-8` o los `print` con tildes revientan (cp1252).
+- **Trabajo en paralelo:** hay otra sesión de Claude tocando `web/` (subió
+  `d52f0d0`: salón de trofeos, evolución hasta MECH-5, figuras 26–45). Antes
+  de subir: `git fetch`. Para no arrastrar cambios ajenos:
+  `git commit --only -- <rutas>`. **Nunca force-push.**
+
+### 2.bis Lo hecho del 23 al 26 sep (commit por commit)
+
+| Commit | Qué |
+|---|---|
+| `068b0e4` (23 sep) | **Reversión a `c0e0310`** conservando solo `MECH Panel.exe`. Saludo nuevo. Relatividad en la biblioteca. **Probado en la Pi: funciona.** |
+| `a99a08b` (23 sep) | Controles del panel, `docs/USO.md` reescrita, botón «Biblioteca de videos» en la app, guiones de CRISPR, recorte automático de la relatividad. |
+| `0d28d6c` (25 sep) | **Trivia** de vuelta, con pantalla estilo Kahoot. |
+| `3a10c0b` (26 sep) | Obra `crispr` en la biblioteca (5 segmentos, 18 `facts`). |
+| `d52f0d0` (26 sep) | Web (otra sesión): trofeos, evolución, figuras del documento de California. |
+| `7bf0dba` (26 sep) | Relatividad pasa de 8 a **7 segmentos**. |
+| `62f3ebb` (26 sep) | «Regresa a proyectar» que no giraba → Movilidad **v4**. |
+
+**Saludo** (`gestures.py`, `mech_app._greeting_blocked`): el brazo DERECHO
+sube hacia adelante y llega arriba **exactamente 3 veces**
+(`ARM_WAVE_REPEATS=3`, `ARM_WAVE_BOTH=false`, `ARM_INVERT_R=true`), solo en
+**reposo** (`GREETING_ONLY_DORMANT`), **nunca mientras presenta** (contador
+`_presenting` que cubre `execute_plan`, `play_playlist` y la trivia) y la
+frase sale en **inglés** (`GREETING_LANGUAGE=en`, que NO cambia el idioma de
+MECH). El botón «SALUDAR AHORA» respeta las mismas reglas.
+
+**Controles del panel**: AVANZAR iba hacia atrás → `DRIVE_INVERT_FORWARD`
+(default true, en `arduino_link.move()`, vale para TODO menos el comando
+crudo). Los botones se intercambiaron en `frontend/index.html`: **GIRO manda
+`vy`** y **LATERAL manda `w`**. El código de maniobras no cambió (ya usaba
+`vy` para girar).
+
+**Recorte automático** (`video_library.trim_uploaded`, campo `trim` de
+`WORKS`): al subir un video de la relatividad, ffmpeg conserva seg 1 → los
+primeros 20 s, seg 2 → los primeros 10 s, seg 3–7 → los **últimos** 10 s. El
+original queda en `<slug>/originales/`. Sin ffmpeg o si falla, se usa el
+video entero y el panel avisa. Solo afecta a lo que se suba DESPUÉS del
+cambio (lo ya subido hay que volver a subirlo). `/library` marca esos
+segmentos con ✂.
+
+**Trivia** (`backend/trivia.py` = estado, `mech_app` = voz y proyección,
+`frontend/trivia.js` = pantalla): al terminar una obra `immersive` ENTERA y
+sin interrupción, MECH pregunta «¿Te gustaría realizar una trivia para
+comprobar tu conocimiento?» en el idioma activo. Opción múltiple A/B/C, se
+contesta hablando (letra, orden o texto). Acierto → confeti; fallo → «No has
+acertado. La respuesta correcta es la B: …». Las preguntas las escribe
+Claude en el momento (`llm.make_quiz`) con el guion narrado + los `facts`.
+Detalle completo en CLAUDE.md → «Modo TRIVIA».
+
+**«Regresa a proyectar»** — tenía tres causas:
+1. Girarlo a mano desde el panel no le decía a MECH que ya no miraba a la
+   proyección → estado nuevo `state["facing"] = "manual"` («no lo sé»),
+   que ponen los botones GIRO/LATERAL, el comando crudo con giro y «PROBAR
+   MEDIA VUELTA» (`maneuvers.mark_manual`). En "manual" las órdenes
+   explícitas obedecen siempre; lo automático (volver solo antes de narrar)
+   solo gira con `"outward"`.
+2. «Vuelve a la proyección» no se entendía → frases nuevas en
+   `VOICE_PROJECT_PHRASES`.
+3. En inglés «go back to projecting» casaba con «go back» y RETROCEDÍA →
+   en `handle_movement_command` el giro se comprueba ANTES que
+   avanzar/retroceder. **No cambies ese orden.**
+
+**App de Windows**: cuarto botón «Biblioteca de videos (en el navegador)»,
+que abre `/library` en una pestaña normal. El `.exe` se reconstruye con
+`windows\construir_exe.ps1`; si la app está abierta da «Acceso denegado» —
+pedirle al usuario que la cierre, no cerrarla por él.
+
+### 2.ter La REVERSIÓN del 23 sep — qué NO volver a meter
+
+El equipo pidió volver a `c0e0310` porque «así estaba perfecto». **Se quitó
+a propósito** y no vuelve salvo pedido explícito:
+
+- Todo lo de los **parlantes alámbricos Logitech S150** (`TTS_GAIN_DB`,
+  `TTS_NORMALIZE`, `pi/volumen-max.sh`). **Ya no se usan esos parlantes.**
+- El gesto «67» por cámara y el traductor **continuo** (el de turnos sigue).
+- El arreglo del reposo con redes extra, la medición del micrófono al
+  arrancar, la fase `loading`, los reintentos de cámara/micrófono.
+- Los 4 commits «Conexiones a prueba de todo»: el micrófono en un proceso
+  aparte (`_mic_worker.py`), `wav_play.py`, la detección de «8 s sin datos»,
+  la carpeta `tests/` y `LEEME-ARREGLOS.md`.
+
+Esos commits **siguen en el historial de git** (el usuario eligió subida
+normal, sin reescribir historia), pero su contenido no está en el árbol. Si
+`git log` los muestra, no significa que estén activos.
+
+Lo que se recuperó DESPUÉS, a pedido: la **trivia** (25 sep) y
+`docs/USO.md` (reescrita desde cero el 23 sep con lo que sí existe).
+
+### 2.quinquies Lo hecho el 5 oct (subido el 6 oct, SIN probar en la Pi)
+
+Tres pedidos del equipo en un solo mensaje. Detalle completo en CLAUDE.md
+(«Idiomas que no usan letras latinas» y «Estética del panel»).
+
+**1. Cinco idiomas más: alemán, italiano, japonés, ruso y mandarín.** Los
+cinco caben en la voz (`eleven_multilingual_v2`) y en Whisper. Mismo
+mecanismo: solo se activan despertándolo en ese idioma.
+
+| Frase | Idioma |
+|---|---|
+| «guten Tag MECH» · «wach auf MECH» | alemán |
+| «ciao MECH» · «buongiorno MECH» | italiano |
+| «こんにちは MECH» · «起きて MECH» | japonés |
+| «привет MECH» · «проснись MECH» | ruso |
+| «你好 MECH» · «醒醒 MECH» | mandarín |
+
+- Archivos: `config.py` (sección nueva «Idiomas añadidos en oct 2026», 14
+  listas por idioma + `VOICE_NAME_ALIASES` + `WAKE_<IDIOMA>_ENABLED`),
+  `lang.py`, `voice_phrases.py`, `subtitles.py`, `stt.py`, `maneuvers.py`,
+  `server.py`, `preflight.py`, `.env.example`, `frontend/index.html`,
+  `app.js`, `trivia.js`, `docs/USO.md` y `scripts/probar_idiomas.py` (nuevo).
+- **Lo difícil fueron japonés, ruso y chino**: no usan letras latinas, dos
+  de ellos van sin espacios y Whisper escribe «MECH» como le suena. Se tocó
+  el matcher (`_contiene`, `normalize`, alias del nombre), los subtítulos
+  (miden ancho, cortan en comas) y la trivia. **Para texto latino el
+  matcher no cambió**: comparado con el de HEAD, `normalize` y
+  `_word_matches` dan lo mismo (181 476 pares) y los subtítulos también (334
+  guiones). Sobre 1463 frases, con los idiomas nuevos encendidos cambian 14,
+  ninguna en despertar/dormir/moverse: «cierto» y «já sei» cuentan como sí,
+  «un momento MECH» y «acepta MECH» interrumpen (detalle en CLAUDE.md).
+- Verificado sin hardware: `probar_idiomas.py` entero, `probar_trivia.py`
+  50/50, y una simulación con `mech_app` + el bucle de voz de `server.py`
+  reales (stub de FastAPI): despertar/dormir, órdenes de movimiento,
+  traductor en los dos sentidos y trivia en los cinco idiomas.
+- **NO verificado** (hace falta la Pi y el micrófono): cómo transcribe
+  Whisper `base` cada idioma, y sobre todo **cómo escribe el nombre «MECH»**
+  en japonés/ruso/chino. Si no despierta, el panel dice «Oí en japonés: '…'»
+  y se añade esa forma a `VOICE_NAME_ALIASES` en el `.env`.
+- La Pi necesita `sudo apt install fonts-noto-cjk` para que japonés y chino
+  se lean en la proyección (el preflight lo avisa, §11).
+- Línea de arranque: `Idiomas: español · inglés · … · mandarín`.
+
+**2. Estética nueva del panel.** «Que el fondo no sea ese violeta, algo más
+chiva», con la skill `emil-design-eng`. `frontend/styles.css` reescrita
+entera: fondo grafito neutro con rejilla de puntos, un solo acento cian
+(sustituye al morado), botones del Arduino como teclas, casillas como
+palanquitas, deslizadores alineados. **Mismos controles**: el HTML solo
+cambió por los idiomas. `library.html` hereda la paleta. No se tocaron la
+proyección, la trivia (morada a propósito, estilo Kahoot) ni la app de
+Windows. Verificado en el navegador (vista Voz, Arduino, Ajustes, Stand,
+Sensores, Firmware, Inmersivo, biblioteca; escritorio y móvil a 375 px) con
+un servidor estático de mentira — **no con el backend real**. Tras el
+`git pull` en la Pi: **Ctrl+Shift+R** en el panel.
+
+**2 bis. «Deja de traducir» con el turno ya terminado** (bug de antes,
+encontrado de paso y arreglado el mismo día a pedido del equipo). La orden
+solo se miraba en medio de un turno; con el turno terminado se iba a Claude
+y el par de idiomas no se olvidaba. Además «deja de traducir, MECH» casaba
+con «traduce MECH» y arrancaba otro turno. Ahora
+`mech_app.handle_text_command()` mira salir ANTES que entrar. Si no hay nada
+que olvidar se calla (así su propio eco, «Listo, dejo de traducir», muere en
+silencio en vez de ir a Claude); para que eso valga en los nueve idiomas se
+retocó la confirmación en japonés, ruso y chino. Simulado con `mech_app` y
+el bucle de voz reales (70 comprobaciones): 14 formas de decirlo en 9
+idiomas, con y sin «MECH», a mitad de turno, sin par, el eco en cada idioma,
+y que «traduce MECH» y las preguntas normales siguen igual. **Probar en la
+Pi:** traducir una frase → «deja de traducir» → el badge del panel pasa de
+`LISTO · ES ↔ FR` a `APAGADO`, y el siguiente «traduce MECH» vuelve a
+preguntar los idiomas.
+
+**3. Modo de alerta de sismos: SOLO investigado, nada implementado.** Lo que
+se le explicó al equipo:
+
+- Avisar «30 s antes» solo es posible si el sismo es lejano (la alerta le
+  gana a la onda porque viaja por internet). Cerca del epicentro no hay
+  aviso que valga, y nadie PREDICE sismos.
+- **Costa Rica**: existe (OVSICORI-UNA, proyecto ATTAC con ETH Zúrich), pero
+  las alertas se reparten por su app «OVSICORI-UNA Alerta Terremotos» (y
+  pruebas por TV digital). **No se encontró ninguna API pública**: habría
+  que escribirle al OVSICORI y pedir acceso. Ojo: desde 2024 el propio
+  OVSICORI dice que la alerta a veces llega tarde al teléfono.
+- **California** (ShakeAlert, USGS): hace falta una licencia de socio técnico
+  (acuerdo con el USGS). No es una API key que se saque en una tarde.
+- **Japón y China**: Wolfx (`wss://ws-api.wolfx.jp/jma_eew` y otros) da las
+  alertas oficiales gratis y **sin clave**, pero es un servicio no oficial y
+  solo sirve si el robot está allí.
+- **Sin clave y mundial, pero DESPUÉS del sismo**: USGS
+  (`earthquake.usgs.gov/.../all_hour.geojson`, se actualiza cada minuto) y
+  EMSC (`wss://www.seismicportal.eu/standing_order/websocket`). Sirven para
+  «acaba de temblar en X», no para avisar antes.
+- Propuesta que quedó sobre la mesa: un modo «aviso de sismo» con la fuente
+  como configuración, arrancando con USGS/EMSC (sin clave) y dejando el
+  hueco para OVSICORI si dan acceso. **Falta que el equipo decida.**
+
+### 2.quater Preguntas abiertas con el equipo
+
+Ninguna bloquea nada, pero conviene cerrarlas en la próxima sesión:
+
+0. **Alerta de sismos** (§2.quinquies, punto 3): ¿se implementa? ¿con qué
+   fuente? ¿para dónde (Costa Rica, Puerto Rico, California)?
+
+1. **«Parlante alámbrico» en `web/evolucion.html`** (y en `web/js/i18n.js`)
+   figura como novedad de MECH-4, y el equipo dijo que ya no usa parlantes
+   alámbricos. Lo escribió la otra sesión a partir del documento de
+   California. Se avisó; no hubo respuesta. No tocarlo sin preguntar.
+2. **Segmentos 1 y 2 de la relatividad**: el equipo dijo «1 será de 20
+   segundos, 2 será de 10 s». Se interpretó como los **primeros** 20 s / 10 s
+   (y los últimos 10 s solo para 3–7, que sí lo dijeron expreso). Si querían
+   otra parte del video, es cambiar `"inicio"` por `"final"` en `trim`.
+3. **Datos de CRISPR**: los 18 `facts` y `docs/GUIONES_CRISPR.md` se
+   escribieron **sin búsqueda web** (a diferencia de las otras obras). Son
+   datos conocidos y conservadores, pero conviene que el equipo los repase
+   contra las fuentes listadas antes de presentarlos.
+
+---
+
+## 3.pre Cómo leer el historial que sigue (§3 a §3.decies)
+
+Las secciones de abajo son el historial tal como estaba en `c0e0310`. Siguen
+siendo válidas como explicación del **porqué** de cada pieza, con estas
+salvedades:
+
+- **Saludo**: donde diga «dos brazos» o cuente las repeticiones de otra
+  manera, manda §2.bis (solo el derecho, 3 llegadas arriba, en inglés).
+- **Botones del panel**: cuando §3.quinquies dice «el mismo movimiento del
+  botón LATERAL», habla del botón de ENTONCES (`vy`). Hoy ese movimiento
+  está en el botón **GIRO**. La maniobra sigue siendo un tramo de `vy`.
+- **`TURN_180_SECONDS`**: el default hoy es **4.8 s**. Se calibra en el
+  robot, en vivo desde Ajustes.
+- **`state["facing"]`** tiene un tercer valor, `"manual"`.
+- La línea de arranque a buscar hoy es **«Movilidad v4 (sep 2026)»**.
+
+Índice: §3 inglés, subtítulos e interrupción · §3.bis movilidad y giro de
+180° · §3.ter marketing · §3.quater y §3.quinquies sincronía de la VR y giro
+solo lateral · §3.sexies preflight y panel sin internet · §3.septies francés
+y portugués · §3.octies traductor · §3.nonies saludo solo en reposo y una
+vez por visitante · §3.decies cadena de audio.
 
 ---
 
@@ -845,13 +1033,86 @@ continua y que todo se pueda apagar desde config).
 
 ---
 
+
 ## 4. ⚠️ Lo PRIMERO que hay que hacer: probar en la Pi
 
-La última corrección (el lag) **no se ha probado todavía**. En la Pi:
-`git pull` + reiniciar el server, y después:
+En la Pi: icono **«Iniciar MECH»** (hace `git pull` y reinicia el server).
+Al arrancar tienen que salir estas tres líneas; si falta alguna, la Pi corre
+código viejo:
+
+- `Movilidad v4 (sep 2026): ...`
+- `Trivia: 3 preguntas por partida…`
+- `Idiomas: español · inglés · francés · portugués · alemán · italiano ·
+  japonés · ruso · mandarín` (si solo salen cuatro, falta el código del
+  5 oct)
+
+Y en el navegador del panel, **Ctrl+Shift+R** (si no, se queda el `app.js`
+viejo en caché y los botones nuevos no aparecen).
+
+### 0) Lo del 5 oct (ya subido; sin probar)
+
+1. **Panel**: abrirlo y dar **Ctrl+Shift+R**. Tiene que verse negro grafito
+   con el acento cian, no violeta. Repasar que TODOS los botones siguen
+   donde estaban y hacen lo mismo (sobre todo mantener apretado AVANZAR /
+   GIRO en la vista Arduino, y las palanquitas de Ajustes → «Guardar y
+   aplicar»).
+2. **Fuente para japonés y chino**: `sudo apt install fonts-noto-cjk` en la
+   Pi, y `python -m backend.preflight` (§11 tiene que dar OK).
+3. **Despertar en cada idioma nuevo**: «guten Tag MECH», «ciao MECH»,
+   «こんにちは MECH», «привет MECH», «你好 MECH». El log debe decir «MECH
+   despierto (<idioma>)» y contestar en ese idioma.
+   - Si en japonés/ruso/chino NO despierta: mirar el panel, sale «Oí en
+     <idioma>: '…'». Copiar cómo escribió el nombre a `VOICE_NAME_ALIASES`
+     del `.env` y reiniciar. Si ni siquiera detecta el idioma, probar
+     `WHISPER_MODEL=small`.
+   - Comprobar que «hello MECH» y «hola MECH» **no** lo despiertan.
+4. **Una obra en japonés o chino**: que narre, que los subtítulos se lean
+   (no cuadritos) y que cambien de línea en sitios razonables.
+5. **Chips del panel** (vista Voz): los nueve cambian el idioma sin
+   micrófono. Útil para separar «no me entiende» de «no funciona».
+6. Cuánto tarda en despertar ahora. Con nueve idiomas el reintento sigue
+   siendo UNA pasada de Whisper, así que no debería notarse; si se nota,
+   apagar en el `.env` los idiomas que no se vayan a usar.
+
+### A) Lo nuevo del 23–26 sep (sin probar)
+
+1. **Controles del panel** (vista Arduino):
+   - AVANZAR va hacia adelante y RETROCEDER hacia atrás. Si no: Ajustes →
+     «Adelante/atrás invertido».
+   - Los dos botones **GIRO** giran sobre sí mismo.
+   - Los dos **LATERAL** — *esto es lo que no se sabe*: ¿se desplaza de lado
+     de verdad con `w`? Si no se mueve o hace algo raro, anotar exactamente
+     qué hace. Si izquierda y derecha salen cambiadas (en GIRO o en
+     LATERAL), es cambiar el signo en ese botón de `frontend/index.html`.
+2. **«Regresa a proyectar»**: girarlo con un botón GIRO → la vista Arduino
+   debe decir «NO LO SÉ (lo giraste a mano)» → decir «regresa a proyectar»
+   (o «vuelve a la proyección») → tiene que girar. Y el camino normal: «mira
+   hacia afuera» → gira y saluda → «regresa a proyectar» → vuelve.
+3. **Trivia**: pedir una obra y dejarla terminar ENTERA → debe ofrecer la
+   trivia → «sí» → pantalla de carga → pregunta con fichas de colores.
+   Contestar de las tres formas («la A», «la segunda», el texto). Probar un
+   acierto (confeti) y un fallo (dice la correcta). Probar «no sé» dos
+   veces: debe revelar y seguir.
+   - Sin micrófono: tarjeta TRIVIA de la vista Voz («Empezar trivia» y un
+     botón por opción). Si por ahí funciona y hablando no, el problema es de
+     audio, no del juego.
+   - Si MECH se contesta a sí mismo (el micrófono oye su propio parlante):
+     subir `TRIVIA_DRAIN_SECONDS`.
+   - Es la primera vez que `llm.make_quiz` llama a Claude **de verdad** (en
+     la laptop se simuló). Si falla, el panel muestra el error exacto.
+4. **Recorte de la relatividad**: primero `ffmpeg -version` en la Pi (si no
+   está: `sudo apt install ffmpeg`). Subir un video al segmento 3 en
+   `/library` → el panel debe decir que lo recortó a los últimos 10 s, y el
+   original queda en `backend/video_library/relatividad/originales/`.
+5. **Saludo**: ya se probó el 23 sep. Solo repasar si el brazo va hacia
+   adelante; si va hacia atrás: Ajustes → «Sentido brazos».
+6. **Botón «Biblioteca de videos»** de `MECH Panel.exe`: abre `/library` en
+   el navegador de siempre.
+
+### B) Heredado de antes de la reversión (seguía sin probar)
 
 1. **Interrumpir**: ponerlo a narrar algo largo y decirle «oye MECH».
-   - ¿El audio sale limpio ahora, sin entrecortarse?
+   - ¿El audio sale limpio, sin entrecortarse?
    - ¿Cuánto marca el log en «Corto la narración (X s…)» y «Voz cortada en N ms»?
    - Si en el log aparece `Oí mientras narraba:` con texto de su PROPIA
      narración → subir "Umbral al narrar".
@@ -861,67 +1122,56 @@ La última corrección (el lag) **no se ha probado todavía**. En la Pi:
    «bom dia MECH» → portugués (log: "MECH despierto (<idioma>)"). Debe
    narrar y subtitular en ese idioma y volver a español al dormirse. Ver
    §3.septies para las trampas que hay que descartar.
-3. **Subtítulos**: verlos en el proyector y en el visor VR (en el teléfono,
-   recargar con caché limpia).
-3b. **Traductor (§3.octies, recién hecho)**: «traduce MECH» → «de español a
-   inglés» → decirle una frase → debe repetirla en inglés y **callarse**.
-   Repetir «traduce MECH»: NO debe volver a preguntar los idiomas. Lo que
-   más puede fallar es que traduzca su propia PREGUNTA (eco del parlante):
-   si pasa, subí `TRANSLATOR_DRAIN_SECONDS`.
-4. **Movilidad (§3.bis, recién hecho)**:
-   - Calibrar el giro de 180° (arriba). Es lo que más tiempo lleva.
-   - Encender la visión y pasar por delante **con MECH EN REPOSO**: ¿saluda
-     con brazo **y** voz a la vez? Y pasar por delante **despierto**: NO
-     debe saludar (§3.nonies). ¿Deja de agitar el brazo solo entre
-     narraciones?
-   - Poner a narrar algo: los brazos deben moverse **poco** y solo uno.
-5. **Marketing (§3.ter, recién hecho)**: subir un par de videos en `/library`
-   → «Proyectar ahora» → ¿se ven enteros, uno tras otro, **y se oyen**? Si se
-   ven mudos, es el flag de autoplay de Chromium.
-6. **VR sincronizada (§3.quater y §3.quinquies)**: poner marketing a
-   proyectar, esperar, ENTRAR al visor (tiene que aparecer por donde va el
-   audio), SALIR de la página y VOLVER — no debe empezar de nuevo.
-   El estado de abajo del visor dice a qué segundo se enganchó.
-6b. **Audio (§3.decies, recién hecho)**: confirmar
-   `AUDIO_SAMPLE_RATE=48000` en el `.env` de la Pi (con 16000 la mejora del
-   remuestreo no hace nada), y comparar diez frases variadas con lo de antes.
-   ¿Despierta más fácil con «ok MECH»? Si ahora dispara solo, subir el
-   "Umbral ruido".
-7. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
-   siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny` (hay que descargarlo una
-   vez con `WHISPER_OFFLINE=false`; si falta, el sistema avisa y sigue con el
-   normal).
+3. **Traductor (§3.octies)**: «traduce MECH» → «de español a inglés» → una
+   frase → debe repetirla en inglés y **callarse**. Repetir «traduce MECH»:
+   NO debe volver a preguntar los idiomas. Si traduce su propia PREGUNTA
+   (eco del parlante): subir `TRANSLATOR_DRAIN_SECONDS`.
+4. **Giro de 180°**: calibrar `TURN_180_SECONDS` en Ajustes (§3.bis). Es lo
+   que más tiempo lleva, y hay que repetirlo si cambian batería, suelo o
+   ruedas.
+5. **Marketing (§3.ter)**: subir un par de videos en `/library` →
+   «Proyectar ahora» → ¿se ven enteros, uno tras otro, **y se oyen**? Si se
+   ven mudos, es el flag de autoplay de Chromium (el icono «Proyectar MECH»
+   ya lo lleva).
+6. **VR sincronizada (§3.quater y §3.quinquies)**: con marketing
+   proyectando, ENTRAR al visor (tiene que aparecer por donde va el audio),
+   SALIR de la página y VOLVER — no debe empezar de nuevo.
+7. **Audio (§3.decies)**: confirmar `AUDIO_SAMPLE_RATE=48000` en el `.env`
+   de la Pi. Si ahora dispara solo, subir el "Umbral ruido".
+8. Vigilar la **CPU de la Pi** mientras narra (`htop`): si sigue alta, la
+   siguiente palanca es `WHISPER_INTERRUPT_MODEL=tiny`.
+
+Antes del evento, con el server apagado: `python -m backend.preflight`
+(avisa, entre otras cosas, si el `.env` de la Pi tapa el saludo de 3
+rotaciones o las frases de la trivia).
 
 ---
 
 ## 5. Frentes ABIERTOS
 
-### A) Cambio de motores y ruedas (decisión de compra en curso)
-Los motores y ruedas mecanum actuales son de **mal material** y el robot no se
-mueve bien. Lo conversado:
-- **Motor recomendado: JGB37-520** (caja 37mm, engranajes de METAL, eje D 6mm).
-  Existe en **6V y 12V** — elegir el que coincida con la batería del robot
-  (**dato que falta confirmar: ¿6V? ¿7.4V? ¿12V?** — preguntarlo). RPM usable
-  **~150–300** (NO worm/sinfín, NO <100 RPM, NO N20 3mm).
-- **Ruedas:** las mecanum Yahboom (acople hex 6mm) calzan en el eje de 6mm.
-  Para cero sorpresas, comprar un **kit de un solo vendedor** (Moebius/OSOYOO
-  4WD mecanum) o motor+rueda+acople emparejados.
-- **Driver:** el L298N "come" ~2V; a 12V pasa, a 6V queda flojo → si van a bajo
-  voltaje, considerar **TB6612FNG**. No comprar aún; probar con el L298N.
-- **Encoder:** opcional, **NO conectarlo** (el Uno no tiene pines de
-  interrupción libres para 4 y el código no lo usa).
-- **Firmware cuando lleguen:** si se montan bien (rodillos en X), recalibrar
-  `driveOmni` a la mecanum estándar (o a diferencial "tipo carro" si pasan a
-  ruedas normales). Cambio chico, hacerlo con las ruedas ya montadas.
+### A) Motores y ruedas
+Los motores y ruedas se **cambiaron en septiembre**; por eso AVANZAR iba
+hacia atrás y los laterales giraban (§2.bis). En vez de reflashear o
+recablear se corrigió por software. Lo que queda:
+- **Confirmar qué hace `w`** con las ruedas nuevas (punto A.1 de §4). De eso
+  depende que los botones LATERAL sirvan para algo.
+- Si algún día se remontan las ruedas en X (mecanum de libro), habría que
+  recalibrar `driveOmni()` en el firmware. **No lo propongas**: el equipo
+  decidió no remontarlas y todo el movimiento autónomo es adelante/atrás.
+- Sin encoders: todo giro va por TIEMPO.
 
-### B) Pendientes menores heredados
+### B) Pendientes menores
+- **Generar y subir los videos** de `relatividad` (7), `crispr` (5) e
+  `isaac_newton` (5). Los guiones están en `docs/GUIONES_*.md`. Mientras
+  falte un solo segmento, esa obra no se ofrece a Claude y MECH cae a
+  imágenes de Gemini.
 - **Fotos reales del robot** a `web/assets/robot-01.jpg` / `robot-02.jpg`
-  (mientras no existan, la web usa un render SVG).
-- **Generar y subir los videos pre-renderizados** por obra (UI en `/library`).
-  Sin ellos, MECH cae a imágenes Gemini para esas obras.
-- **Servos de los brazos**: en un test respondían `ACK:ARM` pero no se movían
-  → es ELÉCTRICO (alimentación 5–6V externa / tierra común / interruptor), no
-  código. El firmware manda bien la orden.
+  (preguntar antes: la otra sesión rehízo la web y puede que ya no hagan
+  falta).
+- **Servos de los brazos**: si responden `ACK:ARM` pero no se mueven, es
+  ELÉCTRICO (alimentación 5–6 V externa / tierra común / interruptor), no
+  código.
+- El aro de LEDs sigue **en pausa** (`MECH_LEDS 0`).
 
 ---
 
@@ -930,28 +1180,36 @@ mueve bien. Lo conversado:
 - **Dependencias de la Pi con Python 3.13:** `pip install -r backend/requirements.txt`.
   Visión: `pip install "opencv-python-headless<5"` (NO la 5, NO mediapipe en
   3.13; corre con el detector Haar). Ver `backend/requirements-vision.txt`.
-- **El `.env` de la Pi TAPA los defaults del código.** Ha pasado ya con
-  `VOICE_WAKE_PHRASES`. Si una frase nueva no funciona, revisar si esa clave
-  está escrita a mano en el `.env`.
-- **`git pull` en la Pi + reiniciar el server** para aplicar cambios de
-  backend/frontend. Desde sep 2026 hay un icono **«Iniciar MECH»** en el
-  escritorio de la Pi que hace las dos cosas (ver `pi/README.md`); se
-  instala una sola vez con `bash ~/MECH/pi/instalar-accesos.sh`.
-  El frontend NO necesita reinicio (el server lo sirve del disco), pero sí
-  **Ctrl+Shift+R** en el navegador o se queda el `app.js` cacheado. El firmware se flashea aparte. El `.bat` de Windows es solo
-  un lanzador del navegador.
-- **VR en el teléfono:** recargar con caché limpia; la pantalla de carga
-  muestra el estado de conexión para diagnosticar. El sondeo HTTP (no el WS) es
-  lo que la hace funcionar en el móvil — **no quitarlo**, y **no volver al
-  canvas** (no pintaba en el móvil del equipo).
+- **El `.env` de la Pi TAPA los defaults del código**, y «Guardar y aplicar»
+  del panel escribe ahí TODAS las perillas. Si un cambio de default «no
+  llega» (el saludo sigue con 2 repeticiones, una frase nueva no funciona),
+  mirar primero el `.env`. El preflight lista las claves que tapan.
+- **`git pull` en la Pi + reiniciar el server** para aplicar cambios: icono
+  «Iniciar MECH» (ver `pi/README.md`). El frontend NO necesita reinicio,
+  pero sí **Ctrl+Shift+R** en el navegador. El firmware se flashea aparte.
+- **El comando crudo del panel NO pasa por `DRIVE_INVERT_FORWARD`**:
+  `MOVE:100:0:0` a mano puede ir al revés que el botón AVANZAR. No es un bug.
+- **Iconos del panel**: solo existen los del subconjunto local
+  (`frontend/vendor/mech-icons.css`). `ti-help-circle` NO está — por eso la
+  trivia usa `ti-bulb`. Un icono que falta deja el botón en blanco; se
+  regenera con `python scripts/mkicons.py`.
+- **`frontend/trivia.js`**: al revelar la respuesta NO se repite la
+  animación de entrada (`.mt-wrap.reveal`), y la banda del veredicto va en
+  el flujo, no encima. Las dos cosas se rompieron una vez; no las «limpies».
+- **Recorte de videos**: necesita `ffmpeg` y `ffprobe` en la Pi. Re-codifica
+  a H.264 (copiando solo se puede cortar en fotogramas clave), así que
+  tarda unos segundos por video.
+- **VR en el teléfono:** recargar con caché limpia. El sondeo HTTP (no el
+  WS) es lo que la hace funcionar en el móvil — **no quitarlo**.
 - **El parlante es Bluetooth**: tiene buffer propio. Un rastro de voz de
   décimas DESPUÉS de cortar no se puede arreglar por software.
+- **Escribir scripts de prueba**: los heredoc de bash con comillas y tildes
+  fallan en esta máquina; mejor escribir el `.py` en el scratchpad y
+  ejecutarlo.
 - **`git push` solo cuando el usuario lo pida.** Commits en español,
-  `Co-Authored-By: Claude ...`. Si el usuario tiene trabajo sin commitear,
-  commitear por pathspec para no pisarlo.
-- **Este `handoff.md` no se venía commiteando** (estuvo modificado en local
-  desde julio). El 3 sep 2026 el usuario pidió commitearlo. Si vuelve a
-  quedarse fuera de los commits, preguntarle.
+  `Co-Authored-By: Claude ...`. Commitear por rutas
+  (`git commit --only -- <rutas>`) para no arrastrar lo de la otra sesión.
+- **Este `handoff.md` SÍ se commitea** (va en los commits desde sep 2026).
 
 ---
 
@@ -959,12 +1217,21 @@ mueve bien. Lo conversado:
 
 - Estudiante, **no** programador pro, en **español**. Explicaciones paso a paso,
   cambios chicos y revisables.
+- **Ritmo de la sesión pasada**: pide el cambio → se hace y se verifica →
+  se le explica qué probar → dice «sí, súbelo a GitHub» → push. Preguntar
+  SIEMPRE antes de subir; no asumir que el «sí» anterior vale para el
+  siguiente cambio.
+- **Todo valor de movimiento va como configuración en vivo** (clave en
+  `config.py` + `_LIVE_KEYS` y `/api/config` en `server.py` + control en
+  Ajustes), nunca hardcodeado.
 - Cuando algo falla en su consola/hardware, pedir el mensaje u observación
-  **exacta** antes de adivinar. En esta sesión, tres de las cuatro causas del
-  problema de interrupción aparecieron solo tras preguntar qué veía.
-- **Antes de dar por bueno un arreglo de audio/micrófono, simularlo.** El
-  intento de subir el umbral parecía correcto y la simulación demostró que no
-  cambiaba nada; sin eso se habría ido otra prueba en el robot.
+  **exacta** antes de adivinar.
+- **Antes de dar por bueno un arreglo, simularlo con el código real.** El
+  arreglo de «regresa a proyectar» destapó la tercera causa (el «go back»
+  en inglés) solo al simular las frases una por una.
+- **Decir claro qué se probó y qué no.** Casi nada de esta tanda se pudo
+  probar en el robot; el usuario lo prueba en la Pi y vuelve con el
+  resultado.
 - **Hardware pieza por pieza** (flashear → 1 motor → …). Muchos problemas
   fueron eléctricos (batería débil, tierra común, voltaje), no de código.
-- Al terminar cambios grandes, **actualizar este `handoff.md` y/o `CLAUDE.md`**.
+- Al terminar cambios grandes, **actualizar este `handoff.md` y `CLAUDE.md`**.

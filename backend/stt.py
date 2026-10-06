@@ -52,12 +52,26 @@ INITIAL_PROMPT = "Conversación en español con un robot llamado MECH."
 INITIAL_PROMPT_EN = "A conversation in English with a robot named MECH."
 INITIAL_PROMPT_FR = "Une conversation en français avec un robot appelé MECH."
 INITIAL_PROMPT_PT = "Uma conversa em português com um robô chamado MECH."
+INITIAL_PROMPT_DE = "Ein Gespräch auf Deutsch mit einem Roboter namens MECH."
+INITIAL_PROMPT_IT = "Una conversazione in italiano con un robot chiamato MECH."
+# En japonés, ruso y chino el prompt hace además otro trabajo: lleva el nombre
+# escrito "MECH", y eso empuja a Whisper a escribirlo así en vez de como suena
+# («メック», «мек», «麦克»). El chino va en caracteres SIMPLIFICADOS a
+# propósito: sin esa pista Whisper alterna entre simplificados y tradicionales.
+INITIAL_PROMPT_JA = "MECHという名前のロボットとの日本語の会話です。"
+INITIAL_PROMPT_RU = "Разговор на русском языке с роботом по имени MECH."
+INITIAL_PROMPT_ZH = "这是一段用普通话和名叫MECH的机器人的对话。"
 
 _INITIAL_PROMPTS = {
     "es": INITIAL_PROMPT,
     "en": INITIAL_PROMPT_EN,
     "fr": INITIAL_PROMPT_FR,
     "pt": INITIAL_PROMPT_PT,
+    "de": INITIAL_PROMPT_DE,
+    "it": INITIAL_PROMPT_IT,
+    "ja": INITIAL_PROMPT_JA,
+    "ru": INITIAL_PROMPT_RU,
+    "zh": INITIAL_PROMPT_ZH,
 }
 
 
@@ -525,7 +539,7 @@ def transcribe(
 ) -> str:
     """Transcribe audio mono float32 a texto.
 
-    `language`: código ISO ("es", "en", "fr", "pt"). Si es None usa el idioma
+    `language`: código ISO ("es", "en", "ja"…). Si es None usa el idioma
     ACTIVO de MECH (`lang.whisper_language()`), que es español salvo que lo
     hayan despertado en otro idioma.
 
@@ -544,8 +558,8 @@ def transcribe_any(
 
     Se usa para el despertar: en reposo escuchamos en español, así que
     «bonjour MECH» o «bom dia MECH» pueden salir deformados. En vez de
-    reintentar idioma por idioma (con cuatro idiomas serían 3 pasadas más y
-    la Pi tardaría ~10 s en volver a escuchar), se re-transcribe UNA sola vez
+    reintentar idioma por idioma (con nueve idiomas serían 8 pasadas más y
+    la Pi tardaría medio minuto en volver a escuchar), se re-transcribe UNA sola vez
     a ciegas y se compara el texto contra las listas de despertar de todos.
 
     Devuelve `(texto, idioma detectado)`; el idioma es informativo — quien

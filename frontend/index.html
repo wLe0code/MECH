@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MECH · Control System</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0e0e12">
+<meta name="theme-color" content="#08090a">
 <!-- Iconos y fuentes EN LOCAL: sin internet, el CDN dejaba los botones
      sin icono (varios son solo icono = botones en blanco). -->
 <link rel="stylesheet" href="vendor/mech-icons.css">
@@ -69,16 +69,22 @@
           </div>
           <div class="voice-status" id="voice-status">Bucle de voz apagado</div>
 
-          <!-- Idioma activo. En el stand lo decide la voz: "ok MECH" = español,
-               "wake up MECH" = inglés, "bonjour MECH" = francés, "bom dia MECH"
-               = portugués. Estos botones son para probar sin micro. -->
+          <!-- Idioma activo. En el stand lo decide la voz: cada idioma tiene
+               su frase de despertar ("ok MECH" = español, "wake up MECH" =
+               inglés, "こんにちは MECH" = japonés…). Estos botones son para
+               probar sin micro. -->
           <div class="lang-row">
             <span class="lang-label">IDIOMA</span>
             <button class="lang-chip active" id="lang-es" onclick="API.setLanguage('es')" title="Despertar por voz: «ok MECH»">ES · ESPAÑOL</button>
             <button class="lang-chip" id="lang-en" onclick="API.setLanguage('en')" title="Despertar por voz: «wake up MECH»">EN · ENGLISH</button>
             <button class="lang-chip" id="lang-fr" onclick="API.setLanguage('fr')" title="Despertar por voz: «bonjour MECH» o «réveille MECH»">FR · FRANÇAIS</button>
             <button class="lang-chip" id="lang-pt" onclick="API.setLanguage('pt')" title="Despertar por voz: «bom dia MECH» o «acorda MECH»">PT · PORTUGUÊS</button>
-            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «oye MECH» corta la narración</span>
+            <button class="lang-chip" id="lang-de" onclick="API.setLanguage('de')" title="Despertar por voz: «guten Tag MECH» o «wach auf MECH»">DE · DEUTSCH</button>
+            <button class="lang-chip" id="lang-it" onclick="API.setLanguage('it')" title="Despertar por voz: «ciao MECH» o «buongiorno MECH»">IT · ITALIANO</button>
+            <button class="lang-chip" id="lang-ja" onclick="API.setLanguage('ja')" title="Despertar por voz: «こんにちは MECH» (konnichiwa) o «起きて MECH» (okite)">JA · 日本語</button>
+            <button class="lang-chip" id="lang-ru" onclick="API.setLanguage('ru')" title="Despertar por voz: «привет MECH» (privet) o «проснись MECH» (prosnis)">RU · РУССКИЙ</button>
+            <button class="lang-chip" id="lang-zh" onclick="API.setLanguage('zh')" title="Despertar por voz: «你好 MECH» (nǐ hǎo) o «醒醒 MECH» (xǐng xing)">ZH · 中文</button>
+            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «guten Tag MECH» → alemán · «ciao MECH» → italiano · «こんにちは MECH» → japonés · «привет MECH» → ruso · «你好 MECH» → mandarín · «oye MECH» corta la narración</span>
           </div>
 
           <div class="wave-bars" id="wave-bars">
@@ -152,6 +158,11 @@
                 <option value="en">INGLÉS</option>
                 <option value="fr">FRANCÉS</option>
                 <option value="pt">PORTUGUÉS</option>
+                <option value="de">ALEMÁN</option>
+                <option value="it">ITALIANO</option>
+                <option value="ja">JAPONÉS</option>
+                <option value="ru">RUSO</option>
+                <option value="zh">MANDARÍN</option>
               </select>
               <i class="ti ti-arrows-horizontal" title="Traduce en los dos sentidos"></i>
               <select class="translator-select" id="tr-dst" title="Idioma del otro interlocutor">
@@ -159,6 +170,11 @@
                 <option value="es">ESPAÑOL</option>
                 <option value="fr">FRANCÉS</option>
                 <option value="pt">PORTUGUÉS</option>
+                <option value="de">ALEMÁN</option>
+                <option value="it">ITALIANO</option>
+                <option value="ja">JAPONÉS</option>
+                <option value="ru">RUSO</option>
+                <option value="zh">MANDARÍN</option>
               </select>
               <button class="btn btn-purple" id="tr-start" onclick="API.translateStart()"
                       title="Un turno de traducción con este par: pregunta qué traducir, escucha una frase y la dice.">
@@ -619,6 +635,11 @@
               <option value="es">ESPAÑOL</option>
               <option value="fr">FRANCÉS</option>
               <option value="pt">PORTUGUÉS</option>
+              <option value="de">ALEMÁN</option>
+              <option value="it">ITALIANO</option>
+              <option value="ja">JAPONÉS</option>
+              <option value="ru">RUSO</option>
+              <option value="zh">MANDARÍN</option>
             </select>
           </div>
           <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">

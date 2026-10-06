@@ -12,12 +12,109 @@ Cada "cue" es `(segundo_desde_que_empieza_el_audio, texto_de_la_línea)`.
 from __future__ import annotations
 
 import re
+import unicodedata
 
 # Caracteres por línea. ~90 son unas 2 líneas en el proyector; la vista VR
 # usa menos porque cada ojo es media pantalla.
+# Se mide en ANCHO, no en letras: un carácter chino o japonés ocupa el doble
+# que una letra latina, así que de esos caben la mitad (ver `_ancho`).
 MAX_CHARS = 90
 # Una "frase" = texto hasta un signo que cierra una idea (incluido el signo).
-_FRASE_RE = re.compile(r"\S[^.!?…:;]*[.!?…:;]*")
+# Los cinco últimos son los puntos y signos del chino y el japonés.
+_FRASE_RE = re.compile(r"\S[^.!?…:;。！？；：]*[.!?…:;。！？；：]*")
+
+# Signos que no pueden ABRIR una línea (se quedan pegados a lo anterior) ni
+# CERRARLA (se van con lo siguiente). Solo cuentan al partir chino y japonés,
+# que no tienen espacios: sin esto una línea empezaría por «。» o por «っ».
+_NO_ABRE = "、。，．！？：；）」』】〉》〕…ー・々ぁぃぅぇぉっゃゅょァィゥェォッャュョ"
+_NO_CIERRA = "（「『【〈《〔"
+# Las comas del chino y el japonés: el mejor sitio para cortar una línea.
+_PAUSA = "、，；："
+
+
+def _es_ancho(c: str) -> bool:
+    return unicodedata.east_asian_width(c) in ("W", "F")
+
+
+def _ancho(texto: str) -> int:
+    """Cuánto ocupa en pantalla, en "letras latinas".
+
+    Para un texto en letras latinas o cirílicas es su longitud de siempre.
+    """
+    if texto.isascii():
+        return len(texto)
+    return sum(2 if _es_ancho(c) else 1 for c in texto)
+
+
+def _unidades(frase: str) -> list[tuple[int, int]]:
+    """Trozos `(inicio, fin)` entre los que SÍ se puede cortar una línea.
+
+    Una palabra en letras latinas es un trozo; cada carácter chino o japonés
+    es otro (ahí se puede cortar casi en cualquier sitio).
+    """
+    unidades: list[tuple[int, int]] = []
+    i, n = 0, len(frase)
+    while i < n:
+        c = frase[i]
+        if c.isspace():
+            i += 1
+            continue
+        j = i + 1
+        if c in _NO_CIERRA and j < n:
+            j += 1
+        elif not _es_ancho(c):
+            while j < n and not frase[j].isspace() and not _es_ancho(frase[j]):
+                j += 1
+        while j < n and frase[j] in _NO_ABRE:
+            j += 1
+        unidades.append((i, j))
+        i = j
+    return unidades
+
+
+def _partir_ancha(offset: int, frase: str, max_chars: int) -> list[tuple[int, str]]:
+    """Como `_partir_frase`, para frases con chino o japonés (sin espacios)."""
+    unidades = _unidades(frase)
+    total = _ancho(frase)
+    partes = max(1, -(-total // max_chars))  # ceil
+    objetivo = -(-total // partes)
+    trozos: list[tuple[int, str]] = []
+    for ancho in range(objetivo, max_chars + 1, 4):
+        trozos = []
+        i = 0
+        while i < len(unidades):
+            inicio = unidades[i][0]
+            j = i
+            coma = None  # último sitio con coma donde se podría cortar
+            while j < len(unidades) and _ancho(frase[inicio:unidades[j][1]]) <= ancho:
+                if frase[unidades[j][1] - 1] in _PAUSA:
+                    coma = j
+                j += 1
+            j = max(j, i + 1)  # un trozo más ancho que la línea va solo
+            # Si la línea tiene que partirse, mejor en una coma que a media
+            # palabra: se estira un poco si la coma está ahí mismo, o se
+            # acorta hasta la anterior si no la deja demasiado corta.
+            if j < len(unidades):
+                tope = min(ancho + 8, max_chars)
+                k = j
+                while k < len(unidades) and _ancho(frase[inicio:unidades[k][1]]) <= tope:
+                    if frase[unidades[k][1] - 1] in _PAUSA:
+                        break
+                    k += 1
+                else:
+                    k = None
+                if k is not None and k < len(unidades):
+                    j = k + 1
+                elif (
+                    coma is not None and coma + 1 < j
+                    and _ancho(frase[inicio:unidades[coma][1]]) >= ancho * 0.45
+                ):
+                    j = coma + 1
+            trozos.append((offset + inicio, frase[inicio:unidades[j - 1][1]]))
+            i = j
+        if len(trozos) <= partes:
+            return trozos
+    return trozos
 
 
 def _partir_frase(offset: int, frase: str, max_chars: int) -> list[tuple[int, str]]:
@@ -26,6 +123,8 @@ def _partir_frase(offset: int, frase: str, max_chars: int) -> list[tuple[int, st
     Parejos a propósito: cortar a lo bruto en `max_chars` deja colas de dos
     palabras, que en pantalla se ven como un parpadeo.
     """
+    if _ancho(frase) != len(frase):
+        return _partir_ancha(offset, frase, max_chars)
     partes = max(1, -(-len(frase) // max_chars))  # ceil
     objetivo = -(-len(frase) // partes)
     for ancho in range(objetivo, max_chars + 1, 4):
@@ -67,11 +166,11 @@ def split(text: str, max_chars: int = MAX_CHARS) -> list[tuple[int, str]]:
         frase = m.group(0).strip()
         if not frase:
             continue
-        if len(frase) > max_chars:
+        if _ancho(frase) > max_chars:
             cerrar()
             lineas.extend(_partir_frase(m.start(), frase, max_chars))
             continue
-        if inicio is not None and (m.end() - inicio) > max_chars:
+        if inicio is not None and _ancho(text[inicio:m.end()]) > max_chars:
             cerrar()
         if inicio is None:
             inicio = m.start()

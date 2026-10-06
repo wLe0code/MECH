@@ -177,7 +177,9 @@ def looks_like_own_echo(text: str, normalize) -> bool:
     corto, largo = (a, b) if len(a) <= len(b) else (b, a)
     # Solo cuenta si lo corto es una parte GRANDE de lo largo: una palabra
     # suelta que coincida no puede bloquear a un visitante que habla.
-    return corto in largo and len(corto) >= 0.6 * len(largo) and len(corto) >= 8
+    # En japonés y chino cada carácter dice mucho más: con 4 ya es una frase.
+    minimo = 4 if any(ord(c) >= 0x3040 for c in corto) else 8
+    return corto in largo and len(corto) >= 0.6 * len(largo) and len(corto) >= minimo
 
 
 def snapshot() -> dict:

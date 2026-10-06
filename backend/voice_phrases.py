@@ -11,8 +11,20 @@ palabras aparecen en el texto (cada una como parte de algún token). Así
 "duermete mech", "mech duermete" y "duermete" funcionan igual, y tolera mejor
 lo que transcribe Whisper.
 
-Hay CUATRO idiomas (es/en/fr/pt). Cada lista de `config.py` tiene sus
-variantes `_EN`, `_FR` y `_PT`; `_todos_los_idiomas()` las junta.
+Hay NUEVE idiomas (es/en/fr/pt + de/it/ja/ru/zh). Cada lista de `config.py`
+tiene sus variantes `_EN`, `_FR`, `_PT`, `_DE`, `_IT`, `_JA`, `_RU` y `_ZH`;
+`_todos_los_idiomas()` las junta.
+
+Tres de ellos NO se escriben con letras latinas, y eso cambia dos cosas
+(todo lo demás de este módulo sigue igual para los idiomas de siempre):
+
+  - **Japonés y chino van sin espacios.** No hay "palabras" que comparar, así
+    que cada trozo de una frase de `config` se busca DENTRO de lo que se oyó
+    (`_contiene`). «こんにちは mech» casa con «こんにちはMECH» y con
+    «こんにちは、メック».
+  - **El nombre no sale siempre como "MECH".** Whisper lo escribe como suena
+    («メック», «мек», «麦克»). Cualquier frase que lleve la palabra "mech"
+    acepta también las formas de `config.VOICE_NAME_ALIASES`.
 
 Cómo se compara cada palabra (`_word_matches`), de más barato a más caro:
 
@@ -38,17 +50,80 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from functools import lru_cache
 
 import config
 import lang
 
+# Marcas de sonoridad del kana (が = か + ゛). Para Unicode son "acentos", pero
+# en japonés cambian la palabra: si se quitaran, «はい» (sí) aparecería dentro
+# de «いっぱい».
+_MARCAS_KANA = "゙゚"
+# Katakana -> hiragana. Whisper escribe la misma palabra en un silabario o en
+# el otro según le da («メック» / «めっく»): se comparan las dos en hiragana.
+_KATA_A_HIRA = {c: c - 0x60 for c in range(0x30A1, 0x30F7)}
+
+
+def _es_cjk(c: str) -> bool:
+    """¿Es un carácter chino o japonés? (los idiomas que van sin espacios)"""
+    o = ord(c)
+    return (
+        0x3040 <= o <= 0x30FF       # hiragana y katakana
+        or 0x4E00 <= o <= 0x9FFF    # ideogramas
+        or 0x3400 <= o <= 0x4DBF
+        or 0xF900 <= o <= 0xFAFF
+        or 0x3005 <= o <= 0x3007    # 々 〆 〇
+    )
+
+
+def _tiene_cjk(t: str) -> bool:
+    return any(_es_cjk(c) for c in t)
+
 
 def normalize(text: str) -> str:
-    """Minúsculas, sin acentos ni signos."""
-    t = unicodedata.normalize("NFD", text.lower())
-    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
-    t = "".join(c if (c.isalnum() or c.isspace()) else " " for c in t)
-    return " ".join(t.split())
+    """Minúsculas, sin acentos ni signos.
+
+    Con japonés y chino hace además lo necesario para poder compararlos: las
+    letras de ancho completo pasan a las normales («ＭＥＣＨ» -> «mech»), el
+    katakana pasa a hiragana, y se mete un espacio donde cambia la escritura
+    («こんにちはmech» -> «こんにちは mech»). Con texto en letras latinas el
+    resultado es exactamente el de siempre.
+    """
+    t = text
+    if not t.isascii():
+        t = "".join(
+            unicodedata.normalize("NFKC", c) if 0xFF00 <= ord(c) <= 0xFFEF else c
+            for c in t
+        )
+    t = unicodedata.normalize("NFD", t.lower())
+    t = "".join(
+        c for c in t if unicodedata.category(c) != "Mn" or c in _MARCAS_KANA
+    )
+    if not t.isascii():
+        t = unicodedata.normalize("NFC", t).translate(_KATA_A_HIRA)
+    salida: list[str] = []
+    previo: bool | None = None  # ¿el carácter anterior era chino/japonés?
+    for c in t:
+        if not c.isalnum():
+            salida.append(" ")
+            previo = None
+            continue
+        cjk = _es_cjk(c)
+        if previo is not None and cjk != previo:
+            salida.append(" ")
+        salida.append(c)
+        previo = cjk
+    return " ".join("".join(salida).split())
+
+
+@lru_cache(maxsize=4096)
+def _palabras(frase: str) -> tuple[str, ...]:
+    """Las palabras de una frase de `config`, ya normalizadas.
+
+    Con nueve idiomas son varios cientos de frases y se comparan todas en cada
+    cosa que se oye: se normalizan una sola vez.
+    """
+    return tuple(normalize(frase).split())
 
 
 # --- Cómo suena una palabra en español -----------------------------------
@@ -69,6 +144,7 @@ _DIGRAFOS = (("ll", "y"), ("qu", "k"), ("ch", "\x01"), ("sh", "\x01"),
              ("rr", "r"))
 
 
+@lru_cache(maxsize=8192)
 def _fonetica(palabra: str) -> str:
     """Reduce una palabra a un esqueleto de cómo SUENA en español."""
     p = palabra
@@ -172,27 +248,77 @@ def _word_matches(w: str, tok: str) -> bool:
     return _lev(fw, ft, tope) <= tope
 
 
-def matches_any(text: str, phrases: list[str]) -> bool:
-    norm_text = normalize(text)
-    tokens = norm_text.split()
-    if not tokens:
-        return False
-    for p in phrases:
-        words = normalize(p).split()
-        if words and all(any(_word_matches(w, tok) for tok in tokens) for w in words):
+# El nombre del robot tal como va escrito en las listas de `config`.
+_NOMBRE = "mech"
+
+
+@lru_cache(maxsize=8)
+def _alias_normalizados(crudos: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(a for a in (normalize(x) for x in crudos) if a)
+
+
+def _nombre_en(tokens: list[str]) -> bool:
+    """¿Dijeron «MECH», escrito como lo escribe Whisper en otra escritura?
+
+    En japonés, ruso o chino el nombre no siempre sale en letras latinas:
+    sale como suena («メック», «мек», «麦克»). Las formas aceptadas están en
+    `config.VOICE_NAME_ALIASES`. Ninguna usa letras latinas, así que esto no
+    le abre la puerta a nada en los idiomas de siempre.
+    """
+    crudos = tuple(getattr(config, "VOICE_NAME_ALIASES", ()) or ())
+    for alias in _alias_normalizados(crudos):
+        if _tiene_cjk(alias):
+            if any(alias in tok for tok in tokens):
+                return True
+        elif any(_word_matches(alias, tok) for tok in tokens):
             return True
     return False
 
 
+def _contiene(w: str, tokens: list[str], sola: bool = False) -> bool:
+    """¿La palabra `w` de un comando aparece en lo que se oyó (`tokens`)?
+
+    - Letras latinas o cirílico: como siempre, token a token (`_word_matches`).
+    - Japonés y chino: no hay espacios, así que `w` se busca DENTRO de cada
+      trozo. Un comando de un solo carácter («好», «不») es demasiado poco para
+      eso: solo cuenta si la respuesta es corta y EMPIEZA por él (`sola`), o
+      «你好» (hola) sería un sí.
+    - El nombre: además de "mech", vale escrito en otra escritura.
+    """
+    if _es_cjk(w[0]):
+        if sola and len(w) == 1:
+            return any(tok.startswith(w) and len(tok) <= 3 for tok in tokens)
+        return any(w in tok for tok in tokens)
+    if any(_word_matches(w, tok) for tok in tokens):
+        return True
+    return w == _NOMBRE and _nombre_en(tokens)
+
+
+def matches_any(text: str, phrases: list[str]) -> bool:
+    tokens = normalize(text).split()
+    if not tokens:
+        return False
+    for p in phrases:
+        words = _palabras(p)
+        sola = len(words) == 1
+        if words and all(_contiene(w, tokens, sola) for w in words):
+            return True
+    return False
+
+
+# Sufijos de las listas de `config` (uno por idioma; el español no lleva).
+_SUFIJOS = ("", "_EN", "_FR", "_PT", "_DE", "_IT", "_JA", "_RU", "_ZH")
+
+
 def _todos_los_idiomas(base: str) -> list[str]:
-    """Junta la lista `base` con sus versiones _EN, _FR y _PT.
+    """Junta la lista `base` con sus versiones de los demás idiomas.
 
     Se aceptan TODAS siempre, sin mirar el idioma activo: si MECH narra en
     español y alguien le suelta "hey MECH" o "escuta MECH", igual queremos
     parar. Son frases largas y distintivas, no chocan entre sí.
     """
     frases: list[str] = []
-    for sufijo in ("", "_EN", "_FR", "_PT"):
+    for sufijo in _SUFIJOS:
         frases += list(getattr(config, base + sufijo, []) or [])
     return frases
 
@@ -220,10 +346,10 @@ def strip_interrupt(text: str) -> str:
     norm = [normalize(t.group(0)) for t in tokens]
     for phrase in _interrupt_phrases():
         usados: list[int] = []
-        for w in normalize(phrase).split():
+        for w in _palabras(phrase):
             hit = next(
                 (i for i, tok in enumerate(norm)
-                 if i not in usados and _word_matches(w, tok)),
+                 if i not in usados and _contiene(w, [tok])),
                 None,
             )
             if hit is None:
@@ -232,15 +358,34 @@ def strip_interrupt(text: str) -> str:
             usados.append(hit)
         if usados:
             resto = text[tokens[max(usados)].end():]
-            return resto.strip(" \t,.;:¿?¡!-–—\"'")
+            return resto.strip(_SIGNOS)
+    # Japonés y chino van sin espacios: la frase y la petición llegan pegadas
+    # («ねえMECH、別の話をして») y arriba no hay dónde cortar. Ahí se corta justo
+    # después del nombre.
+    if _tiene_cjk(text) and is_interrupt(text):
+        return _tras_el_nombre(text)
     return ""
 
 
+# Signos que se recortan de los bordes de una petición.
+_SIGNOS = " \t,.;:¿?¡!-–—\"'、。，！？：；　"
+
+
+def _tras_el_nombre(text: str) -> str:
+    """Lo que viene después de «MECH» (o de cómo lo escribió Whisper)."""
+    bajo = text.lower()
+    fin = -1
+    for forma in (_NOMBRE, *(getattr(config, "VOICE_NAME_ALIASES", ()) or ())):
+        i = bajo.rfind(forma.lower())
+        if i >= 0:
+            fin = max(fin, i + len(forma))
+    return text[fin:].strip(_SIGNOS) if fin >= 0 else ""
+
+
 # --- Órdenes de movimiento (no pasan por Claude) --------------------------
-# "mira hacia afuera" / "regresa a proyectar". Se aceptan las listas de los
-# CUATRO idiomas siempre: son frases largas y distintivas, no chocan con
-# nada, y si Whisper transcribió en el idioma equivocado igual queremos
-# obedecer.
+# "mira hacia afuera" / "regresa a proyectar". Se aceptan las listas de TODOS
+# los idiomas siempre: son frases largas y distintivas, no chocan con nada, y
+# si Whisper transcribió en el idioma equivocado igual queremos obedecer.
 
 
 # Números escritos con letra, para "avanza DIEZ segundos". Whisper los
@@ -266,7 +411,45 @@ _NUMEROS = {
     # ("cinco", "seis", "sete"≈"siete", "quinze"≈francés) ya están arriba.
     "um": 1, "uma": 1, "dois": 2, "quatro": 4, "dez": 10, "doze": 12,
     "vinte": 20, "trinta": 30, "meio": 0.5,
+    # alemán (modo DE). Escritos ya sin diéresis, que es como quedan al
+    # normalizar ("fünf" -> "funf").
+    "ein": 1, "eine": 1, "eins": 1, "zwei": 2, "drei": 3, "vier": 4,
+    "funf": 5, "sechs": 6, "sieben": 7, "acht": 8, "neun": 9, "zehn": 10,
+    "elf": 11, "zwolf": 12, "funfzehn": 15, "zwanzig": 20, "dreißig": 30,
+    "dreissig": 30, "halbe": 0.5,
+    # italiano (modo IT). "un/uno/una" ya están arriba.
+    "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7,
+    "otto": 8, "nove": 9, "dieci": 10, "undici": 11, "dodici": 12,
+    "quindici": 15, "venti": 20, "trenta": 30, "mezzo": 0.5,
+    # ruso (modo RU)
+    "один": 1, "одну": 1, "одна": 1, "два": 2, "две": 2, "три": 3,
+    "четыре": 4, "пять": 5, "шесть": 6, "семь": 7, "восемь": 8, "девять": 9,
+    "десять": 10, "пятнадцать": 15, "двадцать": 20, "тридцать": 30,
 }
+
+# Japonés y chino: el número va pegado a «秒» (segundos) y casi siempre en
+# cifras («10秒»), pero también puede salir en ideogramas («十秒», «两秒»).
+_SEGUNDOS_CJK = re.compile(r"([0-9]+|[零〇一二两兩三四五六七八九十半]+)\s*秒")
+_DIGITOS_CJK = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "兩": 2, "三": 3,
+                "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+
+
+def _numero_cjk(s: str) -> float | None:
+    """«10», «十», «二十五» o «半» -> el número (hasta 99), o None."""
+    if s.isdigit():
+        return float(s)
+    if s == "半":
+        return 0.5
+    if "十" in s:
+        izq, _, der = s.partition("十")
+        decenas = _DIGITOS_CJK.get(izq) if izq else 1
+        unidades = _DIGITOS_CJK.get(der) if der else 0
+        if decenas is None or unidades is None:
+            return None
+        return float(decenas * 10 + unidades)
+    if len(s) == 1 and s in _DIGITOS_CJK:
+        return float(_DIGITOS_CJK[s])
+    return None
 
 
 def extract_seconds(text: str) -> float | None:
@@ -276,7 +459,13 @@ def extract_seconds(text: str) -> float | None:
     que es como lo transcribe Whisper casi siempre. Si no hay número, quien
     llame decide el valor por defecto.
     """
-    tokens = normalize(text).split()
+    norm = normalize(text)
+    if _tiene_cjk(norm):
+        m = _SEGUNDOS_CJK.search(norm)
+        valor = _numero_cjk(m.group(1)) if m else None
+        if valor is not None:
+            return valor
+    tokens = norm.split()
     for i, tok in enumerate(tokens):
         valor = None
         if tok.isdigit():
@@ -333,6 +522,15 @@ def is_translate_stop(text: str) -> bool:
     return matches_any(text, _todos_los_idiomas("VOICE_TRANSLATE_STOP_PHRASES"))
 
 
+@lru_cache(maxsize=1)
+def _palabras_de_idioma() -> dict[str, tuple[str, ...]]:
+    """`lang.language_words()` con cada nombre ya normalizado."""
+    return {
+        code: tuple(v for v in (normalize(x) for x in variantes) if v)
+        for code, variantes in lang.language_words().items()
+    }
+
+
 def extract_language_pair(text: str) -> tuple[str | None, str | None]:
     """Los idiomas nombrados en "de español a francés", en ese orden.
 
@@ -341,18 +539,33 @@ def extract_language_pair(text: str) -> tuple[str | None, str | None]:
     decide que el origen es el idioma activo. Si no se nombra ninguno,
     `(None, None)`.
 
-    Los nombres de cada idioma (en los cuatro idiomas) están en
+    Los nombres de cada idioma (en todos los idiomas) están en
     `lang.language_words()`; el match usa el mismo matcher tolerante que el
     resto, así que "espanol", "espagnol" y "espanhol" caen todos en "es".
+
+    En japonés y chino la frase va sin espacios («日本語からスペイン語に»):
+    los dos idiomas pueden venir en el MISMO trozo, y el orden lo da la
+    posición de cada nombre dentro de él.
     """
     tokens = normalize(text).split()
-    palabras = lang.language_words()
+    palabras = _palabras_de_idioma()
     encontrados: list[str] = []
     for tok in tokens:
+        if _tiene_cjk(tok):
+            dentro = []
+            for code, variantes in palabras.items():
+                sitios = [tok.find(v) for v in variantes if _es_cjk(v[0])]
+                sitios = [s for s in sitios if s >= 0]
+                if sitios:
+                    dentro.append((min(sitios), code))
+            for _, code in sorted(dentro):
+                if code not in encontrados:
+                    encontrados.append(code)
+            continue
         for code, variantes in palabras.items():
             if code in encontrados:
                 continue
-            if any(_word_matches(v, tok) for v in variantes):
+            if any(_word_matches(v, tok) for v in variantes if not _es_cjk(v[0])):
                 encontrados.append(code)
                 break
     if len(encontrados) >= 2:
@@ -395,11 +608,21 @@ def is_no(text: str) -> bool:
 # preposición más común del idioma. Solo cuentan si la frase es CORTA (una
 # respuesta suelta, "la a") o si delante va una palabra que las presenta
 # ("la", "opción", "letra"). Ver `_letra_en()`.
+def _n(*palabras: str) -> tuple[str, ...]:
+    """Normaliza palabras escritas "al natural" (con diéresis, й, ё…)."""
+    return tuple(normalize(p) for p in palabras)
+
+
+# Lo que va dentro de `_n(...)` es cómo nombran esas letras en alemán ("tse")
+# y en italiano ("bi", "ci", "di"), y cómo las escribe Whisper en CIRÍLICO
+# cuando el visitante habla ruso: la «А» rusa y la «A» latina se ven iguales
+# pero son caracteres distintos.
 _LETRA_TOKENS: dict[int, tuple[str, ...]] = {
-    0: ("a", "ah", "ha"),
-    1: ("b", "be", "ve", "uve", "bee"),
-    2: ("c", "ce", "se", "cee"),
-    3: ("d", "de", "dee"),
+    0: ("a", "ah", "ha") + _n("а"),
+    1: ("b", "be", "ve", "uve", "bee") + _n("bi", "б", "бэ", "бе", "би"),
+    2: ("c", "ce", "se", "cee")
+       + _n("ci", "tse", "zeh", "ц", "цэ", "це", "си", "с"),
+    3: ("d", "de", "dee") + _n("di", "д", "дэ", "де", "ди"),
 }
 
 # Palabras que PRESENTAN una letra o un número de opción.
@@ -408,18 +631,49 @@ _MARCADORES = (
     "escojo", "digo", "creo", "es", "seria", "pongo", "marco",
     "option", "letter", "answer", "number", "choose", "pick", "say",
     "lettre", "reponse", "numero", "choix", "opcao", "resposta", "escolho",
+) + _n(
+    "die", "der", "das", "antwort", "buchstabe", "nummer", "nehme", "wähle",
+    "il", "opzione", "lettera", "risposta", "scelgo", "dico",
+    "ответ", "вариант", "буква", "номер", "выбираю", "это",
 )
 
-# Ordinales y números por índice, en los cuatro idiomas.
+# Ordinales y números por índice, en los idiomas que se escriben con espacios.
+# ⚠️ En italiano van solo los femeninos ("la seconda"): «secondo me» significa
+# "en mi opinión", y «secondo me la B» se leería como la segunda.
 _ORDINAL_TOKENS: dict[int, tuple[str, ...]] = {
     0: ("primera", "primero", "primer", "uno", "una", "1", "first", "one",
-        "premiere", "premier", "un", "primeira", "primeiro"),
+        "premiere", "premier", "un", "primeira", "primeiro")
+       + _n("erste", "erster", "erstes", "ersten", "eins", "prima",
+            "первая", "первый", "первое", "первую", "один"),
     1: ("segunda", "segundo", "dos", "2", "second", "two", "deuxieme",
-        "deux", "segunda", "duas"),
+        "deux", "segunda", "duas")
+       + _n("zweite", "zweiter", "zweites", "zweiten", "zwei", "seconda",
+            "due", "вторая", "второй", "второе", "вторую", "два"),
     2: ("tercera", "tercero", "tres", "3", "third", "three", "troisieme",
-        "trois", "terceira", "terceiro"),
+        "trois", "terceira", "terceiro")
+       + _n("dritte", "dritter", "drittes", "dritten", "drei", "terza", "tre",
+            "третья", "третий", "третье", "третью", "три"),
     3: ("cuarta", "cuarto", "cuatro", "4", "fourth", "four", "quatrieme",
-        "quatre", "quarta", "quarto"),
+        "quatre", "quarta", "quarto")
+       + _n("vierte", "vierter", "viertes", "vierten", "vier", "quattro",
+            "четвёртая", "четвёртый", "четвёртое", "четвёртую", "четыре"),
+}
+# Japonés y chino: van pegados al resto («二番目です», «我选第二个»), así que
+# se buscan DENTRO del trozo. Con cifra («2番», «第2个») no hacen falta: la
+# cifra queda separada sola y la reconoce la tabla de arriba.
+_ORDINAL_CJK: dict[int, tuple[str, ...]] = {
+    0: _n("第一", "一番", "いちばん", "一つ目", "ひとつめ", "最初", "一号", "一號"),
+    1: _n("第二", "二番", "にばん", "二つ目", "ふたつめ", "二号", "二號"),
+    2: _n("第三", "三番", "さんばん", "三つ目", "みっつめ", "三号", "三號"),
+    3: _n("第四", "四番", "よんばん", "四つ目", "よっつめ", "四号", "四號"),
+}
+# Las letras dichas en japonés. Whisper casi siempre escribe «A», pero a
+# veces lo deja en kana. Solo valen si son la respuesta ENTERA («えー» es
+# también lo que dice alguien que duda).
+_LETRA_KANA: dict[str, int] = {
+    normalize(k): v for k, v in {
+        "エー": 0, "エイ": 0, "ビー": 1, "シー": 2, "ディー": 3,
+    }.items()
 }
 
 # Palabras que no aportan nada al comparar el TEXTO de una opción.
@@ -429,6 +683,13 @@ _VACIAS = {
     "the", "of", "and", "a", "an", "in", "on", "to", "is", "it",
     "le", "les", "des", "du", "et", "dans", "est",
     "do", "da", "dos", "das", "em", "com", "para", "que",
+    # alemán, italiano y ruso
+    "der", "die", "das", "und", "ein", "eine", "von", "im", "ist", "den",
+    "il", "lo", "gli", "di", "e", "della", "che", "per",
+    "и", "в", "на", "с", "из", "это", "по",
+    # japonés y chino (cuando quedan sueltos junto a una cifra: «1605年»)
+    "年", "的", "是", "了", "在", "和", "个", "個",
+    "です", "の", "は", "が", "を", "に", "で", "と", "も",
 }
 
 
@@ -441,6 +702,17 @@ _NO_SE = (
     ("i", "dont", "know"), ("no", "idea"), ("dunno"), ("pass",),
     ("je", "ne", "sais", "pas"), ("aucune", "idee"),
     ("nao", "sei"), ("nem", "ideia"),
+    ("weiß", "nicht"), ("weiss", "nicht"), ("keine", "ahnung"),
+    ("non", "lo", "so"), ("non", "so"), ("boh",), ("nessuna", "idea"),
+    ("не", "знаю"), ("без", "понятия"), ("понятия", "не", "имею"), ("пас",),
+)
+# En japonés y chino va pegado al resto, así que se busca dentro del trozo.
+# ⚠️ En chino «不知道» EMPIEZA por «不», que suelto es un "no": por eso esto se
+# mira antes que nada.
+_NO_SE_CJK = _n(
+    "不知道", "不清楚", "不晓得", "不曉得", "不确定", "不確定",
+    "わからない", "分からない", "わかりません", "分かりません",
+    "知らない", "しらない", "知りません", "パス",
 )
 
 
@@ -455,7 +727,7 @@ def is_dont_know(text: str) -> bool:
             frase = (frase,)
         if all(w in juego for w in frase):
             return True
-    return False
+    return any(f in tok for f in _NO_SE_CJK for tok in tokens)
 
 
 def _letra_en(tokens: list[str], corta: bool) -> int | None:
@@ -470,6 +742,11 @@ def _letra_en(tokens: list[str], corta: bool) -> int | None:
             if tok in formas:
                 if corta or (i > 0 and tokens[i - 1] in _MARCADORES):
                     return idx
+    # La letra dicha en japonés y escrita en kana («ビー», «ビーです»).
+    if len(tokens) == 1:
+        suelta = tokens[0].removesuffix("です")
+        if suelta in _LETRA_KANA:
+            return _LETRA_KANA[suelta]
     return None
 
 
@@ -483,6 +760,11 @@ def _ordinal_en(tokens: list[str], corta: bool) -> int | None:
                 # que esos piden frase corta o marcador delante.
                 claro = len(tok) > 4 and not tok.isdigit()
                 if claro or corta or (i > 0 and tokens[i - 1] in _MARCADORES):
+                    return idx
+    for tok in tokens:
+        if _tiene_cjk(tok):
+            for idx, formas in _ORDINAL_CJK.items():
+                if any(f in tok for f in formas):
                     return idx
     return None
 
@@ -499,7 +781,7 @@ def _peso_opcion(opcion: str, tokens: list[str]) -> float:
         palabras = normalize(opcion).split()
     if not palabras:
         return 0.0
-    aciertos = sum(1 for w in palabras if any(_word_matches(w, t) for t in tokens))
+    aciertos = sum(1 for w in palabras if _contiene(w, tokens))
     return aciertos / len(palabras)
 
 
@@ -522,7 +804,9 @@ def parse_answer(text: str, options: list[str]) -> int | None:
     tokens = normalize(text).split()
     if not tokens:
         return None
-    corta = len(tokens) <= 4
+    # En japonés y chino no hay espacios y TODO son "pocas palabras": ahí lo
+    # que dice si la respuesta es corta son los caracteres.
+    corta = len(tokens) <= 4 and sum(len(t) for t in tokens if _tiene_cjk(t)) <= 8
 
     # 1) ¿Dijo el texto de una opción? Si la frase CONTIENE la opción entera,
     #    no hay más que discutir.
@@ -531,6 +815,19 @@ def parse_answer(text: str, options: list[str]) -> int | None:
         norm_op = normalize(opcion)
         if norm_op and len(norm_op) >= 4 and norm_op in norm_text:
             return i
+    # Lo mismo en japonés y chino, comparando sin espacios (el visitante dice
+    # «桑丘潘沙» y la opción está escrita «桑丘·潘沙»). Si caben varias —una
+    # opción dentro de otra—, gana la más larga.
+    pegado = "".join(tokens)
+    dentro = []
+    for i, opcion in enumerate(options):
+        op = normalize(opcion).replace(" ", "")
+        if len(op) >= 2 and _tiene_cjk(op) and op in pegado:
+            dentro.append((len(op), i))
+    if dentro:
+        dentro.sort(reverse=True)
+        if len(dentro) == 1 or dentro[0][0] > dentro[1][0]:
+            return dentro[0][1]
     pesos = [_peso_opcion(op, tokens) for op in options]
     mejor = max(range(len(pesos)), key=lambda i: pesos[i])
     ordenados = sorted(pesos, reverse=True)
@@ -568,7 +865,9 @@ def sounds_like_same(a: str, b: str) -> bool:
     if na == nb:
         return True
     corto, largo = (na, nb) if len(na) <= len(nb) else (nb, na)
-    return corto in largo and len(corto) >= 0.6 * len(largo) and len(corto) >= 8
+    # En japonés y chino cada carácter dice mucho más: con 4 ya es una frase.
+    minimo = 4 if _tiene_cjk(corto) else 8
+    return corto in largo and len(corto) >= 0.6 * len(largo) and len(corto) >= minimo
 
 
 def is_sleep(text: str) -> bool:
@@ -609,6 +908,11 @@ _WAKE_LISTS = (
     ("en", "WAKE_ENGLISH_ENABLED", "VOICE_WAKE_PHRASES_EN"),
     ("fr", "WAKE_FRENCH_ENABLED", "VOICE_WAKE_PHRASES_FR"),
     ("pt", "WAKE_PORTUGUESE_ENABLED", "VOICE_WAKE_PHRASES_PT"),
+    ("de", "WAKE_GERMAN_ENABLED", "VOICE_WAKE_PHRASES_DE"),
+    ("it", "WAKE_ITALIAN_ENABLED", "VOICE_WAKE_PHRASES_IT"),
+    ("ja", "WAKE_JAPANESE_ENABLED", "VOICE_WAKE_PHRASES_JA"),
+    ("ru", "WAKE_RUSSIAN_ENABLED", "VOICE_WAKE_PHRASES_RU"),
+    ("zh", "WAKE_CHINESE_ENABLED", "VOICE_WAKE_PHRASES_ZH"),
     ("es", None, "VOICE_WAKE_PHRASES"),
 )
 

@@ -58,30 +58,53 @@ _lock = threading.Lock()
 
 # Frases que dice al girar. Van aquí y no en lang.py porque son de esta
 # maniobra; si algún día hay más, se mueven allá.
+# ⚠️ Las de alemán, italiano, japonés, ruso y chino están escritas para NO
+# contener la orden que las dispara: justo después de decirlas se abre el
+# micrófono, y si MECH se oye decir «…schau nach außen» volvería a obedecerse.
 _SAY = {
     "outward": {
         "es": "¡Hola! Miren hacia acá.",
         "en": "Hello there! Look over here.",
         "fr": "Bonjour ! Regardez par ici.",
         "pt": "Olá! Olhem para cá.",
+        "de": "Hallo zusammen! Schaut mal hierher.",
+        "it": "Ciao a tutti! Guardate qui.",
+        "ja": "みなさん、こんにちは！こちらをご覧ください。",
+        "ru": "Привет всем! Посмотрите сюда.",
+        "zh": "大家好！请看这边。",
     },
     "back": {
         "es": "Vuelvo a la proyección.",
         "en": "Back to the projection.",
         "fr": "Je retourne à la projection.",
         "pt": "Volto para a projeção.",
+        "de": "Ich wende mich wieder der Leinwand zu.",
+        "it": "Mi rigiro verso la proiezione.",
+        "ja": "投影の位置に戻ります。",
+        "ru": "Возвращаюсь к проекции.",
+        "zh": "我转回投影那边了。",
     },
     "already_outward": {
         "es": "Ya estoy mirando hacia afuera.",
         "en": "I'm already facing outside.",
         "fr": "Je regarde déjà vers l'extérieur.",
         "pt": "Já estou olhando para fora.",
+        "de": "Ich blicke bereits zum Publikum.",
+        "it": "Sto già guardando verso l'esterno.",
+        "ja": "すでに外側を向いています。",
+        "ru": "Я уже повёрнут к публике.",
+        "zh": "我已经面向外面了。",
     },
     "already_projecting": {
         "es": "Ya estoy en posición de proyectar.",
         "en": "I'm already in projecting position.",
         "fr": "Je suis déjà en position de projection.",
         "pt": "Já estou na posição de projetar.",
+        "de": "Ich bin schon in Projektionsposition.",
+        "it": "Sono già in posizione di proiezione.",
+        "ja": "すでに投影の位置にいます。",
+        "ru": "Я уже на месте для проекции.",
+        "zh": "我已经在投影的位置了。",
     },
 }
 

@@ -117,8 +117,8 @@ class Segment(BaseModel):
         ...,
         description=(
             "Texto que el robot narrará con TTS, en el IDIOMA ACTIVO indicado "
-            "al final del system prompt (español por defecto; inglés, francés "
-            "o portugués si lo despertaron en ese idioma). Sin markdown."
+            "al final del system prompt (español por defecto; otro idioma "
+            "solo si lo despertaron en él). Sin markdown."
         ),
     )
     image_prompt: str | None = Field(
@@ -198,7 +198,7 @@ def plan_response(
         conversation_history: Lista de turnos previos en formato Anthropic
             ({"role": ..., "content": ...}). Para mantener contexto entre
             preguntas dentro de una obra.
-        language: "es", "en", "fr" o "pt". None = el idioma activo de MECH
+        language: código de `lang.SUPPORTED`. None = el idioma activo de MECH
             (español, salvo que lo hayan despertado en otro idioma).
 
     Returns:
@@ -285,7 +285,7 @@ Reglas:
 
 
 def translate(text: str, src: str, dst: str) -> str:
-    """Traduce `text` del idioma `src` al `dst` (códigos ISO: es/en/fr/pt).
+    """Traduce `text` del idioma `src` al `dst` (códigos de `lang.SUPPORTED`).
 
     Llamada corta y directa, sin salida estructurada ni caché: en una
     conversación lo que importa es que conteste rápido. Devuelve el texto ya

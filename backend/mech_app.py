@@ -1035,7 +1035,7 @@ class MechApp:
 
     # Frase oficial de bienvenida (pedida por el equipo, jul 2026). En modo
     # inglés se dice su equivalente (ver backend/lang.py).
-    # El texto vive en lang.py (una sola fuente para los cuatro idiomas); esta
+    # El texto vive en lang.py (una sola fuente para todos los idiomas); esta
     # constante se conserva porque está documentada y se usa en pruebas.
     GREETING_TEXT = lang.say("greeting", "es")
 
@@ -1779,15 +1779,37 @@ class MechApp:
         self.state["last_transcript"] = text
         self.emit("transcript", text=text)
         self.log(f"Comando: {text!r}", "info")
-        # "traduce MECH": arranca UN turno de traducción. Va ANTES que todo
-        # lo demás y no pasa por Claude. Si el comando nombra los idiomas
-        # ("traduce MECH del inglés al portugués"), se toman de ahí; si no,
-        # se reutiliza el par de la vez anterior y, si tampoco lo hay, MECH
-        # pregunta.
-        if config.TRANSLATOR_ENABLED and voice_phrases.is_translate(text):
-            src, dst = voice_phrases.extract_language_pair(text)
-            self.start_translator(src, dst)
-            return
+        # Traductor. Va ANTES que todo lo demás y no pasa por Claude.
+        if config.TRANSLATOR_ENABLED:
+            # «deja de traducir»: salir se mira ANTES que entrar, por dos cosas.
+            #  - Tras traducir una frase el turno termina, pero el par de
+            #    idiomas se RECUERDA. El bucle de voz solo miraba esta orden
+            #    en medio de un turno, así que dicha después se iba a Claude
+            #    como una pregunta cualquiera y el par no se olvidaba nunca.
+            #  - «deja de traducir, MECH» lleva dentro las palabras de
+            #    «traduce MECH»: arrancaba OTRO turno en vez de salir.
+            if voice_phrases.is_translate_stop(text):
+                if translator.is_active() or translator.has_pair():
+                    self.stop_translator()
+                else:
+                    # Nada que olvidar. Se queda CALLADO a propósito: lo más
+                    # probable aquí es su propio eco («Listo, dejo de
+                    # traducir» casa con la orden), y si contestara se oiría
+                    # y volvería a contestarse, sin fin.
+                    self.log("«Deja de traducir»: no había nada que olvidar.", "info")
+                    if self.state["voice_loop_active"]:
+                        self.set_voice_phase(
+                            "waiting" if self.state.get("voice_awake", True) else "dormant"
+                        )
+                return
+            # «traduce MECH»: arranca UN turno. Si el comando nombra los
+            # idiomas («traduce MECH del inglés al portugués»), se toman de
+            # ahí; si no, se reutiliza el par de la vez anterior y, si
+            # tampoco lo hay, MECH pregunta.
+            if voice_phrases.is_translate(text):
+                src, dst = voice_phrases.extract_language_pair(text)
+                self.start_translator(src, dst)
+                return
         # Trivia. Igual que el traductor, salir se mira ANTES que entrar.
         if config.TRIVIA_ENABLED:
             if voice_phrases.is_trivia_stop(text):

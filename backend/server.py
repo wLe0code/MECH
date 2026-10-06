@@ -23,7 +23,7 @@ Endpoints REST:
     POST /api/arduino/head              → HEAD:pan:tilt
     POST /api/arduino/arm               → ARM:L/R:angle
     POST /api/arduino/mode/{mode}       → MODE:...
-    POST /api/language/{es|en|fr|pt}    → cambia el idioma (voz + subtítulos)
+    POST /api/language/{es|en|fr|pt|de|it|ja|ru|zh} → cambia el idioma
     POST /api/translate/start           → modo traductor (?src=&dst= opcional)
     POST /api/translate/stop            → sale del modo traductor
     POST /api/trivia/start              → arranca el juego de preguntas
@@ -98,9 +98,11 @@ def _voice_loop_worker():
 
     IDIOMA: el despertar decide el idioma — "ok MECH" (español),
     "wake up MECH" (inglés), "bonjour MECH" (francés), "bom dia MECH"
-    (portugués). A partir de ahí todo (lo que entiende, lo que narra y los
-    subtítulos) va en ese idioma hasta que se duerme, y al dormirse vuelve
-    solo a español. Ver backend/lang.py.
+    (portugués), "guten Tag MECH" (alemán), "ciao MECH" (italiano),
+    "こんにちは MECH" (japonés), "привет MECH" (ruso), "你好 MECH" (mandarín).
+    A partir de ahí todo (lo que entiende, lo que narra y los subtítulos) va
+    en ese idioma hasta que se duerme, y al dormirse vuelve solo a español.
+    Ver backend/lang.py.
     """
     app_state = get_app()
     app_state.log("Bucle de voz iniciado", "ok")
@@ -121,6 +123,8 @@ def _voice_loop_worker():
     app_state.log("Voz lista: ya puedes decir 'ok MECH'.", "ok")
     if not app_state.state.get("voice_awake", True):
         app_state.set_voice_phase("dormant")
+    # Última vez que se avisó «Oí en <idioma>…» (ver el reintento en reposo).
+    aviso_otro_idioma = 0.0
 
     while app_state.state["voice_loop_active"]:
         try:
@@ -222,7 +226,7 @@ def _voice_loop_worker():
                     # otro idioma ("wake up MECH", "bonjour MECH", "bom dia
                     # MECH") pudo salir deformado. Reintentamos el MISMO audio
                     # UNA vez dejando que Whisper detecte el idioma solo: con
-                    # cuatro idiomas, probarlos uno a uno dejaría la Pi varios
+                    # nueve idiomas, probarlos uno a uno dejaría la Pi varios
                     # segundos sin escuchar. El clip es corto (máx.
                     # WAKE_MAX_UTTERANCE s).
                     try:
@@ -239,6 +243,24 @@ def _voice_loop_worker():
                         )
                         wake_lang = otro
                         text = text_auto
+                    elif (
+                        text_auto
+                        and detectado in lang.enabled_languages()
+                        and detectado != lang.DEFAULT
+                        and time.monotonic() - aviso_otro_idioma > 10
+                    ):
+                        # Le hablaron en otro idioma pero no fue una frase de
+                        # despertar. Se enseña lo que oyó porque en japonés,
+                        # ruso y chino Whisper escribe «MECH» como le suena, y
+                        # esta es la única forma de ver CÓMO para añadirlo a
+                        # VOICE_NAME_ALIASES. Como mucho cada 10 s: en un
+                        # stand con visitantes de fuera llenaría el panel.
+                        aviso_otro_idioma = time.monotonic()
+                        app_state.log(
+                            f"Oí en {lang.label(detectado)}: {text_auto!r} "
+                            "(no es una frase de despertar).",
+                            "info",
+                        )
                 if wake_lang:
                     app_state.go_awake(language=wake_lang)
                 else:
@@ -293,7 +315,7 @@ def _voice_loop_worker():
                     # micrófono debería estar cerrado; si algo entra, es eco.
                     continue
 
-            # Despierto: ¿pidió reposo? (se aceptan las frases de los 4 idiomas)
+            # Despierto: ¿pidió reposo? (se aceptan las frases de todos los idiomas)
             if voice_phrases.is_sleep_any(text):
                 app_state.go_dormant()
                 continue
@@ -372,13 +394,14 @@ async def lifespan(app: FastAPI):
         f"{' (invertido)' if config.TURN_180_INVERT else ''}",
         "ok",
     )
-    # Idiomas activos. Misma idea que la línea de arriba: si en la Pi solo
-    # aparece "español · inglés", está corriendo el código viejo (o alguien
-    # apagó francés/portugués en el .env).
+    # Idiomas activos. Misma idea que la línea de arriba: si en la Pi faltan
+    # los últimos (alemán, italiano, japonés, ruso, mandarín), está corriendo
+    # el código viejo (o alguien los apagó en el .env).
     mech.log(
         "Idiomas: " + " · ".join(lang.label(c) for c in lang.enabled_languages())
         + " — «ok MECH» (es) · «wake up MECH» (en) · «bonjour MECH» (fr) · "
-          "«bom dia MECH» (pt)",
+          "«bom dia MECH» (pt) · «guten Tag MECH» (de) · «ciao MECH» (it) · "
+          "«こんにちは MECH» (ja) · «привет MECH» (ru) · «你好 MECH» (zh)",
         "ok",
     )
     if config.TRANSLATOR_ENABLED:
@@ -871,8 +894,10 @@ async def set_language(code: str):
 
     En el stand el idioma lo decide la voz: "ok MECH" = español,
     "wake up MECH" = inglés, "bonjour MECH" = francés, "bom dia MECH" =
-    portugués. Este endpoint existe para probar sin micrófono y para
-    corregir sobre la marcha si Whisper entendió mal.
+    portugués, "guten Tag MECH" = alemán, "ciao MECH" = italiano,
+    "こんにちは MECH" = japonés, "привет MECH" = ruso, "你好 MECH" = mandarín.
+    Este endpoint existe para probar sin micrófono y para corregir sobre la
+    marcha si Whisper entendió mal.
     """
     code = code.strip().lower()
     if code not in lang.SUPPORTED:

@@ -798,6 +798,407 @@ VOICE_SLEEP_PHRASES_PT = [
     ).split(",") if p.strip()
 ]
 
+# --- Idiomas añadidos en oct 2026: alemán, italiano, japonés, ruso y mandarín
+# Mismo mecanismo que los de arriba: cada uno se activa SI Y SOLO SI se le
+# despierta en ese idioma, y al dormirse MECH vuelve solo a español.
+#
+#   "guten Tag MECH" / "wach auf MECH"      -> alemán    (de)
+#   "ciao MECH" / "buongiorno MECH"         -> italiano  (it)
+#   "こんにちは MECH" / "起きて MECH"          -> japonés   (ja)
+#   "привет MECH" / "проснись MECH"         -> ruso      (ru)
+#   "你好 MECH" / "醒醒 MECH"                 -> mandarín  (zh)
+#
+# Los cinco están dentro de lo que sabe hablar la voz (`eleven_multilingual_v2`
+# de ElevenLabs) y de lo que entiende Whisper.
+#
+# Van todos juntos aquí, agrupados por idioma, en vez de repartidos lista por
+# lista: son 14 listas por idioma y así se revisa un idioma entero de un
+# vistazo. Cada una se puede tapar desde el `.env` con su misma clave.
+#
+# ⚠️ Colisiones que YA se evitaron (medidas con scripts/probar_idiomas.py):
+#   - Nada de "hallo MECH" en alemán: "hallo" queda a una letra de "hello", y
+#     un "hello MECH" en inglés despertaría a MECH en alemán.
+#   - Nada de "voltati" en italiano: cae en el español "voltea", y «voltea
+#     hacia la proyección» lo haría girar hacia AFUERA.
+#   - Nada de "buona notte MECH" en dos palabras: «buena nota, MECH» lo dormía.
+#   - En ruso, "включи переводчик" (enciende) y "выключи переводчик" (apaga)
+#     están a una letra: por eso ninguna de las dos está en las listas.
+def _frases(clave: str, por_defecto: str) -> list[str]:
+    """Lista de frases separadas por coma, leída del `.env` si está ahí."""
+    return [p.strip() for p in os.environ.get(clave, por_defecto).split(",") if p.strip()]
+
+
+def _activo(clave: str, por_defecto: str = "true") -> bool:
+    return os.environ.get(clave, por_defecto).strip().lower() in (
+        "1", "true", "yes", "on", "si", "sí",
+    )
+
+
+WAKE_GERMAN_ENABLED = _activo("WAKE_GERMAN_ENABLED")
+WAKE_ITALIAN_ENABLED = _activo("WAKE_ITALIAN_ENABLED")
+WAKE_JAPANESE_ENABLED = _activo("WAKE_JAPANESE_ENABLED")
+WAKE_RUSSIAN_ENABLED = _activo("WAKE_RUSSIAN_ENABLED")
+WAKE_CHINESE_ENABLED = _activo("WAKE_CHINESE_ENABLED")
+
+# Cómo escribe Whisper el nombre "MECH" cuando transcribe en una escritura que
+# no es la latina. En japonés, ruso o chino el nombre no sale siempre como
+# "MECH": sale como suena («メック», «мек», «麦克»). Cualquier frase de las
+# listas que lleve la palabra "mech" acepta también estas formas.
+# Si en el panel ves «Oí en japonés: '…'» con el nombre escrito de otra manera,
+# añádela aquí (sin tocar el código).
+VOICE_NAME_ALIASES = _frases(
+    "VOICE_NAME_ALIASES",
+    "メック,メッチ,メク,メカ,メッカ,メッシュ,"
+    "麦克,麥克,梅克,迈克,邁克,美克,麦可,"
+    "мех,мек,мэк,мэч,меч,мэх,мекх",
+)
+
+# ---- Alemán (de) ----------------------------------------------------------
+VOICE_WAKE_PHRASES_DE = _frases(
+    "VOICE_WAKE_PHRASES_DE",
+    "guten tag mech,guten morgen mech,guten abend mech,wach auf mech,"
+    "aufwachen mech,servus mech",
+)
+VOICE_SLEEP_PHRASES_DE = _frases(
+    "VOICE_SLEEP_PHRASES_DE",
+    "hör auf zuzuhören,nicht mehr zuhören,gute nacht mech,"
+    "auf wiedersehen mech,schlaf mech,geh schlafen,ruhemodus",
+)
+VOICE_INTERRUPT_PHRASES_DE = _frases(
+    "VOICE_INTERRUPT_PHRASES_DE",
+    "entschuldigung mech,warte mech,moment mech,hör mal mech",
+)
+VOICE_ADVANCE_PHRASES_DE = _frases(
+    "VOICE_ADVANCE_PHRASES_DE",
+    "vorwärts,geh vorwärts,fahr vorwärts,nach vorne,fahr nach vorne",
+)
+VOICE_RETREAT_PHRASES_DE = _frases(
+    "VOICE_RETREAT_PHRASES_DE",
+    "rückwärts,geh zurück,fahr zurück,zurück,nach hinten",
+)
+VOICE_OUTWARD_PHRASES_DE = _frases(
+    "VOICE_OUTWARD_PHRASES_DE",
+    "schau nach draußen,schau nach außen,schau raus,dreh dich um,"
+    "begrüße das publikum,begrüße die leute",
+)
+VOICE_PROJECT_PHRASES_DE = _frases(
+    "VOICE_PROJECT_PHRASES_DE",
+    "zurück zur projektion,zurück zum projizieren,zurück auf deine position,"
+    "zurück an deinen platz,schau auf die leinwand",
+)
+VOICE_MARKETING_PHRASES_DE = _frases(
+    "VOICE_MARKETING_PHRASES_DE",
+    "zeig marketing,zeige marketing,spiel marketing,marketing abspielen,"
+    "marketing video,marketing videos",
+)
+VOICE_TRANSLATE_PHRASES_DE = _frases(
+    "VOICE_TRANSLATE_PHRASES_DE",
+    "übersetze mech,übersetz mech,übersetzer modus,übersetzungsmodus,"
+    "dolmetscher modus",
+)
+VOICE_TRANSLATE_STOP_PHRASES_DE = _frases(
+    "VOICE_TRANSLATE_STOP_PHRASES_DE",
+    "hör auf zu übersetzen,übersetzung beenden,übersetzer aus,"
+    "nicht mehr übersetzen",
+)
+VOICE_TRIVIA_PHRASES_DE = _frases(
+    "VOICE_TRIVIA_PHRASES_DE",
+    "lass uns ein quiz spielen,quiz spielen,starte das quiz,quiz modus,"
+    "ich will ein quiz",
+)
+VOICE_TRIVIA_STOP_PHRASES_DE = _frases(
+    "VOICE_TRIVIA_STOP_PHRASES_DE",
+    "quiz beenden,stopp das quiz,hör auf mit dem quiz,"
+    "ich will nicht mehr spielen",
+)
+VOICE_YES_PHRASES_DE = _frases(
+    "VOICE_YES_PHRASES_DE",
+    "ja,klar,na klar,gerne,natürlich,auf jeden fall,okay,einverstanden",
+)
+VOICE_NO_PHRASES_DE = _frases(
+    "VOICE_NO_PHRASES_DE",
+    "nein,nein danke,jetzt nicht,später,lieber nicht,kein interesse",
+)
+
+# ---- Italiano (it) --------------------------------------------------------
+VOICE_WAKE_PHRASES_IT = _frases(
+    "VOICE_WAKE_PHRASES_IT",
+    "ciao mech,buongiorno mech,buon giorno mech,salve mech,"
+    "svegliati mech,sveglia mech",
+)
+VOICE_SLEEP_PHRASES_IT = _frases(
+    "VOICE_SLEEP_PHRASES_IT",
+    "smetti di ascoltare,non ascoltare più,buonanotte mech,"
+    "arrivederci mech,dormi mech,vai a dormire",
+)
+VOICE_INTERRUPT_PHRASES_IT = _frases(
+    "VOICE_INTERRUPT_PHRASES_IT",
+    "scusa mech,scusami mech,senti mech,aspetta mech,ehi mech",
+)
+VOICE_ADVANCE_PHRASES_IT = _frases(
+    "VOICE_ADVANCE_PHRASES_IT",
+    "avanti,vai avanti,vieni avanti,muoviti in avanti",
+)
+VOICE_RETREAT_PHRASES_IT = _frases(
+    "VOICE_RETREAT_PHRASES_IT",
+    "indietro,vai indietro,torna indietro,muoviti indietro",
+)
+VOICE_OUTWARD_PHRASES_IT = _frases(
+    "VOICE_OUTWARD_PHRASES_IT",
+    "guarda fuori,guarda verso l esterno,girati,saluta il pubblico,"
+    "saluta la gente",
+)
+VOICE_PROJECT_PHRASES_IT = _frases(
+    "VOICE_PROJECT_PHRASES_IT",
+    "torna a proiettare,torna alla proiezione,torna al tuo posto,"
+    "torna in posizione,guarda lo schermo",
+)
+VOICE_MARKETING_PHRASES_IT = _frases(
+    "VOICE_MARKETING_PHRASES_IT",
+    "mostra marketing,mostra il marketing,riproduci marketing,"
+    "fai partire il marketing,video marketing,video di marketing",
+)
+VOICE_TRANSLATE_PHRASES_IT = _frases(
+    "VOICE_TRANSLATE_PHRASES_IT",
+    "traduci mech,tradurre mech,modalità traduttore,modo traduttore,"
+    "attiva il traduttore",
+)
+VOICE_TRANSLATE_STOP_PHRASES_IT = _frases(
+    "VOICE_TRANSLATE_STOP_PHRASES_IT",
+    "smetti di tradurre,basta tradurre,fine della traduzione,"
+    "esci dal traduttore",
+)
+VOICE_TRIVIA_PHRASES_IT = _frases(
+    "VOICE_TRIVIA_PHRASES_IT",
+    "giochiamo al quiz,facciamo un quiz,inizia il quiz,modalità quiz,"
+    "voglio un quiz",
+)
+VOICE_TRIVIA_STOP_PHRASES_IT = _frases(
+    "VOICE_TRIVIA_STOP_PHRASES_IT",
+    "ferma il quiz,esci dal quiz,basta quiz,non voglio più giocare",
+)
+VOICE_YES_PHRASES_IT = _frases(
+    "VOICE_YES_PHRASES_IT",
+    "si,certo,va bene,volentieri,d'accordo,certamente",
+)
+VOICE_NO_PHRASES_IT = _frases(
+    "VOICE_NO_PHRASES_IT",
+    "no,no grazie,non ora,adesso no,più tardi,meglio di no",
+)
+
+# ---- Japonés (ja) ---------------------------------------------------------
+# El japonés se escribe SIN espacios, así que estas frases no se comparan
+# palabra por palabra: cada trozo se busca DENTRO de lo que se oyó. Un espacio
+# aquí separa trozos que tienen que aparecer los dos («マーケティング 再生» casa
+# con «マーケティングを再生して»). Whisper mezcla kanji y kana a su antojo, por
+# eso muchas van escritas de las dos maneras (起きて / おきて).
+VOICE_WAKE_PHRASES_JA = _frases(
+    "VOICE_WAKE_PHRASES_JA",
+    "こんにちは mech,こんにちわ mech,おはよう mech,こんばんは mech,"
+    "起きて mech,おきて mech,目を覚まして mech",
+)
+VOICE_SLEEP_PHRASES_JA = _frases(
+    "VOICE_SLEEP_PHRASES_JA",
+    "聞くのをやめて,きくのをやめて,聞かないで,おやすみ mech,さようなら mech,"
+    "寝て mech,ねて mech,休んで mech,スリープモード",
+)
+VOICE_INTERRUPT_PHRASES_JA = _frases(
+    "VOICE_INTERRUPT_PHRASES_JA",
+    "ねえ mech,すみません mech,ちょっと mech,待って mech,まって mech",
+)
+VOICE_ADVANCE_PHRASES_JA = _frases(
+    "VOICE_ADVANCE_PHRASES_JA",
+    "前に進んで,前へ進んで,前進,まえにすすんで,前に行って,前へ",
+)
+VOICE_RETREAT_PHRASES_JA = _frases(
+    "VOICE_RETREAT_PHRASES_JA",
+    "後ろに下がって,後ろへ下がって,後退,下がって,うしろにさがって,バックして",
+)
+VOICE_OUTWARD_PHRASES_JA = _frases(
+    "VOICE_OUTWARD_PHRASES_JA",
+    "外を見て,外を向いて,そとをみて,振り向いて,ふりむいて,後ろを向いて,"
+    "みんなに挨拶して,皆さんに挨拶して",
+)
+VOICE_PROJECT_PHRASES_JA = _frases(
+    "VOICE_PROJECT_PHRASES_JA",
+    "投影に戻って,映写に戻って,プロジェクションに戻って,元の位置に戻って,"
+    "スクリーンを見て,スクリーンに戻って",
+)
+VOICE_MARKETING_PHRASES_JA = _frases(
+    "VOICE_MARKETING_PHRASES_JA",
+    "マーケティング 再生,マーケティング 見せて,マーケティング 流して,"
+    "マーケティング 映して,マーケティング ビデオ,マーケティング 動画",
+)
+VOICE_TRANSLATE_PHRASES_JA = _frases(
+    "VOICE_TRANSLATE_PHRASES_JA",
+    "翻訳して mech,通訳して mech,翻訳モード,通訳モード,翻訳を始めて",
+)
+VOICE_TRANSLATE_STOP_PHRASES_JA = _frases(
+    "VOICE_TRANSLATE_STOP_PHRASES_JA",
+    "翻訳をやめて,翻訳やめて,通訳をやめて,翻訳を終了,翻訳終了",
+)
+VOICE_TRIVIA_PHRASES_JA = _frases(
+    "VOICE_TRIVIA_PHRASES_JA",
+    "クイズをしよう,クイズしよう,クイズを始めて,クイズをやりたい,"
+    "クイズモード,クイズを出して",
+)
+VOICE_TRIVIA_STOP_PHRASES_JA = _frases(
+    "VOICE_TRIVIA_STOP_PHRASES_JA",
+    "クイズをやめて,クイズやめて,クイズを終了,クイズ終了,もう遊びたくない",
+)
+VOICE_YES_PHRASES_JA = _frases(
+    "VOICE_YES_PHRASES_JA",
+    "はい,うん,いいよ,いいですよ,お願いします,やります,やりたい,もちろん,オーケー",
+)
+VOICE_NO_PHRASES_JA = _frases(
+    "VOICE_NO_PHRASES_JA",
+    "いいえ,結構です,けっこうです,やめておく,やめとく,やらない,いらない,"
+    "また今度,だめ",
+)
+
+# ---- Ruso (ru) ------------------------------------------------------------
+# El nombre va escrito "mech": el matcher acepta también cómo lo escribe
+# Whisper en cirílico («мек», «мех»…, ver VOICE_NAME_ALIASES).
+VOICE_WAKE_PHRASES_RU = _frases(
+    "VOICE_WAKE_PHRASES_RU",
+    "привет mech,здравствуй mech,здравствуйте mech,добрый день mech,"
+    "доброе утро mech,проснись mech,просыпайся mech",
+)
+VOICE_SLEEP_PHRASES_RU = _frases(
+    "VOICE_SLEEP_PHRASES_RU",
+    "перестань слушать,хватит слушать,не слушай,спокойной ночи mech,"
+    "до свидания mech,спи mech,иди спать,режим сна",
+)
+VOICE_INTERRUPT_PHRASES_RU = _frases(
+    "VOICE_INTERRUPT_PHRASES_RU",
+    "эй mech,извини mech,извините mech,подожди mech,послушай mech,слушай mech",
+)
+VOICE_ADVANCE_PHRASES_RU = _frases(
+    "VOICE_ADVANCE_PHRASES_RU",
+    "вперёд,иди вперёд,двигайся вперёд,езжай вперёд",
+)
+VOICE_RETREAT_PHRASES_RU = _frases(
+    "VOICE_RETREAT_PHRASES_RU",
+    "назад,иди назад,двигайся назад,отъедь назад",
+)
+VOICE_OUTWARD_PHRASES_RU = _frases(
+    "VOICE_OUTWARD_PHRASES_RU",
+    "посмотри наружу,смотри наружу,повернись,развернись,"
+    "поприветствуй публику,поздоровайся с людьми",
+)
+VOICE_PROJECT_PHRASES_RU = _frases(
+    "VOICE_PROJECT_PHRASES_RU",
+    "вернись к проекции,вернись на место,вернись проецировать,"
+    "назад к проекции,посмотри на экран,смотри на экран",
+)
+VOICE_MARKETING_PHRASES_RU = _frases(
+    "VOICE_MARKETING_PHRASES_RU",
+    "покажи маркетинг,включи маркетинг,запусти маркетинг,маркетинг видео,"
+    "покажи marketing,включи marketing",
+)
+VOICE_TRANSLATE_PHRASES_RU = _frases(
+    "VOICE_TRANSLATE_PHRASES_RU",
+    "переведи mech,переводи mech,режим переводчика,запусти переводчик,"
+    "переводчик mech",
+)
+VOICE_TRANSLATE_STOP_PHRASES_RU = _frases(
+    "VOICE_TRANSLATE_STOP_PHRASES_RU",
+    "хватит переводить,перестань переводить,выйди из переводчика,"
+    "конец перевода",
+)
+VOICE_TRIVIA_PHRASES_RU = _frases(
+    "VOICE_TRIVIA_PHRASES_RU",
+    "давай сыграем в викторину,сыграем в викторину,начни викторину,"
+    "запусти викторину,режим викторины,хочу викторину",
+)
+VOICE_TRIVIA_STOP_PHRASES_RU = _frases(
+    "VOICE_TRIVIA_STOP_PHRASES_RU",
+    "останови викторину,выйди из викторины,хватит викторины,"
+    "закончи викторину,не хочу больше играть",
+)
+VOICE_YES_PHRASES_RU = _frases(
+    "VOICE_YES_PHRASES_RU",
+    "да,конечно,давай,хорошо,ладно,согласен,согласна,поехали",
+)
+VOICE_NO_PHRASES_RU = _frases(
+    "VOICE_NO_PHRASES_RU",
+    "нет,нет спасибо,не сейчас,не надо,потом,не хочу",
+)
+
+# ---- Chino mandarín (zh) --------------------------------------------------
+# Como el japonés, se escribe sin espacios: cada trozo se busca DENTRO de lo
+# que se oyó. Whisper escribe a veces en caracteres SIMPLIFICADOS y a veces en
+# TRADICIONALES sin avisar, así que donde cambian van las dos formas
+# (醒来 / 醒來, 翻译 / 翻譯).
+VOICE_WAKE_PHRASES_ZH = _frases(
+    "VOICE_WAKE_PHRASES_ZH",
+    "你好 mech,您好 mech,早上好 mech,早安 mech,醒醒 mech,醒来 mech,"
+    "醒來 mech,起床 mech",
+)
+VOICE_SLEEP_PHRASES_ZH = _frases(
+    "VOICE_SLEEP_PHRASES_ZH",
+    "别听了,別聽了,不要听了,不要聽了,停止聆听,停止聆聽,晚安 mech,"
+    "再见 mech,再見 mech,睡觉 mech,睡覺 mech,去睡觉,去睡覺,休眠模式",
+)
+VOICE_INTERRUPT_PHRASES_ZH = _frases(
+    "VOICE_INTERRUPT_PHRASES_ZH",
+    "嘿 mech,喂 mech,打扰一下 mech,打擾一下 mech,不好意思 mech,"
+    "等一下 mech,等等 mech",
+)
+VOICE_ADVANCE_PHRASES_ZH = _frases(
+    "VOICE_ADVANCE_PHRASES_ZH",
+    "前进,前進,往前走,向前走,往前,向前",
+)
+VOICE_RETREAT_PHRASES_ZH = _frases(
+    "VOICE_RETREAT_PHRASES_ZH",
+    "后退,後退,往后退,往後退,往后走,往後走,向后,向後",
+)
+VOICE_OUTWARD_PHRASES_ZH = _frases(
+    "VOICE_OUTWARD_PHRASES_ZH",
+    "向外看,往外看,看外面,转过去,轉過去,转身,轉身,向大家问好,"
+    "向大家問好,跟大家打招呼",
+)
+VOICE_PROJECT_PHRASES_ZH = _frases(
+    "VOICE_PROJECT_PHRASES_ZH",
+    "回去投影,回到投影,继续投影,繼續投影,回到原位,回到你的位置,"
+    "看屏幕,看螢幕,转回来,轉回來",
+)
+VOICE_MARKETING_PHRASES_ZH = _frases(
+    "VOICE_MARKETING_PHRASES_ZH",
+    "播放 营销,播放 營銷,播放 行销,播放 行銷,播放 宣传,播放 宣傳,"
+    "播放 marketing,营销视频,行銷影片,宣传片,宣傳片",
+)
+VOICE_TRANSLATE_PHRASES_ZH = _frases(
+    "VOICE_TRANSLATE_PHRASES_ZH",
+    "翻译 mech,翻譯 mech,翻译模式,翻譯模式,开始翻译,開始翻譯",
+)
+VOICE_TRANSLATE_STOP_PHRASES_ZH = _frases(
+    "VOICE_TRANSLATE_STOP_PHRASES_ZH",
+    "停止翻译,停止翻譯,别翻译了,別翻譯了,不要翻译了,不要翻譯了,"
+    "结束翻译,結束翻譯,退出翻译,退出翻譯",
+)
+VOICE_TRIVIA_PHRASES_ZH = _frases(
+    "VOICE_TRIVIA_PHRASES_ZH",
+    "玩问答,玩問答,问答游戏,問答遊戲,开始问答,開始問答,来个测验,"
+    "來個測驗,玩个游戏,玩個遊戲",
+)
+VOICE_TRIVIA_STOP_PHRASES_ZH = _frases(
+    "VOICE_TRIVIA_STOP_PHRASES_ZH",
+    "停止问答,停止問答,退出问答,退出問答,结束问答,結束問答,不玩了,"
+    "不想玩了,结束游戏,結束遊戲",
+)
+# Las de UN solo carácter (好, 是, 不…) solo cuentan si la respuesta es corta
+# y empieza por él: si no, «你好» (hola) sería un sí.
+VOICE_YES_PHRASES_ZH = _frases(
+    "VOICE_YES_PHRASES_ZH",
+    "好,好的,好啊,好呀,好吧,是,是的,可以,行,行吧,当然,當然,要,来吧,來吧,"
+    "对,對,没问题,沒問題",
+)
+VOICE_NO_PHRASES_ZH = _frases(
+    "VOICE_NO_PHRASES_ZH",
+    "不,不要,不用,不了,不行,算了,下次,以后再说,以後再說,不玩,不想",
+)
+
 # Micrófono de entrada. Vacío = dispositivo por defecto del sistema.
 # Se puede poner el índice (número) o parte del nombre del dispositivo.
 # El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda

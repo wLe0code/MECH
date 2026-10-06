@@ -1,6 +1,6 @@
-"""Idioma activo de MECH — español (default), inglés, francés o portugués.
+"""Idioma activo de MECH — español (default) y ocho idiomas más.
 
-Regla del equipo (ago 2026, ampliada sep 2026):
+Regla del equipo (ago 2026, ampliada sep y oct 2026):
 
 - MECH SIEMPRE arranca en **español**.
 - Los otros idiomas se activan si y solo si alguien lo despierta en ese
@@ -11,6 +11,11 @@ Regla del equipo (ago 2026, ampliada sep 2026):
       «wake up MECH»                 -> inglés    (en)
       «bonjour MECH» / «réveille MECH» -> francés (fr)
       «bom dia MECH» / «acorda MECH» -> portugués (pt)
+      «guten Tag MECH» / «wach auf MECH» -> alemán (de)
+      «ciao MECH» / «buongiorno MECH» -> italiano (it)
+      «こんにちは MECH» / «起きて MECH» -> japonés (ja)
+      «привет MECH» / «проснись MECH» -> ruso     (ru)
+      «你好 MECH» / «醒醒 MECH»        -> mandarín (zh)
 
 - Al dormirse (frase de reposo o botón), vuelve solo a español: así el
   siguiente visitante del stand encuentra a MECH en español.
@@ -24,6 +29,15 @@ Para AÑADIR un idioma nuevo hacen falta cuatro cosas:
   3. sus listas de frases en `config.py` (wake/sleep/interrupt/movimiento) y
      su interruptor `WAKE_<IDIOMA>_ENABLED`,
   4. su entrada en `_WAKE_FLAGS` (aquí abajo) y su chip en el panel.
+
+Y si NO se escribe con letras latinas (japonés, ruso, chino), además:
+  5. cómo escribe Whisper el nombre «MECH» en esa escritura, en
+     `config.VOICE_NAME_ALIASES`,
+  6. revisar que los subtítulos partan bien las líneas
+     (`backend/subtitles.py` cuenta el ANCHO, no las letras) y que la Pi tenga
+     una fuente con esos caracteres (`python -m backend.preflight` lo mira).
+
+Antes de darlo por bueno: `python scripts/probar_idiomas.py`.
 """
 
 from __future__ import annotations
@@ -31,7 +45,7 @@ from __future__ import annotations
 import config
 
 DEFAULT = "es"
-SUPPORTED = ("es", "en", "fr", "pt")
+SUPPORTED = ("es", "en", "fr", "pt", "de", "it", "ja", "ru", "zh")
 
 # Interruptor de config que habilita cada idioma EXTRA (el español no se
 # puede apagar: es el idioma base del stand).
@@ -39,15 +53,24 @@ _WAKE_FLAGS = {
     "en": "WAKE_ENGLISH_ENABLED",
     "fr": "WAKE_FRENCH_ENABLED",
     "pt": "WAKE_PORTUGUESE_ENABLED",
+    "de": "WAKE_GERMAN_ENABLED",
+    "it": "WAKE_ITALIAN_ENABLED",
+    "ja": "WAKE_JAPANESE_ENABLED",
+    "ru": "WAKE_RUSSIAN_ENABLED",
+    "zh": "WAKE_CHINESE_ENABLED",
 }
 
-_LABELS = {"es": "español", "en": "inglés", "fr": "francés", "pt": "portugués"}
+_LABELS = {
+    "es": "español", "en": "inglés", "fr": "francés", "pt": "portugués",
+    "de": "alemán", "it": "italiano", "ja": "japonés", "ru": "ruso",
+    "zh": "mandarín",
+}
 
 _current: str = DEFAULT
 
 
 def current() -> str:
-    """Código del idioma activo: 'es', 'en', 'fr' o 'pt'."""
+    """Código del idioma activo: uno de `SUPPORTED` ('es', 'en', 'ja'…)."""
     return _current
 
 
@@ -98,30 +121,54 @@ def label(code: str | None = None) -> str:
 # El saludo francés SÍ dice "Bonjour" y "MECH", pero no puede auto-despertarlo:
 # en reposo MECH siempre está en español (así que ese saludo no se dice), y
 # despierto el bucle ignora un despertar del idioma que ya está activo.
+# Los saludos de alemán, italiano, japonés, ruso y chino evitan sus propias
+# palabras de despertar ("Willkommen" en vez de "guten Tag", "ようこそ" en vez
+# de "こんにちは"): así `GREETING_LANGUAGE` se puede poner en cualquiera de
+# ellos sin que el saludo, dicho en reposo, despierte a MECH.
 _PHRASES: dict[str, dict[str, str]] = {
     "awake": {
         "es": "Hola, ya te escucho.",
         "en": "Hi, I'm listening.",
         "fr": "Salut, je t'écoute.",
         "pt": "Olá, já te escuto.",
+        "de": "Hallo, ich höre zu.",
+        "it": "Ciao, ti ascolto.",
+        "ja": "はい、聞いています。",
+        "ru": "Привет, я слушаю.",
+        "zh": "你好，我在听。",
     },
     "dormant": {
         "es": "De acuerdo, hasta luego.",
         "en": "All right, see you later.",
         "fr": "D'accord, à bientôt.",
         "pt": "Está bem, até logo.",
+        "de": "In Ordnung, bis später.",
+        "it": "D'accordo, a dopo.",
+        "ja": "わかりました。また後で。",
+        "ru": "Хорошо, до встречи.",
+        "zh": "好的，回头见。",
     },
     "greeting": {
         "es": "¡Hola! Soy MECH. Un gusto verte hoy aquí.",
         "en": "Hello! I am MECH. It's a pleasure to see you here today.",
         "fr": "Bonjour ! Je suis MECH. Ravi de te voir ici aujourd'hui.",
         "pt": "Olá! Eu sou o MECH. É um prazer ver você aqui hoje.",
+        "de": "Willkommen! Ich bin MECH. Schön, dich heute hier zu sehen.",
+        "it": "Benvenuto! Sono MECH. È un piacere vederti qui oggi.",
+        "ja": "ようこそ！私はMECHです。今日ここでお会いできて嬉しいです。",
+        "ru": "Добро пожаловать! Я MECH. Рад видеть тебя здесь сегодня.",
+        "zh": "欢迎！我是MECH。很高兴今天在这里见到你。",
     },
     "error": {
         "es": "Disculpa, tuve un problema. ¿Puedes repetirme?",
         "en": "Sorry, I ran into a problem. Could you say that again?",
         "fr": "Désolé, j'ai eu un problème. Peux-tu répéter ?",
         "pt": "Desculpa, tive um problema. Pode repetir?",
+        "de": "Entschuldigung, ich hatte ein Problem. Kannst du das wiederholen?",
+        "it": "Scusa, ho avuto un problema. Puoi ripetere?",
+        "ja": "すみません、問題が起きました。もう一度言ってもらえますか？",
+        "ru": "Извини, у меня возникла проблема. Можешь повторить?",
+        "zh": "抱歉，我遇到了一点问题。可以再说一遍吗？",
     },
     # Lo que dice al ser interrumpido con "oye MECH" / "hey MECH".
     # Es una PREGUNTA a propósito: así el visitante sabe que le toca hablar
@@ -131,6 +178,11 @@ _PHRASES: dict[str, dict[str, str]] = {
         "en": "Of course, what would you like me to talk about?",
         "fr": "Bien sûr, de quoi veux-tu que je parle ?",
         "pt": "Claro, sobre o que você quer que eu fale?",
+        "de": "Klar, worüber soll ich sprechen?",
+        "it": "Certo, di cosa vuoi che parli?",
+        "ja": "もちろんです。何について話しましょうか？",
+        "ru": "Конечно, о чём мне рассказать?",
+        "zh": "当然，你想让我讲什么？",
     },
     # Cuando piden proyectar un slot que todavía no tiene videos subidos.
     "empty_playlist": {
@@ -138,12 +190,22 @@ _PHRASES: dict[str, dict[str, str]] = {
         "en": "I don't have any videos in that slot yet.",
         "fr": "Je n'ai pas encore de vidéos dans cet espace.",
         "pt": "Ainda não tenho vídeos nesse espaço.",
+        "de": "In diesem Bereich habe ich noch keine Videos.",
+        "it": "Non ho ancora video in questo spazio.",
+        "ja": "そのスペースにはまだ動画がありません。",
+        "ru": "В этом разделе у меня пока нет видео.",
+        "zh": "这个栏目里还没有视频。",
     },
     "switched": {
         "es": "Listo, sigo en español.",
         "en": "All right, I'll continue in English.",
         "fr": "D'accord, je continue en français.",
         "pt": "Certo, vou continuar em português.",
+        "de": "Alles klar, ich mache auf Deutsch weiter.",
+        "it": "Va bene, continuo in italiano.",
+        "ja": "わかりました。日本語で続けます。",
+        "ru": "Хорошо, продолжаю по-русски.",
+        "zh": "好的，我接下来说中文。",
     },
     # --- Modo traductor (ver backend/translator.py) ------------------------
     # Lo que pregunta al entrar. Es una PREGUNTA: justo después suena el
@@ -157,90 +219,165 @@ _PHRASES: dict[str, dict[str, str]] = {
         "en": "Would you like to take a trivia to test your knowledge?",
         "fr": "Aimerais-tu faire un quiz pour tester tes connaissances ?",
         "pt": "Gostarias de fazer uma trivia para testar o teu conhecimento?",
+        "de": "Möchtest du ein Quiz machen, um dein Wissen zu testen?",
+        "it": "Ti piacerebbe fare un quiz per mettere alla prova le tue conoscenze?",
+        "ja": "知識を試すクイズに挑戦してみませんか？",
+        "ru": "Хочешь пройти викторину, чтобы проверить свои знания?",
+        "zh": "想不想做个小测验，检验一下你学到了什么？",
     },
     "trivia_preparing": {
         "es": "Dame un momento, preparo las preguntas.",
         "en": "Give me a moment, I'm writing the questions.",
         "fr": "Un instant, je prépare les questions.",
         "pt": "Um momento, estou a preparar as perguntas.",
+        "de": "Einen Moment, ich bereite die Fragen vor.",
+        "it": "Dammi un momento, preparo le domande.",
+        "ja": "少々お待ちください。問題を準備しています。",
+        "ru": "Одну минуту, я готовлю вопросы.",
+        "zh": "请稍等，我正在准备题目。",
     },
     "trivia_intro": {
         "es": "Allá vamos. Son {total} preguntas.",
         "en": "Here we go. {total} questions.",
         "fr": "C'est parti. {total} questions.",
         "pt": "Vamos lá. São {total} perguntas.",
+        "de": "Los geht's. Es sind {total} Fragen.",
+        "it": "Si parte. Sono {total} domande.",
+        "ja": "それでは始めます。全部で{total}問です。",
+        "ru": "Поехали. Количество вопросов: {total}.",
+        "zh": "开始吧。一共{total}道题。",
     },
     "trivia_failed": {
         "es": "No pude preparar las preguntas. ¿Te cuento otra cosa?",
         "en": "I couldn't put the questions together. Shall I tell you something else?",
         "fr": "Je n'ai pas pu préparer les questions. Je te raconte autre chose ?",
         "pt": "Não consegui preparar as perguntas. Conto-te outra coisa?",
+        "de": "Ich konnte die Fragen nicht vorbereiten. Soll ich dir etwas anderes erzählen?",
+        "it": "Non sono riuscito a preparare le domande. Ti racconto qualcos'altro?",
+        "ja": "問題を準備できませんでした。ほかの話をしましょうか？",
+        "ru": "Не получилось подготовить вопросы. Рассказать что-нибудь другое?",
+        "zh": "题目没有准备好。要不要我讲点别的？",
     },
     "trivia_question_header": {
         "es": "Pregunta {n} de {total}.",
         "en": "Question {n} of {total}.",
         "fr": "Question {n} sur {total}.",
         "pt": "Pergunta {n} de {total}.",
+        "de": "Frage {n} von {total}.",
+        "it": "Domanda {n} di {total}.",
+        "ja": "{total}問中、第{n}問。",
+        "ru": "Вопрос {n} из {total}.",
+        "zh": "第{n}题，共{total}题。",
     },
     "trivia_correct": {
         "es": "¡Correcto!",
         "en": "That's right!",
         "fr": "Exact !",
         "pt": "Certo!",
+        "de": "Richtig!",
+        "it": "Esatto!",
+        "ja": "正解です！",
+        "ru": "Верно!",
+        "zh": "答对了！",
     },
     "trivia_wrong": {
         "es": "No has acertado. La respuesta correcta es la {letter}: {answer}.",
         "en": "You didn't get it. The correct answer is {letter}: {answer}.",
         "fr": "Raté. La bonne réponse est la {letter} : {answer}.",
         "pt": "Não acertaste. A resposta certa é a {letter}: {answer}.",
+        "de": "Leider falsch. Die richtige Antwort ist {letter}: {answer}.",
+        "it": "Non hai indovinato. La risposta corretta è la {letter}: {answer}.",
+        "ja": "残念、不正解です。正解は{letter}、{answer}です。",
+        "ru": "Не угадал. Правильный ответ — {letter}: {answer}.",
+        "zh": "答错了。正确答案是{letter}：{answer}。",
     },
     "trivia_pass": {
         "es": "Te la dejo: la respuesta correcta es la {letter}: {answer}.",
         "en": "I'll give you that one: the right answer is {letter}: {answer}.",
         "fr": "Je te la donne : la bonne réponse est la {letter} : {answer}.",
         "pt": "Fica esta: a resposta certa é a {letter}: {answer}.",
+        "de": "Die verrate ich dir: Die richtige Antwort ist {letter}: {answer}.",
+        "it": "Te la dico io: la risposta corretta è la {letter}: {answer}.",
+        "ja": "では答えを言います。正解は{letter}、{answer}です。",
+        "ru": "Подскажу: правильный ответ — {letter}: {answer}.",
+        "zh": "这题我来公布：正确答案是{letter}：{answer}。",
     },
     "trivia_repeat": {
         "es": "Contesta diciendo la letra, por ejemplo: la A.",
         "en": "Answer with a letter, for example: A.",
         "fr": "Réponds avec une lettre, par exemple : la A.",
         "pt": "Responde com uma letra, por exemplo: a A.",
+        "de": "Antworte mit einem Buchstaben, zum Beispiel: A.",
+        "it": "Rispondi con una lettera, per esempio: la A.",
+        "ja": "アルファベットで答えてください。たとえば、A。",
+        "ru": "Ответь буквой, например: A.",
+        "zh": "请用字母回答，比如：A。",
     },
     "trivia_final": {
         "es": "Fin del juego. Acertaste {score} de {total}.",
         "en": "Game over. You got {score} out of {total}.",
         "fr": "Fin du jeu. Tu as {score} bonnes réponses sur {total}.",
         "pt": "Fim do jogo. Acertaste {score} de {total}.",
+        "de": "Spiel vorbei. Du hast {score} von {total} richtig.",
+        "it": "Fine del gioco. Ne hai indovinate {score} su {total}.",
+        "ja": "ゲーム終了です。{total}問中{score}問正解でした。",
+        "ru": "Игра окончена. Правильных ответов: {score} из {total}.",
+        "zh": "游戏结束。{total}道题你答对了{score}道。",
     },
     "trivia_perfect": {
         "es": "¡Perfecto! Las {total} correctas. Estabas atento.",
         "en": "Perfect! All {total} correct. You were paying attention.",
         "fr": "Parfait ! Les {total} bonnes. Tu étais attentif.",
         "pt": "Perfeito! As {total} certas. Estavas atento.",
+        "de": "Perfekt! Alle {total} richtig. Du hast gut aufgepasst.",
+        "it": "Perfetto! Tutte e {total} corrette. Eri attento.",
+        "ja": "完璧です！{total}問すべて正解。よく聞いていましたね。",
+        "ru": "Отлично! Все {total} верно. Ты слушал внимательно.",
+        "zh": "太棒了！{total}道题全对。你听得很认真。",
     },
     "trivia_zero": {
         "es": "Ninguna esta vez, pero ahora ya te las sabes.",
         "en": "None this time, but now you know them.",
         "fr": "Aucune cette fois, mais maintenant tu les connais.",
         "pt": "Nenhuma desta vez, mas agora já as sabes.",
+        "de": "Diesmal keine, aber jetzt kennst du die Antworten.",
+        "it": "Nessuna questa volta, ma ora le sai.",
+        "ja": "今回は全問不正解でしたが、これで覚えましたね。",
+        "ru": "В этот раз ни одного, зато теперь ты их знаешь.",
+        "zh": "这次一题都没答对，不过现在你都知道了。",
     },
     "trivia_off": {
         "es": "Listo, dejamos el juego.",
         "en": "All right, we'll stop the game.",
         "fr": "D'accord, on arrête le jeu.",
         "pt": "Pronto, paramos o jogo.",
+        "de": "Alles klar, wir beenden das Spiel.",
+        "it": "Va bene, lasciamo il gioco.",
+        "ja": "わかりました。ゲームを終わります。",
+        "ru": "Хорошо, заканчиваем игру.",
+        "zh": "好的，游戏到此结束。",
     },
     "trivia_declined": {
         "es": "Sin problema. ¿Qué más quieres saber?",
         "en": "No problem. What else would you like to know?",
         "fr": "Pas de souci. Que veux-tu savoir d'autre ?",
         "pt": "Sem problema. Que mais queres saber?",
+        "de": "Kein Problem. Was möchtest du noch wissen?",
+        "it": "Nessun problema. Cos'altro vuoi sapere?",
+        "ja": "大丈夫です。ほかに知りたいことはありますか？",
+        "ru": "Без проблем. Что ещё ты хочешь узнать?",
+        "zh": "没关系。你还想了解什么？",
     },
     "translate_ask": {
         "es": "Modo traductor. ¿De qué idioma a qué idioma traduzco?",
         "en": "Translator mode. Which language should I translate from and into?",
         "fr": "Mode traducteur. De quelle langue vers quelle langue dois-je traduire ?",
         "pt": "Modo tradutor. De que idioma para que idioma devo traduzir?",
+        "de": "Übersetzermodus. Aus welcher Sprache in welche Sprache soll ich übersetzen?",
+        "it": "Modalità traduttore. Da quale lingua a quale lingua devo tradurre?",
+        "ja": "通訳モードです。何語から何語に翻訳しますか？",
+        "ru": "Режим переводчика. С какого языка на какой мне переводить?",
+        "zh": "翻译模式。要从哪种语言翻译成哪种语言？",
     },
     # Al fijar el par: confirma y pide la frase de una vez (una sola
     # intervención, que en un stand se agradece).
@@ -249,6 +386,11 @@ _PHRASES: dict[str, dict[str, str]] = {
         "en": "Got it, I'll translate between {src} and {dst}. What should I translate?",
         "fr": "D'accord, je traduis entre {src} et {dst}. Que dois-je traduire ?",
         "pt": "Certo, traduzo entre {src} e {dst}. O que você quer que eu traduza?",
+        "de": "Alles klar, ich übersetze zwischen {src} und {dst}. Was soll ich übersetzen?",
+        "it": "Va bene, traduco tra {src} e {dst}. Cosa vuoi che traduca?",
+        "ja": "わかりました。{src}と{dst}の間で翻訳します。何を翻訳しますか？",
+        "ru": "Хорошо, перевожу между языками: {src} и {dst}. Что перевести?",
+        "zh": "好的，我在{src}和{dst}之间翻译。要翻译什么？",
     },
     # A partir de la segunda vez ya sabe el par, así que va directo al grano.
     "translate_ask_phrase": {
@@ -256,30 +398,61 @@ _PHRASES: dict[str, dict[str, str]] = {
         "en": "What should I translate?",
         "fr": "Que dois-je traduire ?",
         "pt": "O que você quer que eu traduza?",
+        "de": "Was soll ich übersetzen?",
+        "it": "Cosa vuoi che traduca?",
+        "ja": "何を翻訳しますか？",
+        "ru": "Что перевести?",
+        "zh": "要翻译什么？",
     },
     "translate_pair_unknown": {
         "es": "No entendí el par de idiomas. Dime, por ejemplo: de español a francés.",
         "en": "I didn't catch the language pair. Say, for example: from English to Spanish.",
         "fr": "Je n'ai pas compris les deux langues. Dis par exemple : du français à l'espagnol.",
         "pt": "Não entendi o par de idiomas. Diga, por exemplo: de português para espanhol.",
+        "de": "Ich habe das Sprachpaar nicht verstanden. Sag zum Beispiel: von Deutsch nach Spanisch.",
+        "it": "Non ho capito le due lingue. Di' per esempio: dall'italiano allo spagnolo.",
+        "ja": "言語の組み合わせが分かりませんでした。たとえば「日本語からスペイン語」と言ってください。",
+        "ru": "Я не понял, какие языки. Скажи, например: с русского на испанский.",
+        "zh": "我没听清是哪两种语言。比如你可以说：从中文到西班牙语。",
     },
     "translate_same": {
         "es": "Son el mismo idioma. Dime dos distintos.",
         "en": "That's the same language twice. Give me two different ones.",
         "fr": "C'est deux fois la même langue. Donne-m'en deux différentes.",
         "pt": "É o mesmo idioma duas vezes. Diga dois diferentes.",
+        "de": "Das ist zweimal dieselbe Sprache. Nenne mir zwei verschiedene.",
+        "it": "È la stessa lingua due volte. Dimmene due diverse.",
+        "ja": "同じ言語が二つです。別々の言語を二つ言ってください。",
+        "ru": "Это один и тот же язык. Назови два разных.",
+        "zh": "这是同一种语言。请说两种不同的语言。",
     },
+    # ⚠️ En TODOS los idiomas esta frase casa, a propósito, con la orden de
+    # salir («deja de traducir»). Justo después de decirla se abre el
+    # micrófono: si MECH se oye a sí mismo, eso se lee como otro «deja de
+    # traducir» y, como ya no hay nada que olvidar, se ignora en silencio. Si
+    # NO casara, su eco se iría a Claude como una pregunta cualquiera.
+    # `scripts/probar_idiomas.py` lo comprueba: no la reescribas sin correrlo.
     "translate_off": {
         "es": "Listo, dejo de traducir.",
         "en": "All right, I'll stop translating.",
         "fr": "D'accord, j'arrête de traduire.",
         "pt": "Certo, paro de traduzir.",
+        "de": "Alles klar, ich höre auf zu übersetzen.",
+        "it": "Va bene, smetto di tradurre.",
+        "ja": "わかりました。翻訳を終了します。",
+        "ru": "Хорошо, перестаю переводить.",
+        "zh": "好的，我停止翻译了。",
     },
     "translate_error": {
         "es": "No pude traducir eso. ¿Puedes repetirlo?",
         "en": "I couldn't translate that. Could you say it again?",
         "fr": "Je n'ai pas pu traduire ça. Peux-tu répéter ?",
         "pt": "Não consegui traduzir isso. Pode repetir?",
+        "de": "Das konnte ich nicht übersetzen. Kannst du es wiederholen?",
+        "it": "Non sono riuscito a tradurlo. Puoi ripetere?",
+        "ja": "翻訳できませんでした。もう一度言ってもらえますか？",
+        "ru": "Не получилось это перевести. Можешь повторить?",
+        "zh": "这句我没能翻译出来。可以再说一遍吗？",
     },
 }
 
@@ -308,21 +481,68 @@ def say(key: str, code: str | None = None, **fmt: object) -> str:
 # que usa `voice_phrases.extract_language_pair()` para entender "de español a
 # francés" (normalizada: sin acentos y en minúsculas).
 _LANGUAGE_NAMES: dict[str, dict[str, str]] = {
-    "es": {"es": "español", "en": "inglés", "fr": "francés", "pt": "portugués"},
-    "en": {"es": "Spanish", "en": "English", "fr": "French", "pt": "Portuguese"},
-    "fr": {"es": "espagnol", "en": "anglais", "fr": "français", "pt": "portugais"},
-    "pt": {"es": "espanhol", "en": "inglês", "fr": "francês", "pt": "português"},
+    "es": {"es": "español", "en": "inglés", "fr": "francés", "pt": "portugués",
+           "de": "alemán", "it": "italiano", "ja": "japonés", "ru": "ruso",
+           "zh": "chino mandarín"},
+    "en": {"es": "Spanish", "en": "English", "fr": "French", "pt": "Portuguese",
+           "de": "German", "it": "Italian", "ja": "Japanese", "ru": "Russian",
+           "zh": "Mandarin Chinese"},
+    "fr": {"es": "espagnol", "en": "anglais", "fr": "français", "pt": "portugais",
+           "de": "allemand", "it": "italien", "ja": "japonais", "ru": "russe",
+           "zh": "chinois mandarin"},
+    "pt": {"es": "espanhol", "en": "inglês", "fr": "francês", "pt": "português",
+           "de": "alemão", "it": "italiano", "ja": "japonês", "ru": "russo",
+           "zh": "chinês mandarim"},
+    "de": {"es": "Spanisch", "en": "Englisch", "fr": "Französisch",
+           "pt": "Portugiesisch", "de": "Deutsch", "it": "Italienisch",
+           "ja": "Japanisch", "ru": "Russisch", "zh": "Chinesisch"},
+    "it": {"es": "spagnolo", "en": "inglese", "fr": "francese",
+           "pt": "portoghese", "de": "tedesco", "it": "italiano",
+           "ja": "giapponese", "ru": "russo", "zh": "cinese"},
+    "ja": {"es": "スペイン語", "en": "英語", "fr": "フランス語", "pt": "ポルトガル語",
+           "de": "ドイツ語", "it": "イタリア語", "ja": "日本語", "ru": "ロシア語",
+           "zh": "中国語"},
+    "ru": {"es": "испанский", "en": "английский", "fr": "французский",
+           "pt": "португальский", "de": "немецкий", "it": "итальянский",
+           "ja": "японский", "ru": "русский", "zh": "китайский"},
+    "zh": {"es": "西班牙语", "en": "英语", "fr": "法语", "pt": "葡萄牙语",
+           "de": "德语", "it": "意大利语", "ja": "日语", "ru": "俄语",
+           "zh": "中文"},
 }
 
 # Cómo puede llamarse cada idioma en una frase hablada, en cualquiera de los
-# cuatro. Se compara con el matcher tolerante de `voice_phrases`, así que no
+# nueve. Se compara con el matcher tolerante de `voice_phrases`, así que no
 # hacen falta todas las variantes ortográficas — pero sí las que NO están a
 # una letra de distancia ("francais" vs "frances", "portugais" vs "portugues").
+#
+# En ruso van el nominativo y el genitivo ("русский" / "русского"), porque la
+# frase natural es «с русского на испанский» y el genitivo queda a tres letras
+# del nominativo. En japonés y chino el nombre se busca DENTRO de lo oído
+# («日本語からスペイン語に» va todo pegado); el chino lleva las formas
+# simplificada y tradicional.
 _LANGUAGE_WORDS: dict[str, tuple[str, ...]] = {
-    "es": ("espanol", "espanhol", "castellano", "spanish", "espagnol"),
-    "en": ("ingles", "english", "anglais"),
-    "fr": ("frances", "francais", "french"),
-    "pt": ("portugues", "portugais", "portuguese", "brasileiro"),
+    "es": ("espanol", "espanhol", "castellano", "spanish", "espagnol",
+           "spanisch", "spagnolo", "испанский", "испанского",
+           "スペイン語", "西班牙语", "西班牙語", "西班牙文", "西语", "西語"),
+    "en": ("ingles", "english", "anglais", "englisch", "inglese",
+           "английский", "английского", "英語", "英语", "英文"),
+    "fr": ("frances", "francais", "french", "französisch", "francese",
+           "французский", "французского", "フランス語", "法语", "法語", "法文"),
+    "pt": ("portugues", "portugais", "portuguese", "brasileiro",
+           "portugiesisch", "portoghese", "португальский", "португальского",
+           "ポルトガル語", "葡萄牙语", "葡萄牙語", "葡萄牙文", "葡语", "葡語"),
+    "de": ("aleman", "alemao", "german", "allemand", "deutsch", "tedesco",
+           "немецкий", "немецкого", "ドイツ語", "德语", "德語", "德文"),
+    "it": ("italiano", "italian", "italien", "italienisch",
+           "итальянский", "итальянского", "イタリア語",
+           "意大利语", "意大利語", "義大利語", "意大利文", "義大利文"),
+    "ja": ("japones", "japanese", "japonais", "japanisch", "giapponese",
+           "японский", "японского", "日本語", "日语", "日語", "日文"),
+    "ru": ("ruso", "russian", "russe", "russisch", "russo",
+           "русский", "русского", "ロシア語", "俄语", "俄語", "俄文"),
+    "zh": ("chino", "mandarin", "chinese", "chinois", "chinesisch", "cinese",
+           "китайский", "китайского", "中国語", "中文", "汉语", "漢語",
+           "普通话", "普通話", "国语", "國語", "华语", "華語"),
 }
 
 
@@ -360,6 +580,16 @@ _LLM_DIRECTIVES = {
     "en": ("INGLÉS", "inglés natural y fluido", "English"),
     "fr": ("FRANCÉS", "francés natural y fluido", "français"),
     "pt": ("PORTUGUÉS", "portugués natural y fluido (de Brasil)", "português"),
+    "de": ("ALEMÁN", "alemán natural y fluido", "Deutsch"),
+    "it": ("ITALIANO", "italiano natural y fluido", "italiano"),
+    "ja": ("JAPONÉS", "japonés natural y fluido, en forma cortés (です/ます)",
+           "日本語"),
+    "ru": ("RUSO", "ruso natural y fluido", "русский"),
+    # Simplificados a propósito: es lo que lee la mayoría y lo que casa con
+    # el `initial_prompt` de Whisper para este idioma.
+    "zh": ("CHINO MANDARÍN",
+           "chino mandarín natural y fluido, en caracteres SIMPLIFICADOS",
+           "中文"),
 }
 
 

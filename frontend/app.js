@@ -225,6 +225,11 @@
     en: { nombre: 'INGLÉS', wake: 'wake up MECH' },
     fr: { nombre: 'FRANCÉS', wake: 'bonjour MECH' },
     pt: { nombre: 'PORTUGUÉS', wake: 'bom dia MECH' },
+    de: { nombre: 'ALEMÁN', wake: 'guten Tag MECH' },
+    it: { nombre: 'ITALIANO', wake: 'ciao MECH' },
+    ja: { nombre: 'JAPONÉS', wake: 'こんにちは MECH' },
+    ru: { nombre: 'RUSO', wake: 'привет MECH' },
+    zh: { nombre: 'MANDARÍN', wake: '你好 MECH' },
   };
 
   // Estado de la tarjeta del modo traductor (vista Voz).
@@ -336,7 +341,7 @@
   function applyState(s) {
     state.backend = s;
     // Idioma activo (español por defecto; los demás solo si lo despiertan
-    // en ese idioma: "wake up MECH", "bonjour MECH", "bom dia MECH").
+    // en ese idioma: "wake up MECH", "bonjour MECH", "こんにちは MECH"…).
     updateLanguage(s.language || 'es');
     // Modo traductor ("traduce MECH"): par de idiomas y si está encendido.
     updateTranslator(s.translator);
@@ -512,13 +517,17 @@
       vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6,
       a: Math.random() * Math.PI * 2,
     }));
-    let hue = 240;
+    // El color respira entre verde azulado y azul, alrededor del cian del
+    // panel (antes daba la vuelta entera al arcoíris, empezando en violeta).
+    let fase = 0;
+    let hue = 190;
 
     function draw() {
       state.immAnim = requestAnimationFrame(draw);
-      ctx.fillStyle = 'rgba(5,5,20,0.18)';
+      ctx.fillStyle = 'rgba(6,8,9,0.18)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      hue = (hue + 0.25) % 360;
+      fase += 0.004;
+      hue = 190 + Math.sin(fase) * 22;
       pts.forEach(p => {
         p.x += p.vx; p.y += p.vy; p.a += 0.012;
         if (p.x < 0) p.x = canvas.width;
@@ -527,7 +536,7 @@
         if (p.y > canvas.height) p.y = 0;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * (1 + Math.sin(p.a) * 0.5), 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${hue + p.x / canvas.width * 80},80%,70%,0.85)`;
+        ctx.fillStyle = `hsla(${hue + p.x / canvas.width * 36},80%,68%,0.85)`;
         ctx.fill();
       });
     }

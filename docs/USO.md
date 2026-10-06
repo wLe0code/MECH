@@ -64,18 +64,66 @@ ese idioma hasta que se duerma:
 | «wake up MECH» | 🇬🇧 inglés |
 | «bonjour MECH» · «salut MECH» · «réveille MECH» | 🇫🇷 francés |
 | «bom dia MECH» · «boa tarde MECH» · «acorda MECH» | 🇵🇹 portugués |
+| «guten Tag MECH» · «guten Morgen MECH» · «wach auf MECH» | 🇩🇪 alemán |
+| «ciao MECH» · «buongiorno MECH» · «svegliati MECH» | 🇮🇹 italiano |
+| «こんにちは MECH» (*konnichiwa*) · «起きて MECH» (*okite*) | 🇯🇵 japonés |
+| «привет MECH» (*privet*) · «проснись MECH» (*prosnís*) | 🇷🇺 ruso |
+| «你好 MECH» (*nǐ hǎo*) · «醒醒 MECH» (*xǐng xing*) | 🇨🇳 mandarín |
 
 Al dormirse **vuelve solo a español**, listo para el siguiente visitante.
 
 > ⚠️ Esto es a propósito: si alguien le habla en francés a un MECH despierto
 > en español, MECH entiende mal. Hay que dormirlo y despertarlo en el otro
 > idioma (o decir la frase de despertar de ese idioma estando despierto).
-> Para probar sin hablar: panel → vista **Voz** → chips ES / EN / FR / PT.
+> Para probar sin hablar: panel → vista **Voz** → un chip por idioma.
 
 ### Para dormirlo
 
 «para de escuchar», «deja de escuchar», «duérmete MECH», «descansa MECH»,
 «modo reposo». En inglés «stop listening» o «go to sleep».
+
+En los demás idiomas: «gute Nacht MECH» (alemán), «buonanotte MECH»
+(italiano), «おやすみ MECH» (*oyasumi*, japonés), «спокойной ночи MECH»
+(*spokóynoy nochi*, ruso), «晚安 MECH» (*wǎn'ān*, mandarín). Y siempre vale
+apagarlo desde el panel.
+
+### Alemán, italiano, japonés, ruso y mandarín: lo que hay que saber
+
+Se añadieron en octubre de 2026 y **todavía no se han probado con el
+micrófono de verdad** (sí con texto, ver abajo). Tres cosas que no pasan con
+los otros idiomas:
+
+1. **En alemán NO es «hallo MECH».** Suena casi igual que «hello MECH», y un
+   visitante que saludara en inglés despertaría a MECH en alemán. Se usa
+   «guten Tag MECH».
+2. **En japonés, ruso y chino, MECH puede no reconocer su nombre.** El
+   programa que transcribe la voz lo escribe como le suena («メック»,
+   «мек», «麦克»…) y no siempre igual. Si le hablan en uno de esos idiomas y
+   no despierta, el panel lo dice: *«Oí en japonés: '…' (no es una frase de
+   despertar)»*. Mira cómo salió escrito el nombre y añádelo en
+   `backend/.env`, en la línea `VOICE_NAME_ALIASES` (ver `.env.example`).
+   También ayuda poner `WHISPER_MODEL=small` en Ajustes: entiende bastante
+   mejor estos idiomas, a cambio de tardar más.
+3. **Para que el japonés y el chino se LEAN en la proyección** (subtítulos y
+   trivia), la Pi necesita una fuente con esos caracteres. Sin ella salen
+   cuadritos vacíos. Se instala una sola vez:
+
+   ```bash
+   sudo apt install fonts-noto-cjk
+   ```
+
+   `python -m backend.preflight` avisa si falta.
+
+Si en el evento no vais a usar alguno, apagadlo en `backend/.env`
+(`WAKE_GERMAN_ENABLED=false`, `WAKE_JAPANESE_ENABLED=false`…): cada idioma
+encendido es una lista más de frases contra la que se compara todo lo que
+MECH oye en reposo.
+
+Para comprobar las frases de todos los idiomas sin micrófono:
+
+```bash
+python scripts/probar_idiomas.py
+```
 
 > Si se despide con una frase larga **pero sigue escuchando**, no reconoció
 > la orden como tal. Repítela con **«para de escuchar»**, que es la más
@@ -183,7 +231,8 @@ MECH: «Muy bien, gracias.»
   se dijo la frase y la pasa al otro.
 - **Se puede nombrar el par en el propio comando** y se salta la pregunta:
   «traduce MECH del inglés al portugués», «traduce MECH al francés».
-- **«deja de traducir»** olvida el par. También se olvida al dormir a MECH y
+- **«deja de traducir»** olvida el par, en cualquier momento (a mitad de un
+  turno o cuando ya terminó de traducir). También se olvida al dormir a MECH y
   con el paro de emergencia.
 - La traducción sale también como **subtítulo** en la proyección.
 - Desde el panel: vista **Voz** → tarjeta TRADUCTOR (los dos idiomas y los
@@ -315,6 +364,8 @@ todo lo que hace. La mayoría de las veces el problema se ve de una.
 
 | Lo que pasa | Qué mirar |
 |---|---|
+| **Le hablan en japonés, ruso o chino y no despierta** | Mira el panel: sale *«Oí en japonés: '…'»* con lo que entendió. Si el nombre está escrito de otra forma, añádelo a `VOICE_NAME_ALIASES` (§2). |
+| **Los subtítulos en japonés o chino salen como cuadritos** | Falta la fuente en la Pi: `sudo apt install fonts-noto-cjk` y volver a abrir la proyección. |
 | **No despierta con «ok MECH»** | ¿Se mueven las barras del micrófono en el panel? Si no, es el micrófono: revisa que el receptor USB del Steren esté puesto y el micrófono de solapa encendido. Si sí se mueven, baja **«Umbral ruido»** en Ajustes. |
 | **Se despierta solo / graba fantasmas** | Sube **«Umbral ruido»**. |
 | **No se duerme** | Dile **«para de escuchar»** (§2). |
@@ -359,7 +410,7 @@ en su sitio de proyección. También olvida el par de idiomas del traductor.
 
 | Se le dice | Hace |
 |---|---|
-| «ok MECH» / «wake up MECH» / «bonjour MECH» / «bom dia MECH» | Despierta en ese idioma |
+| «ok MECH» / «wake up MECH» / «bonjour MECH» / «bom dia MECH» / «guten Tag MECH» / «ciao MECH» / «こんにちは MECH» / «привет MECH» / «你好 MECH» | Despierta en ese idioma |
 | «para de escuchar» / «duérmete MECH» | Vuelve a reposo |
 | «háblame de …» / «cuéntame …» / «¿quién fue …?» | Narra y proyecta |
 | «oye MECH» | Corta la narración |
