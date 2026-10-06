@@ -16,6 +16,7 @@ Regla del equipo (ago 2026, ampliada sep y oct 2026):
       «こんにちは MECH» / «起きて MECH» -> japonés (ja)
       «привет MECH» / «проснись MECH» -> ruso     (ru)
       «你好 MECH» / «醒醒 MECH»        -> mandarín (zh)
+      «안녕 MECH» / «일어나 MECH»      -> coreano  (ko)
 
 - Al dormirse (frase de reposo o botón), vuelve solo a español: así el
   siguiente visitante del stand encuentra a MECH en español.
@@ -34,7 +35,7 @@ Para AÑADIR un idioma nuevo hacen falta cuatro cosas:
      su interruptor `WAKE_<IDIOMA>_ENABLED`,
   4. su entrada en `_WAKE_FLAGS` (aquí abajo) y su chip en el panel.
 
-Y si NO se escribe con letras latinas (japonés, ruso, chino), además:
+Y si NO se escribe con letras latinas (japonés, ruso, chino, coreano), además:
   5. cómo escribe Whisper el nombre «MECH» en esa escritura, en
      `config.VOICE_NAME_ALIASES`,
   6. revisar que los subtítulos partan bien las líneas
@@ -49,7 +50,7 @@ from __future__ import annotations
 import config
 
 DEFAULT = "es"
-SUPPORTED = ("es", "en", "fr", "pt", "de", "it", "ja", "ru", "zh")
+SUPPORTED = ("es", "en", "fr", "pt", "de", "it", "ja", "ru", "zh", "ko")
 
 # Interruptor de config que habilita cada idioma EXTRA (el español no se
 # puede apagar: es el idioma base del stand).
@@ -62,12 +63,13 @@ _WAKE_FLAGS = {
     "ja": "WAKE_JAPANESE_ENABLED",
     "ru": "WAKE_RUSSIAN_ENABLED",
     "zh": "WAKE_CHINESE_ENABLED",
+    "ko": "WAKE_KOREAN_ENABLED",
 }
 
 _LABELS = {
     "es": "español", "en": "inglés", "fr": "francés", "pt": "portugués",
     "de": "alemán", "it": "italiano", "ja": "japonés", "ru": "ruso",
-    "zh": "mandarín",
+    "zh": "mandarín", "ko": "coreano",
 }
 
 _current: str = DEFAULT
@@ -125,10 +127,11 @@ def label(code: str | None = None) -> str:
 # El saludo francés SÍ dice "Bonjour" y "MECH", pero no puede auto-despertarlo:
 # en reposo MECH siempre está en español (así que ese saludo no se dice), y
 # despierto el bucle ignora un despertar del idioma que ya está activo.
-# Los saludos de alemán, italiano, japonés, ruso y chino evitan sus propias
-# palabras de despertar ("Willkommen" en vez de "guten Tag", "ようこそ" en vez
-# de "こんにちは"): así `GREETING_LANGUAGE` se puede poner en cualquiera de
-# ellos sin que el saludo, dicho en reposo, despierte a MECH.
+# Los saludos de alemán, italiano, japonés, ruso, chino y coreano evitan sus
+# propias palabras de despertar ("Willkommen" en vez de "guten Tag", "ようこそ"
+# en vez de "こんにちは", "환영합니다" en vez de "안녕하세요"): así
+# `GREETING_LANGUAGE` se puede poner en cualquiera de ellos sin que el saludo,
+# dicho en reposo, despierte a MECH.
 _PHRASES: dict[str, dict[str, str]] = {
     "awake": {
         "es": "Hola, ya te escucho.",
@@ -140,6 +143,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "はい、聞いています。",
         "ru": "Привет, я слушаю.",
         "zh": "你好，我在听。",
+        "ko": "네, 듣고 있어요.",
     },
     "dormant": {
         "es": "De acuerdo, hasta luego.",
@@ -151,6 +155,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "わかりました。また後で。",
         "ru": "Хорошо, до встречи.",
         "zh": "好的，回头见。",
+        "ko": "알겠습니다. 다음에 또 봬요.",
     },
     "greeting": {
         "es": "¡Hola! Soy MECH. Un gusto verte hoy aquí.",
@@ -162,6 +167,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "ようこそ！私はMECHです。今日ここでお会いできて嬉しいです。",
         "ru": "Добро пожаловать! Я MECH. Рад видеть тебя здесь сегодня.",
         "zh": "欢迎！我是MECH。很高兴今天在这里见到你。",
+        "ko": "환영합니다! 저는 MECH입니다. 오늘 여기서 만나서 반갑습니다.",
     },
     "error": {
         "es": "Disculpa, tuve un problema. ¿Puedes repetirme?",
@@ -173,6 +179,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "すみません、問題が起きました。もう一度言ってもらえますか？",
         "ru": "Извини, у меня возникла проблема. Можешь повторить?",
         "zh": "抱歉，我遇到了一点问题。可以再说一遍吗？",
+        "ko": "죄송합니다, 문제가 생겼어요. 다시 말씀해 주시겠어요?",
     },
     # Lo que dice al ser interrumpido con "oye MECH" / "hey MECH".
     # Es una PREGUNTA a propósito: así el visitante sabe que le toca hablar
@@ -187,6 +194,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "もちろんです。何について話しましょうか？",
         "ru": "Конечно, о чём мне рассказать?",
         "zh": "当然，你想让我讲什么？",
+        "ko": "물론이죠. 어떤 이야기를 해 드릴까요?",
     },
     # Cuando piden proyectar un slot que todavía no tiene videos subidos.
     "empty_playlist": {
@@ -199,6 +207,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "そのスペースにはまだ動画がありません。",
         "ru": "В этом разделе у меня пока нет видео.",
         "zh": "这个栏目里还没有视频。",
+        "ko": "그 칸에는 아직 영상이 없어요.",
     },
     "switched": {
         "es": "Listo, sigo en español.",
@@ -210,6 +219,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "わかりました。日本語で続けます。",
         "ru": "Хорошо, продолжаю по-русски.",
         "zh": "好的，我接下来说中文。",
+        "ko": "알겠습니다. 한국어로 계속할게요.",
     },
     # --- Modo traductor (ver backend/translator.py) ------------------------
     # Lo que pregunta al entrar. Es una PREGUNTA: justo después suena el
@@ -228,6 +238,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "知識を試すクイズに挑戦してみませんか？",
         "ru": "Хочешь пройти викторину, чтобы проверить свои знания?",
         "zh": "想不想做个小测验，检验一下你学到了什么？",
+        "ko": "배운 내용을 확인하는 퀴즈를 풀어 보시겠어요?",
     },
     "trivia_preparing": {
         "es": "Dame un momento, preparo las preguntas.",
@@ -239,6 +250,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "少々お待ちください。問題を準備しています。",
         "ru": "Одну минуту, я готовлю вопросы.",
         "zh": "请稍等，我正在准备题目。",
+        "ko": "잠시만요, 문제를 준비하고 있어요.",
     },
     "trivia_intro": {
         "es": "Allá vamos. Son {total} preguntas.",
@@ -250,6 +262,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "それでは始めます。全部で{total}問です。",
         "ru": "Поехали. Количество вопросов: {total}.",
         "zh": "开始吧。一共{total}道题。",
+        "ko": "시작할게요. 모두 {total}문제예요.",
     },
     "trivia_failed": {
         "es": "No pude preparar las preguntas. ¿Te cuento otra cosa?",
@@ -261,6 +274,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "問題を準備できませんでした。ほかの話をしましょうか？",
         "ru": "Не получилось подготовить вопросы. Рассказать что-нибудь другое?",
         "zh": "题目没有准备好。要不要我讲点别的？",
+        "ko": "문제를 준비하지 못했어요. 다른 이야기를 해 드릴까요?",
     },
     "trivia_question_header": {
         "es": "Pregunta {n} de {total}.",
@@ -272,6 +286,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "{total}問中、第{n}問。",
         "ru": "Вопрос {n} из {total}.",
         "zh": "第{n}题，共{total}题。",
+        "ko": "{total}문제 중 {n}번 문제.",
     },
     "trivia_correct": {
         "es": "¡Correcto!",
@@ -283,6 +298,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "正解です！",
         "ru": "Верно!",
         "zh": "答对了！",
+        "ko": "정답입니다!",
     },
     "trivia_wrong": {
         "es": "No has acertado. La respuesta correcta es la {letter}: {answer}.",
@@ -294,6 +310,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "残念、不正解です。正解は{letter}、{answer}です。",
         "ru": "Не угадал. Правильный ответ — {letter}: {answer}.",
         "zh": "答错了。正确答案是{letter}：{answer}。",
+        "ko": "아쉽지만 틀렸어요. 정답은 {letter}, {answer}입니다.",
     },
     "trivia_pass": {
         "es": "Te la dejo: la respuesta correcta es la {letter}: {answer}.",
@@ -305,6 +322,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "では答えを言います。正解は{letter}、{answer}です。",
         "ru": "Подскажу: правильный ответ — {letter}: {answer}.",
         "zh": "这题我来公布：正确答案是{letter}：{answer}。",
+        "ko": "정답을 알려 드릴게요. 정답은 {letter}, {answer}입니다.",
     },
     "trivia_repeat": {
         "es": "Contesta diciendo la letra, por ejemplo: la A.",
@@ -316,6 +334,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "アルファベットで答えてください。たとえば、A。",
         "ru": "Ответь буквой, например: A.",
         "zh": "请用字母回答，比如：A。",
+        "ko": "알파벳으로 대답해 주세요. 예를 들면, A.",
     },
     "trivia_final": {
         "es": "Fin del juego. Acertaste {score} de {total}.",
@@ -327,6 +346,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "ゲーム終了です。{total}問中{score}問正解でした。",
         "ru": "Игра окончена. Правильных ответов: {score} из {total}.",
         "zh": "游戏结束。{total}道题你答对了{score}道。",
+        "ko": "게임이 끝났어요. {total}문제 중 {score}문제를 맞혔어요.",
     },
     "trivia_perfect": {
         "es": "¡Perfecto! Las {total} correctas. Estabas atento.",
@@ -338,6 +358,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "完璧です！{total}問すべて正解。よく聞いていましたね。",
         "ru": "Отлично! Все {total} верно. Ты слушал внимательно.",
         "zh": "太棒了！{total}道题全对。你听得很认真。",
+        "ko": "완벽해요! {total}문제를 모두 맞혔어요. 정말 잘 들으셨네요.",
     },
     "trivia_zero": {
         "es": "Ninguna esta vez, pero ahora ya te las sabes.",
@@ -349,6 +370,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "今回は全問不正解でしたが、これで覚えましたね。",
         "ru": "В этот раз ни одного, зато теперь ты их знаешь.",
         "zh": "这次一题都没答对，不过现在你都知道了。",
+        "ko": "이번에는 하나도 못 맞혔지만, 이제는 다 아시겠죠.",
     },
     "trivia_off": {
         "es": "Listo, dejamos el juego.",
@@ -360,6 +382,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "わかりました。ゲームを終わります。",
         "ru": "Хорошо, заканчиваем игру.",
         "zh": "好的，游戏到此结束。",
+        "ko": "알겠습니다. 게임을 마칠게요.",
     },
     "trivia_declined": {
         "es": "Sin problema. ¿Qué más quieres saber?",
@@ -371,6 +394,21 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "大丈夫です。ほかに知りたいことはありますか？",
         "ru": "Без проблем. Что ещё ты хочешь узнать?",
         "zh": "没关系。你还想了解什么？",
+        "ko": "괜찮아요. 또 무엇이 궁금하세요?",
+    },
+    # De qué va la partida cuando MECH todavía no ha narrado nada: se PROYECTA
+    # en la pantalla del juego («Sobre: …»), así que va en el idioma activo.
+    "trivia_about_us": {
+        "es": "MECH y su equipo",
+        "en": "MECH and its team",
+        "fr": "MECH et son équipe",
+        "pt": "MECH e a sua equipa",
+        "de": "MECH und sein Team",
+        "it": "MECH e il suo team",
+        "ja": "MECHとそのチーム",
+        "ru": "MECH и его команда",
+        "zh": "MECH和它的团队",
+        "ko": "MECH와 팀",
     },
     "translate_ask": {
         "es": "Modo traductor. ¿De qué idioma a qué idioma traduzco?",
@@ -382,6 +420,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "通訳モードです。何語から何語に翻訳しますか？",
         "ru": "Режим переводчика. С какого языка на какой мне переводить?",
         "zh": "翻译模式。要从哪种语言翻译成哪种语言？",
+        "ko": "통역을 도와 드릴게요. 어떤 언어에서 어떤 언어로 번역할까요?",
     },
     # Al fijar el par: confirma y pide la frase de una vez (una sola
     # intervención, que en un stand se agradece).
@@ -395,6 +434,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "わかりました。{src}と{dst}の間で翻訳します。何を翻訳しますか？",
         "ru": "Хорошо, перевожу между языками: {src} и {dst}. Что перевести?",
         "zh": "好的，我在{src}和{dst}之间翻译。要翻译什么？",
+        "ko": "알겠습니다. {src}와 {dst} 사이에서 통역할게요. 무엇을 번역할까요?",
     },
     # A partir de la segunda vez ya sabe el par, así que va directo al grano.
     "translate_ask_phrase": {
@@ -407,6 +447,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "何を翻訳しますか？",
         "ru": "Что перевести?",
         "zh": "要翻译什么？",
+        "ko": "무엇을 번역할까요?",
     },
     "translate_pair_unknown": {
         "es": "No entendí el par de idiomas. Dime, por ejemplo: de español a francés.",
@@ -418,6 +459,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "言語の組み合わせが分かりませんでした。たとえば「日本語からスペイン語」と言ってください。",
         "ru": "Я не понял, какие языки. Скажи, например: с русского на испанский.",
         "zh": "我没听清是哪两种语言。比如你可以说：从中文到西班牙语。",
+        "ko": "어떤 언어인지 잘 못 들었어요. 예를 들어 “한국어에서 스페인어로”라고 말해 주세요.",
     },
     "translate_same": {
         "es": "Son el mismo idioma. Dime dos distintos.",
@@ -429,6 +471,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "同じ言語が二つです。別々の言語を二つ言ってください。",
         "ru": "Это один и тот же язык. Назови два разных.",
         "zh": "这是同一种语言。请说两种不同的语言。",
+        "ko": "같은 언어예요. 서로 다른 두 언어를 말해 주세요.",
     },
     # ⚠️ En TODOS los idiomas esta frase casa, a propósito, con la orden de
     # salir («deja de traducir»). Justo después de decirla se abre el
@@ -446,6 +489,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "わかりました。翻訳を終了します。",
         "ru": "Хорошо, перестаю переводить.",
         "zh": "好的，我停止翻译了。",
+        "ko": "알겠습니다. 번역을 종료할게요.",
     },
     "translate_error": {
         "es": "No pude traducir eso. ¿Puedes repetirlo?",
@@ -457,6 +501,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ja": "翻訳できませんでした。もう一度言ってもらえますか？",
         "ru": "Не получилось это перевести. Можешь повторить?",
         "zh": "这句我没能翻译出来。可以再说一遍吗？",
+        "ko": "그 문장은 번역하지 못했어요. 다시 말씀해 주시겠어요?",
     },
 }
 
@@ -487,31 +532,38 @@ def say(key: str, code: str | None = None, **fmt: object) -> str:
 _LANGUAGE_NAMES: dict[str, dict[str, str]] = {
     "es": {"es": "español", "en": "inglés", "fr": "francés", "pt": "portugués",
            "de": "alemán", "it": "italiano", "ja": "japonés", "ru": "ruso",
-           "zh": "chino mandarín"},
+           "zh": "chino mandarín", "ko": "coreano"},
     "en": {"es": "Spanish", "en": "English", "fr": "French", "pt": "Portuguese",
            "de": "German", "it": "Italian", "ja": "Japanese", "ru": "Russian",
-           "zh": "Mandarin Chinese"},
+           "zh": "Mandarin Chinese", "ko": "Korean"},
     "fr": {"es": "espagnol", "en": "anglais", "fr": "français", "pt": "portugais",
            "de": "allemand", "it": "italien", "ja": "japonais", "ru": "russe",
-           "zh": "chinois mandarin"},
+           "zh": "chinois mandarin", "ko": "coréen"},
     "pt": {"es": "espanhol", "en": "inglês", "fr": "francês", "pt": "português",
            "de": "alemão", "it": "italiano", "ja": "japonês", "ru": "russo",
-           "zh": "chinês mandarim"},
+           "zh": "chinês mandarim", "ko": "coreano"},
     "de": {"es": "Spanisch", "en": "Englisch", "fr": "Französisch",
            "pt": "Portugiesisch", "de": "Deutsch", "it": "Italienisch",
-           "ja": "Japanisch", "ru": "Russisch", "zh": "Chinesisch"},
+           "ja": "Japanisch", "ru": "Russisch", "zh": "Chinesisch",
+           "ko": "Koreanisch"},
     "it": {"es": "spagnolo", "en": "inglese", "fr": "francese",
            "pt": "portoghese", "de": "tedesco", "it": "italiano",
-           "ja": "giapponese", "ru": "russo", "zh": "cinese"},
+           "ja": "giapponese", "ru": "russo", "zh": "cinese", "ko": "coreano"},
     "ja": {"es": "スペイン語", "en": "英語", "fr": "フランス語", "pt": "ポルトガル語",
            "de": "ドイツ語", "it": "イタリア語", "ja": "日本語", "ru": "ロシア語",
-           "zh": "中国語"},
+           "zh": "中国語", "ko": "韓国語"},
     "ru": {"es": "испанский", "en": "английский", "fr": "французский",
            "pt": "португальский", "de": "немецкий", "it": "итальянский",
-           "ja": "японский", "ru": "русский", "zh": "китайский"},
+           "ja": "японский", "ru": "русский", "zh": "китайский",
+           "ko": "корейский"},
     "zh": {"es": "西班牙语", "en": "英语", "fr": "法语", "pt": "葡萄牙语",
            "de": "德语", "it": "意大利语", "ja": "日语", "ru": "俄语",
-           "zh": "中文"},
+           "zh": "中文", "ko": "韩语"},
+    # En coreano todos acaban en «어», que es lo que permite decir
+    # «{src}와 {dst}» en `translate_ready` sin mirar la última letra.
+    "ko": {"es": "스페인어", "en": "영어", "fr": "프랑스어", "pt": "포르투갈어",
+           "de": "독일어", "it": "이탈리아어", "ja": "일본어", "ru": "러시아어",
+           "zh": "중국어", "ko": "한국어"},
 }
 
 # Cómo puede llamarse cada idioma en una frase hablada, en cualquiera de los
@@ -527,26 +579,33 @@ _LANGUAGE_NAMES: dict[str, dict[str, str]] = {
 _LANGUAGE_WORDS: dict[str, tuple[str, ...]] = {
     "es": ("espanol", "espanhol", "castellano", "spanish", "espagnol",
            "spanisch", "spagnolo", "испанский", "испанского",
-           "スペイン語", "西班牙语", "西班牙語", "西班牙文", "西语", "西語"),
+           "スペイン語", "西班牙语", "西班牙語", "西班牙文", "西语", "西語",
+           "스페인어"),
     "en": ("ingles", "english", "anglais", "englisch", "inglese",
-           "английский", "английского", "英語", "英语", "英文"),
+           "английский", "английского", "英語", "英语", "英文", "영어"),
     "fr": ("frances", "francais", "french", "französisch", "francese",
-           "французский", "французского", "フランス語", "法语", "法語", "法文"),
+           "французский", "французского", "フランス語", "法语", "法語", "法文",
+           "프랑스어"),
     "pt": ("portugues", "portugais", "portuguese", "brasileiro",
            "portugiesisch", "portoghese", "португальский", "португальского",
-           "ポルトガル語", "葡萄牙语", "葡萄牙語", "葡萄牙文", "葡语", "葡語"),
+           "ポルトガル語", "葡萄牙语", "葡萄牙語", "葡萄牙文", "葡语", "葡語",
+           "포르투갈어"),
     "de": ("aleman", "alemao", "german", "allemand", "deutsch", "tedesco",
-           "немецкий", "немецкого", "ドイツ語", "德语", "德語", "德文"),
+           "немецкий", "немецкого", "ドイツ語", "德语", "德語", "德文", "독일어"),
     "it": ("italiano", "italian", "italien", "italienisch",
            "итальянский", "итальянского", "イタリア語",
-           "意大利语", "意大利語", "義大利語", "意大利文", "義大利文"),
+           "意大利语", "意大利語", "義大利語", "意大利文", "義大利文",
+           "이탈리아어"),
     "ja": ("japones", "japanese", "japonais", "japanisch", "giapponese",
-           "японский", "японского", "日本語", "日语", "日語", "日文"),
+           "японский", "японского", "日本語", "日语", "日語", "日文", "일본어"),
     "ru": ("ruso", "russian", "russe", "russisch", "russo",
-           "русский", "русского", "ロシア語", "俄语", "俄語", "俄文"),
+           "русский", "русского", "ロシア語", "俄语", "俄語", "俄文", "러시아어"),
     "zh": ("chino", "mandarin", "chinese", "chinois", "chinesisch", "cinese",
            "китайский", "китайского", "中国語", "中文", "汉语", "漢語",
-           "普通话", "普通話", "国语", "國語", "华语", "華語"),
+           "普通话", "普通話", "国语", "國語", "华语", "華語", "중국어"),
+    "ko": ("coreano", "korean", "coreen", "koreanisch",
+           "корейский", "корейского", "韓国語", "韩语", "韓語", "韩文", "韓文",
+           "한국어", "한국말"),
 }
 
 
@@ -594,7 +653,21 @@ _LLM_DIRECTIVES = {
     "zh": ("CHINO MANDARÍN",
            "chino mandarín natural y fluido, en caracteres SIMPLIFICADOS",
            "中文"),
+    "ko": ("COREANO", "coreano natural y fluido, en forma cortés (해요체)",
+           "한국어"),
 }
+
+
+def writing_style(code: str | None = None) -> str:
+    """Cómo se le pide a Claude que escriba en ese idioma, en una frase.
+
+    Es la misma indicación que lleva la narración («japonés en forma cortés»,
+    «chino en caracteres SIMPLIFICADOS»), para lo que se le pide APARTE del
+    prompt grande: las preguntas de la trivia. Así el juego sale escrito
+    igual que la obra que el visitante acaba de oír.
+    """
+    datos = _LLM_DIRECTIVES.get(code or _current)
+    return datos[1] if datos else "español neutro"
 
 
 def llm_directive(code: str | None = None) -> str:
@@ -613,6 +686,9 @@ def llm_directive(code: str | None = None) -> str:
             "idioma. Reglas para ESTA respuesta:\n"
             f"- Escribe TODAS las `narration` en {estilo} "
             "(no traduzcas literalmente del español).\n"
+            # El título no es solo para el log: la trivia lo PROYECTA
+            # («Sobre: …»), así que tiene que salir en el mismo idioma.
+            f"- El `title` del plan también va en {propio}.\n"
             "- Mantén los nombres propios y los títulos originales "
             "(Don Quijote, Campaña Nacional de 1856, Malpaís, Jiménez "
             "Deredia, Isidro Con Wong) y, si hace falta, explícalos en "

@@ -235,6 +235,7 @@
     ja: { nombre: 'JAPONÉS', wake: 'こんにちは MECH', corta: 'ねえ MECH' },
     ru: { nombre: 'RUSO', wake: 'привет MECH', corta: 'эй MECH' },
     zh: { nombre: 'MANDARÍN', wake: '你好 MECH', corta: '嘿 MECH' },
+    ko: { nombre: 'COREANO', wake: '안녕 MECH', corta: '저기 MECH' },
   };
 
   // Estado de la tarjeta del modo traductor (vista Voz).

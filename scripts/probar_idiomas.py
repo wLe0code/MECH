@@ -41,9 +41,9 @@ import voice_phrases as vp  # noqa: E402
 # Ajustes. La regla en sí la mide `scripts/probar_comandos_idioma.py`.
 config.VOICE_STRICT_LANGUAGE = False
 
-NUEVOS = ("de", "it", "ja", "ru", "zh")
+NUEVOS = ("de", "it", "ja", "ru", "zh", "ko")
 SUFIJO = {"en": "_EN", "fr": "_FR", "pt": "_PT", "de": "_DE", "it": "_IT",
-          "ja": "_JA", "ru": "_RU", "zh": "_ZH"}
+          "ja": "_JA", "ru": "_RU", "zh": "_ZH", "ko": "_KO"}
 
 fallos = 0
 
@@ -91,6 +91,9 @@ DESPERTAR = [
     # Mandarín: simplificado y tradicional.
     ("你好，MECH", "zh"), ("你好麦克", "zh"), ("你好,麥克", "zh"),
     ("早上好 MECH", "zh"), ("醒醒，麦克", "zh"), ("醒來 MECH", "zh"),
+    # Coreano: con el nombre en letras latinas y como lo escribe Whisper.
+    ("안녕, MECH", "ko"), ("안녕하세요 멕", "ko"), ("안녕 메크", "ko"),
+    ("일어나, 맥!", "ko"), ("좋은 아침이야 MECH", "ko"), ("일어나세요, MECH", "ko"),
 ]
 
 # Nada de esto puede despertar a MECH (en ningún idioma).
@@ -103,6 +106,10 @@ NO_DESPERTAR = [
     # Un saludo SIN el nombre no es una orden.
     "Guten Tag", "ciao", "buongiorno", "こんにちは", "привет", "你好",
     "こんにちは、元気ですか", "你好，请问这是什么",
+    "안녕하세요", "안녕하세요, 이건 뭐예요?",
+    # El nombre coreano de UNA sílaba («멕», «맥») no puede salir de dentro de
+    # otra palabra: México y la cerveza no son MECH.
+    "안녕하세요, 멕시코에서 왔어요", "안녕, 맥주 한 잔 주세요",
 ]
 
 # ---------------------------------------------------------------------------
@@ -195,6 +202,29 @@ ORDENES = {
         ("不", vp.is_no, "no"), ("不要", vp.is_no, "no"),
         ("不用了", vp.is_no, "no"),
     ],
+    "ko": [
+        ("그만 들어", vp.is_sleep_any, "dormir"),
+        ("잘 자, MECH", vp.is_sleep_any, "dormir"),
+        ("잘자 멕", vp.is_sleep_any, "dormir"),
+        ("이제 듣지 마", vp.is_sleep_any, "dormir"),
+        ("저기, MECH", vp.is_interrupt, "interrumpir"),
+        ("잠깐만 멕", vp.is_interrupt, "interrumpir"),
+        ("실례합니다, MECH", vp.is_interrupt, "interrumpir"),
+        ("마케팅 영상 재생해 줘", vp.is_play_marketing, "marketing"),
+        ("마케팅을 보여줘", vp.is_play_marketing, "marketing"),
+        ("번역해 줘, MECH", vp.is_translate, "traducir"),
+        ("통역해줘 멕", vp.is_translate, "traducir"),
+        ("번역 모드", vp.is_translate, "traducir"),
+        ("번역 그만", vp.is_translate_stop, "dejar de traducir"),
+        ("번역 그만해, MECH", vp.is_translate_stop, "dejar de traducir"),
+        ("퀴즈 하자", vp.is_trivia, "trivia"),
+        ("퀴즈 풀래요", vp.is_trivia, "trivia"),
+        ("퀴즈 그만", vp.is_trivia_stop, "salir de la trivia"),
+        ("네", vp.is_yes, "sí"), ("네, 좋아요", vp.is_yes, "sí"),
+        ("응", vp.is_yes, "sí"), ("할게요", vp.is_yes, "sí"),
+        ("아니요", vp.is_no, "no"), ("아니요, 괜찮아요", vp.is_no, "no"),
+        ("안 할래요", vp.is_no, "no"),
+    ],
 }
 
 # Movimiento: (texto, lo que tiene que hacer, segundos que pide o None)
@@ -254,6 +284,25 @@ MOVIMIENTO = [
     ("回去投影", "proyectar", None),
     ("看屏幕", "proyectar", None),
     ("转回来", "proyectar", None),
+    # Coreano. Whisper junta o separa la terminación a su antojo.
+    ("앞으로 가", "avanzar", None),
+    ("앞으로 가 줘", "avanzar", None),
+    ("앞으로 가줘", "avanzar", None),
+    ("10초 동안 앞으로 가", "avanzar", 10),
+    ("앞으로 십 초 가", "avanzar", 10),
+    ("이십 초 뒤로 가", "retroceder", 20),
+    ("전진해", "avanzar", None),
+    ("뒤로 가", "retroceder", None),
+    ("후진", "retroceder", None),
+    ("밖을 봐", "afuera", None),
+    ("바깥을 봐 줘", "afuera", None),
+    ("뒤돌아봐", "afuera", None),
+    ("사람들에게 인사해", "afuera", None),
+    ("투영으로 돌아가", "proyectar", None),
+    ("제자리로 돌아가 줘", "proyectar", None),
+    ("화면을 봐", "proyectar", None),
+    ("스크린을 보세요", "proyectar", None),
+    ("마케팅 재생", "marketing", None),
     # Los de antes, que no se pueden haber movido.
     ("avanza diez segundos", "avanzar", 10),
     ("retrocede cinco segundos", "retroceder", 5),
@@ -279,6 +328,15 @@ NO_CONFUNDIR = [
     ("cuéntame algo de Italia", vp.is_play_marketing, "pregunta normal"),
     ("el proyecto se llama MECH", vp.is_interrupt, "frase normal del stand"),
     ("qué avanzada tecnología", vp.is_advance, "frase normal del stand"),
+    # Coreano: «가» es una orden ("ve") y además la partícula más común.
+    ("앞으로 인공지능이 가져올 변화는 뭐야?", vp.is_advance, "«가» dentro de otra palabra"),
+    ("로봇이 초록색이야", vp.extract_seconds, "«이 초» no son dos segundos"),
+    ("이 단어는 어떻게 번역해?", vp.is_translate, "pregunta normal"),
+    ("마케팅이 뭐야?", vp.is_play_marketing, "pregunta normal"),
+    ("돈키호테에 대해 들려줘", vp.is_sleep_any, "pedir una obra no lo duerme"),
+    ("MECH는 로봇입니다", vp.is_interrupt, "frase normal del stand"),
+    ("아니요", vp.is_yes, "«no» no es un sí"),
+    ("네", vp.is_no, "«sí» no es un no"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -297,6 +355,15 @@ PARES = [
     ("英語から日本語", ("en", "ja")),
     ("从中文到西班牙语", ("zh", "es")),
     ("把英文翻译成中文", ("en", "zh")),
+    ("한국어에서 스페인어로", ("ko", "es")),
+    ("영어를 한국어로 번역해 줘", ("en", "ko")),
+    ("일본어로", (None, "ja")),
+    ("de coreano a español", ("ko", "es")),
+    ("from Korean to English", ("ko", "en")),
+    ("du coréen au français", ("ko", "fr")),
+    ("韓国語から日本語に", ("ko", "ja")),
+    ("从韩语到中文", ("ko", "zh")),
+    ("с корейского на русский", ("ko", "ru")),
     ("cuéntame de Don Quijote", (None, None)),
 ]
 
@@ -307,6 +374,7 @@ ANOS = ["1605", "1700", "1492"]
 ANOS_ZH = ["1605年", "1700年", "1492年"]
 NOMBRES_ZH = ["塞万提斯", "桑丘·潘沙", "杜尔西内亚"]
 NOMBRES_JA = ["セルバンテス", "サンチョ・パンサ", "ドゥルシネア"]
+NOMBRES_KO = ["세르반테스", "산초 판사", "둘시네아"]
 
 RESPUESTAS = [
     (ANOS, "die B", 1), (ANOS, "die zweite", 1), (ANOS, "Antwort C", 2),
@@ -327,6 +395,16 @@ RESPUESTAS = [
     (ANOS, "non lo so", None), (ANOS, "не знаю", None),
     (ANOS, "わかりません", None), (ANOS, "不知道", None),
     (ANOS, "えーと", None),
+    # Coreano: la letra (también dicha en hangul), el número, el orden y el
+    # texto, con y sin la terminación de cortesía pegada.
+    (ANOS, "B요", 1), (ANOS, "C입니다", 2), (ANOS, "비", 1), (ANOS, "에이요", 0),
+    (ANOS, "씨입니다", 2), (ANOS, "1번", 0), (ANOS, "2번이요", 1),
+    (ANOS, "첫 번째", 0), (ANOS, "두 번째요", 1), (ANOS, "세번째", 2),
+    (ANOS, "정답은 B", 1), (ANOS, "1605년", 0), (ANOS, "1492년이요", 2),
+    (NOMBRES_KO, "세르반테스", 0), (NOMBRES_KO, "산초 판사입니다", 1),
+    (NOMBRES_KO, "산초판사", 1), (NOMBRES_KO, "둘시네아요", 2),
+    (ANOS, "모르겠어요", None), (ANOS, "잘 모르겠습니다", None),
+    (ANOS, "몰라요", None), (ANOS, "음", None),
 ]
 
 # ---------------------------------------------------------------------------
@@ -348,6 +426,12 @@ GUIONES = {
     "zh": ("在拉曼查的一个村庄里，村名我不想提起，不久以前住着一位绅士。他有一支长矛、"
            "一面旧盾牌、一匹瘦马和一只跑得很快的猎狗。他读了太多的骑士小说，最后失去了理智，"
            "决定自己也去当一名游侠骑士，周游世界，行侠仗义。"),
+    # Coreano: letras anchas como las de arriba, pero CON espacios — las
+    # líneas se cortan entre palabras, nunca por la mitad de una.
+    "ko": ("라만차의 어느 마을에, 그 이름은 떠올리고 싶지 않지만, 그리 오래되지 않은 옛날에 "
+           "한 시골 귀족이 살고 있었습니다. 그는 창걸이에 걸린 창과 낡은 방패, 여윈 말과 "
+           "날쌘 사냥개를 가지고 있었습니다. 기사 이야기를 너무 많이 읽은 나머지 마침내 "
+           "제정신을 잃고 말았습니다."),
 }
 
 
@@ -491,13 +575,20 @@ def main() -> int:
         entero = "".join(t for _, t in lineas).replace(" ", "") == guion.replace(" ", "")
         en_sitio = all(guion[o:o + len(t)] == t for o, t in lineas)
         empieza_bien = all(t[0] not in subtitles._NO_ABRE for _, t in lineas)
+        # Donde hay espacios (todos menos japonés y chino) ninguna palabra
+        # puede quedar partida entre dos líneas. Importa en coreano: sus
+        # letras son anchas como las chinas, pero sus palabras NO se cortan.
+        sin_partir = code in ("ja", "zh") or all(
+            w in guion.split() for _, t in lineas for w in t.split())
         comprobar(
-            cabe and entero and en_sitio and empieza_bien and len(lineas) > 1,
+            cabe and entero and en_sitio and empieza_bien and sin_partir
+            and len(lineas) > 1,
             f"{lang.label(code):<10} {len(lineas)} líneas, la más ancha {max(anchos)}",
-            f"cabe={cabe} entero={entero} en_sitio={en_sitio} empieza_bien={empieza_bien}",
+            f"cabe={cabe} entero={entero} en_sitio={en_sitio} "
+            f"empieza_bien={empieza_bien} sin_partir={sin_partir}",
         )
 
-    print("\n── TABLAS completas en los nueve idiomas ──")
+    print(f"\n── TABLAS completas en los {len(lang.SUPPORTED)} idiomas ──")
     faltan = [f"{k}/{c}" for k, v in lang._PHRASES.items()
               for c in lang.SUPPORTED if not v.get(c)]
     comprobar(not faltan, f"lang._PHRASES ({len(lang._PHRASES)} frases)", ", ".join(faltan))
@@ -510,7 +601,7 @@ def main() -> int:
     comprobar(
         all(set(v) == set(lang.SUPPORTED) for v in lang._LANGUAGE_NAMES.values())
         and set(lang._LANGUAGE_NAMES) == set(lang.SUPPORTED),
-        "lang._LANGUAGE_NAMES (9 × 9)",
+        f"lang._LANGUAGE_NAMES ({len(lang.SUPPORTED)} × {len(lang.SUPPORTED)})",
     )
     comprobar(set(lang.language_words()) == set(lang.SUPPORTED), "lang._LANGUAGE_WORDS")
     comprobar(all(lang.llm_directive(c).startswith("# IDIOMA ACTIVO") for c in lang.SUPPORTED),

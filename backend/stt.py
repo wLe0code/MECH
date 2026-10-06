@@ -61,6 +61,8 @@ INITIAL_PROMPT_IT = "Una conversazione in italiano con un robot chiamato MECH."
 INITIAL_PROMPT_JA = "MECHという名前のロボットとの日本語の会話です。"
 INITIAL_PROMPT_RU = "Разговор на русском языке с роботом по имени MECH."
 INITIAL_PROMPT_ZH = "这是一段用普通话和名叫MECH的机器人的对话。"
+# Coreano: mismo trabajo que en japonés (empuja a escribir "MECH" y no «멕»).
+INITIAL_PROMPT_KO = "MECH라는 이름의 로봇과 한국어로 나누는 대화입니다."
 
 _INITIAL_PROMPTS = {
     "es": INITIAL_PROMPT,
@@ -72,6 +74,7 @@ _INITIAL_PROMPTS = {
     "ja": INITIAL_PROMPT_JA,
     "ru": INITIAL_PROMPT_RU,
     "zh": INITIAL_PROMPT_ZH,
+    "ko": INITIAL_PROMPT_KO,
 }
 
 

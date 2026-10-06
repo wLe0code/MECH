@@ -36,6 +36,16 @@ def _es_ancho(c: str) -> bool:
     return unicodedata.east_asian_width(c) in ("W", "F")
 
 
+def _se_corta(c: str) -> bool:
+    """¿Se puede partir la línea justo en este carácter?
+
+    En chino y japonés sí (no hay espacios). En coreano NO: sus letras
+    también son anchas, pero las palabras van separadas por espacios y una
+    palabra partida por la mitad no se lee.
+    """
+    return _es_ancho(c) and not (0xAC00 <= ord(c) <= 0xD7A3)
+
+
 def _ancho(texto: str) -> int:
     """Cuánto ocupa en pantalla, en "letras latinas".
 
@@ -49,8 +59,8 @@ def _ancho(texto: str) -> int:
 def _unidades(frase: str) -> list[tuple[int, int]]:
     """Trozos `(inicio, fin)` entre los que SÍ se puede cortar una línea.
 
-    Una palabra en letras latinas es un trozo; cada carácter chino o japonés
-    es otro (ahí se puede cortar casi en cualquier sitio).
+    Una palabra en letras latinas (o en coreano) es un trozo; cada carácter
+    chino o japonés es otro (ahí se puede cortar casi en cualquier sitio).
     """
     unidades: list[tuple[int, int]] = []
     i, n = 0, len(frase)
@@ -62,8 +72,8 @@ def _unidades(frase: str) -> list[tuple[int, int]]:
         j = i + 1
         if c in _NO_CIERRA and j < n:
             j += 1
-        elif not _es_ancho(c):
-            while j < n and not frase[j].isspace() and not _es_ancho(frase[j]):
+        elif not _se_corta(c):
+            while j < n and not frase[j].isspace() and not _se_corta(frase[j]):
                 j += 1
         while j < n and frase[j] in _NO_ABRE:
             j += 1
@@ -73,7 +83,8 @@ def _unidades(frase: str) -> list[tuple[int, int]]:
 
 
 def _partir_ancha(offset: int, frase: str, max_chars: int) -> list[tuple[int, str]]:
-    """Como `_partir_frase`, para frases con chino o japonés (sin espacios)."""
+    """Como `_partir_frase`, para frases con letras anchas: chino y japonés
+    (sin espacios) y coreano (con espacios, que es donde se corta)."""
     unidades = _unidades(frase)
     total = _ancho(frase)
     partes = max(1, -(-total // max_chars))  # ceil

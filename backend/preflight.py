@@ -555,7 +555,8 @@ def check_env_sombra() -> None:
         "VOICE_WAKE_PHRASES_JA": "afecta a 'こんにちは MECH'",
         "VOICE_WAKE_PHRASES_RU": "afecta a 'привет MECH'",
         "VOICE_WAKE_PHRASES_ZH": "afecta a '你好 MECH'",
-        "VOICE_NAME_ALIASES": "cómo se reconoce 'MECH' en japonés, ruso y chino",
+        "VOICE_WAKE_PHRASES_KO": "afecta a '안녕 MECH'",
+        "VOICE_NAME_ALIASES": "cómo se reconoce 'MECH' en japonés, ruso, chino y coreano",
         "VOICE_SLEEP_PHRASES": "afecta a dormirlo",
         "VOICE_INTERRUPT_PHRASES": "afecta a 'oye MECH'",
         "VOICE_OUTWARD_PHRASES": "afecta a 'mira hacia afuera'",
@@ -654,12 +655,12 @@ def check_disco() -> None:
 # ---------------------------------------------------------------------------
 
 def check_idiomas() -> None:
-    _titulo("11. Idiomas: fuente para los subtítulos en japonés y chino")
+    _titulo("11. Idiomas: fuente para los subtítulos en japonés, chino y coreano")
     import lang
 
     _di(_OK, "Idiomas encendidos: "
         + ", ".join(lang.label(c) for c in lang.enabled_languages()))
-    activos = [c for c in ("ja", "zh") if c in lang.enabled_languages()]
+    activos = [c for c in ("ja", "zh", "ko") if c in lang.enabled_languages()]
     if not activos:
         return
     if not shutil.which("fc-list"):
@@ -685,9 +686,10 @@ def check_idiomas() -> None:
             "proyección (MECH hablaría bien, pero no se podría leer).\n"
             "-> sudo apt install fonts-noto-cjk     (y volver a abrir Chromium)\n"
             "-> o apagar esos idiomas en backend/.env:\n"
-            "   WAKE_JAPANESE_ENABLED=false   WAKE_CHINESE_ENABLED=false")
+            "   WAKE_JAPANESE_ENABLED=false   WAKE_CHINESE_ENABLED=false\n"
+            "   WAKE_KOREAN_ENABLED=false")
     else:
-        _di(_OK, "Hay fuente para japonés y chino (subtítulos y trivia)")
+        _di(_OK, "Hay fuente para japonés, chino y coreano (subtítulos y trivia)")
 
 
 # ---------------------------------------------------------------------------

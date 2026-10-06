@@ -163,7 +163,13 @@ class Plan(BaseModel):
     """Plan completo de la respuesta de Claude a una petición del usuario."""
 
     mode: Literal["stand", "immersive", "qa", "movement"]
-    title: str = Field(..., description="Título corto, sirve de log/depuración.")
+    title: str = Field(
+        ...,
+        description=(
+            "Título corto, en el MISMO idioma que las `narration`. Sale en "
+            "el log y la trivia lo proyecta («Sobre: …»)."
+        ),
+    )
     segments: list[Segment] = Field(..., min_length=1, max_length=8)
     background_music: str | None = Field(
         None,
@@ -397,7 +403,10 @@ def make_quiz(
     source = (source or "").strip()
     if not source:
         return []
-    idioma = lang.language_name(language or lang.current(), "es")
+    # No solo el nombre del idioma: la misma indicación de estilo que lleva la
+    # narración («japonés en forma cortés», «chino en caracteres
+    # SIMPLIFICADOS»), para que el juego salga escrito igual que la obra.
+    idioma = lang.writing_style(language or lang.current())
     peticion = (
         f"Material sobre «{title}»:\n\n{source}\n\n"
         f"Escribe exactamente {n} preguntas siguiendo las reglas."

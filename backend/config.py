@@ -855,18 +855,24 @@ WAKE_ITALIAN_ENABLED = _activo("WAKE_ITALIAN_ENABLED")
 WAKE_JAPANESE_ENABLED = _activo("WAKE_JAPANESE_ENABLED")
 WAKE_RUSSIAN_ENABLED = _activo("WAKE_RUSSIAN_ENABLED")
 WAKE_CHINESE_ENABLED = _activo("WAKE_CHINESE_ENABLED")
+# Coreano (6 oct 2026, pedido del equipo): el décimo idioma.
+#   "안녕 MECH" (annyeong) / "일어나 MECH" (ireona)  -> coreano (ko)
+WAKE_KOREAN_ENABLED = _activo("WAKE_KOREAN_ENABLED")
 
 # Cómo escribe Whisper el nombre "MECH" cuando transcribe en una escritura que
 # no es la latina. En japonés, ruso o chino el nombre no sale siempre como
-# "MECH": sale como suena («メック», «мек», «麦克»). Cualquier frase de las
-# listas que lleve la palabra "mech" acepta también estas formas.
+# "MECH": sale como suena («メック», «мек», «麦克», «멕»). Cualquier frase de
+# las listas que lleve la palabra "mech" acepta también estas formas.
 # Si en el panel ves «Oí en japonés: '…'» con el nombre escrito de otra manera,
 # añádela aquí (sin tocar el código).
+# Las coreanas de UNA sílaba («멕», «맥») solo valen sueltas o con una sílaba
+# pegada («멕아»): dentro de otra palabra no («멕시코» es México).
 VOICE_NAME_ALIASES = _frases(
     "VOICE_NAME_ALIASES",
     "メック,メッチ,メク,メカ,メッカ,メッシュ,"
     "麦克,麥克,梅克,迈克,邁克,美克,麦可,"
-    "мех,мек,мэк,мэч,меч,мэх,мекх",
+    "мех,мек,мэк,мэч,меч,мэх,мекх,"
+    "메크,멕크,맥크,메카,메치,메흐,멕,맥",
 )
 
 # ---- Alemán (de) ----------------------------------------------------------
@@ -1213,6 +1219,88 @@ VOICE_YES_PHRASES_ZH = _frases(
 VOICE_NO_PHRASES_ZH = _frases(
     "VOICE_NO_PHRASES_ZH",
     "不,不要,不用,不了,不行,算了,下次,以后再说,以後再說,不玩,不想",
+)
+
+# ---- Coreano (ko) ---------------------------------------------------------
+# El coreano SÍ lleva espacios, pero las terminaciones van pegadas a la
+# palabra y Whisper junta o separa a su antojo («앞으로 가줘» / «앞으로 가 줘»).
+# Por eso se compara como el japonés y el chino: cada trozo se busca DENTRO de
+# lo que se oyó, y un espacio aquí separa trozos que tienen que aparecer los
+# dos («마케팅 재생» casa con «마케팅을 재생해 줘»).
+# ⚠️ Un trozo de UNA sílaba dentro de una orden de varias («앞으로 가»,
+# «잘 자 mech») tiene que ser la palabra ENTERA: «가» es además la partícula
+# más común del idioma. Por eso van también las formas con la terminación
+# pegada («앞으로 가줘», «잘자 mech»).
+# ⚠️ Nada de «안녕히 주무세요 MECH» ("buenas noches") para dormirlo: lleva
+# dentro «안녕», que es la frase de despertar.
+VOICE_WAKE_PHRASES_KO = _frases(
+    "VOICE_WAKE_PHRASES_KO",
+    "안녕 mech,안녕하세요 mech,좋은 아침 mech,일어나 mech,일어나세요 mech,"
+    "깨어나 mech",
+)
+VOICE_SLEEP_PHRASES_KO = _frases(
+    "VOICE_SLEEP_PHRASES_KO",
+    "그만 들어,듣지 마,듣지마,잘 자 mech,잘자 mech,잘 자요 mech,자러 가,"
+    "쉬어 mech,수면 모드",
+)
+VOICE_INTERRUPT_PHRASES_KO = _frases(
+    "VOICE_INTERRUPT_PHRASES_KO",
+    "저기 mech,잠깐 mech,잠시만 mech,실례합니다 mech,기다려 mech,있잖아 mech",
+)
+VOICE_ADVANCE_PHRASES_KO = _frases(
+    "VOICE_ADVANCE_PHRASES_KO",
+    "앞으로 가,앞으로 가줘,앞으로 가요,앞으로 가세요,앞으로 이동,"
+    "앞으로 움직여,전진",
+)
+VOICE_RETREAT_PHRASES_KO = _frases(
+    "VOICE_RETREAT_PHRASES_KO",
+    "뒤로 가,뒤로 가줘,뒤로 가요,뒤로 가세요,뒤로 이동,뒤로 움직여,"
+    "뒤로 물러나,후진",
+)
+VOICE_OUTWARD_PHRASES_KO = _frases(
+    "VOICE_OUTWARD_PHRASES_KO",
+    "밖을 봐,밖을 봐줘,밖을 보세요,바깥을 봐,바깥을 봐줘,바깥을 보세요,"
+    "뒤돌아,관객에게 인사,사람들에게 인사,사람들한테 인사",
+)
+VOICE_PROJECT_PHRASES_KO = _frases(
+    "VOICE_PROJECT_PHRASES_KO",
+    "투영으로 돌아가,프로젝션으로 돌아가,제자리로 돌아가,원래 위치로 돌아가,"
+    "화면을 봐,화면을 봐줘,화면을 보세요,스크린을 봐,스크린을 봐줘,"
+    "스크린을 보세요",
+)
+VOICE_MARKETING_PHRASES_KO = _frases(
+    "VOICE_MARKETING_PHRASES_KO",
+    "마케팅 재생,마케팅 보여,마케팅 틀어,마케팅 영상,마케팅 비디오,"
+    "마케팅 동영상,marketing 재생",
+)
+VOICE_TRANSLATE_PHRASES_KO = _frases(
+    "VOICE_TRANSLATE_PHRASES_KO",
+    "번역해 mech,통역해 mech,번역 모드,통역 모드,번역 시작,통역 시작",
+)
+VOICE_TRANSLATE_STOP_PHRASES_KO = _frases(
+    "VOICE_TRANSLATE_STOP_PHRASES_KO",
+    "번역 그만,번역 중지,번역 종료,번역 멈춰,번역 끝,번역 끝내,"
+    "통역 그만,통역 중지,통역 종료",
+)
+VOICE_TRIVIA_PHRASES_KO = _frases(
+    "VOICE_TRIVIA_PHRASES_KO",
+    "퀴즈 하자,퀴즈 할래,퀴즈 풀자,퀴즈 풀래,퀴즈 시작,퀴즈 모드,퀴즈 내줘,"
+    "퀴즈 하고 싶어",
+)
+VOICE_TRIVIA_STOP_PHRASES_KO = _frases(
+    "VOICE_TRIVIA_STOP_PHRASES_KO",
+    "퀴즈 그만,퀴즈 중지,퀴즈 종료,퀴즈 멈춰,그만 할래,그만할래,"
+    "더 안 할래",
+)
+# Las de UNA sílaba (네, 예, 응) solo cuentan si la respuesta es corta y
+# empieza por ella, igual que en chino.
+VOICE_YES_PHRASES_KO = _frases(
+    "VOICE_YES_PHRASES_KO",
+    "네,예,응,좋아,좋습니다,그래,물론,할게요,할래요,해볼게요,오케이,ok",
+)
+VOICE_NO_PHRASES_KO = _frases(
+    "VOICE_NO_PHRASES_KO",
+    "아니,싫어,안 해,안 할래,안할래,나중에,다음에,괜찮아요,됐어요",
 )
 
 # Micrófono de entrada. Vacío = dispositivo por defecto del sistema.

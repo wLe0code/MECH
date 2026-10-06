@@ -198,11 +198,11 @@ backend/
                         personas. Solo el ESTADO (activo, par de idiomas,
                         guarda anti-eco); quien habla y pide la traducción
                         es mech_app. Se dispara con «traduce MECH».
-  lang.py             ← Idioma activo: español + ocho más (en/fr/pt y,
-                        desde oct 2026, de/it/ja/ru/zh). Español por defecto;
+  lang.py             ← Idioma activo: español + nueve más (en/fr/pt y,
+                        desde oct 2026, de/it/ja/ru/zh/ko). Español por defecto;
                         los demás SOLO si despiertan a MECH en ese idioma
                         ("wake up MECH", "bonjour MECH", "こんにちは MECH"…).
-                        Guarda las frases fijas de los nueve idiomas y la
+                        Guarda las frases fijas de los diez idiomas y la
                         instrucción de idioma que se le añade a Claude.
   stt.py              ← faster-whisper local + VAD (webrtcvad). Transcribe en
                         el idioma activo (lang.whisper_language()).
@@ -377,7 +377,7 @@ scripts/
                         orden, texto) y lo que NO debe adivinar («no sé»,
                         una palabra que vale para dos opciones). 50/50.
                         Correrlo al tocar parse_answer().
-  probar_idiomas.py   ← Los NUEVE idiomas sin micrófono: que cada frase
+  probar_idiomas.py   ← Los DIEZ idiomas sin micrófono: que cada frase
                         despierte en SU idioma, que las órdenes no se pisen
                         entre idiomas (ni con lo que se dice en el stand), el
                         par del traductor, la trivia, los subtítulos en
@@ -388,10 +388,14 @@ scripts/
   probar_comandos_idioma.py ← La regla de oct 2026: cada comando solo en el
                         idioma del despertar. Las frases de cada idioma en
                         el suyo, una frase de bandera por comando contra las
-                        de los otros ocho, el idioma fijo estando despierto,
+                        de los otros nueve, el idioma fijo estando despierto,
                         el saludo en español y el bucle de voz REAL con
-                        micrófono/Whisper/voz de mentira. Correrlo junto con
-                        el anterior.
+                        micrófono/Whisper/voz de mentira. Y las funciones
+                        extra jugadas ENTERAS en cada idioma (una trivia, un
+                        turno del traductor, marketing vacío): cada frase que
+                        MECH dice, lo que proyecta y lo que le pide a Claude
+                        tienen que ir en el idioma del despertar. Correrlo
+                        junto con el anterior.
   probar_saludo.py    ← Cuenta las órdenes que el SALUDO manda al Arduino:
                         cuántas veces llega arriba el brazo (tienen que ser
                         3), que el izquierdo no se mueva y que nunca baje de
@@ -491,9 +495,12 @@ Este repo **no tiene suite de tests ni linter configurado**. La validación es m
 ### Idiomas
 
 - **Strings al usuario (UI, voz, logs)** → siempre español neutro. Las frases
-  que MECH DICE (saludo, despedida, error) tienen su versión en los NUEVE
-  idiomas en `backend/lang.py`: si añades una, añade las nueve
-  (es/en/fr/pt/de/it/ja/ru/zh). Lo mismo con `_SAY` de `backend/maneuvers.py`
+  que MECH DICE (saludo, despedida, error) tienen su versión en los DIEZ
+  idiomas en `backend/lang.py`: si añades una, añade las diez
+  (es/en/fr/pt/de/it/ja/ru/zh/ko). ⚠️ También lo que se PROYECTA: el título
+  de la trivia sobre MECH iba fijo en español («MECH y su equipo») y salía
+  así aunque se jugara en japonés; ahora es `trivia_about_us`. Lo mismo con
+  `_SAY` de `backend/maneuvers.py`
   y con `T` de `frontend/trivia.js`. `scripts/probar_idiomas.py` avisa si
   falta alguna.
 - **`image_prompt` para NanoBanana** → siempre inglés (Gemini rinde mejor).
@@ -517,9 +524,9 @@ Segment:
 
 Prioridad de visual: `video_slug + video_segment` (si el archivo existe) > `image_prompt` > nada. Si Claude pide un video que no está en disco se loguea warning y se intenta el `image_prompt` del mismo segmento si lo trae.
 
-### Idiomas (español + inglés, francés, portugués, alemán, italiano, japonés, ruso, mandarín)
+### Idiomas (español + inglés, francés, portugués, alemán, italiano, japonés, ruso, mandarín, coreano)
 
-MECH **siempre arranca en español**. Los otros ocho **se activan si y solo si**
+MECH **siempre arranca en español**. Los otros nueve **se activan si y solo si**
 se le despierta EN ese idioma. **Lo decide el despertar, no la conversación**:
 
 | Frase de despertar | Idioma |
@@ -533,11 +540,12 @@ se le despierta EN ese idioma. **Lo decide el despertar, no la conversación**:
 | «こんにちは MECH» · «起きて MECH» | japonés (`ja`) |
 | «привет MECH» · «проснись MECH» | ruso (`ru`) |
 | «你好 MECH» · «醒醒 MECH» | mandarín (`zh`) |
+| «안녕 MECH» · «일어나 MECH» | coreano (`ko`) |
 
-Los cinco últimos son de **oct 2026** (pedido del equipo). Entran los cinco
-porque los cinco están dentro de lo que habla la voz (`eleven_multilingual_v2`)
-y de lo que entiende Whisper. **Sin probar en la Pi**: ver la subsección
-«Idiomas que no usan letras latinas».
+Los seis últimos son de **oct 2026** (pedido del equipo; el coreano, el
+décimo, el día 6). Entran porque están dentro de lo que habla la voz
+(`eleven_multilingual_v2`) y de lo que entiende Whisper. **Sin probar en la
+Pi**: ver la subsección «Idiomas que no usan letras latinas».
 
 En el idioma activo van: lo que Whisper transcribe (`language=<código>`), lo
 que Claude narra (bloque de idioma en el system prompt), las frases fijas
@@ -548,7 +556,7 @@ multilingüe. **Al dormirse vuelve solo a español.**
   añadir un idioma nuevo, la cabecera del módulo lista los pasos (4, y 2 más
   si no se escribe con letras latinas).
 - Frases de despertar/reposo: `VOICE_WAKE_PHRASES_<XX>` /
-  `VOICE_SLEEP_PHRASES_<XX>` (`.env`; `XX` = EN, FR, PT, DE, IT, JA, RU, ZH),
+  `VOICE_SLEEP_PHRASES_<XX>` (`.env`; `XX` = EN, FR, PT, DE, IT, JA, RU, ZH, KO),
   detección en `voice_phrases.wake_language()` (los idiomas extra se
   comprueban ANTES que el español, que tiene frases muy cortas).
 - En `config.py`, las listas de EN/FR/PT van repartidas tema por tema; las de
@@ -556,13 +564,13 @@ multilingüe. **Al dormirse vuelve solo a español.**
   «Idiomas añadidos en oct 2026» (son 14 listas por idioma: así se revisa un
   idioma entero de un vistazo).
 - **Cada comando, solo en el idioma del despertar (6 oct 2026, pedido del
-  equipo).** Las frases de mando existen en los nueve idiomas
+  equipo).** Las frases de mando existen en los diez idiomas
   (`VOICE_*_PHRASES_<XX>`), pero `voice_phrases._frases_activas()` solo mira
   la lista del idioma ACTIVO: despierto con «wake up MECH» lo corta «hey
   MECH» y **no** «oye MECH»; despierto con «ok MECH», al revés. Vale para
   todo lo que se reconoce por frase (interrumpir, dormir, moverse, marketing,
   traductor, trivia, sí/no). Las de DESPERTAR son la excepción: en reposo se
-  miran las nueve, porque son las que eligen el idioma. (Hasta el 5 oct se
+  miran las diez, porque son las que eligen el idioma. (Hasta el 5 oct se
   aceptaban todas siempre, sin mirar el idioma activo.)
   - **El idioma queda fijo hasta que se duerme.** Antes, decir la frase de
     despertar de otro idioma estando despierto lo cambiaba; ya no
@@ -578,7 +586,7 @@ multilingüe. **Al dormirse vuelve solo a español.**
     en los dos («avanza»/«avance»/«avança», «traduce»/«traduz»,
     «perdón»/«pardon»). No es un fallo, es el mismo sonido.
   - Al quedar cada idioma con SU lista, cada una tiene que valerse sola: por
-    eso «ok» está ahora en las nueve listas de `VOICE_YES_PHRASES*`. Si
+    eso «ok» está ahora en las diez listas de `VOICE_YES_PHRASES*`. Si
     añades un idioma o una frase, revisa que no dependa de otra lista.
   - No se tocó lo que no es un comando: las respuestas de la trivia
     (`parse_answer`: letras y ordinales), los números de «avanza diez
@@ -593,15 +601,15 @@ multilingüe. **Al dormirse vuelve solo a español.**
 - En reposo, si la transcripción en español no coincide con ningún wake, el
   bucle **re-transcribe el MISMO audio UNA vez con detección automática de
   idioma** (`stt.transcribe_any`) y vuelve a comparar contra todas las listas.
-  ⚠️ **NO lo cambies a reintentar idioma por idioma**: con nueve idiomas
-  serían 8 pasadas de Whisper por cada ruido, y la Pi tardaría medio minuto
+  ⚠️ **NO lo cambies a reintentar idioma por idioma**: con diez idiomas
+  serían 9 pasadas de Whisper por cada ruido, y la Pi tardaría medio minuto
   en volver a escuchar. Por eso añadir idiomas NO cuesta tiempo de escucha.
 - Se puede forzar desde el panel (un chip por idioma en la vista Voz →
   `POST /api/language/<código>`), útil para probar sin micrófono.
 - Apagar un idioma: `WAKE_ENGLISH_ENABLED`, `WAKE_FRENCH_ENABLED`,
   `WAKE_PORTUGUESE_ENABLED`, `WAKE_GERMAN_ENABLED`, `WAKE_ITALIAN_ENABLED`,
-  `WAKE_JAPANESE_ENABLED`, `WAKE_RUSSIAN_ENABLED`, `WAKE_CHINESE_ENABLED`
-  = `false`. Conviene apagar los que no se vayan a usar en el evento.
+  `WAKE_JAPANESE_ENABLED`, `WAKE_RUSSIAN_ENABLED`, `WAKE_CHINESE_ENABLED`,
+  `WAKE_KOREAN_ENABLED` = `false`. Conviene apagar los que no se vayan a usar en el evento.
 
 ⚠️ **Al inventar frases nuevas, ojo con las colisiones entre idiomas.** El
 matcher de `voice_phrases` perdona errores de letra, así que palabras
@@ -610,7 +618,7 @@ caía en el español «despierta»; «olá MECH» caía en «hola MECH»; el fra
 «dors» cae en «dos», así que «avanza dos segundos, MECH» habría dormido al
 robot.
 
-### Idiomas que no usan letras latinas (japonés, ruso, mandarín) — oct 2026
+### Idiomas que no usan letras latinas (japonés, ruso, mandarín, coreano) — oct 2026
 
 Añadir alemán e italiano fue copiar listas. Estos tres obligaron a tocar el
 matcher, los subtítulos y la trivia. **Para texto en letras latinas el
@@ -646,8 +654,41 @@ nuevas vacías: «sei» ya cuenta como número (seis, en italiano).
   la «А» cirílica y el texto de la opción dicho sin los signos
   («桑丘潘沙» por «桑丘·潘沙»). «不知道» / «わかりません» / «не знаю» son
   "no sé", no una opción.
-- **La Pi necesita una fuente** para que japonés y chino se LEAN en la
-  proyección: `sudo apt install fonts-noto-cjk`. El preflight (§11) lo mira.
+- **La Pi necesita una fuente** para que japonés, chino y coreano se LEAN en
+  la proyección: `sudo apt install fonts-noto-cjk`. El preflight (§11) lo mira.
+
+**Coreano (6 oct 2026) — el décimo idioma.** Se escribe con otra letra
+(hangul) como los tres de arriba, pero tiene sus propias reglas. Sin probar
+con micrófono.
+
+- **Lleva espacios, pero pega las terminaciones a la palabra** («번역해줘»,
+  «번역해 주세요») y Whisper junta o separa a su antojo. Por eso se compara
+  como el japonés y el chino: `_es_cjk()` incluye el hangul y cada trozo se
+  busca DENTRO de lo oído.
+- ⚠️ **Una sílaba suelta dentro de una orden de varias tiene que ser la
+  palabra ENTERA** (`_contiene`, rama `_es_hangul`). «앞으로 가» ("ve hacia
+  adelante") lleva «가», que es además la partícula más común del idioma:
+  buscándola dentro, «앞으로 … 가져올 변화» ("los cambios que traerá en el
+  futuro") hacía AVANZAR al robot. Por eso las listas llevan también las
+  formas con la terminación pegada («앞으로 가줘», «잘자 mech»).
+- ⚠️ **El nombre de UNA sílaba** («멕», «맥», que es lo que más probablemente
+  escriba Whisper) solo vale suelto o con la partícula con que se llama a
+  alguien («멕아», «맥씨»): dentro de otra palabra no (`_nombre_en`,
+  `_TRAS_NOMBRE_KO`). Si no, «멕시코» (México) y «맥주» (cerveza) serían MECH.
+- **Nada de «안녕히 주무세요 MECH»** ("buenas noches") para dormirlo: lleva
+  dentro «안녕», que es la frase de despertar. Se duerme con «잘 자 MECH».
+  Y el saludo dice «환영합니다», no «안녕하세요», por lo mismo.
+- **Segundos**: «10초», «십 초», «이십오 초» (`_SEGUNDOS_KO`). El número no
+  puede ir pegado a otra palabra: en «로봇이 초록색» el «이» es una partícula,
+  no un dos.
+- **Trivia**: «B요», «비» / «에이» (la letra dicha en hangul, solo si es la
+  respuesta entera), «2번», «두 번째» / «두번째» (se busca sin espacios;
+  ⚠️ nada de «이번» por "número dos": es también "esta vez"), «모르겠어요».
+- **Subtítulos**: las letras son anchas como las chinas (valen 2), pero las
+  líneas se cortan ENTRE palabras, nunca por la mitad (`subtitles._se_corta`).
+- Todos los nombres de idioma en coreano acaban en «어»: es lo que permite
+  decir «{src}와 {dst}» en `translate_ready` sin mirar la última letra. Si
+  añades un idioma cuyo nombre coreano acabe en consonante, hay que tocarlo.
 
 Colisiones que YA se evitaron (están medidas en `scripts/probar_idiomas.py`;
 si añades frases, córrelo):
@@ -752,7 +793,7 @@ MECH: «Muy bien, gracias.»              → y se calla otra vez
   criterio que la trivia: salir se mira antes que entrar).
 - **Si no hay nada que olvidar, MECH se calla** (lo apunta en el panel y no
   llama a Claude). Es a propósito: la confirmación «Listo, dejo de traducir»
-  casa con la orden en los nueve idiomas, así que cuando MECH se oye a sí
+  casa con la orden en los diez idiomas, así que cuando MECH se oye a sí
   mismo el eco cae ahí y muere en silencio. Si contestara, se oiría y
   volvería a contestarse. `scripts/probar_idiomas.py` comprueba que la
   confirmación siga casando con la orden — no la reescribas sin correrlo.
@@ -809,9 +850,21 @@ Etapas: `offer` (¿jugamos?) → `loading` (Claude escribe las preguntas) →
   su último fotograma (opacidad 1) se queda pegado y las fichas que no
   eran dejarían de atenuarse. Y la banda del veredicto va EN el flujo, no
   encima: si no, tapa el texto de las fichas.
-- **La pregunta del ofrecimiento** es la que pidió el equipo, en los cuatro
+- **La pregunta del ofrecimiento** es la que pidió el equipo, en todos los
   idiomas: «¿Te gustaría realizar una trivia para comprobar tu
   conocimiento?» (`lang.py` → `trivia_offer`).
+- **TODO va en el idioma del despertar** (revisado el 6 oct 2026, pedido del
+  equipo): lo que MECH dice, los textos fijos de la pantalla (`T` de
+  `trivia.js`), las preguntas (`llm.make_quiz` recibe el idioma y la MISMA
+  indicación de estilo que la narración, `lang.writing_style()`: japonés
+  cortés, chino simplificado…) y el **título** que se proyecta («Sobre: …»).
+  Dos fugas que se cerraron: el título de la partida sobre MECH iba fijo en
+  español (ahora `lang.say("trivia_about_us")`), y a Claude no se le decía
+  en qué idioma escribir el `title` del plan, que la trivia proyecta (ahora
+  va en la directiva de idioma). `scripts/probar_comandos_idioma.py` juega
+  una partida entera en cada idioma y compara frase por frase.
+  ⚠️ Lo que escribe Claude de verdad (título y preguntas) solo se ve con la
+  API real: en la simulación Claude es de mentira.
 - **Solo se ofrece si la presentación llegó al FINAL**, sin interrupción y
   tras un plan `immersive` (`should_offer_trivia(plan, completa)`).
 - Mientras hay partida, MECH **no saluda** (`_greeting_blocked`).

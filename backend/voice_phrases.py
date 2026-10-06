@@ -11,23 +11,27 @@ palabras aparecen en el texto (cada una como parte de algún token). Así
 "duermete mech", "mech duermete" y "duermete" funcionan igual, y tolera mejor
 lo que transcribe Whisper.
 
-Hay NUEVE idiomas (es/en/fr/pt + de/it/ja/ru/zh). Cada lista de `config.py`
-tiene sus variantes `_EN`, `_FR`, `_PT`, `_DE`, `_IT`, `_JA`, `_RU` y `_ZH`,
-y `_frases_activas()` elige la del idioma ACTIVO: un comando solo vale en el
-idioma con el que se despertó a MECH (oct 2026). Las de despertar son la
-excepción — en reposo se miran las nueve, porque son las que deciden el
-idioma.
+Hay DIEZ idiomas (es/en/fr/pt + de/it/ja/ru/zh + ko). Cada lista de
+`config.py` tiene sus variantes `_EN`, `_FR`, `_PT`, `_DE`, `_IT`, `_JA`,
+`_RU`, `_ZH` y `_KO`, y `_frases_activas()` elige la del idioma ACTIVO: un
+comando solo vale en el idioma con el que se despertó a MECH (oct 2026). Las
+de despertar son la excepción — en reposo se miran las diez, porque son las
+que deciden el idioma.
 
-Tres de ellos NO se escriben con letras latinas, y eso cambia dos cosas
+Cuatro de ellos NO se escriben con letras latinas, y eso cambia dos cosas
 (todo lo demás de este módulo sigue igual para los idiomas de siempre):
 
   - **Japonés y chino van sin espacios.** No hay "palabras" que comparar, así
     que cada trozo de una frase de `config` se busca DENTRO de lo que se oyó
     (`_contiene`). «こんにちは mech» casa con «こんにちはMECH» y con
     «こんにちは、メック».
+  - **El coreano sí lleva espacios, pero pega las terminaciones** a la
+    palabra («번역해줘», «번역해 주세요»), así que se trata igual: cada trozo
+    se busca dentro de lo oído. La excepción es una sílaba suelta dentro de
+    una orden de varias («앞으로 가»): esa tiene que ser la palabra entera.
   - **El nombre no sale siempre como "MECH".** Whisper lo escribe como suena
-    («メック», «мек», «麦克»). Cualquier frase que lleve la palabra "mech"
-    acepta también las formas de `config.VOICE_NAME_ALIASES`.
+    («メック», «мек», «麦克», «멕»). Cualquier frase que lleve la palabra
+    "mech" acepta también las formas de `config.VOICE_NAME_ALIASES`.
 
 Cómo se compara cada palabra (`_word_matches`), de más barato a más caro:
 
@@ -67,8 +71,19 @@ _MARCAS_KANA = "゙゚"
 _KATA_A_HIRA = {c: c - 0x60 for c in range(0x30A1, 0x30F7)}
 
 
+def _es_hangul(c: str) -> bool:
+    """¿Es una sílaba coreana?"""
+    return 0xAC00 <= ord(c) <= 0xD7A3
+
+
 def _es_cjk(c: str) -> bool:
-    """¿Es un carácter chino o japonés? (los idiomas que van sin espacios)"""
+    """¿Es un carácter chino, japonés o coreano?
+
+    Son los idiomas donde un comando no se puede comparar palabra por
+    palabra: el chino y el japonés van sin espacios, y el coreano pega las
+    terminaciones a la palabra («번역해줘», «번역해 주세요»). En los tres, cada
+    trozo de una frase de `config` se busca DENTRO de lo que se oyó.
+    """
     o = ord(c)
     return (
         0x3040 <= o <= 0x30FF       # hiragana y katakana
@@ -76,6 +91,7 @@ def _es_cjk(c: str) -> bool:
         or 0x3400 <= o <= 0x4DBF
         or 0xF900 <= o <= 0xFAFF
         or 0x3005 <= o <= 0x3007    # 々 〆 〇
+        or 0xAC00 <= o <= 0xD7A3    # hangul (coreano)
     )
 
 
@@ -253,6 +269,9 @@ def _word_matches(w: str, tok: str) -> bool:
 
 # El nombre del robot tal como va escrito en las listas de `config`.
 _NOMBRE = "mech"
+# Lo que se le pega al nombre en coreano al llamar a alguien o hablar de él:
+# «멕아» / «멕이» (vocativo), «멕씨» / «멕님» (señor MECH), «멕은» / «멕을»…
+_TRAS_NOMBRE_KO = "아야이씨님은을도"
 
 
 @lru_cache(maxsize=8)
@@ -271,7 +290,18 @@ def _nombre_en(tokens: list[str]) -> bool:
     crudos = tuple(getattr(config, "VOICE_NAME_ALIASES", ()) or ())
     for alias in _alias_normalizados(crudos):
         if _tiene_cjk(alias):
-            if any(alias in tok for tok in tokens):
+            if len(alias) == 1:
+                # Un nombre de UNA sílaba («멕», «맥») es demasiado poco para
+                # buscarlo dentro de otra palabra: «멕시코» (México) y «맥주»
+                # (cerveza) llevarían el nombre. Solo vale suelto o con la
+                # sílaba con que se llama a alguien en coreano («멕아», «맥씨»).
+                if any(
+                    tok == alias
+                    or (len(tok) == 2 and tok[0] == alias and tok[1] in _TRAS_NOMBRE_KO)
+                    for tok in tokens
+                ):
+                    return True
+            elif any(alias in tok for tok in tokens):
                 return True
         elif any(_word_matches(alias, tok) for tok in tokens):
             return True
@@ -287,10 +317,17 @@ def _contiene(w: str, tokens: list[str], sola: bool = False) -> bool:
       eso: solo cuenta si la respuesta es corta y EMPIEZA por él (`sola`), o
       «你好» (hola) sería un sí.
     - El nombre: además de "mech", vale escrito en otra escritura.
+    - Coreano: va con espacios, pero la terminación se pega a la palabra, así
+      que también se busca dentro. Una sílaba suelta DENTRO de una orden de
+      varias («앞으로 가», «잘 자 mech») tiene que ser la palabra entera: «가»
+      es además la partícula más común del idioma y aparece pegada a medio
+      diccionario («앞으로 가져올…» no es "avanza").
     """
     if _es_cjk(w[0]):
         if sola and len(w) == 1:
             return any(tok.startswith(w) and len(tok) <= 3 for tok in tokens)
+        if len(w) == 1 and _es_hangul(w):
+            return w in tokens
         return any(w in tok for tok in tokens)
     if any(_word_matches(w, tok) for tok in tokens):
         return True
@@ -312,7 +349,7 @@ def matches_any(text: str, phrases: list[str]) -> bool:
 # Idioma -> sufijo de su lista en `config` (`VOICE_X_PHRASES` + sufijo; el
 # español no lleva).
 _SUFIJOS = {"es": "", "en": "_EN", "fr": "_FR", "pt": "_PT", "de": "_DE",
-            "it": "_IT", "ja": "_JA", "ru": "_RU", "zh": "_ZH"}
+            "it": "_IT", "ja": "_JA", "ru": "_RU", "zh": "_ZH", "ko": "_KO"}
 
 
 def _frases_activas(base: str) -> list[str]:
@@ -464,6 +501,39 @@ def _numero_cjk(s: str) -> float | None:
     return None
 
 
+# Coreano: el número va delante de «초» (segundos). Casi siempre en cifras
+# («10초»), a veces con los números chinos («십 초», «이십오 초») y, aunque
+# con segundos no es lo correcto, también con los propios («다섯 초»).
+# El número no puede venir pegado a otra palabra: en «로봇이 초록색» el «이»
+# es una partícula, no un dos.
+_SEGUNDOS_KO = re.compile(
+    r"(?<![가-힣])([0-9]+|[일이삼사오육칠팔구십]+|다섯|여섯|일곱|여덟|아홉"
+    r"|스무|서른|한|두|세|네|열)\s*초"
+)
+_DIGITOS_KO = {"일": 1, "이": 2, "삼": 3, "사": 4, "오": 5, "육": 6, "칠": 7,
+               "팔": 8, "구": 9}
+_NATIVOS_KO = {"한": 1, "두": 2, "세": 3, "네": 4, "다섯": 5, "여섯": 6,
+               "일곱": 7, "여덟": 8, "아홉": 9, "열": 10, "스무": 20, "서른": 30}
+
+
+def _numero_ko(s: str) -> float | None:
+    """«10», «십», «이십오» o «다섯» -> el número (hasta 99), o None."""
+    if s.isdigit():
+        return float(s)
+    if s in _NATIVOS_KO:
+        return float(_NATIVOS_KO[s])
+    if "십" in s:
+        izq, _, der = s.partition("십")
+        decenas = _DIGITOS_KO.get(izq) if izq else 1
+        unidades = _DIGITOS_KO.get(der) if der else 0
+        if decenas is None or unidades is None:
+            return None
+        return float(decenas * 10 + unidades)
+    if len(s) == 1 and s in _DIGITOS_KO:
+        return float(_DIGITOS_KO[s])
+    return None
+
+
 def extract_seconds(text: str) -> float | None:
     """Los segundos que pide una orden, o None si no dice ninguno.
 
@@ -475,6 +545,10 @@ def extract_seconds(text: str) -> float | None:
     if _tiene_cjk(norm):
         m = _SEGUNDOS_CJK.search(norm)
         valor = _numero_cjk(m.group(1)) if m else None
+        if valor is not None:
+            return valor
+        m = _SEGUNDOS_KO.search(norm)
+        valor = _numero_ko(m.group(1)) if m else None
         if valor is not None:
             return valor
     tokens = norm.split()
@@ -683,6 +757,21 @@ _LETRA_KANA: dict[str, int] = {
         "エー": 0, "エイ": 0, "ビー": 1, "シー": 2, "ディー": 3,
     }.items()
 }
+# Coreano. Los ordinales van en dos palabras («두 번째») que Whisper junta o
+# separa a su antojo, así que se buscan con los espacios quitados. Con cifra
+# («2번») no hacen falta: la cifra queda suelta y la reconoce la tabla de
+# arriba. ⚠️ Nada de «이번» por "número dos": es también "esta vez".
+_ORDINAL_HANGUL: dict[int, tuple[str, ...]] = {
+    0: ("첫번째", "첫째"),
+    1: ("두번째", "둘째"),
+    2: ("세번째", "셋째"),
+    3: ("네번째", "넷째"),
+}
+# Las letras dichas en coreano y escritas en hangul. Como en japonés, solo
+# valen si son la respuesta ENTERA («비» es también "lluvia"), con o sin la
+# terminación de cortesía («비요», «비입니다»).
+_LETRA_HANGUL: dict[str, int] = {"에이": 0, "비": 1, "씨": 2, "시": 2, "디": 3}
+_COLETILLAS_KO = ("입니다", "이에요", "예요", "이요", "요")
 
 # Palabras que no aportan nada al comparar el TEXTO de una opción.
 _VACIAS = {
@@ -721,6 +810,8 @@ _NO_SE_CJK = _n(
     "不知道", "不清楚", "不晓得", "不曉得", "不确定", "不確定",
     "わからない", "分からない", "わかりません", "分かりません",
     "知らない", "しらない", "知りません", "パス",
+    # coreano: «모르겠어요», «몰라요», «모릅니다», «패스»
+    "모르겠", "몰라", "모릅니다", "모르는", "패스",
 )
 
 
@@ -755,6 +846,14 @@ def _letra_en(tokens: list[str], corta: bool) -> int | None:
         suelta = tokens[0].removesuffix("です")
         if suelta in _LETRA_KANA:
             return _LETRA_KANA[suelta]
+        # Lo mismo en coreano («비», «비요», «씨입니다»).
+        entera = tokens[0]
+        if entera in _LETRA_HANGUL:
+            return _LETRA_HANGUL[entera]
+        for coletilla in _COLETILLAS_KO:
+            suelta = entera[: -len(coletilla)]
+            if entera.endswith(coletilla) and suelta in _LETRA_HANGUL:
+                return _LETRA_HANGUL[suelta]
     return None
 
 
@@ -774,6 +873,12 @@ def _ordinal_en(tokens: list[str], corta: bool) -> int | None:
             for idx, formas in _ORDINAL_CJK.items():
                 if any(f in tok for f in formas):
                     return idx
+    # Coreano: «두 번째요» y «두번째요» son lo mismo.
+    pegado = "".join(t for t in tokens if _es_hangul(t[0]))
+    if pegado:
+        for idx, formas in _ORDINAL_HANGUL.items():
+            if any(f in pegado for f in formas):
+                return idx
     return None
 
 
@@ -921,6 +1026,7 @@ _WAKE_LISTS = (
     ("ja", "WAKE_JAPANESE_ENABLED", "VOICE_WAKE_PHRASES_JA"),
     ("ru", "WAKE_RUSSIAN_ENABLED", "VOICE_WAKE_PHRASES_RU"),
     ("zh", "WAKE_CHINESE_ENABLED", "VOICE_WAKE_PHRASES_ZH"),
+    ("ko", "WAKE_KOREAN_ENABLED", "VOICE_WAKE_PHRASES_KO"),
     ("es", None, "VOICE_WAKE_PHRASES"),
 )
 

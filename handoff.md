@@ -9,9 +9,15 @@ CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 (§2.quinquies) se subió el 6 oct en dos commits encima de `62f3ebb`: «Panel
 con estética nueva…» y «Cinco idiomas más…». ⚠️ **Subido, pero SIN probar en
 la Pi.** Después, el mismo 6 oct (§2.sexies): **saludo en español** y **cada
-comando solo en el idioma del despertar**. Subido el mismo día en un commit
-encima de `90b86d3` («Saludo en español y cada comando solo en el idioma del
-despertar»). ⚠️ **Subido, pero SIN probar en la Pi.**
+comando solo en el idioma del despertar**, en el commit `981ee72` encima de
+`90b86d3`, **ya en GitHub** (el push tardó: se quedó esperando a que el
+usuario iniciara sesión en la ventana del Git Credential Manager; si un
+push «se cuelga» en esta máquina, es eso). Y encima, también el 6 oct y
+también subido: el **coreano como décimo idioma + la revisión de la trivia
+y demás funciones en el idioma del despertar** (§2.octies). El equipo iba a
+probarlo en la Pi justo después: **preguntar cómo fue**. Hay además un
+`git stash` con un seguro del saludo que **NO se subió, a propósito**
+(§2.septies).
 
 > ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** La sesión del
 > 6 oct empezó leyendo este handoff en una copia local que estaba **2
@@ -44,6 +50,9 @@ despertar»). ⚠️ **Subido, pero SIN probar en la Pi.**
    por cámara sale en **español**, y los comandos solo valen en el idioma
    con el que se despertó a MECH («hey MECH» ya no corta a un MECH despierto
    en español, ni «oye MECH» a uno despierto en inglés).
+8. **6 oct, subido y sin probar en la Pi** (§2.octies): el **coreano** como
+   décimo idioma y la trivia revisada en cada idioma. El brazo «en bucle»
+   que reportó el equipo ya está resuelto, según ellos (§2.septies).
 
 ---
 
@@ -59,7 +68,8 @@ imágenes de Gemini, Arduino para motores y servos).
   `malpais`, `isidro_con_wong` (4 segmentos c/u), `isaac_newton` (5),
   `relatividad` (**7**), `crispr` (**5**) y el slot `marketing` (12
   espacios, con audio propio, no pasa por Claude).
-- Habla nueve idiomas (es/en/fr/pt y, desde el 5 oct, de/it/ja/ru/zh; lo
+- Habla diez idiomas (es/en/fr/pt, desde el 5 oct de/it/ja/ru/zh y, desde
+  el 6 oct, ko — coreano, §2.octies; lo
   decide la frase con que lo despiertan), hace de traductor por turnos y,
   desde el 25 sep, ofrece una **trivia** al terminar una obra.
 - El equipo ya es **campeón nacional WRO 2026 Future Innovators**. En la web
@@ -89,7 +99,7 @@ imágenes de Gemini, Arduino para motores y servos).
     llegadas arriba, el izquierdo quieto, nunca por debajo de 90).
   - `python scripts/probar_trivia.py` — cómo se entienden las respuestas
     (tiene que dar 50/50).
-  - `python scripts/probar_idiomas.py` — los nueve idiomas: despertar,
+  - `python scripts/probar_idiomas.py` — los diez idiomas: despertar,
     órdenes, colisiones entre idiomas, traductor, trivia, subtítulos y
     tablas (tiene que decir «TODO BIEN»). Mide las colisiones con las listas
     de todos los idiomas JUNTAS (apaga `VOICE_STRICT_LANGUAGE` a propósito).
@@ -368,6 +378,92 @@ mentira: los nueve chips, la pista correcta al narrar en cada idioma, el
 interruptor nuevo y lo que manda «Guardar y aplicar». **NO verificado**: nada
 con micrófono — sobre todo cómo escribe Whisper «hey MECH», «warte MECH»,
 «ねえ MECH», etc. estando ya en ese idioma (§4).
+
+### 2.septies «El brazo queda en bucle» (6 oct) — resuelto, según el equipo
+
+El equipo probó el robot y reportó: «el saludo lo hace en inglés y el brazo
+queda en bucle, debería hacer máximo unas 3 o 4 rotaciones». Más tarde, el
+mismo día: **«lo del brazo ya se solucionó»**. No dijeron cómo ni qué era.
+
+- **Lo del inglés tenía explicación**: el commit `981ee72` todavía no había
+  llegado a GitHub (push esperando el inicio de sesión), así que la Pi corría
+  el código anterior. Y aun con el código nuevo, el `.env` de la Pi tiene
+  `GREETING_LANGUAGE=en` guardado (§2.sexies).
+- **Lo del bucle NO se encontró en el código.** Un saludo son
+  `ARM_WAVE_REPEATS` llegadas arriba y nada más; `gestures.py` y `vision.py`
+  no cambian desde el 23 sep, cuando el saludo se probó y funcionaba; el
+  botón «SALUDAR AHORA» es un solo clic; y el eco del saludo no casa con
+  ninguna frase de despertar. Nunca se supo si era UN saludo que no paraba o
+  VARIOS seguidos. **Si vuelve a pasar, preguntar eso primero**: cómo lo
+  dispararon (cámara o botón), si la frase también se repetía, y qué valores
+  tienen en Ajustes «Saludo rotaciones», «Repetir saludo» y «Visitante nuevo».
+- ⚠️ **Hay un seguro escrito y simulado que NO se subió, a propósito.** Se
+  hizo mientras se esperaba respuesta; el equipo dijo después que el problema
+  ya estaba resuelto y pidió subir «lo demás», así que se quedó fuera (este
+  equipo ya revirtió una vez los arreglos que nadie pidió, §2.ter). Está
+  guardado en `git stash list` → «seguro del brazo…»:
+  1. tope de 4 rotaciones en el código (`gestures.wave_repeats()`) y en el
+     slider del panel (hoy llega a 6);
+  2. un saludo a la vez: no empieza otro mientras el anterior sigue hablando
+     o con el brazo en el aire (hoy, el botón pulsado dos veces o la cámara
+     con «Repetir saludo» más corto que el saludo, ~7,5 s, los encadena);
+  3. el panel numera cada saludo (`Saludo nº 3 (cámara): …`).
+  **No lo apliques por tu cuenta.** Si el brazo vuelve a hacer bucle,
+  ofrécelo: `git stash pop` (puede dar conflicto en los archivos que hayan
+  cambiado desde entonces; son 8 y los cambios son chicos).
+
+### 2.octies Coreano (décimo idioma) y «todo en el idioma del despertar» (6 oct)
+
+⚠️ **Subido el 6 oct, SIN probar en la Pi** (el equipo dijo «súbelo para
+probarlo»: preguntar cómo fue). Dos pedidos del equipo en un mensaje.
+Detalle en CLAUDE.md («Coreano» dentro de «Idiomas que no usan
+letras latinas», y «Modo TRIVIA»).
+
+**1. Coreano**: «안녕 MECH» (*annyeong*) / «일어나 MECH» (*ireona*) lo
+despiertan en coreano. Tiene todo lo de los otros: 14 listas de frases
+(`config.py`, sección «Coreano (ko)»), las 29 frases fijas (`lang.py`), el
+giro (`maneuvers._SAY`), `initial_prompt` de Whisper, directiva para Claude,
+pantalla de la trivia (`trivia.js`), chip y desplegables del panel, preflight
+(fuente), `.env.example` y `docs/USO.md`. Interruptor: `WAKE_KOREAN_ENABLED`.
+
+- Lo que NO fue copiar listas (tres reglas nuevas en `voice_phrases.py`,
+  todas solo para hangul — los otros nueve idiomas no cambian):
+  una sílaba suelta dentro de una orden de varias tiene que ser la palabra
+  entera («앞으로 가» no puede casar con «앞으로 … 가져올»); el nombre de una
+  sílaba («멕», «맥») no vale dentro de otra palabra («멕시코»); y los
+  ordinales de la trivia se buscan sin espacios («두 번째» = «두번째»).
+  Subtítulos: letras anchas pero se corta ENTRE palabras.
+- **La Pi necesita la misma fuente** que japonés y chino
+  (`sudo apt install fonts-noto-cjk`): si ya está, no hay que hacer nada.
+- Lo que más puede fallar con micrófono, igual que en japonés: **cómo
+  escribe Whisper «MECH»** en coreano. Si no despierta, el panel dice «Oí en
+  coreano: '…'» y esa forma se añade a `VOICE_NAME_ALIASES`.
+
+**2. «Que la trivia y esas funciones extra salgan en el idioma en que
+despertó».** Se revisó todo lo que MECH dice, proyecta y le pide a Claude.
+Casi todo ya estaba bien; **dos fugas reales**, las dos en la trivia:
+
+- El título de la partida sobre MECH iba fijo en español («MECH y su
+  equipo») y se PROYECTABA así aunque se jugara en japonés → frase nueva
+  `trivia_about_us` en los diez idiomas.
+- A Claude no se le decía en qué idioma escribir el `title` del plan, y la
+  trivia lo proyecta («Sobre: …») → va en la directiva de idioma
+  (`lang.llm_directive`) y en la descripción del campo (`llm.Plan.title`).
+- De paso: las preguntas se pedían «en japonés» a secas; ahora llevan la
+  misma indicación que la narración (`lang.writing_style()`: japonés cortés,
+  chino SIMPLIFICADO, coreano cortés…).
+
+Verificado sin hardware: `probar_comandos_idioma.py` (195 comprobaciones:
+en cada uno de los diez idiomas juega **una trivia entera**, hace **un turno
+del traductor** y pide marketing sin videos, y compara frase por frase lo
+que dice MECH, el idioma de la pantalla, el del subtítulo y lo que se le
+pide a Claude — quitando el arreglo del título, fallan los nueve idiomas que
+no son español), `probar_idiomas.py` (375, con el coreano dentro),
+`probar_trivia.py` (50/50), `probar_saludo.py`. El panel y las seis pantallas
+de la trivia en coreano se vieron en el navegador con un servidor de mentira.
+**NO verificado**: nada con micrófono ni con la API real — en la simulación
+Claude es de mentira, así que el idioma del título y de las preguntas que
+escribe de verdad solo se ve en la Pi (§4, punto 000).
 
 ### 2.quater Preguntas abiertas con el equipo
 
@@ -1157,11 +1253,27 @@ código viejo:
 - `Movilidad v4 (sep 2026): ...`
 - `Trivia: 3 preguntas por partida…`
 - `Idiomas: español · inglés · francés · portugués · alemán · italiano ·
-  japonés · ruso · mandarín` (si solo salen cuatro, falta el código del
+  japonés · ruso · mandarín · coreano` (si falta el coreano, no se ha
+  bajado lo del 6 oct; si solo salen cuatro, falta el código del
   5 oct)
 
 Y en el navegador del panel, **Ctrl+Shift+R** (si no, se queda el `app.js`
 viejo en caché y los botones nuevos no aparecen).
+
+### 000) Coreano y trivia en cada idioma (§2.octies; ya subido, sin probar)
+
+1. **Despertar en coreano**: «안녕 MECH». El log debe decir «MECH despierto
+   (coreano)» y contestar «네, 듣고 있어요». Si no despierta, mirar «Oí en
+   coreano: '…'» y añadir cómo escribió el nombre a `VOICE_NAME_ALIASES`.
+2. **Una trivia en un idioma que NO sea español** (lo que no se pudo
+   simular, porque Claude era de mentira): despertarlo en inglés, pedir una
+   obra, dejarla terminar y aceptar la trivia. Mirar en la PROYECCIÓN que
+   estén en inglés: el título de arriba («About: …»), las preguntas, las
+   opciones y los avisos («Correct!»). Y que MECH lo diga todo en inglés.
+   - Sin haber pedido ninguna obra, decir «quiz me»: la partida va sobre
+     MECH y el título debe decir «MECH and its team», no «MECH y su equipo».
+3. **Subtítulos en coreano**: que se lean (no cuadritos → falta
+   `fonts-noto-cjk`) y que ninguna palabra quede partida entre dos líneas.
 
 ### 00) Lo del 6 oct (§2.sexies; ya subido, sin probar)
 

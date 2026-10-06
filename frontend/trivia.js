@@ -408,6 +408,22 @@ window.MechTrivia = (function () {
       zero: '下次再接再厉',
       good: '玩得不错！',
     },
+    ko: {
+      offer: '퀴즈 한번 풀어 볼까요?',
+      offerSub: '배운 내용을 확인하는 퀴즈를 풀어 보시겠어요?',
+      offerHint: '“네” 또는 “아니요”로 대답해 주세요',
+      about: '주제',
+      loading: '문제를 준비하고 있어요…',
+      say: '큰 소리로 대답해 주세요: “A”, “B”…',
+      correct: '정답입니다!',
+      wrong: '틀렸어요',
+      pass: '정답은 이거예요',
+      rightIs: (l, a) => `정답은 ${l}: ${a}`,
+      result: '결과',
+      perfect: '모두 정답!',
+      zero: '다음에 다시 도전해요',
+      good: '잘했어요!',
+    },
   };
 
   function inyectarCSS() {

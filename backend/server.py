@@ -99,7 +99,8 @@ def _voice_loop_worker():
     IDIOMA: el despertar decide el idioma — "ok MECH" (español),
     "wake up MECH" (inglés), "bonjour MECH" (francés), "bom dia MECH"
     (portugués), "guten Tag MECH" (alemán), "ciao MECH" (italiano),
-    "こんにちは MECH" (japonés), "привет MECH" (ruso), "你好 MECH" (mandarín).
+    "こんにちは MECH" (japonés), "привет MECH" (ruso), "你好 MECH" (mandarín),
+    "안녕 MECH" (coreano).
     A partir de ahí todo (lo que entiende, lo que narra y los subtítulos) va
     en ese idioma hasta que se duerme, y al dormirse vuelve solo a español.
     Ver backend/lang.py.
@@ -418,7 +419,8 @@ async def lifespan(app: FastAPI):
         "Idiomas: " + " · ".join(lang.label(c) for c in lang.enabled_languages())
         + " — «ok MECH» (es) · «wake up MECH» (en) · «bonjour MECH» (fr) · "
           "«bom dia MECH» (pt) · «guten Tag MECH» (de) · «ciao MECH» (it) · "
-          "«こんにちは MECH» (ja) · «привет MECH» (ru) · «你好 MECH» (zh)",
+          "«こんにちは MECH» (ja) · «привет MECH» (ru) · «你好 MECH» (zh) · "
+          "«안녕 MECH» (ko)",
         "ok",
     )
     # Misma idea: si esta línea no sale, la Pi corre código viejo. Y si dice
@@ -922,7 +924,8 @@ async def set_language(code: str):
     En el stand el idioma lo decide la voz: "ok MECH" = español,
     "wake up MECH" = inglés, "bonjour MECH" = francés, "bom dia MECH" =
     portugués, "guten Tag MECH" = alemán, "ciao MECH" = italiano,
-    "こんにちは MECH" = japonés, "привет MECH" = ruso, "你好 MECH" = mandarín.
+    "こんにちは MECH" = japonés, "привет MECH" = ruso, "你好 MECH" = mandarín,
+    "안녕 MECH" = coreano.
     Este endpoint existe para probar sin micrófono y para corregir sobre la
     marcha si Whisper entendió mal.
     """

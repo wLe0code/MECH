@@ -572,7 +572,9 @@ class MechApp:
                 partes.append("Datos verificados de la obra:\n- " + "\n- ".join(datos))
             return pres.get("title") or meta.get("title", ""), "\n\n".join(partes)
         return (
-            "MECH y su equipo",
+            # En el idioma activo: este título se PROYECTA en la pantalla del
+            # juego. Antes iba fijo en español aunque se jugara en japonés.
+            lang.say("trivia_about_us"),
             informacion_nuestra.system_prompt_section(),
         )
 

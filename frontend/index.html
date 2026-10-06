@@ -84,7 +84,8 @@
             <button class="lang-chip" id="lang-ja" onclick="API.setLanguage('ja')" title="Despertar por voz: «こんにちは MECH» (konnichiwa) o «起きて MECH» (okite)">JA · 日本語</button>
             <button class="lang-chip" id="lang-ru" onclick="API.setLanguage('ru')" title="Despertar por voz: «привет MECH» (privet) o «проснись MECH» (prosnis)">RU · РУССКИЙ</button>
             <button class="lang-chip" id="lang-zh" onclick="API.setLanguage('zh')" title="Despertar por voz: «你好 MECH» (nǐ hǎo) o «醒醒 MECH» (xǐng xing)">ZH · 中文</button>
-            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «guten Tag MECH» → alemán · «ciao MECH» → italiano · «こんにちは MECH» → japonés · «привет MECH» → ruso · «你好 MECH» → mandarín · la narración se corta con la frase de ESE idioma («oye MECH» en español, «hey MECH» en inglés…)</span>
+            <button class="lang-chip" id="lang-ko" onclick="API.setLanguage('ko')" title="Despertar por voz: «안녕 MECH» (annyeong) o «일어나 MECH» (ireona)">KO · 한국어</button>
+            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «guten Tag MECH» → alemán · «ciao MECH» → italiano · «こんにちは MECH» → japonés · «привет MECH» → ruso · «你好 MECH» → mandarín · «안녕 MECH» → coreano · la narración se corta con la frase de ESE idioma («oye MECH» en español, «hey MECH» en inglés…)</span>
           </div>
 
           <div class="wave-bars" id="wave-bars">
@@ -163,6 +164,7 @@
                 <option value="ja">JAPONÉS</option>
                 <option value="ru">RUSO</option>
                 <option value="zh">MANDARÍN</option>
+                <option value="ko">COREANO</option>
               </select>
               <i class="ti ti-arrows-horizontal" title="Traduce en los dos sentidos"></i>
               <select class="translator-select" id="tr-dst" title="Idioma del otro interlocutor">
@@ -175,6 +177,7 @@
                 <option value="ja">JAPONÉS</option>
                 <option value="ru">RUSO</option>
                 <option value="zh">MANDARÍN</option>
+                <option value="ko">COREANO</option>
               </select>
               <button class="btn btn-purple" id="tr-start" onclick="API.translateStart()"
                       title="Un turno de traducción con este par: pregunta qué traducir, escucha una frase y la dice.">
@@ -530,7 +533,7 @@
             </label>
           </div>
           <div class="slider-row">
-            <label title="Mientras MECH narra, escucha solo la frase para cortarlo, en el idioma en que despertó: 'oye MECH' (español), 'hey MECH' (inglés), 'pardon MECH' (francés), 'escuta MECH' (portugués), 'warte MECH' (alemán), 'scusa MECH' (italiano), 'ねえ MECH' (japonés), 'эй MECH' (ruso), '嘿 MECH' (mandarín). Apágalo si se interrumpe solo con el eco del parlante.">Interrumpir</label>
+            <label title="Mientras MECH narra, escucha solo la frase para cortarlo, en el idioma en que despertó: 'oye MECH' (español), 'hey MECH' (inglés), 'pardon MECH' (francés), 'escuta MECH' (portugués), 'warte MECH' (alemán), 'scusa MECH' (italiano), 'ねえ MECH' (japonés), 'эй MECH' (ruso), '嘿 MECH' (mandarín), '저기 MECH' (coreano). Apágalo si se interrumpe solo con el eco del parlante.">Interrumpir</label>
             <label class="switch">
               <input type="checkbox" id="set-interrupt">
               <span class="switch-text">Cortar la narración diciendo «oye MECH»</span>
@@ -647,6 +650,7 @@
               <option value="ja">JAPONÉS</option>
               <option value="ru">RUSO</option>
               <option value="zh">MANDARÍN</option>
+              <option value="ko">COREANO</option>
             </select>
           </div>
           <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">

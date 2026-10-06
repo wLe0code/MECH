@@ -1,27 +1,31 @@
-"""Comprueba la regla de oct 2026: cada comando, en el idioma del despertar.
+"""Comprueba que TODO vaya en el idioma con el que se despertó a MECH.
 
-Por qué existe: lo que pidió el equipo es fácil de romper sin darse cuenta,
-porque no da error — simplemente «hey MECH» vuelve a cortar a un MECH
-despierto en español y nadie lo nota hasta el evento. Aquí se mira, en los
-NUEVE idiomas:
+Por qué existe: lo que pidió el equipo (oct 2026) es fácil de romper sin
+darse cuenta, porque no da error — simplemente «hey MECH» vuelve a cortar a
+un MECH despierto en español, o la trivia sale con el título en español
+aunque se juegue en japonés, y nadie lo nota hasta el evento. Aquí se mira,
+en TODOS los idiomas:
 
   1. que cada idioma entienda TODAS sus frases (las listas de `config.py`);
-  2. que en cada idioma valgan SUS comandos y no los de los otros ocho;
+  2. que en cada idioma valgan SUS comandos y no los de los demás;
   3. el despertar: en reposo elige idioma cualquiera, despierto queda fijo;
   4. el saludo: en español, y que su propio eco no despierte a MECH;
   5. el bucle de voz DE VERDAD (`server._voice_loop_worker`) con un
-     micrófono, un Whisper y una voz de mentira, de punta a punta.
+     micrófono, un Whisper y una voz de mentira, de punta a punta;
+  6. las funciones extra — trivia, traductor, marketing — jugadas enteras
+     en cada idioma: cada frase que MECH dice, lo que se proyecta y lo que
+     se le pide a Claude tienen que ir en el idioma del despertar.
 
     python scripts/probar_comandos_idioma.py
 
 Sale 1 si algo falla. No necesita hardware ni claves de API.
 
-`scripts/probar_idiomas.py` mide otra cosa: que las frases de los nueve
-idiomas no se pisen con TODAS las listas juntas (apaga esta regla a
-propósito). Al tocar las listas o el matcher, correr los dos.
+`scripts/probar_idiomas.py` mide otra cosa: que las frases de todos los
+idiomas no se pisen con TODAS las listas juntas (apaga la regla del punto 2
+a propósito). Al tocar las listas o el matcher, correr los dos.
 
-⚠️ Esto comprueba el TEXTO. Cómo transcribe Whisper cada idioma en la Pi
-solo se ve con el micrófono de verdad.
+⚠️ Esto comprueba el TEXTO. Cómo transcribe Whisper cada idioma en la Pi, y
+lo que escribe Claude de verdad, solo se ve con el robot.
 """
 
 from __future__ import annotations
@@ -109,7 +113,7 @@ import lang  # noqa: E402
 import voice_phrases as vp  # noqa: E402
 
 SUFIJO = {"es": "", "en": "_EN", "fr": "_FR", "pt": "_PT", "de": "_DE",
-          "it": "_IT", "ja": "_JA", "ru": "_RU", "zh": "_ZH"}
+          "it": "_IT", "ja": "_JA", "ru": "_RU", "zh": "_ZH", "ko": "_KO"}
 
 fallos: list[str] = []
 
@@ -146,42 +150,65 @@ BANDERAS = {
     "interrumpir": (vp.is_interrupt, {
         "es": "oye mech", "en": "hey mech", "fr": "attends mech",
         "pt": "escuta mech", "de": "warte, MECH", "it": "aspetta, MECH",
-        "ja": "ねえ、MECH", "ru": "Эй, MECH", "zh": "嘿，MECH"}),
+        "ja": "ねえ、MECH", "ru": "Эй, MECH", "zh": "嘿，MECH",
+        "ko": "저기, MECH"}),
     "dormir": (vp.is_sleep_any, {
         "es": "para de escuchar", "en": "stop listening",
         "fr": "bonne nuit mech", "pt": "boa noite mech",
         "de": "Gute Nacht, MECH", "it": "Buonanotte, MECH",
-        "ja": "おやすみ、MECH", "ru": "Спокойной ночи, MECH", "zh": "晚安，MECH"}),
+        "ja": "おやすみ、MECH", "ru": "Спокойной ночи, MECH", "zh": "晚安，MECH",
+        "ko": "잘 자, MECH"}),
     "mirar afuera": (vp.is_look_outward, {
         "es": "mira hacia afuera", "en": "look outside",
         "fr": "regarde dehors", "pt": "olha para fora", "de": "Schau raus",
         "it": "Guarda fuori", "ja": "外を見て", "ru": "Посмотри наружу",
-        "zh": "向外看"}),
+        "zh": "向外看", "ko": "밖을 봐"}),
     "volver a proyectar": (vp.is_back_to_projection, {
         "es": "regresa a proyectar", "en": "back to projecting",
         "fr": "retourne projeter", "pt": "volta a projetar",
         "de": "Zurück zur Projektion", "it": "Torna a proiettare",
-        "ja": "投影に戻って", "ru": "Вернись к проекции", "zh": "回去投影"}),
+        "ja": "投影に戻って", "ru": "Вернись к проекции", "zh": "回去投影",
+        "ko": "투영으로 돌아가"}),
     "marketing": (vp.is_play_marketing, {
         "es": "proyecta marketing", "en": "play marketing",
         "fr": "lance le marketing", "pt": "toca marketing",
         "de": "Zeig Marketing", "it": "Riproduci marketing",
         "ja": "マーケティングを再生して", "ru": "Покажи маркетинг",
-        "zh": "播放宣传片"}),
+        "zh": "播放宣传片", "ko": "마케팅 재생해 줘"}),
     "trivia": (vp.is_trivia, {
         "es": "juguemos una trivia", "en": "quiz me", "fr": "jouons au quiz",
         "pt": "vamos jogar o quiz", "de": "Quiz spielen",
         "it": "Facciamo un quiz", "ja": "クイズをしよう",
-        "ru": "Сыграем в викторину", "zh": "玩问答"}),
+        "ru": "Сыграем в викторину", "zh": "玩问答", "ko": "퀴즈 하자"}),
     "sí": (vp.is_yes, {
         "es": "por supuesto", "en": "yes", "fr": "oui", "pt": "com certeza",
         "de": "gerne", "it": "volentieri", "ja": "はい", "ru": "Конечно",
-        "zh": "好的"}),
+        "zh": "好的", "ko": "네"}),
     # «traduce» / «traduis» / «traduz» / «traduci» son la misma palabra con
     # una letra de diferencia: entre lenguas romances no se pueden separar.
     "traducir": (vp.is_translate, {
         "es": "traduce mech", "en": "translate mech", "de": "Übersetze, MECH",
-        "ja": "翻訳して、MECH", "ru": "Переведи, MECH", "zh": "翻译，MECH"}),
+        "ja": "翻訳して、MECH", "ru": "Переведи, MECH", "zh": "翻译，MECH",
+        "ko": "번역해 줘, MECH"}),
+}
+
+# Entrar y salir del traductor, en todos (para jugarlo entero en el punto 6).
+TRADUCIR = dict(BANDERAS["traducir"][1],
+                fr="traduis mech", pt="traduz mech", it="traduci mech")
+DEJAR_DE_TRADUCIR = {
+    "es": "deja de traducir", "en": "stop translating",
+    "fr": "arrête de traduire", "pt": "para de traduzir",
+    "de": "Hör auf zu übersetzen", "it": "Smetti di tradurre",
+    "ja": "翻訳をやめて", "ru": "Хватит переводить", "zh": "停止翻译",
+    "ko": "번역 그만",
+}
+
+# Cómo se despierta en cada idioma, escrito como lo escribe Whisper.
+DESPERTAR = {
+    "es": "ok mech", "en": "wake up mech", "fr": "bonjour mech",
+    "pt": "bom dia mech", "de": "Guten Tag, MECH", "it": "Ciao MECH",
+    "ja": "こんにちは、MECH", "ru": "Привет, MECH", "zh": "你好，MECH",
+    "ko": "안녕, MECH",
 }
 
 
@@ -240,6 +267,9 @@ def probar_frases() -> None:
           "[ja] «ねえMECH、別の話をして» se queda con la petición")
     check(vp.strip_interrupt("oye mech, cuéntame otra cosa") == "",
           "[ja] «oye MECH, cuéntame…» no se toma como interrupción")
+    lang.set_current("ko")
+    check(vp.strip_interrupt("저기 MECH, 다른 이야기 해 줘") == "다른 이야기 해 줘",
+          "[ko] «저기 MECH, 다른 이야기 해 줘» se queda con la petición")
 
     print("\n  -- el eco de «dejo de traducir» se reconoce en su idioma --")
     for code in lang.SUPPORTED:
@@ -259,17 +289,11 @@ def probar_frases() -> None:
     lang.reset()
 
 
-# Cómo se despierta en cada idioma, escrito como lo escribe Whisper.
-DESPERTAR = {
-    "es": "ok mech", "en": "wake up mech", "fr": "bonjour mech",
-    "pt": "bom dia mech", "de": "Guten Tag, MECH", "it": "Ciao MECH",
-    "ja": "こんにちは、MECH", "ru": "Привет, MECH", "zh": "你好，MECH",
-}
-
-
 def probar_despertar() -> None:
-    print("\n=== 3. Despertar: en reposo eligen idioma los nueve ===")
+    print(f"\n=== 3. Despertar: en reposo eligen idioma los {len(lang.SUPPORTED)} ===")
     lang.reset()
+    check(set(DESPERTAR) == set(lang.SUPPORTED) and set(SUFIJO) == set(lang.SUPPORTED),
+          "esta prueba cubre todos los idiomas de lang.SUPPORTED")
     for code, frase in DESPERTAR.items():
         check(vp.wake_language(frase) == code, f"reposo: «{frase}» -> {code}")
     for frase in ("hola mech", "hello mech", "cuéntame de malpaís"):
@@ -297,8 +321,8 @@ def probar_saludo() -> None:
     print(f"         «{texto}»")
     check(texto.startswith("¡Hola! Soy MECH"), "es la frase en español")
     # Lo que Whisper puede escribir al oír el saludo por el parlante. Ninguna
-    # puede contar como un despertar (en NINGUNO de los nueve idiomas), o MECH
-    # se despertaría solo al saludar.
+    # puede contar como un despertar (en NINGÚN idioma), o MECH se
+    # despertaría solo al saludar.
     for eco in (texto, "Hola, soy Mec. Un gusto verte hoy aquí.",
                 "ola soy mesh un gusto verte hoy aqui", "soy MECH un gusto verte",
                 "Hola, soy Mech.", "un gusto verte hoy aquí"):
@@ -308,10 +332,11 @@ def probar_saludo() -> None:
 
 
 # ===========================================================================
-# 5. El bucle de voz DE VERDAD, con micrófono/Whisper/voz de mentira
+# El backend DE VERDAD con micrófono, Whisper, voz y Claude de mentira
 # ===========================================================================
-def probar_bucle() -> None:
-    print("\n=== 5. Bucle de voz real (micrófono, Whisper y voz simulados) ===")
+def montar():
+    """Carga `mech_app` y `server` reales y les cambia solo lo que toca el
+    mundo exterior: micrófono, Whisper, parlante, Arduino y Claude."""
     import numpy as np
 
     import mech_app
@@ -327,35 +352,44 @@ def probar_bucle() -> None:
     import maneuvers
     import server
     import stt
+    import translator
+    import trivia
     import tts
 
-    app = mech_app.get_app()
-    dicho: list[str] = []          # lo que MECH dice en voz alta
-    a_claude: list[str] = []       # lo que llega como petición normal
-    maniobras: list[str] = []      # órdenes de movimiento ejecutadas
-    dormir_real = time.sleep
+    h = types.SimpleNamespace(
+        np=np, mech_app=mech_app, maneuvers=maneuvers, server=server, stt=stt,
+        translator=translator, trivia=trivia, tts=tts,
+        app=mech_app.get_app(),
+        dicho=[],        # lo que MECH dice en voz alta
+        a_claude=[],     # lo que llega como petición normal (un plan)
+        maniobras=[],    # órdenes directas ejecutadas
+        pedidos=[],      # lo que se le pide a Claude aparte: trivia y traducción
+        eventos=[],      # lo que se manda a las pantallas
+        dormir_real=time.sleep,
+    )
+    app = h.app
+    h.reales = {n: getattr(app, n) for n in
+                ("start_translator", "start_trivia", "play_playlist")}
 
-    tts.speak = lambda texto, *a, **k: dicho.append(texto)
+    tts.speak = lambda texto, *a, **k: h.dicho.append(texto)
     tts.play_chime = lambda *a, **k: None
     stt.get_model = lambda *a, **k: None
     stt.get_interrupt_model = lambda *a, **k: None
     app.log = lambda *a, **k: None
-    maneuvers.look_outward = lambda *a, **k: maniobras.append("afuera")
-    maneuvers.back_to_projection = lambda *a, **k: maniobras.append("proyectar")
-    maneuvers.advance = lambda *a, **k: maniobras.append("avanzar")
-    app.play_playlist = lambda *a, **k: maniobras.append("marketing")
-    app.start_translator = lambda *a, **k: maniobras.append("traductor")
-    app.start_trivia = lambda *a, **k: maniobras.append("trivia")
+    app.emit = lambda tipo, **datos: h.eventos.append((tipo, datos))
+    maneuvers.look_outward = lambda *a, **k: h.maniobras.append("afuera")
+    maneuvers.back_to_projection = lambda *a, **k: h.maniobras.append("proyectar")
+    maneuvers.advance = lambda *a, **k: h.maniobras.append("avanzar")
 
     class PlanFalso:
         mode, title = "narration", "simulado"
 
     def _plan(texto, **k):
-        a_claude.append(texto)
+        h.a_claude.append(texto)
         return PlanFalso()
 
     mech_app.llm.plan_response = _plan
-    mech_app.llm.append_turn = lambda h, t, p: h
+    mech_app.llm.append_turn = lambda hist, t, p: hist
     app.execute_plan = lambda plan: None
 
     def correr(guion, awake=False, idioma="es", antes=None, tarda=0.0):
@@ -364,11 +398,14 @@ def probar_bucle() -> None:
         `antes(i)` se llama justo cuando termina de grabarse la frase i;
         `tarda` son los segundos que finge tardar Whisper en transcribir.
         """
-        del dicho[:], a_claude[:], maniobras[:]
+        del h.dicho[:], h.a_claude[:], h.maniobras[:], h.pedidos[:], h.eventos[:]
+        translator.reset()
+        trivia.reset()
         lang.set_current(idioma)
         app.state.update(voice_awake=awake, voice_loop_active=True, language=idioma)
         app.chime_pending = False
         app.greeting_until = 0.0
+        app._last_presentation = None
         app.set_voice_phase("waiting" if awake else "dormant")
         cola = list(guion)
         actual = {"i": -1, "texto": ""}
@@ -385,7 +422,7 @@ def probar_bucle() -> None:
 
         def transcribir(audio, *a, **k):
             if tarda:
-                dormir_real(tarda)
+                h.dormir_real(tarda)
             return actual["texto"]
 
         stt.record_until_silence = grabar
@@ -395,10 +432,21 @@ def probar_bucle() -> None:
         try:
             server._voice_loop_worker()
         finally:
-            time.sleep = dormir_real
+            time.sleep = h.dormir_real
         return bool(app.state["voice_awake"]), lang.current()
 
-    # -- Los nueve, de punta a punta ------------------------------------------
+    h.correr = correr
+    return h
+
+
+def probar_bucle(h) -> None:
+    print("\n=== 5. Bucle de voz real (micrófono, Whisper y voz simulados) ===")
+    app, dicho, a_claude, maniobras, correr = h.app, h.dicho, h.a_claude, h.maniobras, h.correr
+    app.play_playlist = lambda *a, **k: maniobras.append("marketing")
+    app.start_translator = lambda *a, **k: maniobras.append("traductor")
+    app.start_trivia = lambda *a, **k: maniobras.append("trivia")
+
+    # -- Todos, de punta a punta ----------------------------------------------
     # Despertar -> dos órdenes de OTRO idioma (no tienen que hacer nada: ni
     # cortar, ni dormir, ni cambiar el idioma; siguen como una frase normal)
     # -> girar con la suya -> dormir con la suya.
@@ -458,16 +506,163 @@ def probar_bucle() -> None:
     lang.reset()
 
 
+# Las dos preguntas que "escribe Claude" en la simulación. La correcta es
+# siempre la A: así «A» acierta y «B» falla, en cualquier idioma.
+_PREGUNTAS = [
+    {"question": "Pregunta uno", "options": ["Alfa", "Beta", "Gamma"],
+     "correct": 0, "explanation": ""},
+    {"question": "Pregunta dos", "options": ["Alfa", "Beta", "Gamma"],
+     "correct": 0, "explanation": ""},
+]
+
+
+def probar_funciones(h) -> None:
+    print("\n=== 6. Trivia, traductor y marketing, en el idioma del despertar ===")
+    app, dicho, a_claude, correr = h.app, h.dicho, h.a_claude, h.correr
+    # Aquí van las funciones de verdad (el punto 5 solo apuntaba que se
+    # llamaban): lo de mentira es Claude, que devuelve algo fijo.
+    for nombre, real in h.reales.items():
+        setattr(app, nombre, real)
+
+    def quiz(material, title="", n=3, language=None):
+        h.pedidos.append(("quiz", language, title))
+        return [dict(p) for p in _PREGUNTAS]
+
+    def traducir(texto, src, dst):
+        h.pedidos.append(("traducir", src, dst))
+        return "TRADUCIDO"
+
+    h.mech_app.llm.make_quiz = quiz
+    h.mech_app.llm.translate = traducir
+    h.mech_app.video_library.playlist = lambda slug: []   # marketing sin videos
+    config.TRIVIA_QUESTIONS = 2
+    # El marcador final se borra con un temporizador: aquí no hace falta, y
+    # dejarlo correr mezclaría su aviso con la partida del idioma siguiente.
+    import threading
+    temporizador_real = threading.Timer
+    threading.Timer = lambda *a, **k: types.SimpleNamespace(start=lambda: None)
+
+    def di(clave, code, **huecos):
+        return lang.say(clave, code, **huecos)
+
+    def pregunta(n, code):
+        return (di("trivia_question_header", code, n=n, total=2) + " "
+                + _PREGUNTAS[n - 1]["question"] + " A. Alfa. B. Beta. C. Gamma.")
+
+    print("\n  -- una trivia entera: «A» (acierta), «B» (falla) y a dormir --")
+    for code in lang.SUPPORTED:
+        despierto, _ = correr([
+            DESPERTAR[code], BANDERAS["trivia"][1][code], "A", "B",
+            BANDERAS["dormir"][1][code],
+        ])
+        esperado = [
+            di("awake", code), di("trivia_preparing", code),
+            di("trivia_intro", code, total=2), pregunta(1, code),
+            di("trivia_correct", code), pregunta(2, code),
+            di("trivia_wrong", code, letter="A", answer="Alfa"),
+            di("trivia_final", code, score=1, total=2), di("dormant", code),
+        ]
+        pantallas = [d for t, d in h.eventos if t == "trivia"]
+        titulo = di("trivia_about_us", code)
+        bien = (
+            dicho == esperado
+            and h.pedidos == [("quiz", code, titulo)]
+            and pantallas and all(d.get("lang") == code for d in pantallas)
+            and any(d.get("title") == titulo for d in pantallas)
+            and not a_claude and not despierto
+        )
+        check(bien, f"[{code}] trivia: {len(esperado)} frases en {lang.label(code)}, "
+                    f"preguntas pedidas en ese idioma y pantalla en ese idioma"
+              + ("" if bien else
+                 "\n          dijo:     " + " | ".join(dicho)
+                 + "\n          esperado: " + " | ".join(esperado)
+                 + f"\n          pedidos={h.pedidos} a_claude={a_claude} "
+                   f"pantallas={[(d.get('lang'), d.get('title')) for d in pantallas][:3]}"))
+
+    print("\n  -- la indicación de idioma que se le da a Claude --")
+    for code in lang.SUPPORTED:
+        estilo = lang.writing_style(code)
+        directiva = lang.llm_directive(code)
+        ok = bool(estilo) and directiva.startswith("# IDIOMA ACTIVO")
+        if code != "es":
+            # Fuera del español, la narración, el TÍTULO (la trivia lo
+            # proyecta) y las preguntas del juego llevan la misma indicación.
+            ok = ok and estilo in directiva and "`title`" in directiva
+        check(ok, f"[{code}] narración, título y preguntas: «{estilo}»")
+    check(lang.writing_style("es") == "español neutro"
+          and "coreano" in lang.writing_style("ko")
+          and "SIMPLIFICADOS" in lang.writing_style("zh"),
+          "cada idioma con su estilo (español neutro, chino simplificado, coreano…)")
+
+    print("\n  -- el traductor entero: par de idiomas, una frase y salir --")
+    for code in lang.SUPPORTED:
+        otro = "en" if code != "en" else "es"
+        par = f"{lang.language_name(code, code)} {lang.language_name(otro, code)}"
+        despierto, _ = correr([
+            DESPERTAR[code], TRADUCIR[code], par, "1 2 3",
+            DEJAR_DE_TRADUCIR[code], BANDERAS["dormir"][1][code],
+        ])
+        esperado = [
+            di("awake", code), di("translate_ask", code),
+            di("translate_ready", code, src=lang.language_name(code, code),
+               dst=lang.language_name(otro, code)),
+            "TRADUCIDO", di("translate_off", code), di("dormant", code),
+        ]
+        subtitulos = [d for t, d in h.eventos if t == "subtitle" and d.get("text") == "TRADUCIDO"]
+        bien = (
+            dicho == esperado
+            and h.pedidos == [("traducir", code, otro)]
+            and subtitulos and subtitulos[0].get("lang") == otro
+            and not a_claude and not despierto
+        )
+        check(bien, f"[{code}] traductor: pregunta, confirma «{par}» y se despide en "
+                    f"{lang.label(code)}; la traducción sale subtitulada en {lang.label(otro)}"
+              + ("" if bien else
+                 "\n          dijo:     " + " | ".join(dicho)
+                 + "\n          esperado: " + " | ".join(esperado)
+                 + f"\n          pedidos={h.pedidos} a_claude={a_claude}"))
+
+    print("\n  -- los nombres de los idiomas, dichos en cada idioma --")
+    # Si MECH dice «traduzco entre 한국어 y 영어», el visitante contesta con
+    # esas mismas palabras: tienen que entenderse todas, en todos.
+    malos = []
+    for en_idioma in lang.SUPPORTED:
+        for code in lang.SUPPORTED:
+            nombre = lang.language_name(code, en_idioma)
+            if vp.extract_language_pair(nombre) != (None, code):
+                malos.append(f"{code} dicho en {en_idioma} («{nombre}»)")
+    n = len(lang.SUPPORTED)
+    check(not malos, f"se entienden los {n} × {n} nombres"
+          + (" — no: " + "; ".join(malos) if malos else ""))
+
+    print("\n  -- marketing sin videos subidos --")
+    for code in lang.SUPPORTED:
+        correr([DESPERTAR[code], BANDERAS["marketing"][1][code]])
+        check(dicho == [di("awake", code), di("empty_playlist", code)] and not a_claude,
+              f"[{code}] lo dice en {lang.label(code)}: «{di('empty_playlist', code)}»"
+              + ("" if dicho[1:] == [di("empty_playlist", code)] else f" — dijo {dicho}"))
+
+    print("\n  -- frases completas y sin huecos sueltos --")
+    faltan = [f"{k}/{c}" for k, v in lang._PHRASES.items()
+              for c in lang.SUPPORTED if not v.get(c)]
+    check(not faltan, f"las {len(lang._PHRASES)} frases de MECH están en los {n} idiomas"
+          + (" — faltan: " + ", ".join(faltan) if faltan else ""))
+    threading.Timer = temporizador_real
+    lang.reset()
+
+
 def main() -> int:
     probar_frases()
     probar_despertar()
     probar_saludo()
     try:
-        probar_bucle()
+        h = montar()
+        probar_bucle(h)
+        probar_funciones(h)
     except Exception as e:  # el bucle arrastra medio backend: que se vea por qué
         import traceback
         traceback.print_exc()
-        check(False, f"no se pudo simular el bucle de voz: {e!r}")
+        check(False, f"no se pudo simular el backend: {e!r}")
 
     print()
     if fallos:
