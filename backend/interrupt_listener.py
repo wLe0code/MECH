@@ -5,8 +5,9 @@ presenta, el bucle principal está ocupado ejecutando el plan, y el micrófono
 está oyendo sobre todo... al propio MECH por el parlante. Así que aquí se
 escucha con una regla muy estricta:
 
-- Solo importa la frase de interrupción (`VOICE_INTERRUPT_PHRASES`, en los dos
-  idiomas). CUALQUIER otra cosa que se oiga durante la narración se descarta
+- Solo importa la frase de interrupción (`VOICE_INTERRUPT_PHRASES`, la del
+  idioma en que MECH está narrando: «oye MECH» en español, «hey MECH» en
+  inglés…). CUALQUIER otra cosa que se oiga durante la narración se descarta
   sin más: casi siempre es el eco del parlante.
 - Las grabaciones se cortan a `INTERRUPT_MAX_UTTERANCE` segundos, porque la
   frase dura ~1 s y así se revisa enseguida.

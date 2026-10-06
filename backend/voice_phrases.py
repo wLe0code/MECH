@@ -12,8 +12,11 @@ palabras aparecen en el texto (cada una como parte de algún token). Así
 lo que transcribe Whisper.
 
 Hay NUEVE idiomas (es/en/fr/pt + de/it/ja/ru/zh). Cada lista de `config.py`
-tiene sus variantes `_EN`, `_FR`, `_PT`, `_DE`, `_IT`, `_JA`, `_RU` y `_ZH`;
-`_todos_los_idiomas()` las junta.
+tiene sus variantes `_EN`, `_FR`, `_PT`, `_DE`, `_IT`, `_JA`, `_RU` y `_ZH`,
+y `_frases_activas()` elige la del idioma ACTIVO: un comando solo vale en el
+idioma con el que se despertó a MECH (oct 2026). Las de despertar son la
+excepción — en reposo se miran las nueve, porque son las que deciden el
+idioma.
 
 Tres de ellos NO se escriben con letras latinas, y eso cambia dos cosas
 (todo lo demás de este módulo sigue igual para los idiomas de siempre):
@@ -306,26 +309,36 @@ def matches_any(text: str, phrases: list[str]) -> bool:
     return False
 
 
-# Sufijos de las listas de `config` (uno por idioma; el español no lleva).
-_SUFIJOS = ("", "_EN", "_FR", "_PT", "_DE", "_IT", "_JA", "_RU", "_ZH")
+# Idioma -> sufijo de su lista en `config` (`VOICE_X_PHRASES` + sufijo; el
+# español no lleva).
+_SUFIJOS = {"es": "", "en": "_EN", "fr": "_FR", "pt": "_PT", "de": "_DE",
+            "it": "_IT", "ja": "_JA", "ru": "_RU", "zh": "_ZH"}
 
 
-def _todos_los_idiomas(base: str) -> list[str]:
-    """Junta la lista `base` con sus versiones de los demás idiomas.
+def _frases_activas(base: str) -> list[str]:
+    """La lista `base` de config, en el idioma ACTIVO de MECH.
 
-    Se aceptan TODAS siempre, sin mirar el idioma activo: si MECH narra en
-    español y alguien le suelta "hey MECH" o "escuta MECH", igual queremos
-    parar. Son frases largas y distintivas, no chocan entre sí.
+    Regla del equipo (oct 2026): un comando solo vale si se dice en el idioma
+    con el que se despertó a MECH. Despierto con "wake up MECH", lo corta
+    "hey MECH" y NO "oye MECH"; despierto con "ok MECH", al revés. Aquí pasan
+    TODAS las frases de mando menos las de despertar (esas son las que eligen
+    el idioma: ver `wake_language`).
+
+    Con `VOICE_STRICT_LANGUAGE=false` vuelve lo de antes: se juntan las
+    listas de todos los idiomas y se aceptan todas siempre.
     """
+    if config.VOICE_STRICT_LANGUAGE:
+        sufijo = _SUFIJOS.get(lang.current(), "")
+        return list(getattr(config, base + sufijo, []) or [])
     frases: list[str] = []
-    for sufijo in _SUFIJOS:
+    for sufijo in _SUFIJOS.values():
         frases += list(getattr(config, base + sufijo, []) or [])
     return frases
 
 
 def _interrupt_phrases() -> list[str]:
-    """Frases de interrupción de TODOS los idiomas."""
-    return _todos_los_idiomas("VOICE_INTERRUPT_PHRASES")
+    """Frases de interrupción (del idioma activo: ver `_frases_activas`)."""
+    return _frases_activas("VOICE_INTERRUPT_PHRASES")
 
 
 def is_interrupt(text: str) -> bool:
@@ -383,9 +396,8 @@ def _tras_el_nombre(text: str) -> str:
 
 
 # --- Órdenes de movimiento (no pasan por Claude) --------------------------
-# "mira hacia afuera" / "regresa a proyectar". Se aceptan las listas de TODOS
-# los idiomas siempre: son frases largas y distintivas, no chocan con nada, y
-# si Whisper transcribió en el idioma equivocado igual queremos obedecer.
+# "mira hacia afuera" / "regresa a proyectar". Como todos los comandos, solo
+# valen en el idioma con el que se despertó a MECH (ver `_frases_activas`).
 
 
 # Números escritos con letra, para "avanza DIEZ segundos". Whisper los
@@ -485,41 +497,37 @@ def extract_seconds(text: str) -> float | None:
 
 def is_advance(text: str) -> bool:
     """¿Piden avanzar? ("avanza diez segundos")"""
-    return matches_any(text, _todos_los_idiomas("VOICE_ADVANCE_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_ADVANCE_PHRASES"))
 
 
 def is_retreat(text: str) -> bool:
     """¿Piden retroceder? ("retrocede cinco segundos")"""
-    return matches_any(text, _todos_los_idiomas("VOICE_RETREAT_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_RETREAT_PHRASES"))
 
 
 def is_look_outward(text: str) -> bool:
     """¿Le están pidiendo que gire 180° y salude hacia afuera?"""
-    return matches_any(text, _todos_los_idiomas("VOICE_OUTWARD_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_OUTWARD_PHRASES"))
 
 
 def is_back_to_projection(text: str) -> bool:
     """¿Le están pidiendo que vuelva a su posición de proyección?"""
-    return matches_any(text, _todos_los_idiomas("VOICE_PROJECT_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_PROJECT_PHRASES"))
 
 
 def is_play_marketing(text: str) -> bool:
-    """¿Piden proyectar el slot de marketing? ("proyecta marketing")
-
-    Se aceptan las listas de todos los idiomas: "marketing" se escribe igual
-    en los cuatro, así que no hay ambigüedad posible.
-    """
-    return matches_any(text, _todos_los_idiomas("VOICE_MARKETING_PHRASES"))
+    """¿Piden proyectar el slot de marketing? ("proyecta marketing")"""
+    return matches_any(text, _frases_activas("VOICE_MARKETING_PHRASES"))
 
 
 def is_translate(text: str) -> bool:
     """¿Piden entrar en modo traductor? ("traduce MECH", "modo traductor")"""
-    return matches_any(text, _todos_los_idiomas("VOICE_TRANSLATE_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_TRANSLATE_PHRASES"))
 
 
 def is_translate_stop(text: str) -> bool:
     """¿Piden salir del modo traductor? ("deja de traducir")"""
-    return matches_any(text, _todos_los_idiomas("VOICE_TRANSLATE_STOP_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_TRANSLATE_STOP_PHRASES"))
 
 
 @lru_cache(maxsize=1)
@@ -583,22 +591,22 @@ def is_trivia(text: str) -> bool:
     """¿Piden jugar la trivia? ("juguemos una trivia")"""
     if is_trivia_stop(text):
         return False
-    return matches_any(text, _todos_los_idiomas("VOICE_TRIVIA_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_TRIVIA_PHRASES"))
 
 
 def is_trivia_stop(text: str) -> bool:
     """¿Piden salir del juego? ("deja la trivia")"""
-    return matches_any(text, _todos_los_idiomas("VOICE_TRIVIA_STOP_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_TRIVIA_STOP_PHRASES"))
 
 
 def is_yes(text: str) -> bool:
     """¿Es un sí? Solo se mira cuando MECH acaba de preguntar algo."""
-    return matches_any(text, _todos_los_idiomas("VOICE_YES_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_YES_PHRASES"))
 
 
 def is_no(text: str) -> bool:
     """¿Es un no? Se comprueba ANTES que el sí: "no, gracias" trae los dos."""
-    return matches_any(text, _todos_los_idiomas("VOICE_NO_PHRASES"))
+    return matches_any(text, _frases_activas("VOICE_NO_PHRASES"))
 
 
 # Cómo suena cada letra de opción al decirla. La clave es el índice (0 = A).
@@ -917,13 +925,17 @@ _WAKE_LISTS = (
 )
 
 
-def wake_language(text: str) -> str | None:
+def wake_language(text: str, only: str | None = None) -> str | None:
     """Idioma con el que se despertó a MECH, o None si no fue un despertar.
 
     Los idiomas extra se comprueban PRIMERO (ver `_WAKE_LISTS`) y solo si su
     interruptor está encendido; el español siempre, y de último.
+
+    `only` limita la búsqueda a UN idioma (ver `wake_language_awake`).
     """
     for code, flag, lista in _WAKE_LISTS:
+        if only and code != only:
+            continue
         if flag and not getattr(config, flag, False):
             continue
         if matches_any(text, getattr(config, lista, []) or []):
@@ -931,10 +943,29 @@ def wake_language(text: str) -> str | None:
     return None
 
 
-def is_sleep_any(text: str) -> bool:
-    """Frase de reposo en cualquiera de los idiomas.
+def wake_language_awake(text: str) -> str | None:
+    """Lo mismo que `wake_language`, pero con MECH ya DESPIERTO.
 
-    Dormirse es inofensivo, así que se aceptan todas las listas sin importar
-    el idioma activo (si Whisper transcribió raro, igual obedece).
+    En reposo cualquiera de los nueve idiomas lo despierta (así se elige el
+    idioma). Despierto, el idioma ya está elegido y queda fijo hasta que se
+    duerme: solo se reconoce la frase de despertar del idioma ACTIVO (que el
+    bucle ignora, no es un comando). La de otro idioma devuelve None y sigue
+    su camino como una frase cualquiera — sin esto, un «OK MECH, tell me
+    about…» dicho en inglés lo pasaba a español.
+
+    Con `VOICE_STRICT_LANGUAGE=false` vuelve lo de antes: la frase de otro
+    idioma cambia el idioma estando despierto.
     """
-    return matches_any(text, _todos_los_idiomas("VOICE_SLEEP_PHRASES"))
+    if config.VOICE_STRICT_LANGUAGE:
+        return wake_language(text, only=lang.current())
+    return wake_language(text)
+
+
+def is_sleep_any(text: str) -> bool:
+    """Frase de reposo.
+
+    Igual que el resto de comandos, en el idioma con el que se despertó a
+    MECH (ver `_frases_activas`); las de todos a la vez solo con
+    `VOICE_STRICT_LANGUAGE=false`.
+    """
+    return matches_any(text, _frases_activas("VOICE_SLEEP_PHRASES"))

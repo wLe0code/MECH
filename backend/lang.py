@@ -19,6 +19,10 @@ Regla del equipo (ago 2026, ampliada sep y oct 2026):
 
 - Al dormirse (frase de reposo o botón), vuelve solo a español: así el
   siguiente visitante del stand encuentra a MECH en español.
+- Los COMANDOS también van en ese idioma, y solo en ese (oct 2026): despierto
+  con «wake up MECH» lo corta «hey MECH» y no «oye MECH». Y el idioma queda
+  fijo hasta que se duerme. Ver `voice_phrases._frases_activas()` y
+  `config.VOICE_STRICT_LANGUAGE`.
 
 Este módulo es a propósito muy simple (una variable + tablas de texto) para
 que lo puedan importar `stt`, `llm`, `mech_app` y `server` sin ciclos.

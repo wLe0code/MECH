@@ -125,17 +125,18 @@ GREETING_COOLDOWN = float(os.environ.get("GREETING_COOLDOWN", "45"))
 # parpadea, nunca llega a esta cuenta y MECH no repite el saludo.
 GREETING_REARM_SECONDS = float(os.environ.get("GREETING_REARM_SECONDS", "20"))
 # Idioma del SALUDO (la frase que MECH suelta al ver llegar a alguien estando
-# en reposo). INGLÉS por defecto (sep 2026, pedido del equipo): en un stand
-# internacional, lo primero que se oye conviene que lo entienda cualquiera.
+# en reposo). ESPAÑOL por defecto (oct 2026, pedido del equipo): en reposo
+# MECH está en español, así que saluda en español. En sep 2026 estuvo en
+# inglés; se puede volver a cambiar desde Ajustes → «Idioma del saludo».
 #
 # ⚠️ Esto NO cambia el idioma de MECH: solo el de esa frase. El idioma lo
 # sigue decidiendo la frase con la que se le despierta, y en reposo MECH
 # vuelve siempre a español (ver backend/lang.py).
 # Vacío o desconocido = el idioma activo.
-GREETING_LANGUAGE = os.environ.get("GREETING_LANGUAGE", "en").strip().lower()
+GREETING_LANGUAGE = os.environ.get("GREETING_LANGUAGE", "es").strip().lower()
 # El saludo SOLO se dispara con MECH EN REPOSO (decisión del equipo,
 # sep 2026). Despierto está narrando, conversando o traduciendo, y soltar
-# "Hello! I'm MECH" encima de eso corta la experiencia del visitante que ya
+# "¡Hola! Soy MECH" encima de eso corta la experiencia del visitante que ya
 # está atendiendo. En reposo, en cambio, es justo lo que se quiere: alguien
 # se acerca al stand y MECH lo recibe.
 # Vale también para el botón «SALUDAR AHORA» del panel: la regla es una sola.
@@ -680,22 +681,26 @@ VOICE_YES_PHRASES = [
         "esta bien,me apunto,juguemos,vamos,ok",
     ).split(",") if p.strip()
 ]
+# "ok" va en la lista de CADA idioma (también en las de alemán, italiano,
+# japonés, ruso y chino, más abajo): se dice igual en todos, y desde que cada
+# idioma solo mira su propia lista (VOICE_STRICT_LANGUAGE) ya no lo hereda
+# de la española.
 VOICE_YES_PHRASES_EN = [
     p.strip() for p in os.environ.get(
         "VOICE_YES_PHRASES_EN",
-        "yes,yeah,sure,of course,okay,let's go,why not",
+        "yes,yeah,sure,of course,okay,ok,let's go,why not",
     ).split(",") if p.strip()
 ]
 VOICE_YES_PHRASES_FR = [
     p.strip() for p in os.environ.get(
         "VOICE_YES_PHRASES_FR",
-        "oui,bien sur,d'accord,allons y,pourquoi pas",
+        "oui,bien sur,d'accord,ok,allons y,pourquoi pas",
     ).split(",") if p.strip()
 ]
 VOICE_YES_PHRASES_PT = [
     p.strip() for p in os.environ.get(
         "VOICE_YES_PHRASES_PT",
-        "sim,claro,vamos,esta bem,com certeza",
+        "sim,claro,vamos,esta bem,ok,com certeza",
     ).split(",") if p.strip()
 ]
 VOICE_NO_PHRASES = [
@@ -744,6 +749,17 @@ WAKE_FRENCH_ENABLED = os.environ.get("WAKE_FRENCH_ENABLED", "true").strip().lowe
 )
 WAKE_PORTUGUESE_ENABLED = os.environ.get(
     "WAKE_PORTUGUESE_ENABLED", "true"
+).strip().lower() in ("1", "true", "yes", "on", "si", "sí")
+# Los COMANDOS solo valen en el idioma con el que se despertó a MECH (oct
+# 2026, pedido del equipo). Despierto con «wake up MECH», lo corta «hey MECH»
+# y NO «oye MECH»; despierto con «ok MECH», al revés. Vale para todo lo que se
+# reconoce por frase: interrumpir, dormir, moverse, marketing, traductor,
+# trivia y el sí/no. Y el idioma queda fijo hasta que se duerme: decir la
+# frase de despertar de OTRO idioma estando despierto ya no lo cambia.
+# En false vuelve lo de antes: se aceptan las frases de todos los idiomas a
+# la vez. Ver `voice_phrases._frases_activas()`.
+VOICE_STRICT_LANGUAGE = os.environ.get(
+    "VOICE_STRICT_LANGUAGE", "true"
 ).strip().lower() in ("1", "true", "yes", "on", "si", "sí")
 # Frases que despiertan a MECH EN INGLÉS. Se incluyen las variantes de cómo
 # suele transcribir Whisper esas palabras cuando todavía está escuchando en
@@ -913,7 +929,7 @@ VOICE_TRIVIA_STOP_PHRASES_DE = _frases(
 )
 VOICE_YES_PHRASES_DE = _frases(
     "VOICE_YES_PHRASES_DE",
-    "ja,klar,na klar,gerne,natürlich,auf jeden fall,okay,einverstanden",
+    "ja,klar,na klar,gerne,natürlich,auf jeden fall,okay,ok,einverstanden",
 )
 VOICE_NO_PHRASES_DE = _frases(
     "VOICE_NO_PHRASES_DE",
@@ -979,7 +995,7 @@ VOICE_TRIVIA_STOP_PHRASES_IT = _frases(
 )
 VOICE_YES_PHRASES_IT = _frases(
     "VOICE_YES_PHRASES_IT",
-    "si,certo,va bene,volentieri,d'accordo,certamente",
+    "si,certo,va bene,volentieri,d'accordo,ok,certamente",
 )
 VOICE_NO_PHRASES_IT = _frases(
     "VOICE_NO_PHRASES_IT",
@@ -1048,7 +1064,7 @@ VOICE_TRIVIA_STOP_PHRASES_JA = _frases(
 )
 VOICE_YES_PHRASES_JA = _frases(
     "VOICE_YES_PHRASES_JA",
-    "はい,うん,いいよ,いいですよ,お願いします,やります,やりたい,もちろん,オーケー",
+    "はい,うん,いいよ,いいですよ,お願いします,やります,やりたい,もちろん,オーケー,ok",
 )
 VOICE_NO_PHRASES_JA = _frases(
     "VOICE_NO_PHRASES_JA",
@@ -1118,7 +1134,7 @@ VOICE_TRIVIA_STOP_PHRASES_RU = _frases(
 )
 VOICE_YES_PHRASES_RU = _frases(
     "VOICE_YES_PHRASES_RU",
-    "да,конечно,давай,хорошо,ладно,согласен,согласна,поехали",
+    "да,конечно,давай,хорошо,ладно,согласен,согласна,поехали,ok",
 )
 VOICE_NO_PHRASES_RU = _frases(
     "VOICE_NO_PHRASES_RU",
@@ -1192,7 +1208,7 @@ VOICE_TRIVIA_STOP_PHRASES_ZH = _frases(
 VOICE_YES_PHRASES_ZH = _frases(
     "VOICE_YES_PHRASES_ZH",
     "好,好的,好啊,好呀,好吧,是,是的,可以,行,行吧,当然,當然,要,来吧,來吧,"
-    "对,對,没问题,沒問題",
+    "对,對,没问题,沒問題,ok",
 )
 VOICE_NO_PHRASES_ZH = _frases(
     "VOICE_NO_PHRASES_ZH",

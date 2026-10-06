@@ -35,6 +35,12 @@ import lang  # noqa: E402
 import subtitles  # noqa: E402
 import voice_phrases as vp  # noqa: E402
 
+# Aquí se miden las colisiones con las listas de TODOS los idiomas juntas,
+# así que se apaga la regla de «cada comando en el idioma del despertar»
+# (oct 2026): juntas es el peor caso, y es lo que vale si alguien la apaga en
+# Ajustes. La regla en sí la mide `scripts/probar_comandos_idioma.py`.
+config.VOICE_STRICT_LANGUAGE = False
+
 NUEVOS = ("de", "it", "ja", "ru", "zh")
 SUFIJO = {"en": "_EN", "fr": "_FR", "pt": "_PT", "de": "_DE", "it": "_IT",
           "ja": "_JA", "ru": "_RU", "zh": "_ZH"}

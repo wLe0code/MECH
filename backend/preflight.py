@@ -594,10 +594,11 @@ def check_env_sombra() -> None:
             "Los gestos quedan en un vaivén de pocos grados. El SALUDO ya no\n"
             "se encoge, pero el resto sí. Ponelo en 'full' para el evento.")
 
-    # El saludo que pidió el equipo (sep 2026): 3 rotaciones, solo el brazo
-    # derecho, solo en reposo y en inglés. «Guardar y aplicar» del panel
-    # escribe TODAS sus perillas en el .env, así que un valor viejo de ahí
-    # gana al código y parece que el cambio no se aplicó.
+    # El saludo que pidió el equipo: 3 rotaciones, solo el brazo derecho,
+    # solo en reposo (sep 2026) y en ESPAÑOL (oct 2026; antes iba en inglés).
+    # «Guardar y aplicar» del panel escribe TODAS sus perillas en el .env,
+    # así que un valor viejo de ahí gana al código y parece que el cambio no
+    # se aplicó.
     saludo = []
     if config.ARM_WAVE_REPEATS != 3:
         saludo.append(f"ARM_WAVE_REPEATS={config.ARM_WAVE_REPEATS} (pedido: 3 rotaciones)")
@@ -605,14 +606,27 @@ def check_env_sombra() -> None:
         saludo.append("ARM_WAVE_BOTH=true (pedido: solo el brazo derecho)")
     if not config.GREETING_ONLY_DORMANT:
         saludo.append("GREETING_ONLY_DORMANT=false (pedido: solo en reposo)")
-    if config.GREETING_LANGUAGE != "en":
-        saludo.append(f"GREETING_LANGUAGE={config.GREETING_LANGUAGE!r} (pedido: inglés)")
+    if config.GREETING_LANGUAGE != "es":
+        saludo.append(
+            f"GREETING_LANGUAGE={config.GREETING_LANGUAGE!r} (pedido: español — "
+            "Ajustes → «Idioma del saludo» → ESPAÑOL)"
+        )
     if saludo:
         _di(_WARN, "El saludo no está como lo pidió el equipo",
             "\n".join(saludo) + "\n"
             "Se arregla en el panel: Ajustes → sección del saludo → «Guardar y aplicar».")
     else:
-        _di(_OK, "Saludo: 3 rotaciones, brazo derecho, solo en reposo, en inglés")
+        _di(_OK, "Saludo: 3 rotaciones, brazo derecho, solo en reposo, en español")
+
+    # Los comandos atados al idioma del despertar (oct 2026). Apagado, «hey
+    # MECH» vuelve a cortar a un MECH despierto en español, y al revés.
+    if config.VOICE_STRICT_LANGUAGE:
+        _di(_OK, "Comandos: solo en el idioma con el que se despertó a MECH")
+    else:
+        _di(_WARN, "VOICE_STRICT_LANGUAGE=false",
+            "Los comandos se aceptan en todos los idiomas a la vez (lo de\n"
+            "antes). El equipo pidió que solo valgan en el idioma con el que\n"
+            "se despertó: Ajustes → «Idioma de los comandos».")
 
 
 # ---------------------------------------------------------------------------

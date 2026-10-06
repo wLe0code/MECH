@@ -84,7 +84,7 @@
             <button class="lang-chip" id="lang-ja" onclick="API.setLanguage('ja')" title="Despertar por voz: «こんにちは MECH» (konnichiwa) o «起きて MECH» (okite)">JA · 日本語</button>
             <button class="lang-chip" id="lang-ru" onclick="API.setLanguage('ru')" title="Despertar por voz: «привет MECH» (privet) o «проснись MECH» (prosnis)">RU · РУССКИЙ</button>
             <button class="lang-chip" id="lang-zh" onclick="API.setLanguage('zh')" title="Despertar por voz: «你好 MECH» (nǐ hǎo) o «醒醒 MECH» (xǐng xing)">ZH · 中文</button>
-            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «guten Tag MECH» → alemán · «ciao MECH» → italiano · «こんにちは MECH» → japonés · «привет MECH» → ruso · «你好 MECH» → mandarín · «oye MECH» corta la narración</span>
+            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «guten Tag MECH» → alemán · «ciao MECH» → italiano · «こんにちは MECH» → japonés · «привет MECH» → ruso · «你好 MECH» → mandarín · la narración se corta con la frase de ESE idioma («oye MECH» en español, «hey MECH» en inglés…)</span>
           </div>
 
           <div class="wave-bars" id="wave-bars">
@@ -530,10 +530,17 @@
             </label>
           </div>
           <div class="slider-row">
-            <label title="Mientras MECH narra, escucha solo 'oye MECH' / 'hey MECH' para poder cortarlo. Apágalo si se interrumpe solo con el eco del parlante.">Interrumpir</label>
+            <label title="Mientras MECH narra, escucha solo la frase para cortarlo, en el idioma en que despertó: 'oye MECH' (español), 'hey MECH' (inglés), 'pardon MECH' (francés), 'escuta MECH' (portugués), 'warte MECH' (alemán), 'scusa MECH' (italiano), 'ねえ MECH' (japonés), 'эй MECH' (ruso), '嘿 MECH' (mandarín). Apágalo si se interrumpe solo con el eco del parlante.">Interrumpir</label>
             <label class="switch">
               <input type="checkbox" id="set-interrupt">
               <span class="switch-text">Cortar la narración diciendo «oye MECH»</span>
+            </label>
+          </div>
+          <div class="slider-row">
+            <label title="Con esto activado, los comandos solo funcionan en el idioma con el que se despertó a MECH: despierto con «wake up MECH» lo corta «hey MECH» y NO «oye MECH»; despierto con «ok MECH», al revés. Vale para interrumpir, dormir, moverse, marketing, traductor y trivia. Y el idioma queda fijo hasta que se duerme. Apagado, se aceptan las frases de todos los idiomas a la vez (como antes).">Idioma de los comandos</label>
+            <label class="switch">
+              <input type="checkbox" id="set-strictlang" checked>
+              <span class="switch-text">Solo en el idioma con el que despertó</span>
             </label>
           </div>
           <div class="slider-row">
@@ -629,10 +636,10 @@
             </label>
           </div>
           <div class="slider-row">
-            <label title="Idioma del saludo que MECH suelta al ver llegar a alguien. Va en INGLÉS por defecto: es lo primero que se oye en el stand y conviene que lo entienda cualquiera. NO cambia el idioma de MECH — eso lo sigue decidiendo la frase con la que se le despierta.">Idioma del saludo</label>
+            <label title="Idioma del saludo que MECH suelta al ver llegar a alguien. Va en ESPAÑOL por defecto, que es el idioma de MECH en reposo. NO cambia el idioma de MECH — eso lo sigue decidiendo la frase con la que se le despierta.">Idioma del saludo</label>
             <select class="translator-select" id="set-greetlang">
-              <option value="en">INGLÉS</option>
               <option value="es">ESPAÑOL</option>
+              <option value="en">INGLÉS</option>
               <option value="fr">FRANCÉS</option>
               <option value="pt">PORTUGUÉS</option>
               <option value="de">ALEMÁN</option>

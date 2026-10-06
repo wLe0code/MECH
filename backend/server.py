@@ -103,6 +103,11 @@ def _voice_loop_worker():
     A partir de ahí todo (lo que entiende, lo que narra y los subtítulos) va
     en ese idioma hasta que se duerme, y al dormirse vuelve solo a español.
     Ver backend/lang.py.
+
+    Los COMANDOS también: solo valen en el idioma con el que despertó
+    («hey MECH» no corta a un MECH despierto en español, ni «oye MECH» a uno
+    despierto en inglés). Ver `voice_phrases._frases_activas()` y
+    `config.VOICE_STRICT_LANGUAGE`.
     """
     app_state = get_app()
     app_state.log("Bucle de voz iniciado", "ok")
@@ -180,6 +185,10 @@ def _voice_loop_worker():
                     "waiting" if app_state.state.get("voice_awake", True) else "dormant"
                 )
                 continue
+            # Cuándo EMPEZÓ lo que se acaba de grabar (el audio ya viene a
+            # 16 kHz). Se anota ahora y no después de transcribir: ver la
+            # guarda del saludo, más abajo.
+            inicio_audio = time.time() - len(audio) / stt.WHISPER_SAMPLE_RATE
             if awake:
                 app_state.set_voice_phase("transcribing")
             # En modo traductor el idioma de CADA turno no es el activo de
@@ -208,7 +217,12 @@ def _voice_loop_worker():
             # Si MECH estaba dando su saludo de bienvenida (la visión lo
             # dispara de forma asíncrona), lo que se transcribió es su propio
             # eco por el parlante: se descarta.
-            if time.time() < app_state.greeting_until:
+            # Se mira cuándo se GRABÓ, no la hora de ahora: transcribir tarda
+            # 1-2 s en la Pi y, con el reloj de después, el eco del saludo
+            # llegaba aquí con la ventana ya cerrada. Con el saludo en inglés
+            # daba igual (transcrito en español no se parece a nada); en
+            # español lleva un "MECH" y no puede colarse como un despertar.
+            if inicio_audio < app_state.greeting_until:
                 app_state.log("Ignoro la transcripción: era mi propio saludo.", "info")
                 app_state.set_voice_phase(
                     "waiting" if app_state.state.get("voice_awake", True) else "dormant"
@@ -315,13 +329,16 @@ def _voice_loop_worker():
                     # micrófono debería estar cerrado; si algo entra, es eco.
                     continue
 
-            # Despierto: ¿pidió reposo? (se aceptan las frases de todos los idiomas)
+            # Despierto: ¿pidió reposo? (en el idioma con el que despertó)
             if voice_phrases.is_sleep_any(text):
                 app_state.go_dormant()
                 continue
-            # Ya despierto y volvió a decir la frase de despertar: si es la del
-            # OTRO idioma, cambia de idioma; si es la del mismo, se ignora.
-            wake_lang = voice_phrases.wake_language(text)
+            # Ya despierto y volvió a decir la frase de despertar de SU idioma:
+            # se ignora. La de OTRO idioma ya no lo cambia (queda fijo hasta
+            # que se duerme): `wake_language_awake` devuelve None y la frase
+            # sigue abajo como cualquier otra. Solo con
+            # VOICE_STRICT_LANGUAGE=false vuelve a cambiar de idioma aquí.
+            wake_lang = voice_phrases.wake_language_awake(text)
             if wake_lang:
                 if wake_lang != lang.current():
                     app_state.set_language(wake_lang, announce=True)
@@ -402,6 +419,16 @@ async def lifespan(app: FastAPI):
         + " — «ok MECH» (es) · «wake up MECH» (en) · «bonjour MECH» (fr) · "
           "«bom dia MECH» (pt) · «guten Tag MECH» (de) · «ciao MECH» (it) · "
           "«こんにちは MECH» (ja) · «привет MECH» (ru) · «你好 MECH» (zh)",
+        "ok",
+    )
+    # Misma idea: si esta línea no sale, la Pi corre código viejo. Y si dice
+    # "saludo en inglés", es el `.env` de la Pi tapando el default (se cambia
+    # en Ajustes → «Idioma del saludo»).
+    mech.log(
+        ("Comandos: solo en el idioma con el que se despertó a MECH"
+         if config.VOICE_STRICT_LANGUAGE
+         else "Comandos: se aceptan en todos los idiomas a la vez")
+        + f" · saludo en {lang.label(mech._greeting_language())}",
         "ok",
     )
     if config.TRANSLATOR_ENABLED:
@@ -1059,7 +1086,8 @@ _LIVE_KEYS = {
     "ARM_WAVE_REPEATS": int,
     "GREETING_COOLDOWN": float,
     "GREETING_ONLY_DORMANT": _to_bool,  # saludar solo con MECH en reposo
-    "GREETING_LANGUAGE": str,       # idioma del saludo (inglés por defecto)
+    "GREETING_LANGUAGE": str,       # idioma del saludo (español por defecto)
+    "VOICE_STRICT_LANGUAGE": _to_bool,  # comandos solo en el idioma activo
     "TRIVIA_ENABLED": _to_bool,          # el juego de preguntas
     "TRIVIA_QUESTIONS": int,             # cuántas por partida
     "TRIVIA_OFFER_AFTER_PLAN": _to_bool,  # ¿la ofrece sola al terminar?
@@ -1128,6 +1156,7 @@ async def get_config():
             "GREETING_COOLDOWN": config.GREETING_COOLDOWN,
             "GREETING_ONLY_DORMANT": config.GREETING_ONLY_DORMANT,
             "GREETING_LANGUAGE": config.GREETING_LANGUAGE,
+            "VOICE_STRICT_LANGUAGE": config.VOICE_STRICT_LANGUAGE,
             "TRIVIA_ENABLED": config.TRIVIA_ENABLED,
             "TRIVIA_QUESTIONS": config.TRIVIA_QUESTIONS,
             "TRIVIA_OFFER_AFTER_PLAN": config.TRIVIA_OFFER_AFTER_PLAN,

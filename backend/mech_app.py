@@ -944,7 +944,7 @@ class MechApp:
         """Arranca los subtítulos de `text` sincronizados con la voz.
 
         `code` fuerza el idioma del subtítulo. Hace falta para el saludo, que
-        sale en `GREETING_LANGUAGE` (inglés) aunque MECH esté en español.
+        sale en `GREETING_LANGUAGE` y puede no ser el idioma activo.
         None = el idioma activo, que es lo normal.
 
         Lo llama `tts.speak` en el instante EXACTO en que empieza a sonar el
@@ -1081,7 +1081,7 @@ class MechApp:
 
         **Solo saluda EN REPOSO y nunca mientras presenta algo** (decisión
         del equipo, sep 2026; ver `_greeting_blocked`). Despierto está
-        narrando una obra, conversando o traduciendo, y soltar "Hello! I am
+        narrando una obra, conversando o traduciendo, y soltar "¡Hola! Soy
         MECH" encima de eso le corta la experiencia al visitante que ya está
         atendiendo. En reposo es justo lo contrario: alguien se acerca al
         stand y MECH lo recibe.
@@ -1137,7 +1137,7 @@ class MechApp:
     def _greeting_language(self) -> str:
         """Idioma en el que sale el saludo.
 
-        `GREETING_LANGUAGE` (inglés por defecto). Si está vacío o trae algo
+        `GREETING_LANGUAGE` (español por defecto). Si está vacío o trae algo
         que no reconocemos, se usa el idioma activo, así que una clave mal
         escrita no deja a MECH mudo.
         """
@@ -1159,10 +1159,10 @@ class MechApp:
             # Ventana provisional amplia mientras habla; al terminar se
             # ajusta a un margen corto para drenar el eco del parlante.
             self.greeting_until = time.time() + 20
-            # Sale en `GREETING_LANGUAGE` (inglés por defecto), NO en el
-            # idioma activo: es lo primero que oye quien llega al stand. El
-            # idioma de la conversación lo sigue decidiendo la frase con la
-            # que despierten a MECH.
+            # Sale en `GREETING_LANGUAGE` (español por defecto, que es
+            # también el idioma de MECH en reposo). El idioma de la
+            # conversación lo sigue decidiendo la frase con la que
+            # despierten a MECH.
             idioma = self._greeting_language()
             texto = lang.say("greeting", idioma)
             try:

@@ -198,7 +198,7 @@
     listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
     transcribing: { cls: 'phase-work',    text: 'Transcribiendo…',           hint: 'Convirtiendo la voz a texto' },
     thinking:     { cls: 'phase-work',    text: 'MECH está pensando…',        hint: 'Generando la respuesta con Claude' },
-    speaking:     { cls: 'phase-speak',   text: '🔊 MECH está hablando…',     hint: "Di 'oye MECH' (o 'hey MECH') para interrumpirlo" },
+    speaking:     { cls: 'phase-speak',   text: '🔊 MECH está hablando…',     hint: "Di 'oye MECH' para interrumpirlo" },
   };
 
   function updateVoicePhase(phase) {
@@ -206,7 +206,11 @@
     const banner = $('voice-phase-banner');
     banner.className = 'voice-phase-banner ' + p.cls;
     $('vpb-text').textContent = p.text;
-    $('vpb-hint').textContent = p.hint;
+    // La frase que lo corta es la del idioma en que despertó (en inglés,
+    // 'hey MECH'; 'oye MECH' ahí no hace nada).
+    const idioma = LANGS[state.language];
+    $('vpb-hint').textContent = (phase === 'speaking' && idioma)
+      ? `Di '${idioma.corta}' para interrumpirlo` : p.hint;
 
     // Texto del hero de la vista Voz.
     $('voice-status').textContent = p.text;
@@ -219,17 +223,18 @@
     setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
   }
 
-  // Cómo se despierta a MECH en cada idioma (para el log del panel).
+  // Cómo se despierta a MECH en cada idioma (para el log del panel) y con
+  // qué frase se le corta la narración estando en ese idioma.
   const LANGS = {
-    es: { nombre: 'ESPAÑOL', wake: 'ok MECH' },
-    en: { nombre: 'INGLÉS', wake: 'wake up MECH' },
-    fr: { nombre: 'FRANCÉS', wake: 'bonjour MECH' },
-    pt: { nombre: 'PORTUGUÉS', wake: 'bom dia MECH' },
-    de: { nombre: 'ALEMÁN', wake: 'guten Tag MECH' },
-    it: { nombre: 'ITALIANO', wake: 'ciao MECH' },
-    ja: { nombre: 'JAPONÉS', wake: 'こんにちは MECH' },
-    ru: { nombre: 'RUSO', wake: 'привет MECH' },
-    zh: { nombre: 'MANDARÍN', wake: '你好 MECH' },
+    es: { nombre: 'ESPAÑOL', wake: 'ok MECH', corta: 'oye MECH' },
+    en: { nombre: 'INGLÉS', wake: 'wake up MECH', corta: 'hey MECH' },
+    fr: { nombre: 'FRANCÉS', wake: 'bonjour MECH', corta: 'pardon MECH' },
+    pt: { nombre: 'PORTUGUÉS', wake: 'bom dia MECH', corta: 'escuta MECH' },
+    de: { nombre: 'ALEMÁN', wake: 'guten Tag MECH', corta: 'warte MECH' },
+    it: { nombre: 'ITALIANO', wake: 'ciao MECH', corta: 'scusa MECH' },
+    ja: { nombre: 'JAPONÉS', wake: 'こんにちは MECH', corta: 'ねえ MECH' },
+    ru: { nombre: 'RUSO', wake: 'привет MECH', corta: 'эй MECH' },
+    zh: { nombre: 'MANDARÍN', wake: '你好 MECH', corta: '嘿 MECH' },
   };
 
   // Estado de la tarjeta del modo traductor (vista Voz).
@@ -722,6 +727,7 @@
       if ($('set-dryrun')) $('set-dryrun').checked = !!L.TTS_DRY_RUN;
       if ($('set-subs')) $('set-subs').checked = L.SUBTITLES_ENABLED !== false;
       if ($('set-interrupt')) $('set-interrupt').checked = L.VOICE_INTERRUPT_ENABLED !== false;
+      if ($('set-strictlang')) $('set-strictlang').checked = L.VOICE_STRICT_LANGUAGE !== false;
       if ($('set-trivia')) $('set-trivia').checked = L.TRIVIA_ENABLED !== false;
       if ($('set-trivia-offer')) $('set-trivia-offer').checked = L.TRIVIA_OFFER_AFTER_PLAN !== false;
       setSlider('set-trivia-n', 'trivian', L.TRIVIA_QUESTIONS);
@@ -791,6 +797,9 @@
         TTS_DRY_RUN: $('set-dryrun').checked ? 'true' : 'false',
         SUBTITLES_ENABLED: $('set-subs').checked ? 'true' : 'false',
         VOICE_INTERRUPT_ENABLED: $('set-interrupt').checked ? 'true' : 'false',
+        // Con guarda: si el navegador tiene el index.html viejo en caché, el
+        // interruptor no existe y no puede tumbar el guardado entero.
+        VOICE_STRICT_LANGUAGE: ($('set-strictlang') && !$('set-strictlang').checked) ? 'false' : 'true',
         TRIVIA_ENABLED: $('set-trivia').checked ? 'true' : 'false',
         TRIVIA_OFFER_AFTER_PLAN: $('set-trivia-offer').checked ? 'true' : 'false',
         TRIVIA_QUESTIONS: String(parseInt($('set-trivia-n').value)),

@@ -73,14 +73,61 @@ ese idioma hasta que se duerma:
 Al dormirse **vuelve solo a español**, listo para el siguiente visitante.
 
 > ⚠️ Esto es a propósito: si alguien le habla en francés a un MECH despierto
-> en español, MECH entiende mal. Hay que dormirlo y despertarlo en el otro
-> idioma (o decir la frase de despertar de ese idioma estando despierto).
+> en español, MECH entiende mal. Hay que **dormirlo y despertarlo** en el
+> otro idioma: despierto, la frase de despertar de otro idioma ya **no** lo
+> cambia (antes sí).
 > Para probar sin hablar: panel → vista **Voz** → un chip por idioma.
+
+### Cada comando, en el idioma en que despertó
+
+Desde octubre de 2026 los comandos **solo funcionan en el idioma con el que
+se despertó a MECH**. Despierto con «wake up MECH», «oye MECH» no hace nada:
+hay que decir «hey MECH». Y al revés.
+
+| Despertó con | Cortarlo al narrar | Dormirlo | Girar | Volver |
+|---|---|---|---|---|
+| 🇪🇸 «ok MECH» | «oye MECH» | «para de escuchar» | «mira hacia afuera» | «regresa a proyectar» |
+| 🇬🇧 «wake up MECH» | «hey MECH» | «stop listening» | «look outside» | «back to projecting» |
+| 🇫🇷 «bonjour MECH» | «pardon MECH» | «au revoir MECH» | «regarde dehors» | «retourne projeter» |
+| 🇵🇹 «bom dia MECH» | «escuta MECH» | «boa noite MECH» | «olha para fora» | «volta a projetar» |
+| 🇩🇪 «guten Tag MECH» | «warte MECH» | «gute Nacht MECH» | «schau raus» | «zurück zur Projektion» |
+| 🇮🇹 «ciao MECH» | «scusa MECH» | «buonanotte MECH» | «guarda fuori» | «torna a proiettare» |
+| 🇯🇵 «こんにちは MECH» | «ねえ MECH» (*nee*) | «おやすみ MECH» (*oyasumi*) | «外を見て» (*soto o mite*) | «投影に戻って» (*tōei ni modotte*) |
+| 🇷🇺 «привет MECH» | «эй MECH» (*ey*) | «спокойной ночи MECH» (*spokóynoy nochi*) | «посмотри наружу» (*posmotrí narúzhu*) | «вернись к проекции» (*vernís k proyéktsii*) |
+| 🇨🇳 «你好 MECH» | «嘿 MECH» (*hēi*) | «晚安 MECH» (*wǎn'ān*) | «向外看» (*xiàng wài kàn*) | «回去投影» (*huíqù tóuyǐng*) |
+
+| Despertó en | Marketing | Traducir | Trivia |
+|---|---|---|---|
+| 🇪🇸 español | «proyecta marketing» | «traduce MECH» | «juguemos una trivia» |
+| 🇬🇧 inglés | «play marketing» | «translate MECH» | «quiz me» |
+| 🇫🇷 francés | «lance le marketing» | «traduis MECH» | «jouons au quiz» |
+| 🇵🇹 portugués | «toca marketing» | «traduz MECH» | «vamos jogar o quiz» |
+| 🇩🇪 alemán | «zeig Marketing» | «übersetze MECH» | «Quiz spielen» |
+| 🇮🇹 italiano | «mostra marketing» | «traduci MECH» | «facciamo un quiz» |
+| 🇯🇵 japonés | «マーケティングを再生して» | «翻訳して MECH» | «クイズをしよう» |
+| 🇷🇺 ruso | «покажи маркетинг» | «переведи MECH» | «сыграем в викторину» |
+| 🇨🇳 mandarín | «播放宣传片» | «翻译 MECH» | «玩问答» |
+
+Vale también para el «sí» / «no» de la trivia. Las listas completas (hay
+varias formas de decir cada cosa) están en `backend/config.py`
+(`VOICE_*_PHRASES`, con un sufijo por idioma: `_EN`, `_FR`, `_PT`, `_DE`,
+`_IT`, `_JA`, `_RU`, `_ZH`).
+
+> Hay palabras casi iguales entre idiomas que siguen valiendo en los dos:
+> «ok», «no», «avanza» / «avance» / «avança», «traduce» / «traduz» /
+> «traduci», «perdón» / «pardon». Es el mismo sonido; no es un fallo.
+
+> Si MECH despertó en un idioma por error y nadie sabe dormirlo en ese
+> idioma: panel → vista **Voz** → chip **ES**. Queda en español y ya se le
+> puede decir «para de escuchar».
+> Para volver a lo de antes (todos los idiomas a la vez): Ajustes →
+> **«Idioma de los comandos»**, apagado.
 
 ### Para dormirlo
 
 «para de escuchar», «deja de escuchar», «duérmete MECH», «descansa MECH»,
-«modo reposo». En inglés «stop listening» o «go to sleep».
+«modo reposo». Despierto en otro idioma, con la frase de ese idioma (tabla
+de arriba).
 
 En los demás idiomas: «gute Nacht MECH» (alemán), «buonanotte MECH»
 (italiano), «おやすみ MECH» (*oyasumi*, japonés), «спокойной ночи MECH»
@@ -158,7 +205,8 @@ imágenes en el momento — no se rompe nada, solo se ve distinto.
 ```
 
 Mientras narra, MECH **solo** escucha esa frase. Todo lo demás lo ignora
-(casi siempre es el eco de su propio parlante). En inglés es «hey MECH».
+(casi siempre es el eco de su propio parlante). Si despertó en inglés es
+«hey MECH» — ahí «oye MECH» **no** lo corta (ver la tabla de §2).
 
 ### La trivia al terminar
 
@@ -294,11 +342,12 @@ Se aplican en vivo, sin reiniciar nada.
 
 Con la cámara encendida y **MECH en reposo**, saluda solo a quien llega:
 sube el **brazo derecho** hacia adelante, llega arriba **3 veces** y dice,
-**en inglés**, «Hello! I am MECH. It's a pleasure to see you here today».
+**en español**, «¡Hola! Soy MECH. Un gusto verte hoy aquí».
 
-> El saludo va en inglés a propósito: es lo primero que se oye en el stand y
-> así lo entiende cualquiera. **No cambia el idioma de MECH** — si le hablas
-> con «ok MECH» te responde en español, como siempre.
+> El saludo va en español (desde octubre de 2026; antes iba en inglés): es
+> el idioma de MECH en reposo. Se cambia en Ajustes → «Idioma del saludo».
+> **No cambia el idioma de MECH** — eso lo decide la frase con que se le
+> despierta.
 
 - **Solo saluda en reposo.** Despierto está atendiendo a alguien.
 - **Nunca saluda mientras presenta algo** (narrando o con el marketing), ni
@@ -317,12 +366,14 @@ Se ajusta en Panel → Ajustes:
 | **Saludo brazos** | Apagado = solo el derecho. Encendido = los dos |
 | **Sentido brazos** | Si el brazo saluda hacia **atrás** en vez de hacia adelante, se cambia aquí |
 | **Saludo** (interruptor) | Exigir que esté en reposo para saludar |
-| **Idioma del saludo** | En qué idioma saluda (inglés) |
+| **Idioma del saludo** | En qué idioma saluda (español) |
 | **Saludo lento** / **Saludo alto** / **Saludo amplitud** | Velocidad y tamaño del arco |
 
 > ⚠️ **«Guardar y aplicar» guarda TODOS los ajustes de esa pantalla.** Si
 > alguien dejó un valor viejo guardado, ese valor manda. Antes del evento,
-> revisa que «Saludo rotaciones» diga 3 e «Idioma del saludo» diga INGLÉS.
+> revisa que «Saludo rotaciones» diga 3 e «Idioma del saludo» diga ESPAÑOL.
+> (Si MECH sigue saludando en inglés después de actualizar, es justo esto:
+> el valor INGLÉS quedó guardado. Ponlo en ESPAÑOL y «Guardar y aplicar».)
 
 ---
 
@@ -407,6 +458,9 @@ en su sitio de proyección. También olvida el par de idiomas del traductor.
 ---
 
 ## 10. Resumen de todo lo que entiende
+
+Las frases de esta tabla son las de **español** (despierto con «ok MECH»).
+Despierto en otro idioma, valen las de ese idioma y **no** estas (§2).
 
 | Se le dice | Hace |
 |---|---|

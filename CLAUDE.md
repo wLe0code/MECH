@@ -20,7 +20,8 @@ Este archivo es tu primer punto de referencia al abrir una sesión nueva en este
 > Lo ÚNICO que se conservó de esa época: la app **`MECH Panel.exe`**
 > (`windows/`, solo control remoto, no toca el audio). Encima de la
 > reversión se hizo: el saludo nuevo (3 rotaciones del brazo derecho hacia
-> adelante, solo en reposo, en inglés — ver «Saludo» en Estado actual) y la
+> adelante, solo en reposo; en inglés hasta oct 2026, **ahora en español** —
+> ver «Saludo» en Estado actual) y la
 > obra `relatividad` (hoy con **7 segmentos**). Después (23 sep): `docs/USO.md`
 > **reescrita desde cero** con lo que SÍ hay ahora, los controles de
 > movimiento del panel corregidos, el botón de la biblioteca en la app y los
@@ -382,7 +383,15 @@ scripts/
                         par del traductor, la trivia, los subtítulos en
                         japonés/chino y que las tablas estén completas.
                         Correrlo al tocar las listas VOICE_*_PHRASES_*,
-                        lang.py o el matcher.
+                        lang.py o el matcher. Mide con TODAS las listas
+                        juntas (apaga VOICE_STRICT_LANGUAGE a propósito).
+  probar_comandos_idioma.py ← La regla de oct 2026: cada comando solo en el
+                        idioma del despertar. Las frases de cada idioma en
+                        el suyo, una frase de bandera por comando contra las
+                        de los otros ocho, el idioma fijo estando despierto,
+                        el saludo en español y el bucle de voz REAL con
+                        micrófono/Whisper/voz de mentira. Correrlo junto con
+                        el anterior.
   probar_saludo.py    ← Cuenta las órdenes que el SALUDO manda al Arduino:
                         cuántas veces llega arriba el brazo (tienen que ser
                         3), que el izquierdo no se mueva y que nunca baje de
@@ -546,9 +555,41 @@ multilingüe. **Al dormirse vuelve solo a español.**
   DE/IT/JA/RU/ZH van **todas juntas, agrupadas por idioma**, en la sección
   «Idiomas añadidos en oct 2026» (son 14 listas por idioma: así se revisa un
   idioma entero de un vistazo).
-- Las órdenes de movimiento y de interrupción existen en todos los idiomas
-  (`VOICE_*_PHRASES_<XX>`) y **se aceptan todas siempre**, sin mirar el
-  idioma activo: son frases largas y distintivas.
+- **Cada comando, solo en el idioma del despertar (6 oct 2026, pedido del
+  equipo).** Las frases de mando existen en los nueve idiomas
+  (`VOICE_*_PHRASES_<XX>`), pero `voice_phrases._frases_activas()` solo mira
+  la lista del idioma ACTIVO: despierto con «wake up MECH» lo corta «hey
+  MECH» y **no** «oye MECH»; despierto con «ok MECH», al revés. Vale para
+  todo lo que se reconoce por frase (interrumpir, dormir, moverse, marketing,
+  traductor, trivia, sí/no). Las de DESPERTAR son la excepción: en reposo se
+  miran las nueve, porque son las que eligen el idioma. (Hasta el 5 oct se
+  aceptaban todas siempre, sin mirar el idioma activo.)
+  - **El idioma queda fijo hasta que se duerme.** Antes, decir la frase de
+    despertar de otro idioma estando despierto lo cambiaba; ya no
+    (`voice_phrases.wake_language_awake()`). Tenía un fallo real: «OK MECH,
+    tell me about…» dicho en inglés casaba con el «ok MECH» español y lo
+    pasaba a español a media charla. Ahora esa frase sigue hacia Claude como
+    cualquier otra.
+  - Se apaga con **`VOICE_STRICT_LANGUAGE=false`** (en vivo: Ajustes →
+    «Idioma de los comandos»), y vuelve todo lo de antes: todas las listas a
+    la vez y el cambio de idioma estando despierto.
+  - ⚠️ La separación es **por lista**, no perfecta: el matcher sigue
+    perdonando una letra, así que palabras casi iguales entre idiomas valen
+    en los dos («avanza»/«avance»/«avança», «traduce»/«traduz»,
+    «perdón»/«pardon»). No es un fallo, es el mismo sonido.
+  - Al quedar cada idioma con SU lista, cada una tiene que valerse sola: por
+    eso «ok» está ahora en las nueve listas de `VOICE_YES_PHRASES*`. Si
+    añades un idioma o una frase, revisa que no dependa de otra lista.
+  - No se tocó lo que no es un comando: las respuestas de la trivia
+    (`parse_answer`: letras y ordinales), los números de «avanza diez
+    segundos» y los nombres de idioma del traductor siguen mezclando todos
+    los idiomas.
+  - Dos simulaciones, sin hardware:
+    **`python scripts/probar_comandos_idioma.py`** mide ESTA regla (cada
+    idioma con sus comandos y sin los ajenos, + el bucle de voz real con
+    micrófono/Whisper/voz de mentira); `scripts/probar_idiomas.py` sigue
+    midiendo las colisiones con TODAS las listas juntas (apaga la regla a
+    propósito: es el peor caso, y el que vale si alguien la apaga).
 - En reposo, si la transcripción en español no coincide con ningún wake, el
   bucle **re-transcribe el MISMO audio UNA vez con detección automática de
   idioma** (`stt.transcribe_any`) y vuelve a comparar contra todas las listas.
@@ -827,8 +868,10 @@ Etapas: `offer` (¿jugamos?) → `loading` (Claude escribe las preguntas) →
 
 Durante TODO el plan (narración y también las pausas en que genera imágenes),
 `backend/interrupt_listener.py` corre un hilo que escucha con una regla muy
-estricta: **solo** las frases de `VOICE_INTERRUPT_PHRASES` /
-`VOICE_INTERRUPT_PHRASES_EN`. Cualquier otra cosa que oiga se descarta sin
+estricta: **solo** las frases de `VOICE_INTERRUPT_PHRASES` **del idioma en
+que MECH despertó** («oye MECH» en español, «hey MECH» en inglés, «pardon
+MECH» en francés, «escuta MECH» en portugués; desde oct 2026 las de otro
+idioma no lo cortan). Cualquier otra cosa que oiga se descarta sin
 mirarla — durante la narración, lo que más se oye es el propio parlante.
 
 Al oírla: `mech_app._on_interrupt()` llama a **`stop_presentation()`**, que
@@ -1552,13 +1595,25 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   botón **«SALUDAR AHORA»** (que solo se salta el cooldown).
   El aviso «No saludo…» sale como mucho **una vez por
   minuto** — la visión detecta a ~10 fps y si no llenaría el panel.
-- **Saludo de 3 rotaciones, en inglés (sep 2026)**: el brazo DERECHO sube
-  hacia adelante y llega arriba **exactamente 3 veces**
-  (`ARM_WAVE_REPEATS=3`, `ARM_WAVE_BOTH=false`, `ARM_INVERT_R=true`) y la
-  frase sale en **inglés** («Hello! I am MECH…», `GREETING_LANGUAGE=en`)
-  aunque MECH esté en español. ⚠️ `GREETING_LANGUAGE` **NO cambia el idioma
-  de MECH**: eso lo sigue decidiendo la frase con que se le despierta. El
-  subtítulo del saludo va etiquetado en ese idioma (`start_subtitles(code=)`).
+- **Saludo de 3 rotaciones, en ESPAÑOL (sep 2026; el idioma cambió en oct
+  2026)**: el brazo DERECHO sube hacia adelante y llega arriba **exactamente
+  3 veces** (`ARM_WAVE_REPEATS=3`, `ARM_WAVE_BOTH=false`,
+  `ARM_INVERT_R=true`) y la frase sale en **español** («¡Hola! Soy MECH. Un
+  gusto verte hoy aquí», `GREETING_LANGUAGE=es`). En septiembre el equipo lo
+  pidió en inglés y en octubre lo devolvió a español — **no lo vuelvas a
+  poner en inglés por tu cuenta**. ⚠️ `GREETING_LANGUAGE` **NO cambia el
+  idioma de MECH**: eso lo sigue decidiendo la frase con que se le
+  despierta. El subtítulo del saludo va etiquetado en ese idioma
+  (`start_subtitles(code=)`).
+  ⚠️ **El `.env` de la Pi casi seguro tiene `GREETING_LANGUAGE=en`
+  guardado** (el panel escribe todas sus perillas): si tras actualizar sigue
+  saludando en inglés, es eso — Ajustes → «Idioma del saludo» → ESPAÑOL →
+  «Guardar y aplicar». El arranque lo delata: loguea «… · saludo en inglés».
+  ⚠️ **Eco del saludo**: en español la frase lleva un «MECH», así que su eco
+  no puede colarse como un despertar. La guarda (`mech_app.greeting_until`)
+  se compara ahora con el momento en que se GRABÓ el audio
+  (`inicio_audio` en el bucle de `server.py`), no con la hora de después de
+  transcribir: Whisper tarda 1-2 s en la Pi y la ventana ya estaba cerrada.
   ⚠️ **«Guardar y aplicar» del panel escribe TODAS las perillas en el
   `.env`**, así que un `ARM_WAVE_REPEATS=2` viejo en el `.env` de la Pi tapa
   el default. El preflight (§9) avisa si el saludo no está como se pidió.
@@ -1701,9 +1756,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 16. **El idioma se decide en el DESPERTAR, no en medio de la conversación.**
     Si alguien le habla en francés a un MECH despierto en español, Whisper
     transcribe con el modelo español y sale basura: hay que dormirlo y
-    despertarlo con la frase de ese idioma (o decirla estando despierto, que
-    cambia el idioma). Es a propósito: así el stand no cambia de idioma por
-    accidente.
+    despertarlo con la frase de ese idioma. Desde oct 2026 decirla estando
+    despierto **ya no** cambia el idioma, y los comandos solo valen en el
+    idioma activo (`VOICE_STRICT_LANGUAGE`, ver «Idiomas»). Es a propósito:
+    así el stand no cambia de idioma por accidente. Si quedó en un idioma
+    equivocado y nadie sabe dormirlo en ese idioma: chip **ES** de la vista
+    Voz del panel.
 17. **`VOICE_WAKE_PHRASES_{EN,FR,PT}` en el `.env` de la Pi tapan el
     default**, igual que la lista en español. Si «wake up MECH» /
     «bonjour MECH» / «bom dia MECH» no funcionan, revisar esas claves.
