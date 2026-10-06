@@ -1,28 +1,99 @@
-/* Las fuentes se cargan desde /static/vendor/mech-fonts.css (local).
-   Antes había un @import a Google Fonts aquí: sin internet el panel
-   caía a las fuentes del sistema. En la competencia nada puede
-   depender del wifi del recinto. */
+/* MECH · Panel de control — hoja de estilos.
+ *
+ * Las fuentes se cargan desde /static/vendor/mech-fonts.css (local).
+ * Antes había un @import a Google Fonts aquí: sin internet el panel
+ * caía a las fuentes del sistema. En la competencia nada puede
+ * depender del wifi del recinto.
+ *
+ * ESTÉTICA (oct 2026, pedido del equipo: «que el fondo no sea ese violeta»).
+ * Son los mismos controles de siempre; cambió solo cómo se ven:
+ *
+ *   - Fondo GRAFITO casi negro y neutro (sin tinte violeta), con una rejilla
+ *     de puntos muy tenue: tablero de instrumentos.
+ *   - UN color de acento, cian (`--accent`), para todo lo que es "MECH" o la
+ *     acción principal. Sustituye al morado de antes.
+ *   - El resto de colores SIGNIFICAN algo y no se usan de adorno:
+ *       rojo  = paro, error, micrófono      verde = bien, «puedes hablar»
+ *       ámbar = trabajando, Arduino, aviso  cian  = MECH, acción principal
+ *
+ * Tres reglas de movimiento que conviene no romper:
+ *   1. Solo se animan `transform` y `opacity` (lo único que no obliga al
+ *      navegador a repintar; en la Pi se nota).
+ *   2. Los `:hover` van dentro de `@media (hover: hover)`: en un teléfono el
+ *      hover se queda pegado tras el toque.
+ *   3. Nada de `transition: all`, y todo lo que se pulsa responde con
+ *      `scale(.97)`. Cambiar de vista NO se anima (también se hace con las
+ *      teclas 1/2/3, y lo que se dispara con el teclado tiene que ser
+ *      inmediato).
+ */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --red: #E24B4A; --red-dark: #A32D2D; --red-light: #FCEBEB;
-  --purple: #534AB7; --purple-light: #EEEDFE; --purple-mid: #7F77DD;
-  --amber: #EF9F27; --teal: #1D9E75; --teal-light: #E1F5EE;
-  --bg: #0e0e12; --surface: #16161d; --surface2: #1e1e28; --surface3: #26263a;
-  --text: #f0eeff; --text-muted: #888899; --border: rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
+
+  /* Fondo y superficies: grafito neutro, de más hondo a más cercano. */
+  --bg: #08090a;
+  --surface: #0f1113;
+  --surface2: #15181b;
+  --surface3: #1e2327;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --text: #edf0f2;
+  --text-muted: #838c94;
+  --text-dim: #626b73;
+
+  /* Acento: MECH y la acción principal. */
+  --accent: #36cfee;
+  --accent-rgb: 54, 207, 238;
+
+  /* Colores con significado. Cada uno trae su versión `-rgb` para poder
+     usarlo con transparencia: rgba(var(--red-rgb), .15). */
+  --red: #e24b4a;      --red-rgb: 226, 75, 74;     --red-dark: #a32d2d;
+  --red-soft: #ff9d97;
+  --amber: #f2a93b;    --amber-rgb: 242, 169, 59;
+  --teal: #1fb383;     --green-rgb: 49, 201, 148;
+  --ok: #5fdcae;
+
+  /* Nombres de antes. Los usan estilos en línea del HTML (y library.html);
+     hoy apuntan al acento, ya no hay morado. */
+  --purple: var(--accent); --purple-mid: var(--accent);
+  --purple-light: #e6f9fd; --red-light: #fcebeb; --teal-light: #e1f5ee;
+
   --font-mono: 'Space Mono', monospace; --font-main: 'Sora', sans-serif;
+
+  --r-lg: 14px; --r-md: 10px; --r-sm: 8px;
+  /* Curva de salida con carácter (la `ease-out` del navegador es muy floja). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 body {
   font-family: var(--font-main);
-  background: var(--bg);
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
+  background-color: var(--bg);
+  /* Dos resplandores muy tenues (el acento arriba a la izquierda, el rojo de
+     MECH arriba a la derecha) y la rejilla de puntos. Es un fondo fijo: se
+     pinta una vez y no cuesta nada al hacer scroll. */
+  background-image:
+    radial-gradient(1100px 520px at 18% -14%, rgba(var(--accent-rgb), 0.05), transparent 65%),
+    radial-gradient(900px 460px at 96% -10%, rgba(var(--red-rgb), 0.04), transparent 65%),
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.3px);
+  background-size: auto, auto, 22px 22px;
+  background-attachment: fixed;
 }
 
 .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+code {
+  font-family: var(--font-mono); font-size: 0.92em;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 1px 5px; color: var(--text);
+}
+
+:focus-visible { outline: 2px solid rgba(var(--accent-rgb), 0.75); outline-offset: 2px; }
 
 /* ─── HEADER ────────────────────────────────────────────────────────────── */
 
@@ -32,12 +103,14 @@ body {
   gap: 16px;
 }
 .logo {
-  display: flex; align-items: center; gap: 10px;
-  font-family: var(--font-mono); font-size: 15px; font-weight: 700; letter-spacing: 2px;
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 2.5px;
+  white-space: nowrap;
 }
 .logo-dot {
   width: 10px; height: 10px; border-radius: 50%; background: var(--red);
-  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 4px rgba(var(--red-rgb), 0.16), 0 0 16px rgba(var(--red-rgb), 0.7);
+  animation: pulse 2.4s ease-in-out infinite;
 }
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -45,30 +118,48 @@ body {
 }
 
 .status-bar {
-  display: flex; gap: 16px; align-items: center;
-  font-size: 12px; font-family: var(--font-mono); color: var(--text-muted);
-  flex: 1; justify-content: flex-end;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);
+  flex: 1; min-width: 0; justify-content: flex-end; letter-spacing: 0.5px;
 }
-.status-item { display: flex; align-items: center; gap: 6px; }
-.dot-ok     { width: 6px; height: 6px; border-radius: 50%; background: #1D9E75; }
-.dot-off    { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
-.dot-active { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); animation: pulse 1s infinite; }
+.status-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface2);
+}
+/* El de la conexión ya trae su propia pastilla (.ws-badge). */
+#ws-badge-wrap { padding: 0; border: 0; background: none; }
+#clock { padding-left: 6px; font-variant-numeric: tabular-nums; }
+
+.dot-ok     { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px rgba(var(--green-rgb), 0.9); }
+.dot-off    { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
+.dot-active { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px rgba(var(--amber-rgb), 0.9); animation: pulse 1s infinite; }
 
 /* PARO DE EMERGENCIA — siempre visible en el header */
 .emergency-btn {
-  background: var(--red); color: white; border: 2px solid #ff7676;
-  padding: 8px 16px; border-radius: 8px; font-family: var(--font-mono);
+  position: relative;
+  background: linear-gradient(180deg, #ef5a58, #cf3a39); color: #fff;
+  border: 1px solid #ff8a86;
+  padding: 9px 16px; border-radius: var(--r-sm); font-family: var(--font-mono);
   font-size: 12px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
-  display: flex; align-items: center; gap: 8px;
-  box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.6); animation: emergencyGlow 2.5s infinite;
-  transition: transform 0.1s;
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  flex: none;  /* en una ventana estrecha se encogen los indicadores, no él */
+  box-shadow: 0 6px 18px rgba(var(--red-rgb), 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 140ms var(--ease-out), filter 140ms var(--ease-out);
 }
-.emergency-btn:hover { background: #c43e3d; transform: scale(1.05); }
+/* El halo que late va en una capa aparte y solo cambia de tamaño y de
+   opacidad. Antes se animaba el `box-shadow` del botón, que obliga a
+   repintarlo en cada fotograma mientras el panel está abierto. */
+.emergency-btn::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit;
+  border: 2px solid rgba(var(--red-rgb), 0.75); pointer-events: none;
+  animation: emergencyGlow 2.5s var(--ease-out) infinite;
+}
 .emergency-btn:active { transform: scale(0.97); }
 .emergency-btn i { font-size: 16px; }
 @keyframes emergencyGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.4); }
-  50%      { box-shadow: 0 0 0 8px rgba(226, 75, 74, 0); }
+  0%        { opacity: 0.8; transform: scale(1); }
+  70%, 100% { opacity: 0; transform: scale(1.14, 1.42); }
 }
 
 /* ─── LAYOUT ────────────────────────────────────────────────────────────── */
@@ -79,28 +170,40 @@ body {
 
 .sidebar {
   background: var(--surface); border-right: 1px solid var(--border);
-  padding: 20px 16px; display: flex; flex-direction: column; gap: 6px;
+  padding: 18px 12px; display: flex; flex-direction: column; gap: 4px;
 }
 .sidebar-label {
   font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--text-muted); font-family: var(--font-mono);
-  padding: 10px 4px 4px;
+  color: var(--text-dim); font-family: var(--font-mono);
+  padding: 12px 10px 6px;
 }
 .nav-item {
+  position: relative;
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  padding: 10px 12px; border-radius: var(--r-sm); cursor: pointer;
   font-size: 13px; color: var(--text-muted);
-  transition: all 0.15s; border: 1px solid transparent;
+  border: 1px solid transparent;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
+              transform 140ms var(--ease-out);
 }
-.nav-item:hover { background: var(--surface2); color: var(--text); }
-.nav-item.active { background: var(--surface3); color: var(--text); border-color: var(--border); }
+.nav-item:active { transform: scale(0.98); }
+.nav-item.active {
+  background: var(--surface3); color: var(--text); border-color: var(--border);
+}
+/* La vista en la que estás: una barrita de acento a la izquierda. */
+.nav-item.active::before {
+  content: ''; position: absolute; left: -1px; top: 9px; bottom: 9px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7);
+}
 .nav-item i { font-size: 16px; }
+.nav-item.active i { color: var(--accent); }
 .nav-badge {
   margin-left: auto; background: var(--red); color: white;
   font-size: 10px; padding: 2px 6px; border-radius: 10px; font-family: var(--font-mono);
 }
 .nav-badge-yellow {
-  margin-left: auto; background: rgba(239, 159, 39, 0.2); color: var(--amber);
+  margin-left: auto; background: rgba(var(--amber-rgb), 0.16); color: var(--amber);
   font-size: 10px; padding: 2px 6px; border-radius: 10px; font-family: var(--font-mono);
 }
 
@@ -113,31 +216,45 @@ body {
 }
 .view.visible { display: flex; }
 
-.view-title { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.view-title { font-size: 18px; font-weight: 600; letter-spacing: -0.2px; display: flex; align-items: center; gap: 10px; }
 .section-sub { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-top: -6px; }
 
 /* ─── VOICE VIEW ───────────────────────────────────────────────────────── */
 
 .voice-hero {
+  position: relative; overflow: hidden;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 16px; padding: 28px;
+  border-radius: 18px; padding: 28px;
   display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
+/* Un foco tenue detrás del micrófono, para que sea lo primero que se ve. */
+.voice-hero::before {
+  content: ''; position: absolute; left: 50%; top: -120px; width: 620px; height: 420px;
+  transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(closest-side, rgba(var(--red-rgb), 0.13), transparent);
+}
+.voice-hero > * { position: relative; }
+
 .voice-btn {
   width: 96px; height: 96px; border-radius: 50%;
-  background: var(--surface2); border: 2px solid var(--red);
+  background: radial-gradient(circle at 50% 30%, #23272b, var(--surface2));
+  border: 2px solid var(--red);
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.2s; position: relative; user-select: none;
+  cursor: pointer; position: relative; user-select: none;
+  box-shadow: 0 0 0 6px rgba(var(--red-rgb), 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out),
+              border-color 160ms var(--ease-out);
 }
-.voice-btn:hover { background: rgba(226, 75, 74, 0.15); transform: scale(1.05); }
-.voice-btn.listening { background: rgba(226, 75, 74, 0.2); border-color: #F09595; }
+.voice-btn:active { transform: scale(0.96); }
+.voice-btn.listening { border-color: var(--red-soft); }
 .voice-btn.listening::before {
   content: ''; position: absolute; width: 116px; height: 116px; border-radius: 50%;
-  border: 2px solid rgba(226, 75, 74, 0.3); animation: ripple 1.5s ease-out infinite;
+  border: 2px solid rgba(var(--red-rgb), 0.35); animation: ripple 1.5s ease-out infinite;
 }
 .voice-btn.listening::after {
   content: ''; position: absolute; width: 140px; height: 140px; border-radius: 50%;
-  border: 1px solid rgba(226, 75, 74, 0.12); animation: ripple 1.5s ease-out 0.5s infinite;
+  border: 1px solid rgba(var(--red-rgb), 0.16); animation: ripple 1.5s ease-out 0.5s infinite;
 }
 @keyframes ripple {
   0%   { transform: scale(0.9); opacity: 1; }
@@ -146,65 +263,81 @@ body {
 .voice-btn i { font-size: 36px; color: var(--red); }
 .voice-status { font-size: 13px; color: var(--text-muted); font-family: var(--font-mono); }
 
-/* Idioma activo: español por defecto, inglés solo con "wake up MECH". */
+/* Idioma activo: español por defecto; los demás, solo si lo despiertan en
+   ese idioma. Estos chips son para probar sin micrófono. */
 .lang-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.lang-row .lang-label { font-size: 10px; letter-spacing: 2px; color: var(--text-muted); font-family: var(--font-mono); }
+.lang-row .lang-label { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); font-family: var(--font-mono); }
 .lang-chip {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-  padding: 5px 12px; font-size: 11px; font-family: var(--font-mono);
-  color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 6px 13px; font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-muted); cursor: pointer;
+  transition: color 150ms var(--ease-out), border-color 150ms var(--ease-out),
+              background-color 150ms var(--ease-out), transform 140ms var(--ease-out);
 }
-.lang-chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.15); }
-.lang-chip.active { color: #fff; border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.25); }
+.lang-chip:active { transform: scale(0.97); }
+.lang-chip.active {
+  color: var(--accent); border-color: rgba(var(--accent-rgb), 0.6);
+  background: rgba(var(--accent-rgb), 0.12);
+}
 .lang-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
-/* Con cuatro idiomas la pista ya no cabe al lado de los chips: se la manda a
-   su propia línea para que los cuatro botones queden juntos y centrados. */
-.lang-row .lang-hint { flex-basis: 100%; text-align: center; line-height: 1.6; }
+/* Con tantos idiomas la pista no cabe al lado de los chips: va en su propia
+   línea, para que los botones queden juntos y centrados. */
+.lang-row .lang-hint { flex-basis: 100%; text-align: center; line-height: 1.7; }
 
 .wave-bars { display: flex; align-items: center; gap: 3px; height: 32px; }
-.wave-bar { width: 4px; border-radius: 2px; background: var(--red); opacity: 0.3; transition: height 0.1s; }
-.wave-bar.active { opacity: 0.9; }
+.wave-bar { width: 4px; border-radius: 2px; background: var(--red); opacity: 0.28; transition: height 0.1s; }
+.wave-bar.active { opacity: 0.95; }
 
 .transcript-box {
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px 18px;
+  border-radius: var(--r-md); padding: 14px 18px; text-align: left;
   font-size: 14px; color: var(--text); min-height: 56px; width: 100%; line-height: 1.6;
 }
-.transcript-placeholder { color: var(--text-muted); font-style: italic; }
+.transcript-placeholder { color: var(--text-dim); font-style: italic; }
+/* Lo que dice MECH: mismo cuadro, con el filo del color de acento. */
 .ai-response {
-  background: rgba(83, 74, 183, 0.12); border: 1px solid rgba(83, 74, 183, 0.25);
-  border-radius: 10px; padding: 14px 18px;
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.03));
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md); padding: 14px 18px; text-align: left;
   font-size: 13px; color: var(--text); line-height: 1.7;
   width: 100%; min-height: 56px;
 }
 .ai-label {
   font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--purple-mid); font-family: var(--font-mono); margin-bottom: 8px;
+  color: var(--accent); font-family: var(--font-mono); margin-bottom: 8px;
 }
 
 .text-input-row { display: flex; gap: 8px; width: 100%; }
 .text-input {
-  flex: 1; background: var(--surface2); border: 1px solid var(--border);
-  color: var(--text); padding: 12px 16px; border-radius: 10px;
+  flex: 1; background-color: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 12px 16px; border-radius: var(--r-md);
   font-family: var(--font-main); font-size: 14px; outline: none;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
 }
-.text-input:focus { border-color: var(--purple-mid); }
+/* Varios desplegables de Ajustes llevan también esta clase: que no se coma
+   el hueco de la flecha. */
+select.text-input { padding-right: 34px; }
+.text-input::placeholder { color: var(--text-dim); }
+.text-input:focus { border-color: rgba(var(--accent-rgb), 0.7); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14); }
 
 .cmd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cmd-chip {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  padding: 10px 14px; font-size: 12px; color: var(--text-muted);
-  cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 11px 14px; font-size: 12px; color: var(--text-muted);
+  cursor: pointer; display: flex; align-items: center; gap: 10px;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
+              border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
 }
-.cmd-chip:hover { background: var(--surface2); color: var(--text); border-color: rgba(255, 255, 255, 0.15); }
-.cmd-chip i { font-size: 14px; color: var(--red); }
+.cmd-chip:active { transform: scale(0.98); }
+.cmd-chip i { font-size: 15px; color: var(--accent); opacity: 0.85; }
 
 /* ─── STAND VIEW ───────────────────────────────────────────────────────── */
 
 .stand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .proj-box {
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 12px; padding: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
 }
 .proj-box-label {
@@ -213,53 +346,59 @@ body {
   display: flex; align-items: center; gap: 6px;
 }
 .screen-frame {
-  background: #000; border-radius: 8px; aspect-ratio: 16 / 9;
-  position: relative; overflow: hidden; border: 1px solid #222;
+  background: #000; border-radius: var(--r-sm); aspect-ratio: 16 / 9;
+  position: relative; overflow: hidden; border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;
 }
-.screen-off-label { font-family: var(--font-mono); font-size: 11px; color: #333; }
+.screen-off-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: #3a4046; }
 .screen-frame img, .screen-frame video { width: 100%; height: 100%; object-fit: contain; }
 
 .upload-zone {
-  border: 2px dashed var(--border); border-radius: 10px;
-  padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;
+  border: 1.5px dashed var(--border-strong); border-radius: var(--r-md);
+  padding: 20px; text-align: center; cursor: pointer;
   position: relative;
+  transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
 }
-.upload-zone:hover { border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.05); }
 .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .upload-zone i { font-size: 24px; color: var(--text-muted); display: block; margin-bottom: 6px; }
 .upload-zone p { font-size: 13px; color: var(--text-muted); }
-.upload-zone .hint { font-size: 11px; color: #555; margin-top: 4px; }
+.upload-zone .hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 
 .proj-controls { display: flex; gap: 8px; margin-top: 4px; }
 
 .btn {
-  padding: 8px 14px; border-radius: 8px;
+  padding: 8px 14px; border-radius: var(--r-sm);
   font-size: 12px; font-family: var(--font-mono); cursor: pointer;
-  transition: all 0.15s; border: 1px solid var(--border);
+  border: 1px solid var(--border);
   background: var(--surface2); color: var(--text-muted);
   display: flex; align-items: center; gap: 6px;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
+              border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
 }
-.btn:hover { background: var(--surface3); color: var(--text); }
-.btn-green  { background: rgba(29,158,117,0.15);  border-color: rgba(29,158,117,0.3);  color: #5DCAA5; }
-.btn-green:hover  { background: rgba(29,158,117,0.25); }
-.btn-purple { background: rgba(83,74,183,0.15);   border-color: rgba(83,74,183,0.3);   color: var(--purple-mid); }
-.btn-purple:hover { background: rgba(83,74,183,0.25); }
-.btn-red    { background: rgba(226,75,74,0.15);   border-color: rgba(226,75,74,0.3);   color: #F09595; }
-.btn-red:hover    { background: rgba(226,75,74,0.25); color: var(--red); }
+.btn:active { transform: scale(0.97); }
+/* Botones de color: todos iguales, cambia el tono (`--c`). `btn-purple` es
+   el nombre de antes del botón principal; hoy es el acento. */
+.btn-green  { --c: var(--ok);       --c-rgb: var(--green-rgb); }
+.btn-purple,
+.btn-accent { --c: var(--accent);   --c-rgb: var(--accent-rgb); }
+.btn-red    { --c: var(--red-soft); --c-rgb: var(--red-rgb); }
+.btn-amber  { --c: var(--amber);    --c-rgb: var(--amber-rgb); }
+.btn-green, .btn-purple, .btn-accent, .btn-red, .btn-amber {
+  background: rgba(var(--c-rgb), 0.12); border-color: rgba(var(--c-rgb), 0.34); color: var(--c);
+}
 
 /* ─── IMMERSIVE VIEW ───────────────────────────────────────────────────── */
 
 .immersive-demo {
-  background: #000; border-radius: 12px; aspect-ratio: 16 / 9;
-  position: relative; overflow: hidden;
+  background: #000; border-radius: var(--r-lg); aspect-ratio: 16 / 9;
+  position: relative; overflow: hidden; border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;
 }
 .immersive-demo canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .immersive-overlay { position: relative; z-index: 2; text-align: center; pointer-events: none; }
 .immersive-overlay h2 {
   font-size: 20px; font-weight: 700; color: white;
-  text-shadow: 0 0 30px rgba(127, 119, 221, 0.8);
+  text-shadow: 0 0 30px rgba(var(--accent-rgb), 0.8);
   font-family: var(--font-mono); letter-spacing: 3px;
 }
 .immersive-overlay p { font-size: 11px; color: rgba(255, 255, 255, 0.5); margin-top: 8px; font-family: var(--font-mono); }
@@ -268,53 +407,65 @@ body {
 
 .fw-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 18px;
+  border-radius: var(--r-lg); padding: 18px;
   display: flex; flex-direction: column; gap: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 .fw-row {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border);
+  font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border);
 }
 .fw-row:last-child { border: none; }
-.fw-key { color: var(--text-muted); font-family: var(--font-mono); }
-.fw-val { color: var(--text); font-family: var(--font-mono); }
+.fw-key { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.6px; }
+.fw-val { color: var(--text); font-family: var(--font-mono); font-size: 12px; }
 
 .init-btn {
-  background: rgba(226, 75, 74, 0.12); border: 1px solid rgba(226, 75, 74, 0.35);
-  color: #F09595; padding: 12px 20px; border-radius: 10px;
+  background: rgba(var(--red-rgb), 0.12); border: 1px solid rgba(var(--red-rgb), 0.35);
+  color: var(--red-soft); padding: 12px 20px; border-radius: var(--r-md);
   font-family: var(--font-mono); font-size: 13px; cursor: pointer;
-  transition: all 0.2s; text-align: center; letter-spacing: 1px;
+  text-align: center; letter-spacing: 1px;
   display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background-color 150ms var(--ease-out), transform 140ms var(--ease-out);
 }
-.init-btn:hover { background: rgba(226, 75, 74, 0.22); color: var(--red); }
+.init-btn:active { transform: scale(0.97); }
 
 .warning-box {
-  background: rgba(226, 75, 74, 0.05); border: 1px solid rgba(226, 75, 74, 0.2);
-  border-radius: 10px; padding: 16px;
+  background: rgba(var(--red-rgb), 0.06); border: 1px solid rgba(var(--red-rgb), 0.24);
+  border-left: 3px solid var(--red);
+  border-radius: var(--r-md); padding: 16px;
 }
 
 .sensor-item {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border);
+  font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border);
 }
 .sensor-name { color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
-.sensor-val { font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; border-radius: 4px; }
-.val-ok     { background: rgba(29,158,117,0.15); color: #5DCAA5; }
-.val-off    { background: var(--surface2);       color: #555; }
-.val-active { background: rgba(239,159,39,0.15); color: var(--amber); }
-.val-err    { background: rgba(226,75,74,0.15);  color: #F09595; }
+.sensor-val { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 5px; }
+.val-ok     { background: rgba(var(--green-rgb), 0.14); color: var(--ok); }
+.val-off    { background: var(--surface2);              color: var(--text-dim); }
+.val-active { background: rgba(var(--amber-rgb), 0.15); color: var(--amber); }
+.val-err    { background: rgba(var(--red-rgb), 0.15);   color: var(--red-soft); }
 
-.arduino-cmd-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+/* Botones del Arduino: como teclas. Se hunden al pulsar, que aquí importa:
+   varios se mantienen apretados para mover el robot. */
+.arduino-cmd-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 8px; }
 .arduino-btn {
-  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
-  padding: 10px 8px; font-size: 11px; font-family: var(--font-mono);
-  color: var(--text-muted); cursor: pointer; transition: all 0.15s;
-  text-align: center; user-select: none;
+  background: linear-gradient(180deg, #1b1f23, var(--surface2));
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 11px 8px; font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-muted); cursor: pointer;
+  text-align: center; user-select: none; touch-action: manipulation;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 0 rgba(0, 0, 0, 0.45);
+  transition: color 150ms var(--ease-out), border-color 150ms var(--ease-out),
+              transform 100ms var(--ease-out);
 }
-.arduino-btn:hover  { background: var(--surface3); color: var(--text); border-color: var(--amber); }
-.arduino-btn:active { background: var(--amber); color: black; }
-.arduino-btn.danger { color: #F09595; border-color: rgba(226,75,74,0.3); }
-.arduino-btn.danger:hover { background: rgba(226,75,74,0.2); color: var(--red); }
+.arduino-btn:active {
+  background: var(--amber); color: #1a1205; border-color: var(--amber);
+  transform: translateY(2px) scale(0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.arduino-btn.danger { color: var(--red-soft); border-color: rgba(var(--red-rgb), 0.34); }
+.arduino-btn.danger:active { background: var(--red); color: #fff; border-color: var(--red); }
 
 .slider-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
 .slider-row label {
@@ -322,14 +473,54 @@ body {
   min-width: 60px;
 }
 .slider-row input[type="range"] { flex: 1; }
-.slider-row .val { font-family: var(--font-mono); font-size: 11px; color: var(--text); min-width: 36px; text-align: right; }
+.slider-row .val {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text);
+  min-width: 36px; text-align: right; font-variant-numeric: tabular-nums;
+}
+
+/* Deslizadores: riel fino y una perilla clara con aro de acento. */
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  height: 20px; background: transparent; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px; background: var(--surface3);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  background: var(--text); border: 0;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28), 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 120ms var(--ease-out);
+}
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.18); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface3); }
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; background: var(--text); border: 0;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
+}
 
 select, input[type="text"] {
-  background: var(--surface2); border: 1px solid var(--border);
+  background-color: var(--surface2); border: 1px solid var(--border);
   color: var(--text); font-family: var(--font-mono); font-size: 12px;
-  padding: 6px 10px; border-radius: 6px; width: 100%; outline: none;
+  padding: 7px 10px; border-radius: var(--r-sm); width: 100%; outline: none;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
 }
-select:focus, input[type="text"]:focus { border-color: var(--purple-mid); }
+select:focus, input[type="text"]:focus {
+  border-color: rgba(var(--accent-rgb), 0.7); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+}
+/* La flecha de los desplegables, dibujada con dos degradados (así no hace
+   falta ninguna imagen). */
+select {
+  -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 30px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+select option { background: var(--surface2); color: var(--text); }
 
 /* ─── RIGHT PANEL ──────────────────────────────────────────────────────── */
 
@@ -343,93 +534,219 @@ select:focus, input[type="text"]:focus { border-color: var(--purple-mid); }
 .panel-section.grow { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .panel-title {
   font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 10px;
+  color: var(--text-dim); font-family: var(--font-mono); margin-bottom: 10px;
 }
 
 .chat-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 200px; padding: 4px 0; }
-.chat-bubble { max-width: 88%; padding: 8px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; }
-.chat-user { background: var(--surface3); color: var(--text); align-self: flex-end; border-bottom-right-radius: 2px; }
+.chat-bubble { max-width: 88%; padding: 8px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5; }
+.chat-user { background: var(--surface3); color: var(--text); align-self: flex-end; border-bottom-right-radius: 3px; }
 .chat-mech {
-  background: rgba(83,74,183,0.18); border: 1px solid rgba(83,74,183,0.2);
-  color: var(--text); align-self: flex-start; border-bottom-left-radius: 2px;
+  background: rgba(var(--accent-rgb), 0.1); border: 1px solid rgba(var(--accent-rgb), 0.2);
+  color: var(--text); align-self: flex-start; border-bottom-left-radius: 3px;
 }
 
 .log-list { display: flex; flex-direction: column; gap: 0; overflow-y: auto; flex: 1; }
 .log-item {
   display: flex; gap: 8px; font-size: 10px; font-family: var(--font-mono);
-  padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.03); align-items: flex-start;
+  padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.035); align-items: flex-start;
 }
-.log-time { color: #444; flex-shrink: 0; font-size: 9px; padding-top: 1px; }
-.log-msg  { flex: 1; line-height: 1.4; }
-.log-ok   { color: #5DCAA5; }
-.log-err  { color: var(--red); }
-.log-info { color: var(--purple-mid); }
+.log-time { color: var(--text-dim); flex-shrink: 0; font-size: 9px; padding-top: 1px; font-variant-numeric: tabular-nums; }
+.log-msg  { flex: 1; line-height: 1.45; overflow-wrap: anywhere; }
+.log-ok   { color: var(--ok); }
+.log-err  { color: var(--red-soft); }
+.log-info { color: #8fdff1; }
 .log-warn { color: var(--amber); }
 
-.ws-badge { font-size: 10px; font-family: var(--font-mono); padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
-.ws-connected    { background: rgba(29,158,117,0.15); color: #5DCAA5; }
-.ws-disconnected { background: rgba(226,75,74,0.15);  color: #F09595; }
+.ws-badge {
+  font-size: 10px; font-family: var(--font-mono); padding: 5px 10px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent;
+}
+.ws-connected    { background: rgba(var(--green-rgb), 0.12); color: var(--ok);       border-color: rgba(var(--green-rgb), 0.3); }
+.ws-disconnected { background: rgba(var(--red-rgb), 0.12);   color: var(--red-soft); border-color: rgba(var(--red-rgb), 0.3); }
 
-.cmd-entry { background: var(--surface2); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
-.cmd-trigger { font-family: var(--font-mono); color: var(--purple-mid); font-size: 10px; margin-bottom: 3px; }
+.cmd-entry { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 6px; }
+.cmd-trigger { font-family: var(--font-mono); color: var(--accent); font-size: 10px; margin-bottom: 3px; }
 .cmd-desc    { color: var(--text-muted); font-size: 11px; }
 
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 3px; }
 
 /* ─── BANNER DE FASE DE VOZ ────────────────────────────────────────────── */
 /* Barra ancha siempre visible que indica en qué fase está el ciclo de voz.
-   El estado "PUEDES HABLAR" (verde) es la señal para cuándo el juez habla. */
+   El estado "PUEDES HABLAR" (verde) es la señal para cuándo el juez habla.
+   Cada fase solo cambia el tono (`--tone`): el color del texto, el filo de la
+   izquierda y el degradado salen de ahí. */
 
 .voice-phase-banner {
+  --tone: var(--text-muted); --tone-rgb: 131, 140, 148; --fuerza: 0.14;
+  position: relative;
   display: flex; align-items: center; gap: 14px;
   padding: 12px 24px; font-family: var(--font-mono);
   border-bottom: 1px solid var(--border);
-  transition: background 0.25s, color 0.25s;
+  color: var(--tone);
+  background: var(--surface) linear-gradient(90deg, rgba(var(--tone-rgb), var(--fuerza)),
+                              rgba(var(--tone-rgb), 0.03) 58%, transparent);
+  transition: color 200ms var(--ease-out);
 }
-.vpb-pulse { width: 12px; height: 12px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.voice-phase-banner::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--tone);
+}
+.vpb-pulse { width: 11px; height: 11px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .vpb-text  { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
 .vpb-hint  { font-size: 12px; opacity: 0.75; margin-left: auto; font-family: var(--font-main); }
 
 /* Apagado — discreto, sin animación. */
-.phase-off    { background: var(--surface); color: var(--text-muted); }
+.phase-off    { --fuerza: 0.05; }
 .phase-off .vpb-pulse { animation: none; opacity: 0.4; }
 
-/* En reposo — azul apagado, pulso lento. MECH duerme pero oye el wake. */
-.phase-dormant { background: rgba(127,119,221,0.10); color: #8a86b8; }
+/* En reposo — gris frío, pulso lento. MECH duerme pero oye el wake. */
+.phase-dormant { --tone: #93a1ad; --tone-rgb: 147, 161, 173; --fuerza: 0.1; }
 .phase-dormant .vpb-pulse { animation: pulse 2.2s infinite; opacity: 0.6; }
 
 /* PUEDES HABLAR — verde, pulso marcado para llamar la atención. */
-.phase-waiting { background: rgba(29,158,117,0.18); color: #5DCAA5; }
+.phase-waiting { --tone: var(--ok); --tone-rgb: var(--green-rgb); --fuerza: 0.22; }
 .phase-waiting .vpb-pulse { animation: pulse 1s infinite; }
 .phase-waiting .vpb-text  { font-size: 17px; }
 
-/* Grabando — azul/teal, pulso rápido. */
-.phase-listen { background: rgba(127,119,221,0.20); color: var(--purple-mid); }
+/* Grabando — acento, pulso rápido. */
+.phase-listen { --tone: var(--accent); --tone-rgb: var(--accent-rgb); --fuerza: 0.18; }
 .phase-listen .vpb-pulse { animation: pulse 0.7s infinite; }
 
 /* Transcribiendo / pensando — ámbar, trabajo en curso. */
-.phase-work   { background: rgba(239,159,39,0.15); color: var(--amber); }
+.phase-work   { --tone: var(--amber); --tone-rgb: var(--amber-rgb); --fuerza: 0.16; }
 .phase-work .vpb-pulse { animation: pulse 1.4s infinite; }
 
-/* MECH hablando — púrpura. */
-.phase-speak  { background: rgba(83,74,183,0.25); color: #a89fff; }
+/* MECH hablando — el acento a toda fuerza. */
+.phase-speak  { --tone: #a5ecfa; --tone-rgb: var(--accent-rgb); --fuerza: 0.3; }
 .phase-speak .vpb-pulse { animation: pulse 1.1s infinite; }
 
 /* ─── VISTA AJUSTES ────────────────────────────────────────────────────── */
 
-.settings-live   { border-left: 3px solid #1D9E75; }
-.settings-restart{ border-left: 3px solid var(--amber); }
+/* Verde = se aplica en vivo · ámbar = hay que reiniciar el servidor. */
+.settings-live    { box-shadow: inset 3px 0 0 var(--teal), inset 0 1px 0 rgba(255, 255, 255, 0.035); }
+.settings-restart { box-shadow: inset 3px 0 0 var(--amber), inset 0 1px 0 rgba(255, 255, 255, 0.035); }
+/* 122px = lo que ocupa la etiqueta más larga («Saludo rotaciones»). Con el
+   mismo ancho para todas, los deslizadores empiezan en la misma línea. */
 .settings-live .slider-row label,
-.settings-restart .slider-row label { min-width: 92px; cursor: help; }
+.settings-restart .slider-row label { min-width: 122px; cursor: help; }
+/* Los desplegables y cajas de Ajustes, del mismo tamaño que el resto de la
+   fila (la clase `text-input` los hacía tan altos como la caja de comandos). */
+.slider-row .text-input {
+  padding: 7px 10px; font-family: var(--font-mono); font-size: 12px;
+  border-radius: var(--r-sm);
+}
+.slider-row select.text-input { padding-right: 30px; }
 
-.btn-amber  { background: rgba(239,159,39,0.15); border-color: rgba(239,159,39,0.35); color: var(--amber); }
-.btn-amber:hover { background: rgba(239,159,39,0.25); }
-
-.switch { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; }
-.switch input { width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; }
+/* Los interruptores son casillas de verificación de siempre, pintadas como
+   una palanquita: el control es el mismo, solo cambia el dibujo. */
+.switch { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; }
+.switch input {
+  -webkit-appearance: none; appearance: none; flex: none;
+  position: relative; width: 32px; height: 18px; border-radius: 999px;
+  background: var(--surface3); border: 1px solid var(--border-strong);
+  cursor: pointer;
+  transition: background-color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
+.switch input::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted);
+  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+.switch input:checked { background: rgba(var(--green-rgb), 0.26); border-color: rgba(var(--green-rgb), 0.65); }
+.switch input:checked::after { transform: translateX(14px); background: var(--ok); }
 .switch-text { font-size: 12px; color: var(--text-muted); }
+
+/* ─── Trivia (vista Voz) ──────────────────────────────────────────────
+   El juego corre en el servidor y se proyecta; esta tarjeta sirve para
+   lanzarlo y para responder SIN micrófono cuando se está probando. */
+.trivia-box {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 12px 14px; display: flex;
+  flex-direction: column; gap: 10px; text-align: left;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+}
+.trivia-box.active { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.08); }
+.trivia-q {
+  font-size: 12px; color: var(--text); line-height: 1.5; min-height: 18px;
+}
+.trivia-q .tq-empty { color: var(--text-muted); }
+.trivia-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.trivia-opt {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text); font-size: 11px; padding: 6px 10px; cursor: pointer;
+  font-family: var(--font-main); max-width: 220px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  transition: border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
+}
+.trivia-opt:active:not(:disabled) { transform: scale(0.97); }
+.trivia-opt:disabled { opacity: .45; cursor: default; }
+.trivia-opt b { font-family: var(--font-mono); color: var(--accent); margin-right: 6px; }
+
+/* ─── Modo traductor (vista Voz) ──────────────────────────────────────
+   MECH de intérprete entre dos personas. Por voz se activa con
+   «traduce MECH»; esta tarjeta permite elegir el par sin micrófono. */
+.translator-box {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 12px 14px; display: flex;
+  flex-direction: column; gap: 10px; text-align: left;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+}
+.translator-box.active { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.08); }
+.translator-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.translator-label {
+  font-size: 10px; letter-spacing: 2px; color: var(--text-muted);
+  font-family: var(--font-mono); display: inline-flex; align-items: center; gap: 6px;
+}
+.translator-label i { color: var(--accent); font-size: 13px; }
+.translator-state {
+  font-size: 10px; letter-spacing: 0.5px; font-family: var(--font-mono); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
+}
+.translator-state.tr-on { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.14); }
+.translator-state.tr-waiting { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.7); }
+/* Turno terminado pero con el par recordado: listo para otro
+   «traduce MECH» sin volver a preguntar los idiomas. */
+.translator-state.tr-idle { color: var(--text); border-color: var(--border-strong); }
+.translator-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.translator-row > i { color: var(--text-dim); }
+.translator-select {
+  background-color: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text); font-family: var(--font-mono); font-size: 11px;
+  padding: 6px 30px 6px 10px; cursor: pointer;
+  /* La regla global de `select` los pone al 100%: aquí van en fila, así que
+     se les devuelve el ancho de su contenido. */
+  width: auto; min-width: 130px; flex: 0 0 auto;
+}
+.translator-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); line-height: 1.7; }
+.translator-hint b { color: var(--text); font-weight: 400; }
+
+/* ─── HOVER ────────────────────────────────────────────────────────────── */
+/* Todo junto y solo donde hay ratón: en una pantalla táctil el `:hover` se
+   dispara con el toque y se queda puesto hasta que tocas otra cosa. */
+
+@media (hover: hover) and (pointer: fine) {
+  .emergency-btn:hover { filter: brightness(1.1); }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active:hover { background: var(--surface3); }
+  .voice-btn:hover { background-color: rgba(var(--red-rgb), 0.16); transform: scale(1.04); }
+  .voice-btn:active { transform: scale(0.96); }
+  .lang-chip:hover { color: var(--text); border-color: var(--border-strong); }
+  .lang-chip.active:hover { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.8); }
+  .cmd-chip:hover { background: var(--surface2); color: var(--text); border-color: var(--border-strong); }
+  .upload-zone:hover { border-color: rgba(var(--accent-rgb), 0.7); background: rgba(var(--accent-rgb), 0.05); }
+  .btn:hover { background: var(--surface3); color: var(--text); border-color: var(--border-strong); }
+  .btn-green:hover, .btn-purple:hover, .btn-accent:hover, .btn-red:hover, .btn-amber:hover {
+    background: rgba(var(--c-rgb), 0.22); border-color: rgba(var(--c-rgb), 0.55); color: var(--c);
+  }
+  .init-btn:hover { background: rgba(var(--red-rgb), 0.22); }
+  /* `:not(:active)`: al pulsar manda el estado de tecla hundida, no el hover. */
+  .arduino-btn:hover:not(:active) { color: var(--text); border-color: rgba(var(--amber-rgb), 0.7); }
+  .arduino-btn.danger:hover:not(:active) { color: var(--red-soft); border-color: var(--red); }
+  .trivia-opt:hover:not(:disabled) { border-color: rgba(var(--accent-rgb), 0.7); }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
+}
 
 /* ─── RESPONSIVE ───────────────────────────────────────────────────────── */
 
@@ -439,65 +756,22 @@ select:focus, input[type="text"]:focus { border-color: var(--purple-mid); }
 }
 @media (max-width: 700px) {
   .main { grid-template-columns: 1fr; }
-  .sidebar { flex-direction: row; overflow-x: auto; padding: 10px; }
+  .sidebar { flex-direction: row; overflow-x: auto; padding: 10px; scrollbar-width: none; }
+  .sidebar::-webkit-scrollbar { display: none; }  /* se desliza con el dedo */
   .sidebar-label { display: none; }
+  .nav-item { white-space: nowrap; }
+  .nav-item.active::before { left: 12px; right: 12px; top: auto; bottom: -1px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
   .stand-grid { grid-template-columns: 1fr; }
+  .header { flex-wrap: wrap; }
+  .status-bar { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; }
 }
 
-/* ── Trivia (vista Voz) ──────────────────────────────────────────────
-   El juego corre en el servidor y se proyecta; esta tarjeta sirve para
-   lanzarlo y para responder SIN micrófono cuando se está probando. */
-.trivia-box {
-  width: 100%; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px 14px; display: flex;
-  flex-direction: column; gap: 10px;
-}
-.trivia-box.active { border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.12); }
-.trivia-q {
-  font-size: 12px; color: var(--text); line-height: 1.5; min-height: 18px;
-}
-.trivia-q .tq-empty { color: var(--text-muted); }
-.trivia-opts { display: flex; gap: 6px; flex-wrap: wrap; }
-.trivia-opt {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text); font-size: 11px; padding: 6px 10px; cursor: pointer;
-  font-family: var(--font-main); max-width: 220px; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
-.trivia-opt:hover:not(:disabled) { border-color: var(--purple-mid); color: #fff; }
-.trivia-opt:disabled { opacity: .45; cursor: default; }
-.trivia-opt b { font-family: var(--font-mono); color: var(--purple-mid); margin-right: 6px; }
+/* ─── MENOS MOVIMIENTO ─────────────────────────────────────────────────── */
+/* Quien pide menos movimiento en su sistema se queda sin los latidos y las
+   ondas; los cambios de color (que informan) siguen. */
 
-/* ── Modo traductor (vista Voz) ──────────────────────────────────────
-   MECH de intérprete entre dos personas. Por voz se activa con
-   «traduce MECH»; esta tarjeta permite elegir el par sin micrófono. */
-.translator-box {
-  width: 100%; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px 14px; display: flex;
-  flex-direction: column; gap: 10px;
+@media (prefers-reduced-motion: reduce) {
+  .logo-dot, .dot-active, .vpb-pulse, .emergency-btn::after,
+  .voice-btn.listening::before, .voice-btn.listening::after { animation: none !important; }
+  .emergency-btn::after { opacity: 0; }
 }
-.translator-box.active { border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.12); }
-.translator-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.translator-label {
-  font-size: 10px; letter-spacing: 2px; color: var(--text-muted);
-  font-family: var(--font-mono); display: inline-flex; align-items: center; gap: 6px;
-}
-.translator-state {
-  font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);
-  border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
-}
-.translator-state.tr-on { color: #fff; border-color: var(--purple-mid); background: rgba(83, 74, 183, 0.3); }
-.translator-state.tr-waiting { color: var(--amber); border-color: var(--amber); }
-/* Turno terminado pero con el par recordado: listo para otro
-   «traduce MECH» sin volver a preguntar los idiomas. */
-.translator-state.tr-idle { color: var(--text); border-color: rgba(255, 255, 255, 0.18); }
-.translator-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.translator-select {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text); font-family: var(--font-mono); font-size: 11px;
-  padding: 6px 10px; cursor: pointer;
-  /* La regla global de `select` los pone al 100%: aquí van en fila, así que
-     se les devuelve el ancho de su contenido. */
-  width: auto; min-width: 130px; flex: 0 0 auto;
-}
-.translator-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); line-height: 1.6; }
