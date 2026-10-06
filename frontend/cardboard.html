@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>MECH · Proyección VR (Cardboard)</title>
+<!-- Letras para coreano, japonés y chino, en local (para los subtítulos). -->
+<link rel="stylesheet" href="/vendor/mech-fonts-cjk.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden;
@@ -32,7 +34,7 @@
   .subs {
     position: absolute; left: 50%; bottom: 11%;
     width: 86%; text-align: center; text-wrap: balance;
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cjk, sans-serif), sans-serif;
     font-size: clamp(13px, 2.6vw, 26px);
     font-weight: 600; line-height: 1.25; color: #fff;
     text-shadow: 0 2px 5px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.9);

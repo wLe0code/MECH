@@ -10,7 +10,13 @@
      sin icono (varios son solo icono = botones en blanco). -->
 <link rel="stylesheet" href="vendor/mech-icons.css">
 <link rel="stylesheet" href="vendor/mech-fonts.css">
-<link rel="stylesheet" href="/static/styles.css">
+<!-- Letras para coreano, japonés y chino (la Raspberry Pi no las trae y el
+     chat salía con cuadritos). El navegador solo carga los trozos que hacen
+     falta: en español, ninguno. -->
+<link rel="stylesheet" href="vendor/mech-fonts-cjk.css">
+<!-- El `?v=` es para que el navegador NO use la copia vieja guardada tras un
+     `git pull`: al cambiar styles.css o app.js, súbele el número a los dos. -->
+<link rel="stylesheet" href="/static/styles.css?v=7">
 </head>
 <body>
 <div class="app">
@@ -71,21 +77,28 @@
 
           <!-- Idioma activo. En el stand lo decide la voz: cada idioma tiene
                su frase de despertar ("ok MECH" = español, "wake up MECH" =
-               inglés, "こんにちは MECH" = japonés…). Estos botones son para
-               probar sin micro. -->
+               inglés, "こんにちは MECH" = japonés…). Este menú es para probar
+               sin micro. Antes eran diez botones en fila y una pista de cinco
+               líneas; ahora se ve solo el idioma activo y los diez salen al
+               pulsarlo (los pinta app.js desde su tabla LANGS). -->
           <div class="lang-row">
             <span class="lang-label">IDIOMA</span>
-            <button class="lang-chip active" id="lang-es" onclick="API.setLanguage('es')" title="Despertar por voz: «ok MECH»">ES · ESPAÑOL</button>
-            <button class="lang-chip" id="lang-en" onclick="API.setLanguage('en')" title="Despertar por voz: «wake up MECH»">EN · ENGLISH</button>
-            <button class="lang-chip" id="lang-fr" onclick="API.setLanguage('fr')" title="Despertar por voz: «bonjour MECH» o «réveille MECH»">FR · FRANÇAIS</button>
-            <button class="lang-chip" id="lang-pt" onclick="API.setLanguage('pt')" title="Despertar por voz: «bom dia MECH» o «acorda MECH»">PT · PORTUGUÊS</button>
-            <button class="lang-chip" id="lang-de" onclick="API.setLanguage('de')" title="Despertar por voz: «guten Tag MECH» o «wach auf MECH»">DE · DEUTSCH</button>
-            <button class="lang-chip" id="lang-it" onclick="API.setLanguage('it')" title="Despertar por voz: «ciao MECH» o «buongiorno MECH»">IT · ITALIANO</button>
-            <button class="lang-chip" id="lang-ja" onclick="API.setLanguage('ja')" title="Despertar por voz: «こんにちは MECH» (konnichiwa) o «起きて MECH» (okite)">JA · 日本語</button>
-            <button class="lang-chip" id="lang-ru" onclick="API.setLanguage('ru')" title="Despertar por voz: «привет MECH» (privet) o «проснись MECH» (prosnis)">RU · РУССКИЙ</button>
-            <button class="lang-chip" id="lang-zh" onclick="API.setLanguage('zh')" title="Despertar por voz: «你好 MECH» (nǐ hǎo) o «醒醒 MECH» (xǐng xing)">ZH · 中文</button>
-            <button class="lang-chip" id="lang-ko" onclick="API.setLanguage('ko')" title="Despertar por voz: «안녕 MECH» (annyeong) o «일어나 MECH» (ireona)">KO · 한국어</button>
-            <span class="lang-hint">«ok MECH» → español · «wake up MECH» → inglés · «bonjour MECH» → francés · «bom dia MECH» → portugués · «guten Tag MECH» → alemán · «ciao MECH» → italiano · «こんにちは MECH» → japonés · «привет MECH» → ruso · «你好 MECH» → mandarín · «안녕 MECH» → coreano · la narración se corta con la frase de ESE idioma («oye MECH» en español, «hey MECH» en inglés…)</span>
+            <div class="menu" id="lang-menu">
+              <button class="menu-btn lang-btn" id="lang-btn" type="button"
+                      aria-haspopup="menu" aria-expanded="false"
+                      title="El idioma en el que está MECH ahora. Pulsa para probar otro sin micrófono.">
+                <i class="ti ti-sphere"></i>
+                <span class="lang-code" id="lang-btn-code">ES</span>
+                <span class="lang-name" id="lang-btn-name">Español</span>
+                <span class="menu-caret"></span>
+              </button>
+              <div class="menu-pop lang-pop" id="lang-pop" role="menu" aria-label="Idioma de MECH">
+                <div class="menu-pop-title">Probar un idioma sin micrófono</div>
+                <div class="lang-grid" id="lang-grid"></div>
+                <div class="menu-pop-foot">En el stand lo decide la voz: MECH habla el idioma de la frase con la que lo despiertan, y al dormirse vuelve a español.</div>
+              </div>
+            </div>
+            <span class="lang-hint" id="lang-hint">Se despierta con «ok MECH» · se corta con «oye MECH»</span>
           </div>
 
           <div class="wave-bars" id="wave-bars">
@@ -856,6 +869,6 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=7"></script>
 </body>
 </html>

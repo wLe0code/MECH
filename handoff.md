@@ -5,7 +5,8 @@ de tocar nada. Contexto de fondo (arquitectura/hardware/decisiones): **CLAUDE.md
 en la raíz — este handoff no lo reemplaza, lo complementa con el estado *vivo*.
 CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 
-**Última actualización: 6 oct 2026 (segunda sesión del día).** Lo del 5 oct
+**Última actualización: 6 oct 2026 (tercera sesión del día; ver el
+párrafo «Tercera sesión» más abajo y §2.nonies).** Lo del 5 oct
 (§2.quinquies) se subió el 6 oct en dos commits encima de `62f3ebb`: «Panel
 con estética nueva…» y «Cinco idiomas más…». ⚠️ **Subido, pero SIN probar en
 la Pi.** Después, el mismo 6 oct (§2.sexies): **saludo en español** y **cada
@@ -18,6 +19,15 @@ y demás funciones en el idioma del despertar** (§2.octies). El equipo iba a
 probarlo en la Pi justo después: **preguntar cómo fue**. Hay además un
 `git stash` con un seguro del saludo que **NO se subió, a propósito**
 (§2.septies).
+
+**Tercera sesión del 6 oct (§2.nonies):** el equipo SÍ probó el coreano en
+la Pi y volvió con un fallo (el chat del panel salía con cuadritos) y tres
+pedidos. Hecho: el panel menos saturado y con menús animados, y las letras
+de coreano/japonés/chino incluidas en el repo. **El modo música NO se
+programó**: pidieron solo la explicación y las preguntas, y **falta que
+contesten** («después vemos lo del modo música»). Lo del panel y las letras
+se **subió a GitHub el mismo 6 oct** (commit «Panel con menús animados…»,
+encima de `1844329`), **sin probar en la Pi**: preguntar cómo fue.
 
 > ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** La sesión del
 > 6 oct empezó leyendo este handoff en una copia local que estaba **2
@@ -53,6 +63,11 @@ probarlo en la Pi justo después: **preguntar cómo fue**. Hay además un
 8. **6 oct, subido y sin probar en la Pi** (§2.octies): el **coreano** como
    décimo idioma y la trivia revisada en cada idioma. El brazo «en bucle»
    que reportó el equipo ya está resuelto, según ellos (§2.septies).
+9. **6 oct, tercera sesión, sin probar en la Pi** (§2.nonies): el panel con
+   los diez idiomas en UN botón con menú y los menús animados; las letras de
+   coreano, japonés y chino dentro del repo (el chat salía con cuadritos en
+   la Pi). Y el **modo música**, que está **solo explicado**: hay seis
+   preguntas esperando respuesta del equipo antes de programar nada.
 
 ---
 
@@ -245,8 +260,9 @@ mecanismo: solo se activan despertándolo en ese idioma.
   Whisper `base` cada idioma, y sobre todo **cómo escribe el nombre «MECH»**
   en japonés/ruso/chino. Si no despierta, el panel dice «Oí en japonés: '…'»
   y se añade esa forma a `VOICE_NAME_ALIASES` en el `.env`.
-- La Pi necesita `sudo apt install fonts-noto-cjk` para que japonés y chino
-  se lean en la proyección (el preflight lo avisa, §11).
+- La Pi necesitaba `sudo apt install fonts-noto-cjk` para que japonés y chino
+  se leyeran en la proyección. ⚠️ **Ya no**: desde la tercera sesión del
+  6 oct esas letras van en el repo (§2.nonies).
 - Línea de arranque: `Idiomas: español · inglés · … · mandarín`.
 
 **2. Estética nueva del panel.** «Que el fondo no sea ese violeta, algo más
@@ -363,7 +379,8 @@ tenga que decirse en el idioma en el que despertó para funcionar»).
 - Panel: el banner de «MECH está hablando» dice la frase que lo corta EN ESE
   idioma (`LANGS[...].corta` en `app.js`).
 - Si MECH queda despierto en un idioma por error y nadie sabe dormirlo en
-  ese idioma: chip **ES** de la vista Voz (no hay botón de «dormir» en el
+  ese idioma: botón **IDIOMA** → Español de la vista Voz (antes era el chip
+  ES; no hay botón de «dormir» en el
   panel).
 - Línea nueva al arrancar: `Comandos: solo en el idioma con el que se
   despertó a MECH · saludo en español`. Si dice «saludo en inglés», es el
@@ -433,8 +450,8 @@ pantalla de la trivia (`trivia.js`), chip y desplegables del panel, preflight
   sílaba («멕», «맥») no vale dentro de otra palabra («멕시코»); y los
   ordinales de la trivia se buscan sin espacios («두 번째» = «두번째»).
   Subtítulos: letras anchas pero se corta ENTRE palabras.
-- **La Pi necesita la misma fuente** que japonés y chino
-  (`sudo apt install fonts-noto-cjk`): si ya está, no hay que hacer nada.
+- La Pi necesitaba la misma fuente que japonés y chino
+  (`sudo apt install fonts-noto-cjk`). ⚠️ **Ya no**: va en el repo (§2.nonies).
 - Lo que más puede fallar con micrófono, igual que en japonés: **cómo
   escribe Whisper «MECH»** en coreano. Si no despierta, el panel dice «Oí en
   coreano: '…'» y esa forma se añade a `VOICE_NAME_ALIASES`.
@@ -465,9 +482,111 @@ de la trivia en coreano se vieron en el navegador con un servidor de mentira.
 Claude es de mentira, así que el idioma del título y de las preguntas que
 escribe de verdad solo se ve en la Pi (§4, punto 000).
 
+### 2.nonies Panel con menús, letras CJK incluidas y modo música (6 oct, 3.ª sesión)
+
+Cuatro cosas en un mensaje del equipo. Detalle en CLAUDE.md («Menús animados
+y los diez idiomas en uno» y «La letra de coreano, japonés y chino va
+incluida»).
+
+**1. «El panel se ve muy saturado por los 10 idiomas» + «más animaciones en
+los menús».** Mismos controles y mismos `id`; cambió la presentación.
+
+- Los diez chips de idioma y su pista de cinco líneas → **un botón con menú**
+  (`#lang-btn`, vista Voz) y una línea con las dos frases del idioma activo.
+  Las opciones las pinta `app.js` desde `LANGS`, que pasa a ser la única
+  lista de idiomas del panel.
+- Todos los `<select>` → menús propios animados (`mejorarSelect()`); el
+  `<select>` sigue escondido y guarda el valor. En táctil se quedan nativos.
+- Menú lateral con resaltado deslizante (`.nav-glider`) y entrada en cascada;
+  las vistas entran en cascada **solo al cambiar con el ratón** (con las
+  teclas 1/2/3 sigue siendo inmediato, como manda la regla de siempre).
+- Dos arreglos que salieron al verificar, pequeños y contados al equipo:
+  (a) **el chat repetía la misma burbuja** en cada cambio de fase (el estado
+  llega entero cada vez) → ahora solo si la frase es otra; (b) en Ajustes,
+  con `AUDIO_INPUT_DEVICE=Steren` el desplegable del micrófono quedaba en
+  blanco y **«Guardar en .env» borraba el micrófono** → lo configurado va
+  como una opción más.
+- `index.html` carga `styles.css?v=7` y `app.js?v=7`: **subir ese número al
+  tocar cualquiera de los dos** (evita mezclar HTML nuevo con CSS/JS viejos
+  de la caché; el Ctrl+Shift+R ya no debería hacer falta).
+- Archivos: `frontend/index.html`, `styles.css`, `app.js`.
+
+**2. «En idiomas como el coreano el chat pone un símbolo raro».** Se le
+preguntó al equipo: lo veían **en la Raspberry Pi**. No era el código: la Pi
+no trae letra coreana. Eligieron (se les dieron tres opciones) **meter las
+fuentes en el repo**: Noto Sans KR/JP/SC, 322 archivos, 7 MB, en
+`frontend/vendor/fonts/cjk/` + `vendor/mech-fonts-cjk.css`, generadas con
+`scripts/mkfonts_cjk.py` (nuevo). Las usan el panel, `/projector`,
+`/projector/vr` y la trivia → **ya no hace falta `fonts-noto-cjk` en la Pi**.
+
+- ⚠️ El script **recorta** las fuentes a solo coreano/japonés/chino. Sin
+  recorte también dibujaban letras latinas, flechas y símbolos, y le
+  cambiaban el aspecto a los botones y (en la Pi) a los subtítulos en
+  español. No quitar el recorte (`SOLO` en el script).
+- Archivos: los de arriba + `projector.html`, `cardboard.html`, `trivia.js`
+  (fuente y `lang` en su capa), `backend/preflight.py` (§8 cuenta los trozos;
+  §11 dice que la letra va incluida), `.env.example`, `docs/USO.md`,
+  `docs/FRONTEND.md`, `scripts/README.md`, `pi/README.md`.
+
+Verificado en la laptop, con un servidor de mentira (WebSocket real y eventos
+simulados): menú de idioma (abre, elige, cierra, devuelve el foco, se abre
+hacia arriba si no cabe, tamaño de teléfono), desplegables (elegir, valor
+cambiado por código, lista de micrófonos rehecha, Escape, flechas),
+resaltado lateral, teclas 1/2/3 sin animación, chat sin repetidos, y las
+fuentes **midiendo el ancho del texto** con cada fuente por separado: el
+coreano usa la Noto incluida (no la Malgun de Windows) y el español mide
+exactamente lo mismo que antes, en el panel y en el subtítulo. Preflight §8 y
+§11 corridos, también quitando un trozo a propósito.
+**NO verificado:** nada en la Pi — que es justo donde salían los cuadritos.
+
+**3. Modo música: SOLO explicado y preguntado** (así lo pidió el equipo: «no
+programes nada, solo explica y pregunta»). Idea suya: «modo música MECH» /
+«MECH activa modo música» → que Claude busque el video en YouTube u otra
+plataforma y lo ponga. Lo que se les explicó:
+
+- **Claude no navega**: en MECH devuelve un plan y Python lo ejecuta. Buscar
+  lo haría Python contra YouTube (API oficial con clave gratis, ~100
+  búsquedas al día); Claude, como mucho, convierte un pedido vago («algo
+  alegre de Costa Rica») en una búsqueda y dice una frase antes.
+- **Reproducir**: el reproductor oficial incrustado en `/projector`. Es lo
+  permitido, pero muchos videos musicales (discográficas) **no dejan
+  incrustarse** (hay que saltar al siguiente resultado), puede haber
+  **anuncios**, y necesita internet todo el rato. Descargar con `yt-dlp` no
+  tiene esos problemas pero va contra las condiciones de YouTube: no se
+  recomendó. Spotify: cuenta de pago, sin video, mucho más complejo.
+- **Es lo mismo que el slot de marketing**, cambiando de dónde sale el video:
+  MECH se calla, la pantalla avisa cuando acaba, se corta con «oye MECH» /
+  panel / paro, tope de tiempo, sin saludo por cámara mientras suena.
+- **Lo delicado**: (a) depende del wifi del recinto, a diferencia de casi
+  todo lo demás de MECH; (b) con música a todo volumen y letra cantada, el
+  micrófono oye voces sin parar → cortar con «oye MECH» será más difícil y
+  la Pi transcribirá más (el problema 4 de §3 «interrupción»); (c) cualquier
+  visitante puede pedir cualquier canción delante de los jueces; (d) si el
+  evento se graba o se transmite, la música con copyright puede hacer que
+  silencien el video.
+- Trabajo: frases en los diez idiomas (y pasarlas por `probar_idiomas.py`),
+  frases fijas en `lang.py`, un módulo de estado como `translator.py`, el
+  reproductor en `projector.html` (cargado SOLO al usarlo, para que la página
+  siga funcionando sin internet y el preflight §8 no falle), tarjeta en el
+  panel, perillas en Ajustes (volumen, tope, filtro) y la clave en el `.env`.
+
+Las **seis preguntas** que quedaron hechas (con lo recomendado entre
+paréntesis): de dónde sale la música (YouTube oficial + una carpeta de
+canciones guardadas como plan B sin internet); si es UNA canción por orden o
+se queda en modo música hasta «sal del modo música» (una por orden, como el
+traductor: evita que el micrófono quede abierto con música); qué hace Claude
+(nada: buscar con lo que se oyó, más rápido y gratis); cualquier canción o
+lista aprobada (filtro estricto + categoría música + tope de duración, y
+lista aprobada para el día de la competencia); qué hace MECH mientras suena
+(quieto, o un vaivén suave de brazos); y si lo quieren en los diez idiomas o
+solo en español e inglés para empezar. **No implementar sin las respuestas.**
+
 ### 2.quater Preguntas abiertas con el equipo
 
 Ninguna bloquea nada, pero conviene cerrarlas en la próxima sesión:
+
+00. **Modo música** (§2.nonies, punto 3): las seis preguntas. Es lo único
+    que el equipo está esperando para seguir.
 
 0. **Alerta de sismos** (§2.quinquies, punto 3): ¿se implementa? ¿con qué
    fuente? ¿para dónde (Costa Rica, Puerto Rico, California)?
@@ -1258,7 +1377,35 @@ código viejo:
   5 oct)
 
 Y en el navegador del panel, **Ctrl+Shift+R** (si no, se queda el `app.js`
-viejo en caché y los botones nuevos no aparecen).
+viejo en caché y los botones nuevos no aparecen). Desde la tercera sesión del
+6 oct `index.html` pide `app.js?v=7`, así que debería bastar con cerrar y
+volver a abrir el panel; si el idioma sigue saliendo como diez botones en
+fila, es que también quedó guardado el `index.html` viejo → Ctrl+Shift+R.
+
+### 0000) Panel con menús y letra coreana (§2.nonies; sin probar en la Pi)
+
+1. **Lo que falló: el coreano en el chat.** Sin instalar nada: «Iniciar
+   MECH», abrir el panel, vista Voz → botón **IDIOMA** → Coreano. El menú
+   tiene que mostrar «한국어», «日本語», «中文» y las frases «안녕 MECH»…
+   **con letras, no cuadritos**. Luego despertarlo con «안녕 MECH» y pedirle
+   algo: el chat de la derecha, la caja «MECH responde» y el log tienen que
+   leerse. Si sigue habiendo cuadritos, pedir una foto de la pantalla y
+   correr `python -m backend.preflight` (§8 y §11).
+2. **La proyección**: una obra en coreano o japonés → subtítulos legibles; y
+   una en español → **la letra de los subtítulos tiene que ser la de
+   siempre** (si cambió, avisar: sería que las fuentes nuevas se están
+   colando donde no deben).
+3. **El menú de idioma**: elegir cada idioma cambia el botón y la línea de al
+   lado («Se despierta con… · se corta con…»).
+4. **Los desplegables** (traductor en Voz; Brazos, Al narrar, Idioma del
+   saludo, Micrófono, Sample rate y Whisper en Ajustes): se abren como menús,
+   eligen, y «Guardar y aplicar» / «Guardar en .env» guardan lo elegido. El
+   de **Micrófono** tiene que mostrar el configurado, no quedar en blanco.
+5. **Que no vaya lento en la Pi**: cambiar de vista con el ratón varias veces
+   seguidas. Si las animaciones dan tirones, decirlo: se pueden quitar por
+   partes.
+6. **El chat**: en una conversación normal ya no debe repetirse la misma
+   burbuja varias veces.
 
 ### 000) Coreano y trivia en cada idioma (§2.octies; ya subido, sin probar)
 
@@ -1272,8 +1419,9 @@ viejo en caché y los botones nuevos no aparecen).
    opciones y los avisos («Correct!»). Y que MECH lo diga todo en inglés.
    - Sin haber pedido ninguna obra, decir «quiz me»: la partida va sobre
      MECH y el título debe decir «MECH and its team», no «MECH y su equipo».
-3. **Subtítulos en coreano**: que se lean (no cuadritos → falta
-   `fonts-noto-cjk`) y que ninguna palabra quede partida entre dos líneas.
+3. **Subtítulos en coreano**: que se lean (si salen cuadritos, ver el punto
+   0000 de arriba: la letra ya va incluida) y que ninguna palabra quede
+   partida entre dos líneas.
 
 ### 00) Lo del 6 oct (§2.sexies; ya subido, sin probar)
 
@@ -1304,8 +1452,9 @@ viejo en caché y los botones nuevos no aparecen).
    donde estaban y hacen lo mismo (sobre todo mantener apretado AVANZAR /
    GIRO en la vista Arduino, y las palanquitas de Ajustes → «Guardar y
    aplicar»).
-2. **Fuente para japonés y chino**: `sudo apt install fonts-noto-cjk` en la
-   Pi, y `python -m backend.preflight` (§11 tiene que dar OK).
+2. **Fuente para japonés y chino**: ya NO hay que instalar nada (va en el
+   repo desde §2.nonies). `python -m backend.preflight` → §11 tiene que
+   decir que la letra va incluida.
 3. **Despertar en cada idioma nuevo**: «guten Tag MECH», «ciao MECH»,
    «こんにちは MECH», «привет MECH», «你好 MECH». El log debe decir «MECH
    despierto (<idioma>)» y contestar en ese idioma.
@@ -1316,7 +1465,8 @@ viejo en caché y los botones nuevos no aparecen).
    - Comprobar que «hello MECH» y «hola MECH» **no** lo despiertan.
 4. **Una obra en japonés o chino**: que narre, que los subtítulos se lean
    (no cuadritos) y que cambien de línea en sitios razonables.
-5. **Chips del panel** (vista Voz): los nueve cambian el idioma sin
+5. **Menú de idioma del panel** (vista Voz, botón IDIOMA; antes eran
+   chips): los diez cambian el idioma sin
    micrófono. Útil para separar «no me entiende» de «no funciona».
 6. Cuánto tarda en despertar ahora. Con nueve idiomas el reintento sigue
    siendo UNA pasada de Whisper, así que no debería notarse; si se nota,
@@ -1454,6 +1604,19 @@ recablear se corrigió por software. Lo que queda:
 - **Escribir scripts de prueba**: los heredoc de bash con comillas y tildes
   fallan en esta máquina; mejor escribir el `.py` en el scratchpad y
   ejecutarlo.
+- **Barras invertidas al editar**: un `\uXXXX` escrito en una edición puede
+  acabar en el archivo convertido en el carácter (pasó con los rangos de
+  `escritura()` en `app.js`), y en un heredoc de bash las barras se reducen a
+  la mitad. Tras escribir cualquier `\u`, `\n` o expresión regular, **mirar
+  cómo quedó en el archivo**. Para arreglarlo sin pelear: un script de Python
+  que use `chr(92)`.
+- **`sed -i` en Git Bash le quita los CRLF** al archivo (pasó con
+  `trivia.js`). No rompe nada (git guarda LF), pero se devuelve con
+  `unix2dos`.
+- **Vista previa del panel**: cuando el panel de vista previa está escondido,
+  las capturas salen atrasadas o cortadas. Esperar 1-2 s antes de capturar y
+  comprobar con JavaScript (`getBoundingClientRect`, `document.fonts`) antes
+  que fiarse de la imagen.
 - **`git push` solo cuando el usuario lo pida.** Commits en español,
   `Co-Authored-By: Claude ...`. Commitear por rutas
   (`git commit --only -- <rutas>`) para no arrastrar lo de la otra sesión.

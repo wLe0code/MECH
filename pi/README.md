@@ -31,7 +31,7 @@ Lo hace todo de una vez:
 3. **Abre el panel de control solo**, en cuanto el servidor responde.
 
 El panel es la ventana con la barra de fase de voz arriba (EN REPOSO /
-PUEDES HABLAR / GRABANDO / PENSANDO / HABLANDO), los chips de idioma, la
+PUEDES HABLAR / GRABANDO / PENSANDO / HABLANDO), el botón de idioma, la
 tarjeta del traductor y los Ajustes. Se abre sin barra de direcciones ni
 pestañas, pero **no** en kiosko: hay que poder usar los botones.
 

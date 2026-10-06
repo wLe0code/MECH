@@ -26,6 +26,21 @@ Descarga Sora y Space Mono de Google Fonts (subsets latin y latin-ext) a
 `frontend/vendor/fonts/` y genera `mech-fonts.css`. Solo hay que volver a
 correrlo si se cambian las fuentes del panel.
 
+## `mkfonts_cjk.py`
+
+Descarga las letras para **coreano, japonés y chino** (Noto Sans KR / JP / SC,
+de Google Fonts) a `frontend/vendor/fonts/cjk/` y genera
+`mech-fonts-cjk.css`. Son 322 archivos y unos 7 MB.
+
+Hacen falta porque la Raspberry Pi **no trae letra coreana**: el texto salía
+como cuadritos en el panel, los subtítulos y la trivia. Van en trozos y el
+navegador solo carga los que necesita, así que en español no se carga ninguno.
+
+Solo hay que volver a correrlo (con internet) si se pierde algún archivo o
+si se añade otro idioma que no use letras latinas. El script recorta las
+fuentes para que **solo** dibujen coreano, japonés y chino: sin ese recorte
+le cambiaban el aspecto a las flechas y símbolos de los botones del panel.
+
 ## Por qué está todo en local
 
 En la competencia **no se puede depender del wifi del recinto**. Antes los

@@ -481,6 +481,10 @@ el HTML con doble click).
   el preflight lo detecta.
 - `mech-fonts.css` + `vendor/fonts/` = Sora y Space Mono (subsets latin),
   regenerable con `python scripts/mkfonts.py`.
+- `mech-fonts-cjk.css` + `vendor/fonts/cjk/` = las letras de **coreano,
+  japonés y chino** (Noto Sans KR/JP/SC, 322 trozos, 7 MB), regenerable con
+  `python scripts/mkfonts_cjk.py`. Las cargan el panel, `/projector` y
+  `/projector/vr`. Ver «La letra de coreano, japonés y chino va incluida».
 - `ti-brand-arduino` **no existe en Tabler**: esos tres iconos ya estaban
   rotos incluso con internet. Se cambiaron por `ti-cpu-2`.
 
@@ -604,8 +608,9 @@ multilingüe. **Al dormirse vuelve solo a español.**
   ⚠️ **NO lo cambies a reintentar idioma por idioma**: con diez idiomas
   serían 9 pasadas de Whisper por cada ruido, y la Pi tardaría medio minuto
   en volver a escuchar. Por eso añadir idiomas NO cuesta tiempo de escucha.
-- Se puede forzar desde el panel (un chip por idioma en la vista Voz →
-  `POST /api/language/<código>`), útil para probar sin micrófono.
+- Se puede forzar desde el panel (botón **IDIOMA** de la vista Voz: un menú
+  con los diez → `POST /api/language/<código>`), útil para probar sin
+  micrófono. Hasta el 6 oct eran diez chips en fila.
 - Apagar un idioma: `WAKE_ENGLISH_ENABLED`, `WAKE_FRENCH_ENABLED`,
   `WAKE_PORTUGUESE_ENABLED`, `WAKE_GERMAN_ENABLED`, `WAKE_ITALIAN_ENABLED`,
   `WAKE_JAPANESE_ENABLED`, `WAKE_RUSSIAN_ENABLED`, `WAKE_CHINESE_ENABLED`,
@@ -654,8 +659,49 @@ nuevas vacías: «sei» ya cuenta como número (seis, en italiano).
   la «А» cirílica y el texto de la opción dicho sin los signos
   («桑丘潘沙» por «桑丘·潘沙»). «不知道» / «わかりません» / «не знаю» son
   "no sé", no una opción.
-- **La Pi necesita una fuente** para que japonés, chino y coreano se LEAN en
-  la proyección: `sudo apt install fonts-noto-cjk`. El preflight (§11) lo mira.
+- **La letra para LEERLOS va incluida en el repo** (desde el 6 oct 2026; antes
+  había que hacer `sudo apt install fonts-noto-cjk` en la Pi). Ver la
+  subsección siguiente. El preflight (§11) comprueba que no falte ningún trozo.
+
+#### La letra de coreano, japonés y chino va incluida (6 oct 2026)
+
+El equipo reportó que en el chat del panel el coreano salía con «un símbolo
+raro, como si no tuviera el idioma». **No era el código ni los datos** (el
+texto viaja bien por el WebSocket): el panel se veía **en la Raspberry Pi**,
+y la Pi no trae letra coreana. Sora y Space Mono solo traen el alfabeto
+latino; para lo demás el navegador usa lo que tenga instalado el aparato.
+
+- Ahora las letras viajan con el repo: `frontend/vendor/fonts/cjk/` (Noto
+  Sans KR / JP / SC, peso 400, 322 archivos `.woff2`, 7 MB) +
+  `frontend/vendor/mech-fonts-cjk.css`. Se generan con
+  `python scripts/mkfonts_cjk.py` (necesita internet).
+- Van en **trozos** (`unicode-range`): el navegador solo baja los que hacen
+  falta. Un subtítulo en español no carga ninguno. El panel sí carga una
+  docena al abrir, porque el menú de idioma escribe «한국어», «日本語»…
+- ⚠️ **El script RECORTA las fuentes a solo coreano, japonés y chino** (lista
+  `SOLO`). Tal como las da Google también traen letras latinas, números,
+  flechas, figuras y algún emoji; sin el recorte le cambiaban el aspecto a
+  las flechas de los botones del Arduino y, en la Pi, a la letra de los
+  subtítulos en español. **No quites ese recorte.** Medido: el ancho de un
+  texto en español es idéntico con y sin las fuentes nuevas.
+- **Orden de las familias = variable `--cjk`**, definida al final de
+  `mech-fonts-cjk.css`: por defecto KR · JP · SC; con `lang="ja"` va primero
+  la japonesa y con `lang="zh"` la china (comparten miles de caracteres que
+  cada país dibuja algo distinto). Se usa así:
+  `font-family: 'Sora', var(--cjk, sans-serif), sans-serif`.
+  ⚠️ En `styles.css`, `--font-main` y `--font-mono` se vuelven a componer en
+  `:lang(ja), :lang(zh)`: una variable ya resuelta en `:root` no se entera de
+  que `--cjk` cambió más abajo.
+- Quién pone el `lang`: en el panel, `escritura()` de `app.js` mira qué
+  escritura trae cada texto (chat, transcripción, respuesta, log, trivia); en
+  la proyección ya lo ponía `subtitles.js`, y `trivia.js` se lo pone ahora a
+  su capa.
+- Solo hay peso 400: las negritas (subtítulos, trivia) las engorda el
+  navegador. Bajar también el 700 serían otros 7 MB.
+- `library.html` no carga estas fuentes (no muestra texto en esos idiomas);
+  por eso todos los usos llevan el respaldo `var(--cjk, sans-serif)`.
+- **Si se añade un idioma con otra escritura** (árabe, hindi, tailandés…)
+  hace falta su fuente: otra familia en `FAMILIAS` y otro bloque en `SOLO`.
 
 **Coreano (6 oct 2026) — el décimo idioma.** Se escribe con otra letra
 (hangul) como los tres de arriba, pero tiene sus propias reglas. Sin probar
@@ -1692,6 +1738,27 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 - **Estética nueva del panel (5 oct 2026)** — pedido del equipo: «que el
   fondo no sea ese violeta». Mismos controles, otra piel: ver «Estética del
   panel».
+- **Panel menos saturado y con menús animados (6 oct 2026)** — los diez
+  idiomas caben en un botón con menú, los desplegables son menús propios, el
+  resaltado del menú lateral se desliza y las vistas entran en cascada al
+  cambiar con el ratón. De paso: el chat ya no repite burbujas y el
+  desplegable del micrófono ya no puede borrar el micrófono configurado. Ver
+  «Menús animados y los diez idiomas en uno». Verificado en el navegador con
+  un servidor de mentira (escritorio y tamaño de teléfono). **Sin probar en
+  la Pi.**
+- **Coreano, japonés y chino legibles en cualquier aparato (6 oct 2026)** —
+  el coreano salía con cuadritos en el chat porque la Pi no trae esa letra.
+  Ahora las fuentes van en el repo (7 MB) y las usan el panel, los subtítulos
+  y la trivia; ya no hace falta `fonts-noto-cjk`. Ver «La letra de coreano,
+  japonés y chino va incluida». Verificado en Windows midiendo qué fuente se
+  usa de verdad (la incluida, no la del sistema) y que el español no cambia.
+  **Sin probar en la Pi**, que es donde fallaba.
+- **Modo música: SOLO explicado, nada programado (6 oct 2026)** — el equipo
+  pidió «modo música MECH» / «MECH activa modo música» (que busque la canción
+  en YouTube u otra plataforma y ponga el video) y pidió expresamente que
+  antes se explicara qué implica y se preguntaran las dudas. Las preguntas y
+  lo explicado están en `handoff.md` (§2.nonies). **No lo implementes sin
+  sus respuestas.**
 - **Modo inglés bajo demanda (ago 2026)** — `backend/lang.py` guarda el idioma
   activo. «wake up MECH» despierta en INGLÉS (Whisper en `en`, narración de
   Claude en inglés, frases fijas y subtítulos en inglés); «ok MECH» /
@@ -1803,9 +1870,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     `VOICE_NAME_ALIASES`. El panel lo enseña («Oí en japonés: '…'»). Se añade
     en el `.env`, sin tocar código. `WHISPER_MODEL=small` ayuda bastante con
     estos tres idiomas (y cuesta ~2.5× de tiempo).
-15c. **Subtítulos o trivia con CUADRITOS** en japonés/chino = falta la fuente
-    en la Pi (`sudo apt install fonts-noto-cjk`). MECH habla bien; es solo
-    que la pantalla no tiene con qué dibujar esos caracteres.
+15c. **Coreano, japonés o chino con CUADRITOS** (panel, subtítulos o trivia)
+    = el navegador no tiene con qué dibujar esos caracteres. Desde el 6 oct
+    2026 la letra va incluida (`frontend/vendor/fonts/cjk/`), así que si
+    pasa es que la Pi no ha hecho `git pull`, que el navegador tiene la
+    página vieja guardada, o que falta algún archivo (lo dice el preflight,
+    §8 y §11). MECH habla bien igual: es solo la pantalla.
 16. **El idioma se decide en el DESPERTAR, no en medio de la conversación.**
     Si alguien le habla en francés a un MECH despierto en español, Whisper
     transcribe con el modelo español y sale basura: hay que dormirlo y
@@ -1813,8 +1883,8 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     despierto **ya no** cambia el idioma, y los comandos solo valen en el
     idioma activo (`VOICE_STRICT_LANGUAGE`, ver «Idiomas»). Es a propósito:
     así el stand no cambia de idioma por accidente. Si quedó en un idioma
-    equivocado y nadie sabe dormirlo en ese idioma: chip **ES** de la vista
-    Voz del panel.
+    equivocado y nadie sabe dormirlo en ese idioma: botón **IDIOMA** de la
+    vista Voz del panel → Español.
 17. **`VOICE_WAKE_PHRASES_{EN,FR,PT}` en el `.env` de la Pi tapan el
     default**, igual que la lista en español. Si «wake up MECH» /
     «bonjour MECH» / «bom dia MECH» no funcionan, revisar esas claves.
@@ -1958,14 +2028,73 @@ un control**:
    `@media (hover: hover) and (pointer: fine)`: en el teléfono el hover se
    queda pegado tras el toque.
 3. Nada de `transition: all`; todo lo que se pulsa responde con
-   `scale(.97)`; y cambiar de vista NO se anima (también se hace con las
-   teclas 1/2/3, y lo que dispara el teclado tiene que ser inmediato).
+   `scale(.97)`; y **lo que se dispara con el TECLADO es inmediato**:
+   cambiar de vista con las teclas 1/2/3 no se anima. Con el ratón sí (desde
+   el 6 oct, ver abajo): `UI.showView(nombre, navEl)` solo recibe `navEl`
+   cuando se pulsa el menú, y de eso depende que haya animación.
+
+### Menús animados y los diez idiomas en uno (6 oct 2026)
+
+Pedido del equipo: el panel «se ve muy saturado por los 10 idiomas» y «más
+animaciones en los menús». Mismos controles y mismos `id`; cambió cómo se
+presentan.
+
+- **Idioma**: los diez chips en fila y su pista de cinco líneas son ahora UN
+  botón (`#lang-btn`) con el idioma activo, que abre un menú de dos columnas
+  (nombre, nombre nativo y frase que lo despierta). Al lado queda una sola
+  línea con las dos frases del idioma ACTIVO (despertar y cortar). Las
+  opciones las pinta `pintarMenuIdiomas()` desde la tabla `LANGS` de
+  `app.js` y conservan los `id` `lang-es`, `lang-en`…: **`LANGS` es la única
+  lista de idiomas del panel** (antes estaban repetidos en el HTML).
+- **Desplegables**: `mejorarSelect()` convierte cada `<select>` en un menú
+  propio. ⚠️ El `<select>` **sigue en la página, escondido, y es quien guarda
+  el valor**: todo el código que hace `$('tr-src').value` funciona igual. El
+  botón se entera de los cambios por tres vías — el evento `change`, un
+  envoltorio de la propiedad `value` (asignarla por código no avisa con
+  ningún evento) y un `MutationObserver` (la lista de micrófonos se rehace).
+  Los que solo tienen idiomas se pintan en dos columnas. **En pantallas
+  táctiles no se convierten** (`pointer: fine`): el selector nativo del
+  teléfono es mejor.
+- **`Menus`** (en `app.js`) es el único controlador: un menú abierto a la
+  vez; el desplegable cuelga de `<body>` con `position: fixed` (así no lo
+  recorta ninguna tarjeta con `overflow`), se abre hacia ARRIBA si abajo no
+  cabe, y se cierra con Escape, al pulsar fuera, al hacer scroll o al cambiar
+  de vista. Flechas/Inicio/Fin mueven el foco. ⚠️ La barra espaciadora sigue
+  siendo el PARO DE EMERGENCIA también con un menú abierto: no la uses para
+  elegir.
+- **Menú lateral**: el resaltado es una sola pieza (`.nav-glider`) que se
+  desliza de un botón a otro (`moverGlider()`); solo en pantallas de más de
+  700 px. Los botones entran en cascada al cargar.
+- **Cambio de vista con el ratón**: `.view.entra` hace entrar las tarjetas en
+  cascada (300 ms). Las burbujas del chat salen de la esquina de quien habla.
+- ⚠️ Las animaciones que corren una vez usan `backwards`, **no `both`**: con
+  `both` el `transform` final se queda puesto y tapa el `scale(.97)` del
+  `:active`.
+- **El chat ya no repite la misma burbuja.** El backend manda el estado
+  entero en CADA cambio de fase, con la última frase dentro, y el panel la
+  volvía a pintar cada vez. Ahora solo si es otra (`state.ultimoTranscript` /
+  `state.ultimaRespuesta`); los eventos `transcript` / `ai_response` siguen
+  pintando siempre.
+- **Micrófono en Ajustes**: si lo configurado es un trozo del nombre
+  (`AUDIO_INPUT_DEVICE=Steren`) no coincidía con ninguna opción, el
+  desplegable quedaba en blanco y «Guardar en .env» **borraba el micrófono**.
+  Ahora se añade como opción («Steren (lo configurado ahora)»).
+- **`?v=7` en `index.html`** (en `styles.css` y `app.js`): para que tras un
+  `git pull` el navegador no mezcle el HTML nuevo con el CSS/JS viejos que
+  tenía guardados. **Al tocar cualquiera de los dos, súbele el número.**
+- Iconos: no se añadió ninguno (la flecha y la palomita de los menús están
+  dibujadas con bordes de CSS), así que no hubo que regenerar
+  `mech-icons.css`.
 
 Para verlo sin la Pi (en la laptop no hay FastAPI): hace falta un servidor
 estático que sirva `frontend/` con las rutas del server real (`/static/…`).
 La vista previa de Claude Code lo tiene como `panel-estatico` en
 `.claude/launch.json` (apunta a un script del scratchpad de la sesión: si ya
-no existe, hay que rehacerlo — son 60 líneas de `http.server`).
+no existe, hay que rehacerlo — el del 6 oct eran 250 líneas de `http.server`
+con un WebSocket de verdad y un `POST /__push` para simular eventos del
+robot). ⚠️ Con el panel de vista previa escondido, las capturas salen
+atrasadas: esperar 1-2 s antes de cada una, y fiarse más de medir con
+JavaScript que de la imagen.
 
 ---
 

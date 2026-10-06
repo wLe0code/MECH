@@ -512,6 +512,11 @@ def check_frontend() -> None:
         refs = re.findall(r'url\(["\']?\./fonts/([^"\')]+)["\']?\)', fcss)
         refs += re.findall(r'url\(["\']?\./fonts/([^"\')]+)["\']?\)',
                            (front / "vendor" / "mech-icons.css").read_text(encoding="utf-8"))
+        # Las letras de coreano, japonés y chino (cientos de trozos .woff2).
+        cjk = front / "vendor" / "mech-fonts-cjk.css"
+        if cjk.exists():
+            refs += re.findall(r'url\(["\']?\./fonts/([^"\')]+)["\']?\)',
+                               cjk.read_text(encoding="utf-8"))
         perdidos = [r for r in refs if not (front / "vendor" / "fonts" / r).exists()]
         if perdidos:
             _di(_FAIL, "Faltan archivos de fuente", ", ".join(perdidos))
@@ -654,6 +659,18 @@ def check_disco() -> None:
 # 11. Idiomas que no se escriben con letras latinas
 # ---------------------------------------------------------------------------
 
+def _letras_cjk_incluidas() -> bool:
+    """¿Están en disco TODOS los trozos de fuente que pide mech-fonts-cjk.css?"""
+    import re
+
+    vendor = Path(__file__).resolve().parent.parent / "frontend" / "vendor"
+    css = vendor / "mech-fonts-cjk.css"
+    if not css.exists():
+        return False
+    refs = re.findall(r"url\(\./fonts/([^)]+)\)", css.read_text(encoding="utf-8"))
+    return bool(refs) and all((vendor / "fonts" / r).exists() for r in refs)
+
+
 def check_idiomas() -> None:
     _titulo("11. Idiomas: fuente para los subtítulos en japonés, chino y coreano")
     import lang
@@ -663,6 +680,17 @@ def check_idiomas() -> None:
     activos = [c for c in ("ja", "zh", "ko") if c in lang.enabled_languages()]
     if not activos:
         return
+    # Desde oct 2026 esas letras viajan con el repo (frontend/vendor/fonts/cjk,
+    # ver scripts/mkfonts_cjk.py): el panel, los subtítulos y la trivia ya no
+    # dependen de lo que tenga instalado la Pi.
+    if _letras_cjk_incluidas():
+        _di(_OK, "La letra de japonés, chino y coreano va incluida en el panel "
+                 "y la proyección (no hace falta instalar nada en la Pi)")
+        return
+    _di(_WARN, "Faltan las letras incluidas de japonés, chino y coreano",
+        "No está completo frontend/vendor/fonts/cjk/ (¿un git pull a medias?).\n"
+        "-> Se regeneran con: python scripts/mkfonts_cjk.py   (con internet)\n"
+        "Mientras tanto se usa lo que tenga instalado el sistema:")
     if not shutil.which("fc-list"):
         # En Windows no existe fc-list, y ahí el sistema ya trae esas fuentes.
         _di(_OK, "Sin 'fc-list' para mirar las fuentes (normal fuera de la Pi)")

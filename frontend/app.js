@@ -36,6 +36,7 @@
     el.className = 'log-item';
     const t = new Date().toTimeString().split(' ')[0].substring(3);
     el.innerHTML = `<span class="log-time">${t}</span><span class="log-msg log-${level}">${escapeHTML(msg)}</span>`;
+    marcarEscritura(el.lastChild, msg);
     list.prepend(el);
     while (list.children.length > 80) list.removeChild(list.lastChild);
   }
@@ -46,12 +47,32 @@
     }[c]));
   }
 
+  // En qué escritura viene un texto. Se le pone como `lang` al elemento que
+  // lo muestra, para que el navegador elija la letra que sabe dibujarla (y,
+  // en los caracteres que comparten chino y japonés, la forma de cada país).
+  function escritura(texto) {
+    texto = String(texto || '');
+    // hangul (piezas sueltas y sílabas) · kana · ideogramas
+    if (/[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]/.test(texto)) return 'ko';
+    if (/[\u3040-\u30FF]/.test(texto)) return 'ja';
+    if (/[\u3400-\u4DBF\u4E00-\u9FFF]/.test(texto)) return state.language === 'ja' ? 'ja' : 'zh';
+    return '';
+  }
+
+  function marcarEscritura(el, texto) {
+    const code = escritura(texto);
+    if (code) el.setAttribute('lang', code);
+    else el.removeAttribute('lang');
+  }
+
   function addChat(msg, isUser) {
     const list = $('chat-list');
     const el = document.createElement('div');
     el.className = 'chat-bubble ' + (isUser ? 'chat-user' : 'chat-mech');
     el.textContent = msg;
+    marcarEscritura(el, msg);
     list.appendChild(el);
+    while (list.children.length > 80) list.removeChild(list.firstChild);
     list.scrollTop = list.scrollHeight;
   }
 
@@ -223,20 +244,220 @@
     setSensor('sen-mic', micLabel, micActive ? 'val-active' : (phase === 'off' ? 'val-off' : 'val-ok'));
   }
 
-  // Cómo se despierta a MECH en cada idioma (para el log del panel) y con
-  // qué frase se le corta la narración estando en ese idioma.
+  // Los diez idiomas de MECH. De aquí sale TODO lo que el panel enseña de
+  // ellos: el menú de idioma, los desplegables del traductor y del saludo,
+  // el log y la pista de qué frase lo corta. `wake` es la frase que lo
+  // despierta en ese idioma (`suena` = cómo se pronuncia, para quien no lee
+  // esa escritura) y `corta` la que interrumpe la narración.
   const LANGS = {
-    es: { nombre: 'ESPAÑOL', wake: 'ok MECH', corta: 'oye MECH' },
-    en: { nombre: 'INGLÉS', wake: 'wake up MECH', corta: 'hey MECH' },
-    fr: { nombre: 'FRANCÉS', wake: 'bonjour MECH', corta: 'pardon MECH' },
-    pt: { nombre: 'PORTUGUÉS', wake: 'bom dia MECH', corta: 'escuta MECH' },
-    de: { nombre: 'ALEMÁN', wake: 'guten Tag MECH', corta: 'warte MECH' },
-    it: { nombre: 'ITALIANO', wake: 'ciao MECH', corta: 'scusa MECH' },
-    ja: { nombre: 'JAPONÉS', wake: 'こんにちは MECH', corta: 'ねえ MECH' },
-    ru: { nombre: 'RUSO', wake: 'привет MECH', corta: 'эй MECH' },
-    zh: { nombre: 'MANDARÍN', wake: '你好 MECH', corta: '嘿 MECH' },
-    ko: { nombre: 'COREANO', wake: '안녕 MECH', corta: '저기 MECH' },
+    es: { nombre: 'ESPAÑOL', es: 'Español', nativo: 'Español', wake: 'ok MECH', corta: 'oye MECH' },
+    en: { nombre: 'INGLÉS', es: 'Inglés', nativo: 'English', wake: 'wake up MECH', corta: 'hey MECH' },
+    fr: { nombre: 'FRANCÉS', es: 'Francés', nativo: 'Français', wake: 'bonjour MECH', corta: 'pardon MECH' },
+    pt: { nombre: 'PORTUGUÉS', es: 'Portugués', nativo: 'Português', wake: 'bom dia MECH', corta: 'escuta MECH' },
+    de: { nombre: 'ALEMÁN', es: 'Alemán', nativo: 'Deutsch', wake: 'guten Tag MECH', corta: 'warte MECH' },
+    it: { nombre: 'ITALIANO', es: 'Italiano', nativo: 'Italiano', wake: 'ciao MECH', corta: 'scusa MECH' },
+    ja: { nombre: 'JAPONÉS', es: 'Japonés', nativo: '日本語', wake: 'こんにちは MECH', suena: 'konnichiwa', corta: 'ねえ MECH' },
+    ru: { nombre: 'RUSO', es: 'Ruso', nativo: 'Русский', wake: 'привет MECH', suena: 'privet', corta: 'эй MECH' },
+    zh: { nombre: 'MANDARÍN', es: 'Mandarín', nativo: '中文', wake: '你好 MECH', suena: 'nǐ hǎo', corta: '嘿 MECH' },
+    ko: { nombre: 'COREANO', es: 'Coreano', nativo: '한국어', wake: '안녕 MECH', suena: 'annyeong', corta: '저기 MECH' },
   };
+
+  // ─── Menús desplegables ───────────────────────────────────────────
+  // Un solo menú abierto a la vez. El desplegable cuelga de <body> y se
+  // coloca con `position: fixed` junto a su botón: así no lo recorta ninguna
+  // tarjeta, y se abre hacia arriba si abajo no cabe. La animación es de CSS
+  // (clase `.open`); aquí solo se decide dónde va y cuándo se cierra.
+  const Menus = (() => {
+    let actual = null;   // { btn, pop, centrado }
+    const MARGEN = 8;
+
+    function colocar() {
+      const { btn, pop, centrado } = actual;
+      const r = btn.getBoundingClientRect();
+      pop.style.maxHeight = 'none';
+      pop.style.minWidth = Math.round(r.width) + 'px';
+      const alto = pop.offsetHeight, ancho = pop.offsetWidth;
+      const abajo = window.innerHeight - r.bottom - MARGEN * 2;
+      const arriba = r.top - MARGEN * 2;
+      const sube = alto > abajo && arriba > abajo;
+      const h = Math.min(alto, Math.max(140, sube ? arriba : abajo));
+      pop.style.maxHeight = h + 'px';
+      let x = centrado ? r.left + r.width / 2 - ancho / 2 : r.left;
+      x = Math.max(MARGEN, Math.min(x, window.innerWidth - ancho - MARGEN));
+      pop.style.left = Math.round(x) + 'px';
+      pop.style.top = Math.round(sube ? r.top - MARGEN - h : r.bottom + MARGEN) + 'px';
+      // Crece desde su botón, no desde el centro del menú.
+      pop.style.transformOrigin = `${Math.round(r.left + r.width / 2 - x)}px ${sube ? '100%' : '0%'}`;
+      pop.classList.toggle('up', sube);
+    }
+
+    function enfocar(el) { if (el) el.focus({ preventScroll: true }); }
+
+    function cerrar(devolverFoco) {
+      if (!actual) return;
+      const { btn, pop } = actual;
+      actual = null;
+      pop.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+      if (devolverFoco) enfocar(btn);
+    }
+
+    function abrir(btn, pop, opts = {}) {
+      if (actual && actual.pop === pop) { cerrar(); return; }
+      cerrar();
+      actual = { btn, pop, centrado: !!opts.centrado };
+      // Se coloca con la transición apagada: si no, el menú "viaja" desde
+      // donde se abrió la última vez.
+      pop.style.transition = 'none';
+      colocar();
+      // Si la lista no cabe entera (teléfono), que se vea la opción elegida.
+      const elegida = pop.querySelector('.menu-item.active');
+      if (elegida) pop.scrollTop = elegida.offsetTop - (pop.clientHeight - elegida.offsetHeight) / 2;
+      void pop.offsetWidth;
+      pop.style.transition = '';
+      pop.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+      // Abierto con el teclado: el foco entra al menú, en la opción elegida.
+      if (opts.teclado) enfocar(pop.querySelector('.menu-item.active') || pop.querySelector('.menu-item'));
+    }
+
+    // Une un botón con su desplegable. `antes()` corre justo antes de abrir
+    // (para repintar las opciones).
+    function unir(btn, pop, opts = {}) {
+      document.body.appendChild(pop);
+      btn.addEventListener('click', (e) => {
+        if (opts.antes) opts.antes();
+        abrir(btn, pop, { centrado: opts.centrado, teclado: e.detail === 0 });
+      });
+    }
+
+    document.addEventListener('pointerdown', (e) => {
+      if (actual && !actual.pop.contains(e.target) && !actual.btn.contains(e.target)) cerrar();
+    }, true);
+    // Si la página se mueve, el menú se quedaría flotando lejos de su botón.
+    document.addEventListener('scroll', (e) => {
+      if (actual && !actual.pop.contains(e.target)) cerrar();
+    }, true);
+    window.addEventListener('resize', () => cerrar());
+    document.addEventListener('keydown', (e) => {
+      if (!actual) return;
+      const items = Array.from(actual.pop.querySelectorAll('.menu-item'));
+      const i = items.indexOf(document.activeElement);
+      const paso = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+      if (e.key === 'Escape') { e.preventDefault(); cerrar(true); }
+      else if (e.key === 'Tab') cerrar();
+      else if (paso && items.length) {
+        e.preventDefault();
+        enfocar(items[i < 0 ? (paso > 0 ? 0 : items.length - 1) : (i + paso + items.length) % items.length]);
+      }
+      else if (e.key === 'Home') { e.preventDefault(); enfocar(items[0]); }
+      else if (e.key === 'End') { e.preventDefault(); enfocar(items[items.length - 1]); }
+    }, true);
+
+    return { unir, cerrar, abierto: () => !!actual };
+  })();
+
+  // Convierte un <select> en uno de los menús de arriba. El <select> sigue en
+  // la página (escondido) y sigue siendo quien guarda el valor: todo lo que
+  // hace `$('tr-src').value`, o le cambia el valor o las opciones, funciona
+  // igual. Si algo falla, ese desplegable se queda como el del sistema.
+  function mejorarSelect(sel) {
+    const wrap = document.createElement('div');
+    wrap.className = 'menu msel' + (sel.classList.contains('text-input') ? ' msel-wide' : '');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'menu-btn msel-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    if (sel.title) btn.title = sel.title;
+    const label = document.createElement('span');
+    label.className = 'msel-label';
+    const caret = document.createElement('span');
+    caret.className = 'menu-caret';
+    btn.append(label, caret);
+    const pop = document.createElement('div');
+    pop.className = 'menu-pop msel-pop';
+    pop.setAttribute('role', 'listbox');
+
+    // Un desplegable cuyas opciones son todas idiomas se pinta como el menú
+    // de idioma: la etiqueta de dos letras y el nombre.
+    const deIdiomas = () => sel.options.length > 1 && Array.from(sel.options).every((o) => LANGS[o.value]);
+    const pinta = (o, idiomas) => idiomas
+      ? `<span class="lang-code">${o.value.toUpperCase()}</span><span>${escapeHTML(LANGS[o.value].es)}</span>`
+      : escapeHTML(o.textContent);
+
+    function pintarBoton() {
+      const o = sel.options[sel.selectedIndex];
+      label.innerHTML = o ? pinta(o, deIdiomas()) : '';
+    }
+
+    function pintarOpciones() {
+      const idiomas = deIdiomas();
+      pop.classList.toggle('msel-langs', idiomas);
+      pop.innerHTML = '';
+      Array.from(sel.options).forEach((o, i) => {
+        const it = document.createElement('button');
+        it.type = 'button';
+        it.className = 'menu-item' + (o.selected ? ' active' : '');
+        it.setAttribute('role', 'option');
+        it.setAttribute('aria-selected', o.selected ? 'true' : 'false');
+        it.style.setProperty('--i', Math.min(i, 12));
+        it.innerHTML = pinta(o, idiomas);
+        it.addEventListener('click', () => {
+          sel.value = o.value;
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+          Menus.cerrar(true);
+        });
+        pop.appendChild(it);
+      });
+    }
+
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.append(sel, btn);
+    sel.classList.add('msel-native');
+    sel.tabIndex = -1;
+    sel.setAttribute('aria-hidden', 'true');
+    Menus.unir(btn, pop, { antes: pintarOpciones });
+
+    // El botón tiene que enterarse de TODO lo que cambie el valor: que lo
+    // elijan, que el código haga `sel.value = …` (eso no avisa con ningún
+    // evento, por eso se envuelve la propiedad) y que le cambien las opciones
+    // (la lista de micrófonos se rehace al recargarla).
+    const prop = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(sel, 'value', {
+      configurable: true,
+      get() { return prop.get.call(sel); },
+      set(v) { prop.set.call(sel, v); pintarBoton(); },
+    });
+    sel.addEventListener('change', pintarBoton);
+    new MutationObserver(pintarBoton).observe(sel, { childList: true });
+    pintarBoton();
+  }
+
+  // Los diez idiomas del menú de la vista Voz, pintados desde LANGS.
+  function pintarMenuIdiomas() {
+    const grid = $('lang-grid');
+    if (!grid || !$('lang-btn')) return;
+    grid.innerHTML = '';
+    Object.keys(LANGS).forEach((c, i) => {
+      const L = LANGS[c];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'menu-item lang-chip';
+      b.id = 'lang-' + c;
+      b.setAttribute('role', 'menuitemradio');
+      b.setAttribute('aria-checked', 'false');
+      b.style.setProperty('--i', i);
+      const nativo = L.nativo !== L.es ? `<small lang="${c}">${L.nativo}</small>` : '';
+      const suena = L.suena ? ` · ${L.suena}` : '';
+      b.innerHTML = `<span class="lang-code">${c.toUpperCase()}</span>` +
+        `<span class="lang-txt"><span class="lang-name">${L.es}${nativo}</span>` +
+        `<span class="lang-wake" lang="${c}">«${L.wake}»${suena}</span></span>`;
+      b.addEventListener('click', () => { Menus.cerrar(true); API.setLanguage(c); });
+      grid.appendChild(b);
+    });
+    Menus.unir($('lang-btn'), $('lang-pop'), { centrado: true });
+  }
 
   // Estado de la tarjeta del modo traductor (vista Voz).
   // El traductor va por TURNOS: «traduce MECH» -> pregunta -> escucha UNA
@@ -279,16 +500,27 @@
     }
   }
 
-  // Marca qué idioma está activo en los chips de la vista Voz.
+  // Pone el idioma activo en el botón de la vista Voz, lo marca en su menú y
+  // deja a la vista las dos frases que hacen falta en ese idioma.
   function updateLanguage(code) {
     if (state.language === code) return;
-    const info = LANGS[code] || LANGS.es;
+    if (!LANGS[code]) code = 'es';
+    const info = LANGS[code];
     if (state.language) log(`MECH pasó a ${info.nombre} (${info.wake}).`, 'ok');
     state.language = code;
     Object.keys(LANGS).forEach((c) => {
       const chip = $('lang-' + c);
-      if (chip) chip.classList.toggle('active', c === code);
+      if (!chip) return;
+      chip.classList.toggle('active', c === code);
+      chip.setAttribute('aria-checked', c === code ? 'true' : 'false');
     });
+    if ($('lang-btn-code')) $('lang-btn-code').textContent = code.toUpperCase();
+    if ($('lang-btn-name')) $('lang-btn-name').textContent = info.es;
+    const pista = $('lang-hint');
+    if (pista) {
+      pista.textContent = `Se despierta con «${info.wake}» · se corta con «${info.corta}»`;
+      pista.setAttribute('lang', code);
+    }
   }
 
   // ─── Trivia (el juego de preguntas) ───────────────────────────────
@@ -328,6 +560,7 @@
     } else {
       q.innerHTML = '<span class="tq-empty">Sin partida en marcha.</span>';
     }
+    marcarEscritura(q, activa ? t.question : '');
 
     const cont = $('trivia-opts');
     cont.innerHTML = '';
@@ -335,6 +568,7 @@
       const b = document.createElement('button');
       b.className = 'trivia-opt';
       b.innerHTML = `<b>${escapeHTML((t.letters || [])[i] || '')}</b>${escapeHTML(op)}`;
+      marcarEscritura(b, op);
       b.disabled = t.stage !== 'question';
       b.title = t.stage === 'question'
         ? 'Responder esta opción sin micrófono'
@@ -386,9 +620,11 @@
     if (s.current_video) applyAIVideo(s.current_video);
     else if (s.current_image) applyAIImage(s.current_image);
 
-    // Transcript / respuesta
-    if (s.last_transcript) showTranscript(s.last_transcript);
-    if (s.last_ai_response) showAIResponse(s.last_ai_response);
+    // Transcript / respuesta. El estado llega en CADA cambio de fase (grabando,
+    // pensando, hablando…) y siempre trae la última frase: solo se pinta si es
+    // otra, o la conversación se llenaba de la misma burbuja repetida.
+    if (s.last_transcript && s.last_transcript !== state.ultimoTranscript) showTranscript(s.last_transcript);
+    if (s.last_ai_response && s.last_ai_response !== state.ultimaRespuesta) showAIResponse(s.last_ai_response);
 
     // Visión
     if (s.vision) applyVision(s.vision);
@@ -401,13 +637,18 @@
   }
 
   function showTranscript(text) {
+    state.ultimoTranscript = text;
     $('transcript').textContent = text;
+    marcarEscritura($('transcript'), text);
     addChat(text, true);
   }
 
   function showAIResponse(text, segment, total) {
+    state.ultimaRespuesta = text;
     const counter = (segment && total) ? ` <span style="color:var(--text-muted);font-size:10px">[${segment}/${total}]</span>` : '';
-    $('ai-resp').innerHTML = `<div class="ai-label">MECH responde${counter}</div>${escapeHTML(text)}`;
+    const code = escritura(text);
+    $('ai-resp').innerHTML = `<div class="ai-label">MECH responde${counter}</div>` +
+      `<span${code ? ` lang="${code}"` : ''}>${escapeHTML(text)}</span>`;
     addChat(text, false);
   }
 
@@ -785,6 +1026,15 @@
         opt.textContent = `[${d.index}] ${d.name} (${d.channels} in)`;
         sel.appendChild(opt);
       });
+      // En el .env suele ir solo un trozo del nombre (AUDIO_INPUT_DEVICE=Steren),
+      // que no coincide con ninguna opción: el desplegable quedaba EN BLANCO y
+      // «Guardar en .env» borraba el micrófono. Va como una opción más.
+      if (cur && !Array.from(sel.options).some((o) => o.value === cur)) {
+        const opt = document.createElement('option');
+        opt.value = cur;
+        opt.textContent = `${cur} (lo configurado ahora)`;
+        sel.appendChild(opt);
+      }
       sel.value = cur;
     },
 
@@ -888,16 +1138,47 @@
   }
 
   // ─── Navegación ───────────────────────────────────────────────────
+  // El resaltado del menú lateral es UNA pieza que se desliza hasta el botón
+  // de la vista elegida. Aquí se le da la altura y la posición de ese botón;
+  // el deslizamiento es una transición de CSS sobre `transform`.
+  let glider = null;
+  let conMenus = false;   // ¿styles.css trae los estilos de los menús? (ver Init)
+  function moverGlider(animado) {
+    const barra = document.querySelector('.sidebar');
+    const activo = barra && barra.querySelector('.nav-item.active');
+    if (!conMenus || !activo) return;
+    if (!glider) {
+      glider = document.createElement('div');
+      glider.className = 'nav-glider';
+      glider.setAttribute('aria-hidden', 'true');
+      barra.prepend(glider);
+      barra.classList.add('has-glider');
+      animado = false;   // la primera vez aparece en su sitio, no viaja
+    }
+    if (!animado) glider.style.transition = 'none';
+    glider.style.height = activo.offsetHeight + 'px';
+    glider.style.transform = `translateY(${activo.offsetTop}px)`;
+    if (!animado) { void glider.offsetWidth; glider.style.transition = ''; }
+  }
+
   const UI = {
+    // `navEl` solo llega cuando se pulsa un botón del menú. Con las teclas
+    // 1/2/3 no llega, y entonces NADA se anima: lo que se dispara con el
+    // teclado tiene que ser inmediato.
     showView(name, navEl) {
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('visible'));
+      const vista = $('view-' + name);
+      const cambia = !vista.classList.contains('visible');
+      Menus.cerrar();
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('visible', 'entra'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      $('view-' + name).classList.add('visible');
+      vista.classList.add('visible');
+      if (navEl && cambia) vista.classList.add('entra');   // cascada de entrada
       if (navEl) navEl.classList.add('active');
       else {
         const nav = document.querySelector(`[data-view="${name}"]`);
         if (nav) nav.classList.add('active');
       }
+      moverGlider(!!navEl);
       // Al abrir Ajustes, traemos los valores actuales del backend.
       if (name === 'settings') API.loadSettings();
     },
@@ -935,6 +1216,30 @@
   window.UI = UI;
 
   // ─── Init ─────────────────────────────────────────────────────────
+  // Menú de idiomas, y cada <select> convertido en menú animado. En pantallas
+  // táctiles los <select> se quedan como los del sistema: en un teléfono su
+  // selector nativo es más cómodo que cualquier menú hecho a mano.
+  pintarMenuIdiomas();
+  // `--menus` lo pone styles.css: si el navegador tiene guardada una hoja de
+  // estilos vieja (sin los menús), no se monta nada de esto y el panel queda
+  // con los controles de siempre.
+  conMenus = getComputedStyle(document.documentElement).getPropertyValue('--menus').trim() === '1';
+  if (conMenus && window.matchMedia('(pointer: fine)').matches) {
+    document.querySelectorAll('select').forEach((sel) => {
+      try { mejorarSelect(sel); } catch (e) { /* se queda el del sistema */ }
+    });
+  }
+  // Menú lateral: turno de cada elemento en la cascada de entrada, y el
+  // resaltado en su sitio (se recoloca si cambia el tamaño de la ventana o
+  // cuando terminan de cargar las fuentes, que cambian la altura).
+  if (conMenus) {
+    document.querySelectorAll('.sidebar > .sidebar-label, .sidebar > .nav-item')
+      .forEach((el, i) => el.style.setProperty('--n', i));
+    moverGlider(false);
+    window.addEventListener('resize', () => moverGlider(false));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => moverGlider(false));
+  }
+
   log('Panel MECH cargado', 'ok');
   connectWS();
   setTimeout(initImmDemo, 600);

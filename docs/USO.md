@@ -77,7 +77,10 @@ Al dormirse **vuelve solo a español**, listo para el siguiente visitante.
 > en español, MECH entiende mal. Hay que **dormirlo y despertarlo** en el
 > otro idioma: despierto, la frase de despertar de otro idioma ya **no** lo
 > cambia (antes sí).
-> Para probar sin hablar: panel → vista **Voz** → un chip por idioma.
+> Para probar sin hablar: panel → vista **Voz** → botón **IDIOMA** (muestra
+> el idioma en el que está MECH; al pulsarlo salen los diez, cada uno con la
+> frase que lo despierta). Al lado se ven siempre las dos frases del idioma
+> activo: la que lo despierta y la que lo corta.
 
 ### Cada comando, en el idioma en que despertó
 
@@ -121,8 +124,8 @@ varias formas de decir cada cosa) están en `backend/config.py`
 > «traduci», «perdón» / «pardon». Es el mismo sonido; no es un fallo.
 
 > Si MECH despertó en un idioma por error y nadie sabe dormirlo en ese
-> idioma: panel → vista **Voz** → chip **ES**. Queda en español y ya se le
-> puede decir «para de escuchar».
+> idioma: panel → vista **Voz** → botón **IDIOMA** → **Español**. Queda en
+> español y ya se le puede decir «para de escuchar».
 > Para volver a lo de antes (todos los idiomas a la vez): Ajustes →
 > **«Idioma de los comandos»**, apagado.
 
@@ -154,15 +157,12 @@ abajo). Tres cosas que no pasan con los otros idiomas:
    `backend/.env`, en la línea `VOICE_NAME_ALIASES` (ver `.env.example`).
    También ayuda poner `WHISPER_MODEL=small` en Ajustes: entiende bastante
    mejor estos idiomas, a cambio de tardar más.
-3. **Para que el japonés, el chino y el coreano se LEAN en la proyección**
-   (subtítulos y trivia), la Pi necesita una fuente con esos caracteres. Sin ella salen
-   cuadritos vacíos. Se instala una sola vez:
-
-   ```bash
-   sudo apt install fonts-noto-cjk
-   ```
-
-   `python -m backend.preflight` avisa si falta.
+3. **La letra del japonés, el chino y el coreano ya viene incluida.** La
+   Raspberry Pi no trae letra para esas escrituras (salían cuadritos vacíos
+   en el panel, los subtítulos y la trivia). Desde octubre de 2026 esas
+   letras van dentro del propio programa: **no hay que instalar nada**, basta
+   con actualizar («Iniciar MECH»). `python -m backend.preflight` avisa si
+   faltara algún archivo.
 
 Si en el evento no vais a usar alguno, apagadlo en `backend/.env`
 (`WAKE_GERMAN_ENABLED=false`, `WAKE_JAPANESE_ENABLED=false`…): cada idioma
@@ -425,7 +425,7 @@ todo lo que hace. La mayoría de las veces el problema se ve de una.
 | Lo que pasa | Qué mirar |
 |---|---|
 | **Le hablan en japonés, ruso o chino y no despierta** | Mira el panel: sale *«Oí en japonés: '…'»* con lo que entendió. Si el nombre está escrito de otra forma, añádelo a `VOICE_NAME_ALIASES` (§2). |
-| **Los subtítulos en japonés, chino o coreano salen como cuadritos** | Falta la fuente en la Pi: `sudo apt install fonts-noto-cjk` y volver a abrir la proyección. |
+| **El japonés, el chino o el coreano salen como cuadritos** (en el panel, los subtítulos o la trivia) | Esas letras vienen incluidas desde octubre de 2026: actualiza con «Iniciar MECH» y vuelve a abrir el panel y la proyección. Si sigue igual, `python -m backend.preflight` dice si falta algún archivo. |
 | **No despierta con «ok MECH»** | ¿Se mueven las barras del micrófono en el panel? Si no, es el micrófono: revisa que el receptor USB del Steren esté puesto y el micrófono de solapa encendido. Si sí se mueven, baja **«Umbral ruido»** en Ajustes. |
 | **Se despierta solo / graba fantasmas** | Sube **«Umbral ruido»**. |
 | **No se duerme** | Dile **«para de escuchar»** (§2). |

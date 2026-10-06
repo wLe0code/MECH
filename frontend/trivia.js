@@ -39,7 +39,7 @@ window.MechTrivia = (function () {
       radial-gradient(circle at 18% 12%, rgba(255,255,255,.07) 0 9vmin, transparent 9.2vmin),
       radial-gradient(circle at 88% 85%, rgba(255,255,255,.05) 0 14vmin, transparent 14.2vmin),
       linear-gradient(160deg, #4a1c96 0%, #34106f 55%, #230a4d 100%);
-    font-family: "Sora", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Sora", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cjk, sans-serif), sans-serif;
     color: #fff; padding: 3vmin 4vmin 4vmin; overflow: hidden;
   }
   .mt-wrap.on { display: flex; }
@@ -47,7 +47,7 @@ window.MechTrivia = (function () {
   /* Barra de arriba: de qué va la partida y por dónde vamos. */
   .mt-top {
     display: flex; align-items: center; gap: 2vmin; flex: none;
-    font-family: "Space Mono", ui-monospace, Consolas, monospace;
+    font-family: "Space Mono", ui-monospace, Consolas, var(--cjk, monospace), monospace;
     font-size: clamp(11px, 1.2vw, 22px); letter-spacing: .18em;
     text-transform: uppercase; color: rgba(255,255,255,.75);
   }
@@ -74,7 +74,7 @@ window.MechTrivia = (function () {
   }
   .mt-say {
     flex: none; text-align: center; margin-bottom: 2vmin;
-    font-family: "Space Mono", ui-monospace, Consolas, monospace;
+    font-family: "Space Mono", ui-monospace, Consolas, var(--cjk, monospace), monospace;
     font-size: clamp(11px, 1.25vw, 22px); letter-spacing: .14em;
     text-transform: uppercase; color: rgba(255,255,255,.72);
   }
@@ -106,7 +106,7 @@ window.MechTrivia = (function () {
     width: 8vmin; height: 8vmin; min-width: 38px; min-height: 38px;
     border-radius: 50%; background: rgba(255,255,255,.95);
     display: flex; align-items: center; justify-content: center;
-    font-family: "Space Mono", ui-monospace, Consolas, monospace;
+    font-family: "Space Mono", ui-monospace, Consolas, var(--cjk, monospace), monospace;
     font-size: clamp(18px, 4.4vmin, 60px); font-weight: 700; color: #1c1033;
   }
   .mt-opt-text {
@@ -178,7 +178,7 @@ window.MechTrivia = (function () {
   }
   .mt-hint {
     margin-top: 3.4vmin;
-    font-family: "Space Mono", ui-monospace, Consolas, monospace;
+    font-family: "Space Mono", ui-monospace, Consolas, var(--cjk, monospace), monospace;
     font-size: clamp(12px, 1.4vw, 26px); letter-spacing: .2em;
     text-transform: uppercase; color: rgba(255,255,255,.75);
   }
@@ -598,6 +598,9 @@ window.MechTrivia = (function () {
         const celebrar = firma !== null;
         firma = nueva;
         wrap.className = 'mt-wrap on';
+        // El idioma de la partida, para que el navegador elija la letra que
+        // sabe dibujarlo (japonés y chino comparten caracteres con otra forma).
+        wrap.setAttribute('lang', d.lang || 'es');
 
         if (d.stage === 'offer') pintarOferta(d);
         else if (d.stage === 'loading') pintarCarga(d);

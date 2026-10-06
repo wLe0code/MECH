@@ -199,8 +199,9 @@ El resto de control es vía REST (más simple para llamadas puntuales). El WS es
 **Idioma.** MECH arranca en español. Se pasa a **inglés solo si se le despierta
 con «wake up MECH»**; con «ok MECH» o «despierta MECH» sigue en español. En
 inglés entiende, narra y subtitula en inglés hasta que se duerme (ahí vuelve a
-español solo). En el panel, la vista Voz tiene chips **ES / EN** para forzarlo
-a mano. Se apaga con `WAKE_ENGLISH_ENABLED=false`.
+español solo). En el panel, la vista Voz tiene el botón **IDIOMA** (un menú
+con los diez idiomas) para forzarlo a mano. Se apaga con
+`WAKE_ENGLISH_ENABLED=false`.
 
 **Interrumpirlo.** Mientras MECH presenta se le puede cortar diciendo
 **«oye MECH»** (o «hey MECH» en inglés): para la voz, la música y los

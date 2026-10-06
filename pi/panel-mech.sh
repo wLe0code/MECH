@@ -3,7 +3,7 @@
 # Panel MECH — abre el panel de control en la propia Pi.
 #
 # Es el panel con la barra de fase de voz arriba (EN REPOSO / PUEDES HABLAR /
-# GRABANDO / PENSANDO / HABLANDO), los chips de idioma, la tarjeta del
+# GRABANDO / PENSANDO / HABLANDO), el botón de idioma, la tarjeta del
 # traductor y los Ajustes.
 #
 # A diferencia del proyector, este se abre en una ventana NORMAL (no kiosko):

@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>MECH · Proyector</title>
+<!-- Letras para coreano, japonés y chino, en local (la Raspberry Pi no las
+     trae: los subtítulos y la trivia salían con cuadritos). Solo se cargan
+     los trozos que hacen falta; en español, ninguno. -->
+<link rel="stylesheet" href="/vendor/mech-fonts-cjk.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden; cursor: none; }
@@ -24,7 +28,8 @@
     position: fixed; left: 50%; bottom: 6vh; transform: translateX(-50%);
     width: 86%; max-width: 1700px;
     text-align: center; text-wrap: balance;
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* `--cjk` = las Noto de coreano, japonés y chino (mech-fonts-cjk.css). */
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cjk, sans-serif), sans-serif;
     font-size: clamp(20px, 3.1vw, 46px);
     font-weight: 600; line-height: 1.28; letter-spacing: .2px;
     color: #fff;
