@@ -1,21 +1,68 @@
 # MECH — Control desde Windows
 
-Cuatro formas de tener el panel de control de MECH en tu equipo Windows, de más a menos recomendada:
+Formas de tener el panel de control de MECH en tu equipo Windows, de más a menos recomendada:
 
 | Modo | Cómo se ve | Setup | Recomendado para |
 |---|---|---|---|
-| **App `MECH Panel.exe`** ⭐ | Ventana propia; **encuentra la Pi sola** | Doble click | **Todo el mundo.** Es lo que hay que repartir |
-| **Instalador** | Igual, pero en el menú inicio y con desinstalador | Compilar una vez | La laptop fija del stand |
-| **Launcher .bat** | Ventana sin barras (parece app) | Doble click + editar la IP a mano | Si no quieres construir nada |
-| **PWA instalada** | Acceso directo en menú inicio + ícono | 30 s desde Edge | Alternativa al .exe, sin construir |
+| **App «MECH»** ⭐ (`Instalar MECH.bat`) | Icono en el Escritorio; ventana propia; **encuentra al robot sola** | Doble clic, **sin instalar nada** | **Todo el mundo** |
+| **App `MECH Panel.exe`** | Ventana con cuatro botones; encuentra la Pi sola | Hay que **construirla** (hace falta Python) | Quien ya la tenga construida |
+| **Launcher .bat** | Ventana sin barras (parece app) | Doble click + editar la IP a mano | Respaldo |
+| **PWA instalada** | Acceso directo en menú inicio + ícono | 30 s desde Edge | Respaldo |
 
-> **Lo nuevo (sep 2026): `MECH Panel.exe`.** Antes había que saberse la IP de
-> la Pi y editar `config.txt` a mano — y esa IP cambia cada vez que se cambia
-> de wifi. La app la **busca sola**: prueba `mech.local`, `mech`, la última
-> dirección que funcionó y, si hace falta, barre la red local buscando quién
-> responde. Se salta ese paso entero.
+## La app «MECH» (recomendado, oct 2026)
 
-## 0. La app: `MECH Panel.exe` (recomendado)
+**Instalarla** (una vez por laptop): doble clic en **`Instalar MECH.bat`**.
+Tarda dos segundos y deja un icono **MECH** en el Escritorio y en el menú
+Inicio. **No hace falta Python, ni construir nada, ni permisos de
+administrador**: usa el Edge (o el Chrome) que ya trae Windows.
+
+**Usarla**: abre el icono. Sale una ventana propia, sin barra de direcciones
+ni pestañas, que:
+
+1. **Busca al robot sola**: la última dirección que funcionó, `mech.local`,
+   `mech`, y si hace falta la red donde estaba la última vez.
+2. Cuando lo encuentra, **entra al panel**.
+3. Si no lo encuentra, enseña qué revisar y un campo para escribir la
+   dirección (`192.168.1.42`, `mech.local`…). **Sigue buscando sola** cada
+   pocos segundos: se puede abrir la app antes de encender el robot.
+   El botón «Buscar en redes habituales» prueba una a una las redes típicas
+   de casa y de los puntos de acceso de celular (tarda medio minuto).
+
+Desde el panel, el menú de la izquierda abre la **Biblioteca** de videos y la
+**Proyección** en otra ventana. Si se pierde la conexión, el aviso de abajo
+trae **«Buscar de nuevo»**.
+
+**Quitarla**: doble clic en `Quitar MECH.bat`.
+
+### Cómo está hecha (para quien la mantenga)
+
+- La app es **una página**, [`app/index.html`](app/index.html): la pantalla
+  que busca al robot. Un solo archivo, sin nada externo.
+- El icono es un **acceso directo a Edge en modo aplicación** (`--app=…`),
+  apuntando a esa página. Lo crea [`instalar_app.ps1`](instalar_app.ps1), que
+  antes la copia a `%APPDATA%\MECH\app` (así el icono no depende de dónde esté
+  la carpeta del proyecto). El perfil del navegador va aparte, en
+  `%APPDATA%\MECH\navegador`: ahí se recuerda la dirección del robot.
+- **El panel se sigue cargando desde el robot** (`http://mech.local:8000`), y
+  es a propósito: así la app y el robot son siempre la misma versión. La app
+  solo lo encuentra y entra (con `?app=1`, que es como el panel sabe que debe
+  ofrecer «Buscar de nuevo»).
+- Desde una página no se puede *leer* lo que contesta otro servidor, pero sí
+  saber si contestó y cargar una imagen suya: así comprueba que quien
+  responde es MECH (le pide `/static/icon.svg`).
+- ⚠️ Si se cambia `app/index.html`, hay que **volver a instalar** en cada
+  laptop para que llegue la copia nueva.
+- Para probarla sin robot: abrir
+  `app/index.html?candidatos=http://localhost:8765&barrido=0`.
+
+Lo que NO hace, a diferencia de `MECH Panel.exe`: no puede averiguar en qué
+red está la laptop (una página no tiene permiso), así que no barre la red
+actual a ciegas; barre la de la última vez y, si se le pide, las habituales.
+
+## 0. La app antigua: `MECH Panel.exe`
+
+> Sigue funcionando, pero hay que **construirla** en una máquina con Python.
+> Para repartir entre el equipo es más fácil `Instalar MECH.bat`.
 
 ### Usarla
 

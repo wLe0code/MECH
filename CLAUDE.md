@@ -242,9 +242,10 @@ frontend/
   app.js              ← Lógica + WebSocket. Detecta file:// para modo demo.
                         Maneja eventos image y video.
   styles.css          ← TODA la estética del panel (y la base de
-                        library.html). Rehecha en oct 2026: fondo grafito
-                        neutro y un solo acento cian. Ver «Estética del
-                        panel» más abajo antes de tocar colores o animaciones.
+                        library.html). Rehecha dos veces en oct 2026: tema
+                        oscuro de mucho contraste, armazón fijo de app y un
+                        solo acento cian. Ver «Estética del panel» más abajo
+                        antes de tocar colores, tamaños o animaciones.
   projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
                         Maneja eventos image y video, con loop en video, y
                         pinta los SUBTÍTULOS de la narración abajo.
@@ -335,7 +336,18 @@ pi/                   ← TRES accesos de ESCRITORIO en la Raspberry Pi,
   instalar-accesos.sh ← Genera los .desktop con la ruta real del repo.
 
 windows/              ← Control desde laptop Windows
-  mech_panel.py       ← **App de escritorio** (sep 2026). ENCUENTRA LA PI
+  Instalar MECH.bat   ← **LA APP (oct 2026), sin construir nada.** Doble
+                        clic: deja el icono «MECH» en el Escritorio y el
+                        menú Inicio. Llama a instalar_app.ps1.
+  Quitar MECH.bat     ← La desinstala (mismo script, con -Quitar).
+  instalar_app.ps1    ← Copia app/ a %APPDATA%\MECH\app y crea el acceso
+                        directo a Edge/Chrome en modo --app. SIN TILDES a
+                        propósito (PowerShell 5 lee los .ps1 como ANSI).
+  app/index.html      ← La pantalla que BUSCA AL ROBOT y entra a su panel
+                        (http://<robot>:8000/?app=1). Un solo archivo, sin
+                        nada externo. El panel se sigue cargando del robot.
+  mech_panel.py       ← **La app antigua** (sep 2026): hay que construirla
+                        y en la laptop del equipo no hay Python. ENCUENTRA LA PI
                         SOLA (mech.local, mech, la última dirección, y si no
                         barre la red buscando el puerto 8000 + /api/state) y
                         abre el panel con Edge/Chrome en modo --app. Solo
@@ -1753,6 +1765,21 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   japonés y chino va incluida». Verificado en Windows midiendo qué fuente se
   usa de verdad (la incluida, no la del sistema) y que el español no cambia.
   **Sin probar en la Pi**, que es donde fallaba.
+- **Rediseño «de app» del panel (8 oct 2026)** — tema oscuro con mucho más
+  contraste, armazón fijo de app, la vista Voz en tarjetas, el micrófono que
+  cambia de color con la fase, iconos en vez de emojis, deslizadores
+  rellenos, Ajustes en grupos y accesos a Biblioteca / Proyección / Atajos
+  en el menú. Ver «Rediseño "de app"». Verificado en el navegador con el
+  servidor de mentira (las siete vistas, las seis fases, escritorio ancho,
+  ventana de 900 px y tamaño de teléfono) y con el preflight §8 (los 42
+  iconos tienen glifo). **Sin probar en la Pi.**
+- **App de Windows sin construir nada (8 oct 2026)** — `Instalar MECH.bat`
+  deja un icono «MECH» que busca al robot y abre el panel en su ventana. Ver
+  «App de Windows sin construir nada». Probado: el instalador y el
+  desinstalador en una carpeta temporal (acceso directo leído de vuelta) y
+  la pantalla de búsqueda en el navegador (no encontrado, dirección a mano,
+  encontrado, volver desde el panel). **Sin probar con el robot ni abriendo
+  el icono de verdad**: el equipo tiene que instalarla y probarla.
 - **Modo música: SOLO explicado, nada programado (6 oct 2026)** — el equipo
   pidió «modo música MECH» / «MECH activa modo música» (que busque la canción
   en YouTube u otra plataforma y ponga el video) y pidió expresamente que
@@ -2003,16 +2030,23 @@ el fondo no sea ese color violeta, algo más chiva». Se rehízo
 `frontend/styles.css` entera con la skill de diseño que instaló el equipo
 (`emil-design-eng`); el HTML y el JS no cambiaron salvo colores sueltos.
 
-- **Fondo grafito casi negro y NEUTRO** (`--bg: #08090a`), con una rejilla de
-  puntos tenue. Las superficies suben en tres escalones (`--surface`,
-  `--surface2`, `--surface3`). Nada de tintes violeta.
-- **Un solo acento, cian** (`--accent`), para lo que es "MECH" o la acción
-  principal. Sustituye al morado. Los nombres viejos (`--purple-mid`,
-  `.btn-purple`) siguen existiendo como alias porque los usan estilos en
-  línea del HTML: **no significan morado**.
-- **Los demás colores significan algo** y no se usan de adorno: rojo = paro,
-  error, micrófono · verde = bien, «puedes hablar» · ámbar = trabajando,
-  Arduino, aviso · cian = MECH.
+> ⚠️ **El 8 oct 2026 se volvió a rehacer** (pedido: «moderno y avanzado, con
+> buen contraste, que parezca una app hecha para el usuario»). Lo de esta
+> lista sigue valiendo salvo donde se indica; lo nuevo está en «Rediseño "de
+> app"», más abajo.
+
+- **Fondo oscuro y NEUTRO**, nada de tintes violeta. Desde el 8 oct:
+  `--bg: #0a0c10` y cuatro escalones que se distinguen a simple vista
+  (`--surface` → `--surface4`), con borde SÓLIDO (`--border: #252d37`; antes
+  era un blanco al 7 % que casi no se veía). Ya no hay rejilla de puntos.
+- **Un solo acento, cian** (`--accent`, hoy `#22d3ee`), para lo que es "MECH"
+  o la acción principal. Sustituye al morado. Los nombres viejos
+  (`--purple-mid`, `.btn-purple`) siguen existiendo como alias porque los
+  usan estilos en línea del HTML: **no significan morado**.
+- **Los demás colores significan algo** y no se usan de adorno: rojo = paro
+  de emergencia, error (y la marca: el aro del logo) · verde = bien, «puedes
+  hablar» · ámbar = trabajando, Arduino, aviso · cian = MECH. ⚠️ El
+  micrófono **ya no es rojo fijo**: desde el 8 oct toma el color de la fase.
 - `library.html` hereda la misma paleta. **No se tocaron** la proyección, la
   trivia (va en morado a propósito: es el estilo Kahoot que pidió el equipo)
   ni la app de Windows (`windows/mech_panel.py` tiene sus propios colores y
@@ -2032,6 +2066,97 @@ un control**:
    cambiar de vista con las teclas 1/2/3 no se anima. Con el ratón sí (desde
    el 6 oct, ver abajo): `UI.showView(nombre, navEl)` solo recibe `navEl`
    cuando se pulsa el menú, y de eso depende que haya animación.
+
+### Rediseño «de app» (8 oct 2026)
+
+Pedido del equipo: «que se vea moderno y avanzado con un buen contraste de
+colores, que parezca una app realmente hecha para el usuario». Se les
+preguntó el tema y eligieron **oscuro con más contraste** (no claro, no los
+dos). Mismos controles y mismos `id`; `styles.css` reescrita entera y el HTML
+reordenado.
+
+- **Armazón de app**: `.app` mide la ventana justa (`100dvh`) y NO se
+  desplaza; la cabecera, la barra de fase, el menú y el panel derecho se
+  quedan quietos y solo se desplaza `.view`. ⚠️ Va en `.app`, no en `body`:
+  `library.html` comparte la hoja y su página sí tiene que bajar. En el
+  teléfono (≤ 700 px) vuelve a desplazarse la página entera.
+- **Contraste**: texto secundario `--text-muted` a 7,9:1 sobre una tarjeta
+  (antes ~4:1) y casi todo en **Sora a 13-14 px**. Space Mono queda solo
+  para datos (valores de los deslizadores, comandos, registro). Si añades
+  un texto de ayuda, usa `.note`; un título de tarjeta, `.card-title`
+  (`.tone-green` / `.tone-amber`); un rótulo pequeño, `.kicker`. **No
+  vuelvas a escribir estilos en línea** para eso (se quitaron ~20).
+- **Botones**: teñidos por defecto (`.btn-purple`, `.btn-green`…) y
+  **rellenos** con `.btn-solid`, que es para LA acción principal de su
+  tarjeta (Enviar, Guardar y aplicar, Probar voz). No lo pongas en todos.
+- **Vista Voz en tarjetas**: `.voice-top` (micrófono `.voice-hero` +
+  conversación `.voice-talk`), `.voice-tools` (trivia + traductor) y
+  `.voice-quick` (comandos rápidos). Se parten en dos columnas con una
+  **container query** sobre `.content` (`@container contenido (min-width:
+  760px)`): depende del ancho que queda de verdad, haya o no panel derecho.
+- **El micrófono cambia de color con la fase**: `updateVoicePhase()` pone
+  `document.body.dataset.phase` y el CSS define `--orb` por fase (gris
+  apagado · azul grisáceo reposo · verde «puedes hablar» · cian grabando y
+  hablando · ámbar pensando). El icono de dentro y el de la barra también
+  cambian (`PHASES[...].icon`).
+- **Sin emojis**: las fases y los botones del Arduino usan iconos de la
+  fuente local. En la Pi los emojis pueden salir como cuadritos (no trae
+  fuente de emojis), igual que pasaba con el coreano. ⚠️ **No hay icono de
+  flecha hacia abajo** en el subconjunto local: se usa
+  `<i class="ti ti-arrow-up ti-down">` (`.ti-down` lo gira 180°). No se
+  añadió ningún icono nuevo, así que `mech-icons.css` no cambió.
+- **Deslizadores rellenos** hasta la perilla: el navegador no lo hace solo;
+  `pintarRango()` pone `--p` en cada `<input type="range">` (al cargar, al
+  moverlo y en `setSlider()`). Si creas un deslizador por código, llámala.
+- **Ajustes en grupos**: la tarjeta de ~40 filas lleva rótulos `.set-group`
+  (Micrófono y escucha · Voz, interrupción y subtítulos · Brazos y gestos ·
+  Saludo por cámara).
+- **Menú lateral**: sección «Abrir» con **Biblioteca** (`/library`) y
+  **Proyección** (`/projector`), en ventana aparte, y al pie **«Atajos y
+  frases»** (un desplegable de `Menus`). Los atajos ya no ocupan un tercio
+  del panel derecho, que queda para Conversación y Registro.
+- **Aviso de conexión perdida**: `.net-toast`, visible con
+  `body.sin-servidor` (lo ponen `ws.onclose` / `ws.onopen`). Con `?app=1` en
+  la dirección (así lo abre la app de Windows) trae «Buscar de nuevo», que
+  hace `history.back()` a la pantalla de búsqueda.
+- `index.html` pide ahora `styles.css?v=8` y `app.js?v=8`.
+
+### App de Windows sin construir nada (8 oct 2026)
+
+Pedido: «que el panel también funcione como una app que pueda correr
+abriéndolo en mi computadora». Se le preguntó qué quería decir y eligió **un
+icono que abre el panel** (no un modo demostración sin robot, no MECH entero
+en la PC). `MECH Panel.exe` ya hacía eso, pero **en la laptop del equipo no
+está construido ni se puede** (no hay Python instalable a mano).
+
+- **`windows/Instalar MECH.bat`** → `instalar_app.ps1`: copia
+  `windows/app/` + `mech.ico` a `%APPDATA%\MECH\app` y crea el acceso
+  directo **MECH** (Escritorio y menú Inicio) a Edge/Chrome con
+  `--app="file:///…/index.html"`, perfil propio y el flag de autoplay.
+  `Quitar MECH.bat` lo deshace. Parámetros `-Destino`, `-Escritorio` y
+  `-SinMenuInicio` para probarlo sin tocar el equipo.
+- **`windows/app/index.html`** es la pantalla que busca al robot (un solo
+  archivo, sin nada externo): última dirección + `mech.local` / `mech`; si
+  no, barre la red de la última vez; si no, pantalla de ayuda con campo
+  manual y reintento cada 4 s. Al encontrarlo navega a
+  `http://<robot>:8000/?app=1`.
+- ⚠️ **El panel se sigue cargando DESDE EL ROBOT, a propósito.** Una copia
+  local del panel se desincronizaría del backend en cuanto alguien
+  actualizara solo uno de los dos. No lo cambies por «que abra aunque el
+  robot esté apagado»: para eso está la pantalla de búsqueda.
+- Cómo comprueba que es MECH sin poder leer la respuesta (CORS): `fetch`
+  con `mode: 'no-cors'` (¿contestó alguien?) + cargar `/static/icon.svg`
+  como imagen (¿es MECH?). **No hizo falta tocar el backend** ni abrir CORS.
+- ⚠️ No barre la red actual a ciegas: una página no puede saber la IP de la
+  laptop. El botón «Buscar en redes habituales» prueba las típicas; es
+  manual a propósito (son ~1800 conexiones: no para lanzarlas solas en la
+  red de un colegio).
+- ⚠️ `.ps1` y `.bat` van **sin tildes**: PowerShell 5 lee los `.ps1` sin BOM
+  como ANSI.
+- Si cambia `windows/app/index.html`, hay que volver a correr el instalador
+  en cada laptop (se usa la copia de `%APPDATA%`).
+- `mech_panel.py` y lo del `.exe` no se tocaron (siguen con su paleta
+  vieja).
 
 ### Menús animados y los diez idiomas en uno (6 oct 2026)
 
@@ -2079,9 +2204,10 @@ presentan.
   (`AUDIO_INPUT_DEVICE=Steren`) no coincidía con ninguna opción, el
   desplegable quedaba en blanco y «Guardar en .env» **borraba el micrófono**.
   Ahora se añade como opción («Steren (lo configurado ahora)»).
-- **`?v=7` en `index.html`** (en `styles.css` y `app.js`): para que tras un
-  `git pull` el navegador no mezcle el HTML nuevo con el CSS/JS viejos que
-  tenía guardados. **Al tocar cualquiera de los dos, súbele el número.**
+- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=8`): para
+  que tras un `git pull` el navegador no mezcle el HTML nuevo con el CSS/JS
+  viejos que tenía guardados. **Al tocar cualquiera de los dos, súbele el
+  número.**
 - Iconos: no se añadió ninguno (la flecha y la palomita de los menús están
   dibujadas con bordes de CSS), así que no hubo que regenerar
   `mech-icons.css`.

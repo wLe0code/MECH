@@ -27,18 +27,31 @@ Cuando MECH está listo suena un **tono corto**. A partir de ahí ya escucha.
 
 ### Desde una laptop Windows
 
-Abre **`MECH Panel.exe`**: busca la Pi sola en la red y, cuando el punto se
-pone verde, se habilitan los botones:
+**La app «MECH».** Se instala **una sola vez** en cada laptop, sin instalar
+nada más (ni Python ni programas): en la carpeta `windows` del proyecto,
+doble clic en **`Instalar MECH.bat`**. Deja un icono **MECH** en el
+Escritorio y en el menú Inicio.
 
-| Botón | Qué abre |
-|---|---|
-| **ABRIR EL PANEL** | El panel de control, en una ventana propia. |
-| **Abrir la proyección** | La proyección, por si se proyecta desde la laptop. |
-| **Panel a pantalla completa** | El panel en modo kiosko (se sale con `Alt + F4`). |
-| **Biblioteca de videos (en el navegador)** | La página para subir los videos de las obras (§7). |
+Al abrir ese icono:
 
-Si no encuentra la Pi, escribe su dirección en el campo (por ejemplo
-`192.168.1.42` o `mech.local`) y pulsa **Probar**. Más detalles en
+1. Sale una ventana propia que **busca al robot sola** («Buscando a MECH…»).
+2. Cuando lo encuentra, entra al panel de control. La siguiente vez va
+   directo: recuerda dónde estaba.
+3. Si no lo encuentra, lo dice y enseña qué revisar: que MECH esté encendido
+   (icono «Iniciar MECH» en la Pi), que la laptop y el robot estén en la
+   **misma wifi**, y un campo para escribir la dirección a mano (por ejemplo
+   `192.168.1.42`). **Sigue buscando sola**: se puede abrir la app primero y
+   encender el robot después.
+
+Dentro del panel, el menú de la izquierda tiene además **Biblioteca** (subir
+los videos, §7) y **Proyección** (por si se proyecta desde la laptop); las
+dos se abren en otra ventana. Abajo del todo, **Atajos y frases**.
+
+Si se pierde la conexión con el robot sale un aviso abajo («Sin conexión con
+MECH») con el botón **Buscar de nuevo**, que vuelve a la pantalla de búsqueda.
+
+Para quitarla: `Quitar MECH.bat`, en la misma carpeta. Más detalles (y la
+versión antigua, `MECH Panel.exe`) en
 [`../windows/README.md`](../windows/README.md).
 
 ---
@@ -391,7 +404,8 @@ Se ajusta en Panel → Ajustes:
 Cada obra se proyecta con sus propios videos, uno por tramo de la narración.
 Se suben en la **biblioteca**:
 
-- Desde la laptop: `MECH Panel.exe` → **Biblioteca de videos**.
+- Desde el panel (en la Pi o en la app de la laptop): menú de la izquierda →
+  **Biblioteca**.
 - Desde cualquier navegador en la misma wifi: `http://mech:8000/library`.
 
 Hay una tarjeta por obra, con un botón por segmento. Se arrastra el mp4 al

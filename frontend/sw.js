@@ -20,7 +20,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(fetch(event.request).catch(() => {
     if (event.request.mode === 'navigate') {
       return new Response(
-        '<html><body style="background:#08090a;color:#fff;font-family:sans-serif;padding:40px"><h1>MECH offline</h1><p>No hay conexión al servidor de la Raspberry Pi. Verifica que esté encendida y en la misma red.</p></body></html>',
+        '<html><body style="background:#0a0c10;color:#fff;font-family:sans-serif;padding:40px"><h1>MECH offline</h1><p>No hay conexión al servidor de la Raspberry Pi. Verifica que esté encendida y en la misma red.</p></body></html>',
         { headers: { 'Content-Type': 'text/html' } }
       );
     }

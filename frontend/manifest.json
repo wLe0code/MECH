@@ -1,13 +1,13 @@
 {
-  "name": "MECH Control System",
+  "name": "MECH — Panel de control",
   "short_name": "MECH",
   "description": "Panel de control del robot MECH (WRO 2026 — Robots and Culture).",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#08090a",
-  "theme_color": "#08090a",
+  "background_color": "#0a0c10",
+  "theme_color": "#10141a",
   "lang": "es",
   "categories": ["productivity", "utilities"],
   "icons": [

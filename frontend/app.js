@@ -116,6 +116,7 @@
 
     state.ws.onopen = () => {
       state.wsConnected = true;
+      document.body.classList.remove('sin-servidor');
       log('Conectado al servidor MECH', 'ok');
       $('ws-badge-wrap').innerHTML =
         '<span class="ws-badge ws-connected"><i class="ti ti-wifi"></i>Servidor OK</span>';
@@ -131,6 +132,8 @@
 
     state.ws.onclose = () => {
       state.wsConnected = false;
+      // Aviso flotante «Sin conexión con MECH» (lo pinta el CSS).
+      document.body.classList.add('sin-servidor');
       $('ws-badge-wrap').innerHTML =
         '<span class="ws-badge ws-disconnected"><i class="ti ti-wifi-off"></i>Reconectando…</span>';
       setSensor('sen-ws', 'DESCONECTADO', 'val-err');
@@ -191,8 +194,8 @@
     const st = $('vision-status');
     if (st) {
       if (!v.enabled) st.innerHTML = '<span style="color:var(--text-muted)">Cámara apagada</span>';
-      else if (!v.user_present) st.innerHTML = '<span style="color:#5DCAA5">Cámara activa — sin usuario a la vista</span>';
-      else st.innerHTML = `<span style="color:#5DCAA5">Usuario detectado a ${v.distance != null ? v.distance.toFixed(1) : '?'} m (x=${v.x})</span>`;
+      else if (!v.user_present) st.innerHTML = '<span style="color:var(--ok)">Cámara activa — sin usuario a la vista</span>';
+      else st.innerHTML = `<span style="color:var(--ok)">Usuario detectado a ${v.distance != null ? v.distance.toFixed(1) : '?'} m (x=${v.x})</span>`;
     }
   }
 
@@ -213,13 +216,13 @@
 
   // Mapa de fases del ciclo de voz → texto + estilo del banner grande.
   const PHASES = {
-    off:          { cls: 'phase-off',     text: 'Bucle de voz apagado',     hint: 'Pulsa el micrófono o la tecla V para empezar' },
-    dormant:      { cls: 'phase-dormant', text: '😴 MECH en reposo',         hint: "Di 'ok MECH' (español) o 'wake up MECH' (inglés)" },
-    waiting:      { cls: 'phase-waiting', text: '🎤 PUEDES HABLAR',          hint: 'Dile al juez/usuario que hable AHORA' },
-    listening:    { cls: 'phase-listen',  text: '● Grabando tu voz…',         hint: 'Te estoy escuchando, sigue hablando' },
-    transcribing: { cls: 'phase-work',    text: 'Transcribiendo…',           hint: 'Convirtiendo la voz a texto' },
-    thinking:     { cls: 'phase-work',    text: 'MECH está pensando…',        hint: 'Generando la respuesta con Claude' },
-    speaking:     { cls: 'phase-speak',   text: '🔊 MECH está hablando…',     hint: "Di 'oye MECH' para interrumpirlo" },
+    off:          { cls: 'phase-off',     icon: 'ti-microphone', text: 'Bucle de voz apagado', hint: 'Pulsa el micrófono o la tecla V para empezar' },
+    dormant:      { cls: 'phase-dormant', icon: 'ti-bed',        text: 'MECH en reposo',       hint: "Di 'ok MECH' (español) o 'wake up MECH' (inglés)" },
+    waiting:      { cls: 'phase-waiting', icon: 'ti-microphone', text: 'PUEDES HABLAR',        hint: 'Dile al juez/usuario que hable AHORA' },
+    listening:    { cls: 'phase-listen',  icon: 'ti-microphone', text: 'Grabando tu voz…',     hint: 'Te estoy escuchando, sigue hablando' },
+    transcribing: { cls: 'phase-work',    icon: 'ti-refresh',    text: 'Transcribiendo…',      hint: 'Convirtiendo la voz a texto' },
+    thinking:     { cls: 'phase-work',    icon: 'ti-bulb',       text: 'MECH está pensando…',  hint: 'Generando la respuesta con Claude' },
+    speaking:     { cls: 'phase-speak',   icon: 'ti-volume',     text: 'MECH está hablando…',  hint: "Di 'oye MECH' para interrumpirlo" },
   };
 
   function updateVoicePhase(phase) {
@@ -227,6 +230,12 @@
     const banner = $('voice-phase-banner');
     banner.className = 'voice-phase-banner ' + p.cls;
     $('vpb-text').textContent = p.text;
+    // El icono de la fase (en la barra y dentro del micrófono) y la fase
+    // en <body data-phase>: de ahí saca el CSS el color del micrófono.
+    const icono = 'ti ' + p.icon;
+    if ($('vpb-icon')) $('vpb-icon').className = icono + ' vpb-icon';
+    if ($('mic-icon')) $('mic-icon').className = icono;
+    document.body.dataset.phase = PHASES[phase] ? phase : 'off';
     // La frase que lo corta es la del idioma en que despertó (en inglés,
     // 'hey MECH'; 'oye MECH' ahí no hace nada).
     const idioma = LANGS[state.language];
@@ -1134,7 +1143,17 @@
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;
     el.value = value;
+    pintarRango(el);
     $(inputId + '-val').textContent = value + (SETTING_UNITS[key] || '');
+  }
+
+  // El riel de un deslizador se rellena de color hasta la perilla. El
+  // navegador no lo hace solo: aquí se le dice al CSS por dónde va (`--p`).
+  function pintarRango(el) {
+    const min = parseFloat(el.min) || 0;
+    const max = parseFloat(el.max) || 100;
+    const p = max > min ? (parseFloat(el.value) - min) / (max - min) * 100 : 0;
+    el.style.setProperty('--p', Math.max(0, Math.min(100, p)) + '%');
   }
 
   // ─── Navegación ───────────────────────────────────────────────────
@@ -1220,6 +1239,19 @@
   // táctiles los <select> se quedan como los del sistema: en un teléfono su
   // selector nativo es más cómodo que cualquier menú hecho a mano.
   pintarMenuIdiomas();
+  // Abierto desde la app de Windows (windows/app la abre con `?app=1`): si se
+  // pierde al robot, el aviso ofrece volver a la pantalla que lo busca.
+  if (new URLSearchParams(location.search).has('app')) {
+    document.body.classList.add('en-app');
+    if ($('net-back')) $('net-back').addEventListener('click', () => history.back());
+  }
+  // La ayuda de atajos y frases (botón del pie del menú lateral).
+  if ($('keys-btn') && $('keys-pop')) Menus.unir($('keys-btn'), $('keys-pop'));
+  // Los deslizadores: relleno hasta la perilla, ahora y cada vez que se muevan.
+  document.querySelectorAll('input[type="range"]').forEach(pintarRango);
+  document.addEventListener('input', (e) => {
+    if (e.target.matches && e.target.matches('input[type="range"]')) pintarRango(e.target);
+  });
   // `--menus` lo pone styles.css: si el navegador tiene guardada una hoja de
   // estilos vieja (sin los menús), no se monta nada de esto y el panel queda
   // con los controles de siempre.

@@ -114,11 +114,11 @@ journalctl -u mech-server -f   # ver logs
 
 ## Operar desde Windows
 
-Lee [`windows/README.md`](../windows/README.md) — cubre los tres modos (.bat app, .bat kiosko, PWA instalada).
+Lee [`windows/README.md`](../windows/README.md).
 
-Resumen ultra rápido:
-1. Edita `windows/config.txt` con la URL: `http://192.168.1.42:8000` (la IP de tu Pi).
-2. Doble click a `windows/MECH Control.bat`.
+Resumen ultra rápido: doble clic en `windows/Instalar MECH.bat` (una vez).
+Deja un icono **MECH** en el Escritorio que busca al robot solo y abre el
+panel en su propia ventana. No hace falta Python ni saberse la IP.
 
 ## Lo que hace el panel
 

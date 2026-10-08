@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MECH · Control System</title>
+<title>MECH · Panel de control</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#08090a">
+<meta name="theme-color" content="#10141a">
 <!-- Iconos y fuentes EN LOCAL: sin internet, el CDN dejaba los botones
      sin icono (varios son solo icono = botones en blanco). -->
 <link rel="stylesheet" href="vendor/mech-icons.css">
@@ -16,22 +16,27 @@
 <link rel="stylesheet" href="vendor/mech-fonts-cjk.css">
 <!-- El `?v=` es para que el navegador NO use la copia vieja guardada tras un
      `git pull`: al cambiar styles.css o app.js, súbele el número a los dos. -->
-<link rel="stylesheet" href="/static/styles.css?v=7">
+<link rel="stylesheet" href="/static/styles.css?v=8">
 </head>
 <body>
 <div class="app">
 
   <!-- ───── HEADER ───── -->
   <div class="header">
-    <div class="logo"><div class="logo-dot"></div>MECH · CONTROL SYSTEM</div>
+    <!-- La marca: el aro rojo con su punto es el icono de MECH. -->
+    <div class="logo">
+      <span class="logo-mark" aria-hidden="true"><span class="logo-dot"></span></span>
+      <span class="logo-name">MECH</span>
+      <span class="logo-sub">Panel de control</span>
+    </div>
     <div class="status-bar">
-      <div class="status-item"><div id="dot-fw"  class="dot-off"></div>FIRMWARE</div>
-      <div class="status-item"><div id="dot-mic" class="dot-off"></div>VOZ</div>
-      <div class="status-item"><div id="dot-ard" class="dot-off"></div>ARDUINO</div>
+      <div class="status-item" title="El servidor de MECH (en la Raspberry Pi) responde"><div id="dot-fw"  class="dot-off"></div>Firmware</div>
+      <div class="status-item" title="El bucle de voz: verde encendido, ámbar escuchando"><div id="dot-mic" class="dot-off"></div>Voz</div>
+      <div class="status-item" title="El Arduino (motores y brazos) está conectado"><div id="dot-ard" class="dot-off"></div>Arduino</div>
       <div class="status-item" id="ws-badge-wrap">
         <span class="ws-badge ws-disconnected"><i class="ti ti-wifi-off"></i>Conectando…</span>
       </div>
-      <div style="font-family:var(--font-mono);font-size:11px;color:#666" id="clock">--:--:--</div>
+      <div id="clock">--:--:--</div>
     </div>
     <button class="emergency-btn" id="emergency-btn" title="Detiene motores, voz y proyectores. Atajo: barra espaciadora">
       <i class="ti ti-alert-octagon"></i>PARO DE EMERGENCIA
@@ -41,6 +46,7 @@
   <!-- ───── BANNER DE FASE DE VOZ (visible en todas las vistas) ───── -->
   <div class="voice-phase-banner phase-off" id="voice-phase-banner">
     <span class="vpb-pulse"></span>
+    <i class="ti ti-microphone vpb-icon" id="vpb-icon"></i>
     <span class="vpb-text" id="vpb-text">Bucle de voz apagado</span>
     <span class="vpb-hint" id="vpb-hint"></span>
   </div>
@@ -58,6 +64,29 @@
       <div class="nav-item"        data-view="sensors"   onclick="UI.showView('sensors', this)"><i class="ti ti-radar"></i>Sensores</div>
       <div class="nav-item"        data-view="arduino"   onclick="UI.showView('arduino', this)"><i class="ti ti-cpu-2"></i>Arduino <span class="nav-badge-yellow">CTRL</span></div>
       <div class="nav-item"        data-view="settings"  onclick="UI.showView('settings', this)"><i class="ti ti-settings"></i>Ajustes</div>
+      <!-- Lo que vive en otra página: se abre en su propia ventana. -->
+      <div class="sidebar-label">Abrir</div>
+      <a class="nav-item" href="/library" target="_blank" rel="noopener"
+         title="Subir y borrar los videos de cada obra y los de marketing. Se abre en otra ventana."><i class="ti ti-library-photo"></i>Biblioteca<i class="ti ti-arrow-right nav-ext"></i></a>
+      <a class="nav-item" href="/projector" target="_blank" rel="noopener"
+         title="La pantalla de proyección, por si proyectas desde este equipo en vez de desde la Raspberry Pi. Se abre en otra ventana."><i class="ti ti-video"></i>Proyección<i class="ti ti-arrow-right nav-ext"></i></a>
+      <!-- Los atajos de teclado y las frases clave, a un clic (antes ocupaban
+           un tercio del panel derecho). El desplegable lo coloca app.js. -->
+      <div class="sidebar-foot">
+        <button class="nav-item" id="keys-btn" type="button" aria-haspopup="true" aria-expanded="false">
+          <i class="ti ti-info-circle"></i>Atajos y frases
+        </button>
+      </div>
+      <div class="menu-pop keys-pop" id="keys-pop" role="dialog" aria-label="Atajos y frases">
+        <div class="menu-pop-title">Atajos de teclado</div>
+        <div class="cmd-entry"><div class="cmd-trigger">Barra espaciadora</div><div class="cmd-desc">PARO DE EMERGENCIA</div></div>
+        <div class="cmd-entry"><div class="cmd-trigger">V</div><div class="cmd-desc">Encender / apagar el bucle de voz</div></div>
+        <div class="cmd-entry"><div class="cmd-trigger">1 / 2 / 3</div><div class="cmd-desc">Vistas Voz / Stand / Inmersivo</div></div>
+        <div class="menu-pop-title" style="padding-top:14px">Frases por voz</div>
+        <div class="cmd-entry"><div class="cmd-trigger">«ok MECH»</div><div class="cmd-desc">Despierta a MECH (en español). Cada idioma tiene la suya: mira el botón IDIOMA.</div></div>
+        <div class="cmd-entry"><div class="cmd-trigger">«oye MECH»</div><div class="cmd-desc">Corta la narración</div></div>
+        <div class="cmd-entry"><div class="cmd-trigger">«para de escuchar»</div><div class="cmd-desc">Pone a MECH en reposo</div></div>
+      </div>
     </div>
 
     <!-- ───── CONTENT ───── -->
@@ -65,12 +94,14 @@
 
       <!-- VOICE VIEW -->
       <div class="view visible" id="view-voice">
+        <!-- Arriba, dos tarjetas: el micrófono (encender, idioma, cortar) y
+             la conversación en curso (lo que oyó, lo que responde, escribir). -->
+        <div class="voice-top">
         <div class="voice-hero">
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:2px">
-            COMANDO DE VOZ — BUCLE LOCAL EN LA RASPBERRY PI
-          </div>
+          <div class="kicker">Control por voz</div>
 
-          <div class="voice-btn" id="voice-btn" onclick="API.toggleVoiceLoop()">
+          <div class="voice-btn" id="voice-btn" onclick="API.toggleVoiceLoop()"
+               title="Enciende o apaga el bucle de voz (tecla V). Su color sigue la fase: verde = puedes hablar.">
             <i class="ti ti-microphone" id="mic-icon"></i>
           </div>
           <div class="voice-status" id="voice-status">Bucle de voz apagado</div>
@@ -114,20 +145,37 @@
             <div class="wave-bar" style="height:8px"></div>
           </div>
 
+          <button class="btn btn-purple" id="interrupt-btn"
+                  onclick="API.interrupt()"
+                  title="Corta la narración igual que decir «oye MECH». Sirve para probar la interrupción sin micrófono.">
+            <i class="ti ti-hand-stop"></i>Interrumpir narración
+          </button>
+        </div><!-- /voice-hero -->
+
+        <div class="voice-talk">
+          <div class="field-label"><i class="ti ti-microphone"></i>Lo que oyó MECH</div>
           <div class="transcript-box" id="transcript">
             <span class="transcript-placeholder">Lo que dice el usuario aparecerá aquí…</span>
           </div>
 
           <div class="ai-response" id="ai-resp">
             <div class="ai-label">MECH responde</div>
-            <span style="color:var(--text-muted)">Esperando comando…</span>
+            <span class="ai-empty">Esperando comando…</span>
           </div>
 
-          <button class="btn btn-purple" id="interrupt-btn" style="margin-top:4px"
-                  onclick="API.interrupt()"
-                  title="Corta la narración igual que decir «oye MECH». Sirve para probar la interrupción sin micrófono.">
-            <i class="ti ti-hand-stop"></i>Interrumpir narración («oye MECH»)
-          </button>
+          <div class="text-input-row">
+            <input class="text-input" id="text-cmd" type="text"
+                   placeholder="O escribe aquí lo que le dirías y pulsa Enter…"
+                   onkeydown="if(event.key==='Enter') API.sendTextCommand()">
+            <button class="btn btn-purple btn-solid" onclick="API.sendTextCommand()">
+              <i class="ti ti-send"></i>Enviar
+            </button>
+          </div>
+        </div><!-- /voice-talk -->
+        </div><!-- /voice-top -->
+
+        <!-- Los dos modos extra, lado a lado. -->
+        <div class="voice-tools">
 
           <!-- Trivia: el juego de preguntas que se proyecta. Corre en el
                servidor (backend/trivia.py); aquí se lanza y se puede
@@ -201,23 +249,12 @@
                 <i class="ti ti-player-stop"></i>Olvidar
               </button>
             </div>
-            <span class="translator-hint">«traduce MECH» → pregunta qué traducir → traduce UNA frase → se calla. Para la siguiente, repetí el comando (el par de idiomas se recuerda) · «deja de traducir» lo olvida</span>
+            <span class="translator-hint"><b>«traduce MECH»</b> → pregunta qué traducir → traduce UNA frase → se calla. Para la siguiente, repetí el comando (el par de idiomas se recuerda) · <b>«deja de traducir»</b> lo olvida.</span>
           </div>
+        </div><!-- /voice-tools -->
 
-          <div class="text-input-row">
-            <input class="text-input" id="text-cmd" type="text"
-                   placeholder="O escribe un comando aquí y presiona Enter…"
-                   onkeydown="if(event.key==='Enter') API.sendTextCommand()">
-            <button class="btn btn-purple" onclick="API.sendTextCommand()">
-              <i class="ti ti-send"></i>Enviar
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase">
-            Comandos rápidos — Obras culturales
-          </div>
+        <div class="voice-quick">
+          <div class="card-title"><i class="ti ti-player-play"></i>Comandos rápidos</div>
           <div class="cmd-grid">
             <div class="cmd-chip" onclick="API.testCmd('Cuéntame sobre Don Quijote')"><i class="ti ti-sword"></i>Don Quijote</div>
             <div class="cmd-chip" onclick="API.testCmd('Cuéntame la Campaña Nacional de 1856')"><i class="ti ti-flag"></i>Campaña Nacional 1856</div>
@@ -303,21 +340,21 @@
       <div class="view" id="view-firmware">
         <div class="view-title"><i class="ti ti-cpu" style="color:var(--amber)"></i>Firmware</div>
         <div class="fw-card">
-          <div class="fw-row"><span class="fw-key">Servidor</span><span class="fw-val" id="fw-server" style="color:#5DCAA5">● ONLINE</span></div>
+          <div class="fw-row"><span class="fw-key">Servidor</span><span class="fw-val" id="fw-server" style="color:var(--ok)">● ONLINE</span></div>
           <div class="fw-row"><span class="fw-key">Versión</span><span class="fw-val">MECH backend v1.0</span></div>
           <div class="fw-row"><span class="fw-key">Modelo Claude</span><span class="fw-val" id="fw-model">—</span></div>
           <div class="fw-row"><span class="fw-key">Bucle de voz</span><span class="fw-val" id="fw-voice">DETENIDO</span></div>
           <div class="fw-row"><span class="fw-key">Arduino</span><span class="fw-val" id="fw-arduino">—</span></div>
           <div class="fw-row"><span class="fw-key">Modo robot</span><span class="fw-val" id="fw-mode">IDLE</span></div>
-          <button class="btn" style="margin-top:10px" onclick="API.arduinoReconnect()" title="El servidor también reintenta solo cada pocos segundos">
+          <button class="btn" onclick="API.arduinoReconnect()" title="El servidor también reintenta solo cada pocos segundos">
             <i class="ti ti-plug-connected"></i>Reconectar Arduino ahora
           </button>
         </div>
         <div class="warning-box">
-          <div style="font-size:11px;font-family:var(--font-mono);color:#F09595;margin-bottom:8px">
+          <div class="warning-title">
             ⚠ El PARO DE EMERGENCIA es global
           </div>
-          <div style="font-size:12px;color:var(--text-muted);line-height:1.6">
+          <div class="note">
             Detiene motores (<code>MODE:STOP</code>), corta el audio de TTS en curso,
             apaga la proyección y termina el bucle de voz. Puedes activarlo con el
             botón rojo del header o con la <strong>barra espaciadora</strong>.
@@ -349,50 +386,50 @@
         </div>
 
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">MODO DEL ROBOT</div>
+          <div class="card-title">MODO DEL ROBOT</div>
           <div class="arduino-cmd-grid">
-            <button class="arduino-btn" onclick="API.arduinoMode('IDLE')">🛏 IDLE</button>
-            <button class="arduino-btn" onclick="API.arduinoMode('LISTEN')">👂 LISTEN</button>
-            <button class="arduino-btn" onclick="API.arduinoMode('SPEAK')">🗣 SPEAK</button>
-            <button class="arduino-btn" onclick="API.arduinoMode('AUTO')">🤖 AUTO</button>
-            <button class="arduino-btn danger" onclick="API.arduinoMode('STOP')">■ STOP</button>
+            <button class="arduino-btn" onclick="API.arduinoMode('IDLE')"><i class="ti ti-bed"></i>IDLE</button>
+            <button class="arduino-btn" onclick="API.arduinoMode('LISTEN')"><i class="ti ti-microphone"></i>LISTEN</button>
+            <button class="arduino-btn" onclick="API.arduinoMode('SPEAK')"><i class="ti ti-volume"></i>SPEAK</button>
+            <button class="arduino-btn" onclick="API.arduinoMode('AUTO')"><i class="ti ti-cpu-2"></i>AUTO</button>
+            <button class="arduino-btn danger" onclick="API.arduinoMode('STOP')"><i class="ti ti-player-stop"></i>STOP</button>
           </div>
         </div>
 
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">MOVIMIENTO (ruedas omnidireccionales)</div>
+          <div class="card-title">MOVIMIENTO (ruedas omnidireccionales)</div>
           <div class="arduino-cmd-grid">
             <div></div>
-            <button class="arduino-btn"  onpointerdown="API.move(100,0,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↑ AVANZAR</button>
+            <button class="arduino-btn"  onpointerdown="API.move(100,0,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()"><i class="ti ti-arrow-up"></i>AVANZAR</button>
             <div></div>
             <!-- Con estas ruedas `vy` es el que GIRA y `w` el que va de LADO
                  (sep 2026, probado por el equipo). Por eso los LATERALES
                  mandan `w` y los GIROS mandan `vy` — que es también lo que usa
                  la media vuelta de «mira hacia afuera». -->
-            <button class="arduino-btn"  onpointerdown="API.move(0,0,-100)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">← LATERAL</button>
-            <button class="arduino-btn danger" onclick="API.move(0,0,0)">■ ALTO</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,0,100)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">→ LATERAL</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,-100,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟲ GIRO IZQ</button>
-            <button class="arduino-btn"  onpointerdown="API.move(-100,0,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()">↓ ATRÁS</button>
-            <button class="arduino-btn"  onpointerdown="API.move(0,100,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">⟳ GIRO DER</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,-100)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()"><i class="ti ti-arrow-left"></i>LATERAL</button>
+            <button class="arduino-btn danger" onclick="API.move(0,0,0)"><i class="ti ti-player-stop"></i>ALTO</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,0,100)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">LATERAL<i class="ti ti-arrow-right"></i></button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,-100,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()"><i class="ti ti-rotate"></i>GIRO IZQ</button>
+            <button class="arduino-btn"  onpointerdown="API.move(-100,0,0)"  onpointerup="API.stopMove()" onpointerleave="API.stopMove()"><i class="ti ti-arrow-up ti-down"></i>ATRÁS</button>
+            <button class="arduino-btn"  onpointerdown="API.move(0,100,0)"   onpointerup="API.stopMove()" onpointerleave="API.stopMove()">GIRO DER<i class="ti ti-rotate-clockwise"></i></button>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+          <div class="note">
             Mantén presionado el botón para mover. Soltar = detiene. Todo va a POTENCIA MÁXIMA (100): a menos, estos motores solo zumban.
             Si AVANZAR va hacia atrás: Ajustes → «Adelante/atrás invertido».
           </div>
         </div>
 
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">MANIOBRAS (giro de 180°)</div>
+          <div class="card-title">MANIOBRAS (giro de 180°)</div>
           <div class="arduino-cmd-grid">
-            <button class="arduino-btn" onclick="API.lookOutward()">↻ MIRA HACIA AFUERA</button>
-            <button class="arduino-btn" onclick="API.backToProjection()">↺ REGRESA A PROYECTAR</button>
-            <button class="arduino-btn" onclick="API.greetNow()">👋 SALUDAR AHORA</button>
-            <button class="arduino-btn" onclick="API.testTurn()">🔁 PROBAR MEDIA VUELTA</button>
-            <button class="arduino-btn" onclick="API.advance(false)">⇈ AVANZAR (config.)</button>
-            <button class="arduino-btn" onclick="API.advance(true)">⇊ RETROCEDER (config.)</button>
+            <button class="arduino-btn" onclick="API.lookOutward()"><i class="ti ti-rotate-clockwise"></i>MIRA HACIA AFUERA</button>
+            <button class="arduino-btn" onclick="API.backToProjection()"><i class="ti ti-rotate"></i>REGRESA A PROYECTAR</button>
+            <button class="arduino-btn" onclick="API.greetNow()"><i class="ti ti-hand-stop"></i>SALUDAR AHORA</button>
+            <button class="arduino-btn" onclick="API.testTurn()"><i class="ti ti-rotate-360"></i>PROBAR MEDIA VUELTA</button>
+            <button class="arduino-btn" onclick="API.advance(false)"><i class="ti ti-arrow-up"></i>AVANZAR (config.)</button>
+            <button class="arduino-btn" onclick="API.advance(true)"><i class="ti ti-arrow-up ti-down"></i>RETROCEDER (config.)</button>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+          <div class="note">
             Ahora mira a: <b id="facing-val" style="color:var(--text)">la proyección</b>.
             Lo mismo que decirle «mira hacia afuera» / «regresa a proyectar».
             La media vuelta es el mismo movimiento de los botones GIRO de arriba,
@@ -405,7 +442,7 @@
         </div>
 
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">BRAZOS (servos MG996R — pines 9 y 10)</div>
+          <div class="card-title">BRAZOS (servos MG996R — pines 9 y 10)</div>
           <div class="slider-row">
             <label>IZQ</label>
             <input type="range" min="0" max="180" value="90" id="arm-l" oninput="API.armLive('L')">
@@ -416,13 +453,13 @@
             <input type="range" min="0" max="180" value="90" id="arm-r" oninput="API.armLive('R')">
             <span class="val" id="arm-r-val">90°</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+          <div class="note">
             90° = reposo. Los gestos automáticos (saludar, señalar…) los dispara la Pi al narrar.
           </div>
         </div>
 
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">ARO DE LEDS (NeoPixel 12 — pin A2)</div>
+          <div class="card-title">ARO DE LEDS (NeoPixel 12 — pin A2)</div>
           <div class="arduino-cmd-grid">
             <button class="arduino-btn" onclick="API.sendRawCmd('LED:WAKE')">◐ WAKE</button>
             <button class="arduino-btn" onclick="API.sendRawCmd('LED:LISTEN')">◉ LISTEN</button>
@@ -431,13 +468,13 @@
             <button class="arduino-btn" onclick="API.sendRawCmd('LED:IDLE')">○ IDLE</button>
             <button class="arduino-btn danger" onclick="API.sendRawCmd('LED:OFF')">✕ OFF</button>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+          <div class="note">
             En operación normal el aro se sincroniza solo con la fase de voz.
           </div>
         </div>
 
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">COMANDO CRUDO (debug)</div>
+          <div class="card-title">COMANDO CRUDO (debug)</div>
           <div class="text-input-row">
             <input class="text-input" id="raw-cmd" type="text" placeholder="Ej: MOVE:50:0:0 · ARM:L:120 · LED:WAKE"
                    onkeydown="if(event.key==='Enter') API.sendRaw()">
@@ -458,7 +495,7 @@
             <div class="cmd-chip" onclick="API.rawPreset('WHEEL:BL:50')"><i class="ti ti-wheel"></i>WHEEL:BL:50</div>
             <div class="cmd-chip" onclick="API.rawPreset('WHEEL:BR:50')"><i class="ti ti-wheel"></i>WHEEL:BR:50</div>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:10px;font-family:var(--font-mono);line-height:1.7">
+          <div class="note">
             <b>MOVE:vx:vy:w</b> — vx adelante/atrás · vy <b>GIRO</b> (tren delantero vs trasero) · w <b>LATERAL</b> (patrón diagonal FL+BR vs FR+BL) · valores −100..100. Es lo que se ve en el suelo con NUESTRAS ruedas (sep 2026). El comando crudo va tal cual: NO pasa por «Adelante/atrás invertido»<br>
             <b>ARM:L/R:ángulo</b> — brazos 0–180 (90 = reposo) · <b>STOP</b> — detiene ruedas<br>
             <b>WHEEL:FL/FR/BL/BR:vel</b> — calibración: mueve UNA sola rueda (positivo = adelante); <b>WHEEL:FL:0</b> o <b>STOP</b> la detiene<br>
@@ -480,23 +517,24 @@
 
         <!-- Prueba rápida de audio -->
         <div class="fw-card">
-          <div class="fw-key" style="margin-bottom:8px">PRUEBA DE SONIDO (sin Claude)</div>
+          <div class="card-title">PRUEBA DE SONIDO (sin Claude)</div>
           <div class="text-input-row">
             <input class="text-input" id="tts-test-text" type="text"
                    value="Hola, soy MECH. Esta es una prueba de sonido."
                    placeholder="Frase para que MECH diga…">
-            <button class="btn btn-green" onclick="API.ttsTest()">
+            <button class="btn btn-green btn-solid" onclick="API.ttsTest()">
               <i class="ti ti-volume"></i>Probar voz
             </button>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
+          <div class="note">
             Verifica ElevenLabs + parlante. Si no suena, revisa API key y salida de audio.
           </div>
         </div>
 
         <!-- Ajustes en vivo -->
         <div class="fw-card settings-live">
-          <div class="fw-key" style="margin-bottom:4px;color:#5DCAA5">● SE APLICAN EN VIVO</div>
+          <div class="card-title tone-green"><i class="ti ti-player-play"></i>Se aplican en vivo</div>
+          <div class="set-group">Micrófono y escucha</div>
 
           <div class="slider-row">
             <label title="0 = permisivo (capta hasta ruido). 3 = estricto (solo voz clara).">VAD sensib.</label>
@@ -538,7 +576,8 @@
             <input type="range" min="5" max="60" step="1" value="20" id="set-listen" oninput="UI.settingLabel('set-listen','listen')">
             <span class="val" id="set-listen-val">20 s</span>
           </div>
-          <div class="slider-row" style="margin-top:10px">
+          <div class="set-group">Voz, interrupción y subtítulos</div>
+          <div class="slider-row">
             <label title="No llama a ElevenLabs: MECH narra en seco. Para probar sin gastar créditos.">Modo ahorro</label>
             <label class="switch">
               <input type="checkbox" id="set-dryrun">
@@ -571,6 +610,7 @@
               <span class="switch-text">Subtitular la narración en la proyección</span>
             </label>
           </div>
+          <div class="set-group">Brazos y gestos</div>
           <div class="slider-row">
             <label title="full = gestos reales (saludar, señalar...). subtle = vaivén pequeño. off = quietos.">Brazos</label>
             <select class="text-input" id="set-armmode" style="flex:1">
@@ -634,6 +674,7 @@
               <span class="switch-text">Invertir brazo IZQUIERDO</span>
             </label>
           </div>
+          <div class="set-group">Saludo por cámara</div>
           <div class="slider-row">
             <label title="Segundos entre saludos a la cámara. Bajo = saluda a cada visitante nuevo.">Repetir saludo</label>
             <input type="range" min="5" max="120" step="5" value="45" id="set-greetcd" oninput="UI.settingLabel('set-greetcd','greetcd')">
@@ -666,14 +707,14 @@
               <option value="ko">COREANO</option>
             </select>
           </div>
-          <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
+          <button class="btn btn-green btn-solid" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar
           </button>
         </div>
 
         <!-- Trivia -->
         <div class="fw-card settings-live">
-          <div class="fw-key" style="margin-bottom:4px;color:#E5A54B">
+          <div class="card-title tone-amber">
             <i class="ti ti-bulb"></i> TRIVIA
           </div>
           <div class="section-sub" style="margin-bottom:10px">
@@ -704,7 +745,7 @@
 
         <!-- Maniobra "mira hacia afuera" — se calibra en el robot real -->
         <div class="fw-card settings-live">
-          <div class="fw-key" style="margin-bottom:4px;color:#E5A54B">
+          <div class="card-title tone-amber">
             <i class="ti ti-rotate-360"></i> GIRO DE 180° — CALIBRACIÓN
           </div>
           <div class="section-sub" style="margin-bottom:10px">
@@ -758,17 +799,17 @@
             <input type="range" min="0" max="0.6" step="0.05" value="0.15" id="set-kick" oninput="UI.settingLabel('set-kick','kick')">
             <span class="val" id="set-kick-val">0.15 s</span>
           </div>
-          <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
+          <button class="btn btn-green btn-solid" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar
           </button>
         </div>
 
         <!-- Visión (cámara C930e) -->
         <div class="fw-card settings-live">
-          <div class="fw-key" style="margin-bottom:4px;color:#5DCAA5">
+          <div class="card-title tone-green">
             <i class="ti ti-camera"></i> VISIÓN — DETECCIÓN DE USUARIOS (C930e)
           </div>
-          <div class="slider-row" style="margin-top:8px">
+          <div class="slider-row">
             <label title="Enciende la cámara y la detección de personas (MediaPipe).">Cámara</label>
             <label class="switch">
               <input type="checkbox" id="set-vision" onchange="API.visionToggle(this.checked)">
@@ -794,17 +835,17 @@
               <span class="switch-text">Proyectar solo con usuario cerca</span>
             </label>
           </div>
-          <div style="font-size:11px;font-family:var(--font-mono);margin-top:8px" id="vision-status">
+          <div class="note" id="vision-status">
             <span style="color:var(--text-muted)">Cámara apagada</span>
           </div>
-          <button class="btn btn-green" style="margin-top:12px" onclick="API.saveLiveSettings()">
+          <button class="btn btn-green btn-solid" onclick="API.saveLiveSettings()">
             <i class="ti ti-device-floppy"></i>Guardar y aplicar
           </button>
         </div>
 
         <!-- Ajustes que requieren reinicio -->
         <div class="fw-card settings-restart">
-          <div class="fw-key" style="margin-bottom:4px;color:var(--amber)">⟳ REQUIEREN REINICIAR EL SERVIDOR</div>
+          <div class="card-title tone-amber"><i class="ti ti-refresh"></i>Requieren reiniciar el servidor</div>
 
           <div class="slider-row">
             <label>Micrófono</label>
@@ -833,11 +874,11 @@
             <label>Voz ElevenLabs</label>
             <input class="text-input" id="set-voiceid" type="text" style="flex:1" placeholder="voice_id por defecto">
           </div>
-          <button class="btn btn-amber" style="margin-top:12px" onclick="API.saveRestartSettings()">
+          <button class="btn btn-amber btn-solid" onclick="API.saveRestartSettings()">
             <i class="ti ti-device-floppy"></i>Guardar en .env
           </button>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono)">
-            Tras guardar, reinicia: <code>Ctrl+C</code> y <code>python -m backend.server</code>.
+          <div class="note">
+            Tras guardar, reinicia MECH: en la Raspberry Pi, el icono <b>«Iniciar MECH»</b> (o <code>Ctrl+C</code> y <code>python -m backend.server</code>).
           </div>
         </div>
       </div>
@@ -846,22 +887,14 @@
 
     <!-- ───── RIGHT PANEL ───── -->
     <div class="right-panel">
-      <div class="panel-section">
-        <div class="panel-title">Conversación</div>
+      <div class="panel-section grow">
+        <div class="panel-title"><i class="ti ti-volume"></i>Conversación</div>
         <div class="chat-list" id="chat-list">
           <div class="chat-bubble chat-mech">Hola, soy MECH. Pregúntame sobre obras culturales o sobre mí mismo.</div>
         </div>
       </div>
-      <div class="panel-section">
-        <div class="panel-title">Atajos</div>
-        <div class="cmd-entry"><div class="cmd-trigger">Barra espaciadora</div><div class="cmd-desc">PARO DE EMERGENCIA</div></div>
-        <div class="cmd-entry"><div class="cmd-trigger">V</div><div class="cmd-desc">Activar / desactivar bucle de voz</div></div>
-        <div class="cmd-entry"><div class="cmd-trigger">Di: "ok MECH"</div><div class="cmd-desc">Despierta a MECH por voz (el aro de LEDs se enciende)</div></div>
-        <div class="cmd-entry"><div class="cmd-trigger">Di: "para de escuchar"</div><div class="cmd-desc">Pone a MECH en reposo</div></div>
-        <div class="cmd-entry"><div class="cmd-trigger">1 / 2 / 3</div><div class="cmd-desc">Vistas Voz / Stand / Inmersivo</div></div>
-      </div>
       <div class="panel-section grow">
-        <div class="panel-title">Log del sistema</div>
+        <div class="panel-title"><i class="ti ti-cpu"></i>Registro del sistema</div>
         <div class="log-list" id="log-list"></div>
       </div>
     </div>
@@ -869,6 +902,14 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
-<script src="/static/app.js?v=7"></script>
+<!-- Sale cuando se cae la conexion con el robot (app.js pone `.sin-servidor`). -->
+<div class="net-toast" id="net-toast" role="status">
+  <i class="ti ti-wifi-off"></i><span>Sin conexión con MECH. Reintentando…</span>
+  <!-- Solo se ve si el panel se abrió desde la app de Windows (`?app=1`):
+       vuelve a la pantalla que busca al robot (por si cambió de red). -->
+  <button class="net-back" id="net-back" type="button">Buscar de nuevo</button>
+</div>
+
+<script src="/static/app.js?v=8"></script>
 </body>
 </html>

@@ -5,8 +5,8 @@ de tocar nada. Contexto de fondo (arquitectura/hardware/decisiones): **CLAUDE.md
 en la raíz — este handoff no lo reemplaza, lo complementa con el estado *vivo*.
 CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 
-**Última actualización: 6 oct 2026 (tercera sesión del día; ver el
-párrafo «Tercera sesión» más abajo y §2.nonies).** Lo del 5 oct
+**Última actualización: 8 oct 2026 (ver el párrafo «Sesión del 8 oct» más
+abajo y §2.decies; lo del 6 oct, en §2.nonies).** Lo del 5 oct
 (§2.quinquies) se subió el 6 oct en dos commits encima de `62f3ebb`: «Panel
 con estética nueva…» y «Cinco idiomas más…». ⚠️ **Subido, pero SIN probar en
 la Pi.** Después, el mismo 6 oct (§2.sexies): **saludo en español** y **cada
@@ -26,8 +26,17 @@ pedidos. Hecho: el panel menos saturado y con menús animados, y las letras
 de coreano/japonés/chino incluidas en el repo. **El modo música NO se
 programó**: pidieron solo la explicación y las preguntas, y **falta que
 contesten** («después vemos lo del modo música»). Lo del panel y las letras
-se **subió a GitHub el mismo 6 oct** (commit «Panel con menús animados…»,
-encima de `1844329`), **sin probar en la Pi**: preguntar cómo fue.
+se **subió a GitHub el mismo 6 oct** (commit `c1b4c4d`, «Panel con menús
+animados…», encima de `1844329`).
+
+**Sesión del 8 oct (§2.decies):** el equipo **probó lo del 6 oct en la Pi**:
+«al parecer funciona todo, incluso lo del coreano». Pidió dos cosas más y
+están hechas: el **rediseño «de app»** del panel (tema oscuro con mucho más
+contraste) y una **app de Windows que se instala con doble clic**, sin
+Python. **Subido a GitHub el mismo 8 oct** (commit «Panel rediseñado como
+una app…», encima de `c1b4c4d`), **sin probar en la Pi ni con el robot**:
+preguntar cómo se ve y si la app encontró al robot. El modo música sigue
+esperando sus respuestas.
 
 > ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** La sesión del
 > 6 oct empezó leyendo este handoff en una copia local que estaba **2
@@ -68,6 +77,10 @@ encima de `1844329`), **sin probar en la Pi**: preguntar cómo fue.
    coreano, japonés y chino dentro del repo (el chat salía con cuadritos en
    la Pi). Y el **modo música**, que está **solo explicado**: hay seis
    preguntas esperando respuesta del equipo antes de programar nada.
+   ✅ **Probado en la Pi por el equipo el 8 oct: funciona**, coreano incluido.
+10. **8 oct, sin probar en la Pi ni con el robot** (§2.decies): el panel
+    rediseñado «como una app» y la app de Windows sin construir
+    (`windows\Instalar MECH.bat`).
 
 ---
 
@@ -580,6 +593,66 @@ lista aprobada (filtro estricto + categoría música + tope de duración, y
 lista aprobada para el día de la competencia); qué hace MECH mientras suena
 (quieto, o un vaivén suave de brazos); y si lo quieren en los diez idiomas o
 solo en español e inglés para empezar. **No implementar sin las respuestas.**
+
+### 2.decies Rediseño «de app» y app de Windows sin construir (8 oct)
+
+Dos pedidos en un mensaje. Antes de programar se le hicieron dos preguntas
+(con opciones) y eligió: **tema oscuro con más contraste** (no claro, no los
+dos) y, para la app, **un icono que abre el panel** (no un modo demostración
+sin robot, no MECH entero en la PC). Detalle en CLAUDE.md («Rediseño "de
+app"» y «App de Windows sin construir nada»).
+
+**1. El panel «moderno y avanzado, con buen contraste, que parezca una app
+hecha para el usuario».** Mismos controles y mismos `id`.
+
+- `frontend/styles.css` reescrita entera: paleta de más contraste (texto
+  secundario a 7,9:1), Sora a 13-14 px casi en todo, tarjetas que se
+  distinguen del fondo, botones principales rellenos (`.btn-solid`).
+- **Armazón fijo**: solo se desplaza la vista; cabecera, menú y panel
+  derecho se quedan quietos (en el teléfono, la página entera como antes).
+- Vista Voz en tarjetas (micrófono · conversación · trivia · traductor ·
+  comandos rápidos), en dos columnas según el ancho que queda de verdad
+  (container query).
+- **El micrófono cambia de color con la fase** (gris apagado, verde «puedes
+  hablar», cian grabando/hablando, ámbar pensando) y de icono.
+- **Fuera los emojis** (fases y botones del Arduino): iconos de la fuente
+  local, que en la Pi no fallan. No se añadió ningún icono nuevo.
+- Deslizadores rellenos hasta la perilla, Ajustes en cuatro grupos con
+  rótulo, y en el menú lateral: **Biblioteca**, **Proyección** y **Atajos y
+  frases** (los atajos ya no ocupan el panel derecho).
+- Aviso flotante «Sin conexión con MECH» cuando se cae el WebSocket.
+- `index.html` pide `styles.css?v=8` y `app.js?v=8`.
+- Archivos: `frontend/index.html`, `styles.css`, `app.js`, `manifest.json`,
+  `sw.js` (solo colores).
+
+**2. «Que el panel funcione como una app que pueda abrir en mi
+computadora».** `MECH Panel.exe` ya existía, pero en la laptop del equipo
+**no está construido** y no hay Python para construirlo. Solución sin
+construir nada:
+
+- `windows\Instalar MECH.bat` (doble clic) → `instalar_app.ps1` → icono
+  **MECH** en el Escritorio y el menú Inicio (acceso directo a Edge/Chrome
+  en modo aplicación). `Quitar MECH.bat` lo deshace.
+- `windows\app\index.html`: la pantalla que **busca al robot** (última
+  dirección, `mech.local`, `mech`, la red de la última vez) y entra al
+  panel; si no lo encuentra, enseña qué revisar, deja escribir la dirección
+  y **sigue buscando sola**.
+- El panel se sigue cargando **desde el robot** (misma versión siempre). No
+  se tocó el backend.
+- ⚠️ **El instalador NO se corrió en el equipo de verdad**: se probó en una
+  carpeta temporal. El icono lo tiene que crear el usuario con el doble
+  clic (así aprende a hacerlo en las otras laptops).
+
+Verificado en la laptop: las siete vistas y las seis fases en el navegador
+(servidor de mentira), a 1400 px, a 900 px y en tamaño de teléfono, sin
+errores de consola; preflight §8 (42 iconos con glifo, nada de internet); el
+instalador y el desinstalador (acceso directo leído de vuelta: destino,
+argumentos con la ruta `file:///` bien escrita aunque haya espacios, icono);
+y la pantalla de búsqueda: no encontrado → dirección a mano → «¡Conectado!»
+→ panel con `?app=1` → «Buscar de nuevo» → vuelta a la búsqueda.
+**NO verificado:** nada en la Pi ni con el robot; **abrir el icono real**
+(que Edge abra la página local en modo aplicación y que desde ahí alcance al
+robot); y que `mech.local` responda en la red del equipo.
 
 ### 2.quater Preguntas abiertas con el equipo
 
@@ -1382,7 +1455,33 @@ viejo en caché y los botones nuevos no aparecen). Desde la tercera sesión del
 volver a abrir el panel; si el idioma sigue saliendo como diez botones en
 fila, es que también quedó guardado el `index.html` viejo → Ctrl+Shift+R.
 
-### 0000) Panel con menús y letra coreana (§2.nonies; sin probar en la Pi)
+### 00000) Rediseño y app de Windows (§2.decies; sin probar)
+
+1. **El panel nuevo en la Pi**: «Iniciar MECH» y abrir el panel. Tiene que
+   verse con tarjetas, el aro rojo de MECH arriba a la izquierda y el
+   micrófono GRIS (apagado). Si sale «a medias» (mezcla de lo viejo y lo
+   nuevo): Ctrl+Shift+R.
+2. **El color del micrófono**: encender el bucle de voz → reposo (azul
+   grisáceo) → «ok MECH» → **verde** cuando se puede hablar → cian al grabar
+   → ámbar al pensar → cian al hablar. La barra de arriba va a juego.
+3. **Que no vaya lento en la Pi** al cambiar de vista o al mover los
+   deslizadores de Ajustes (ahora se rellenan de color).
+4. **Los botones del Arduino** (sobre todo mantener apretado AVANZAR / GIRO):
+   ahora llevan un icono dentro; tienen que seguir moviendo y PARAR al soltar.
+5. **Menú lateral**: «Biblioteca» y «Proyección» se abren en otra ventana;
+   «Atajos y frases» abre su lista.
+6. **La app en la laptop**: doble clic en `windows\Instalar MECH.bat` → sale
+   el icono MECH en el Escritorio → abrirlo con el robot encendido y en la
+   misma wifi → tiene que decir «¡Conectado!» y entrar al panel. Si dice «No
+   encuentro a MECH», escribir la dirección de la Pi; si con la dirección
+   tampoco, pedir **captura de la pantalla** y qué wifi usan (las de colegio
+   suelen aislar los equipos: probar con el hotspot del celular).
+   - Con el robot apagado: abrir la app, encender el robot y esperar: tiene
+     que entrar sola.
+   - Apagar el robot con el panel abierto: sale «Sin conexión con MECH» con
+     «Buscar de nuevo».
+
+### 0000) Panel con menús y letra coreana (§2.nonies) — ✅ probado el 8 oct
 
 1. **Lo que falló: el coreano en el chat.** Sin instalar nada: «Iniciar
    MECH», abrir el panel, vista Voz → botón **IDIOMA** → Coreano. El menú

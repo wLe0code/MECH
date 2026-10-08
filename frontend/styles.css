@@ -5,16 +5,26 @@
  * caía a las fuentes del sistema. En la competencia nada puede
  * depender del wifi del recinto.
  *
- * ESTÉTICA (oct 2026, pedido del equipo: «que el fondo no sea ese violeta»).
- * Son los mismos controles de siempre; cambió solo cómo se ven:
+ * ESTÉTICA (8 oct 2026, pedido del equipo: «que se vea moderno y avanzado,
+ * con buen contraste, que parezca una app hecha para el usuario»). Tema
+ * OSCURO, elegido por el equipo: es el que se lee junto a la proyección.
+ * Son los mismos controles de siempre; cambió cómo se ven y dónde están:
  *
- *   - Fondo GRAFITO casi negro y neutro (sin tinte violeta), con una rejilla
- *     de puntos muy tenue: tablero de instrumentos.
- *   - UN color de acento, cian (`--accent`), para todo lo que es "MECH" o la
- *     acción principal. Sustituye al morado de antes.
+ *   - ARMAZÓN DE APP: la cabecera, el menú y el panel derecho se quedan
+ *     quietos; solo se desplaza la vista (`.view`). En el teléfono se
+ *     desplaza la página entera, como antes.
+ *   - CONTRASTE: tres escalones de superficie que se distinguen a simple
+ *     vista y con borde sólido; texto secundario a más de 7:1 sobre las
+ *     tarjetas; casi todo en Sora a 13-14 px. Space Mono queda para lo que
+ *     de verdad es un dato (valores, comandos, registro).
+ *   - UN color de acento, cian (`--accent`), para MECH y la acción principal.
+ *     Los botones principales van RELLENOS (`.btn-solid`); los demás, teñidos.
  *   - El resto de colores SIGNIFICAN algo y no se usan de adorno:
- *       rojo  = paro, error, micrófono      verde = bien, «puedes hablar»
- *       ámbar = trabajando, Arduino, aviso  cian  = MECH, acción principal
+ *       rojo  = paro de emergencia, error    verde = bien, «puedes hablar»
+ *       ámbar = trabajando, Arduino, aviso   cian  = MECH, acción principal
+ *   - EL MICRÓFONO CAMBIA DE COLOR CON LA FASE (`body[data-phase]`, lo pone
+ *     app.js): gris apagado, verde «puedes hablar», cian grabando o hablando,
+ *     ámbar pensando. Es el mismo código de colores de la barra de fase.
  *
  * Tres reglas de movimiento que conviene no romper:
  *   1. Solo se animan `transform` y `opacity` (lo único que no obliga al
@@ -26,12 +36,11 @@
  *      de vista con las teclas 1/2/3 no se anima; con el ratón sí (cascada
  *      corta de `.view.entra` y el resaltado del menú que se desliza).
  *
- * MENÚS (oct 2026, pedido del equipo: «más animaciones en los menús» y que
- * los diez idiomas no saturen): el menú lateral tiene un resaltado que se
- * desliza, y el idioma y todos los desplegables son menús propios que se
- * abren con una cascada (ver «MENÚS DESPLEGABLES»). Las animaciones que
- * corren una vez usan `backwards` y NO `both`: con `both` el `transform` de
- * la animación se queda puesto y tapa el `scale(.97)` del `:active`.
+ * MENÚS (6 oct 2026): el menú lateral tiene un resaltado que se desliza, y
+ * el idioma y todos los desplegables son menús propios que se abren con una
+ * cascada (ver «MENÚS DESPLEGABLES»). Las animaciones que corren una vez
+ * usan `backwards` y NO `both`: con `both` el `transform` de la animación se
+ * queda puesto y tapa el `scale(.97)` del `:active`.
  */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,29 +48,35 @@
 :root {
   color-scheme: dark;
 
-  /* Fondo y superficies: grafito neutro, de más hondo a más cercano. */
-  --bg: #08090a;
-  --surface: #0f1113;
-  --surface2: #15181b;
-  --surface3: #1e2327;
-  --border: rgba(255, 255, 255, 0.075);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* Fondo y superficies, de más hondo a más cercano. Cada escalón se
+     distingue del anterior sin ayuda del borde. */
+  --bg: #0a0c10;
+  --surface: #10141a;      /* cabecera, menú lateral, panel derecho */
+  --surface2: #161b22;     /* tarjetas */
+  --surface3: #1e252e;     /* botones, cajas dentro de una tarjeta */
+  --surface4: #2a323d;     /* lo que está pulsado o resaltado */
+  --inset: #0c1015;        /* cajas de escribir: hundidas en la tarjeta */
+  --border: #252d37;
+  --border-strong: #37424f;
 
-  --text: #edf0f2;
-  --text-muted: #838c94;
-  --text-dim: #626b73;
+  --text: #f2f5f8;
+  --text-muted: #a7b1bc;   /* 7,9:1 sobre una tarjeta */
+  --text-dim: #7f8a96;     /* 4,7:1: solo para lo terciario */
 
-  /* Acento: MECH y la acción principal. */
-  --accent: #36cfee;
-  --accent-rgb: 54, 207, 238;
+  /* Acento: MECH y la acción principal. `--accent-ink` es el color del texto
+     ENCIMA de un botón relleno de acento. */
+  --accent: #22d3ee;
+  --accent-rgb: 34, 211, 238;
+  --accent-2: #3b9eff;
+  --accent-ink: #04202a;
 
   /* Colores con significado. Cada uno trae su versión `-rgb` para poder
      usarlo con transparencia: rgba(var(--red-rgb), .15). */
-  --red: #e24b4a;      --red-rgb: 226, 75, 74;     --red-dark: #a32d2d;
-  --red-soft: #ff9d97;
-  --amber: #f2a93b;    --amber-rgb: 242, 169, 59;
-  --teal: #1fb383;     --green-rgb: 49, 201, 148;
-  --ok: #5fdcae;
+  --red: #f04a4a;      --red-rgb: 240, 74, 74;     --red-dark: #b3262b;
+  --red-soft: #ff9a9a;
+  --amber: #ffb020;    --amber-rgb: 255, 176, 32;
+  --teal: #10b981;     --green-rgb: 52, 211, 153;
+  --ok: #34d399;
 
   /* Nombres de antes. Los usan estilos en línea del HTML (y library.html);
      hoy apuntan al acento, ya no hay morado. */
@@ -76,7 +91,8 @@
   --font-mono: 'Space Mono', var(--cjk, monospace), monospace;
   --font-main: 'Sora', var(--cjk, sans-serif), sans-serif;
 
-  --r-lg: 14px; --r-md: 10px; --r-sm: 8px;
+  --r-xl: 18px; --r-lg: 14px; --r-md: 10px; --r-sm: 8px;
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 28px rgba(0, 0, 0, 0.28);
   /* Curva de salida con carácter (la `ease-out` del navegador es muy floja). */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
@@ -85,7 +101,18 @@
      navegador tiene guardada una hoja vieja, se queda con los controles de
      siempre en vez de pintar piezas sin estilo. */
   --menus: 1;
+
+  /* Color del micrófono y de sus ondas. Cambia con la fase de voz (abajo). */
+  --orb: var(--text-dim); --orb-rgb: 127, 138, 150;
 }
+
+/* La fase de voz, en color. `data-phase` lo pone app.js en <body>. */
+body[data-phase="dormant"]      { --orb: #8fa3b8;       --orb-rgb: 143, 163, 184; }
+body[data-phase="waiting"]      { --orb: var(--ok);     --orb-rgb: var(--green-rgb); }
+body[data-phase="listening"],
+body[data-phase="speaking"]     { --orb: var(--accent); --orb-rgb: var(--accent-rgb); }
+body[data-phase="transcribing"],
+body[data-phase="thinking"]     { --orb: var(--amber);  --orb-rgb: var(--amber-rgb); }
 
 /* Chino y japonés comparten miles de caracteres que cada país dibuja algo
    distinto. app.js le pone `lang` a cada texto según su escritura, y el CSS
@@ -97,51 +124,60 @@
   --font-main: 'Sora', var(--cjk, sans-serif), sans-serif;
 }
 [lang] { font-family: var(--font-main); }
-[lang].log-msg, [lang].lang-wake, [lang].lang-hint { font-family: var(--font-mono); }
+[lang].log-msg, [lang].lang-wake { font-family: var(--font-mono); }
 
 body {
   font-family: var(--font-main);
+  font-size: 14px;
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
   background-color: var(--bg);
-  /* Dos resplandores muy tenues (el acento arriba a la izquierda, el rojo de
-     MECH arriba a la derecha) y la rejilla de puntos. Es un fondo fijo: se
-     pinta una vez y no cuesta nada al hacer scroll. */
+  /* Dos resplandores muy tenues, para que el fondo no sea una plancha. Es un
+     fondo fijo: se pinta una vez y no cuesta nada al hacer scroll. */
   background-image:
-    radial-gradient(1100px 520px at 18% -14%, rgba(var(--accent-rgb), 0.05), transparent 65%),
-    radial-gradient(900px 460px at 96% -10%, rgba(var(--red-rgb), 0.04), transparent 65%),
-    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.3px);
-  background-size: auto, auto, 22px 22px;
+    radial-gradient(1200px 600px at 12% -20%, rgba(var(--accent-rgb), 0.07), transparent 62%),
+    radial-gradient(900px 500px at 100% -10%, rgba(59, 158, 255, 0.05), transparent 62%);
   background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
-.app { display: flex; flex-direction: column; min-height: 100vh; }
+/* El armazón: ocupa la ventana justa y no se desplaza. Lo que se desplaza es
+   la vista de dentro. (`.app` y no `body`: library.html comparte esta hoja y
+   su página sí tiene que poder bajar.) */
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
 
 code {
-  font-family: var(--font-mono); font-size: 0.92em;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 5px; padding: 1px 5px; color: var(--text);
+  font-family: var(--font-mono); font-size: 0.9em;
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 1px 6px; color: var(--text);
 }
 
-:focus-visible { outline: 2px solid rgba(var(--accent-rgb), 0.75); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ─── HEADER ────────────────────────────────────────────────────────────── */
+/* ─── CABECERA ──────────────────────────────────────────────────────────── */
 
 .header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface);
-  gap: 16px;
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  min-height: 62px; padding: 10px 20px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
 }
-.logo {
-  display: flex; align-items: center; gap: 12px;
-  font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 2.5px;
-  white-space: nowrap;
+/* La marca: el aro rojo con su punto (el icono de MECH) y el nombre. */
+.logo { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.logo-mark {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  border: 2.5px solid var(--red); display: grid; place-items: center;
+  box-shadow: 0 0 0 4px rgba(var(--red-rgb), 0.12), 0 0 20px rgba(var(--red-rgb), 0.35);
 }
 .logo-dot {
   width: 10px; height: 10px; border-radius: 50%; background: var(--red);
-  box-shadow: 0 0 0 4px rgba(var(--red-rgb), 0.16), 0 0 16px rgba(var(--red-rgb), 0.7);
   animation: pulse 2.4s ease-in-out infinite;
+}
+.logo-name { font-size: 20px; font-weight: 700; font-style: italic; letter-spacing: 0.5px; }
+.logo-sub {
+  font-size: 12px; color: var(--text-muted);
+  padding-left: 12px; border-left: 1px solid var(--border-strong);
 }
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -150,32 +186,35 @@ code {
 
 .status-bar {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-  font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);
-  flex: 1; min-width: 0; justify-content: flex-end; letter-spacing: 0.5px;
+  font-size: 12px; color: var(--text-muted);
+  flex: 1; min-width: 0; justify-content: flex-end;
 }
 .status-item {
-  display: flex; align-items: center; gap: 7px;
-  padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px;
-  background: var(--surface2);
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface2); font-weight: 500;
 }
 /* El de la conexión ya trae su propia pastilla (.ws-badge). */
 #ws-badge-wrap { padding: 0; border: 0; background: none; }
-#clock { padding-left: 6px; font-variant-numeric: tabular-nums; }
+#clock {
+  padding-left: 6px; color: var(--text-dim);
+  font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+}
 
-.dot-ok     { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px rgba(var(--green-rgb), 0.9); }
-.dot-off    { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
-.dot-active { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px rgba(var(--amber-rgb), 0.9); animation: pulse 1s infinite; }
+.dot-ok     { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px rgba(var(--green-rgb), 0.9); }
+.dot-off    { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
+.dot-active { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 10px rgba(var(--amber-rgb), 0.9); animation: pulse 1s infinite; }
 
-/* PARO DE EMERGENCIA — siempre visible en el header */
+/* PARO DE EMERGENCIA — siempre visible en la cabecera */
 .emergency-btn {
   position: relative;
-  background: linear-gradient(180deg, #ef5a58, #cf3a39); color: #fff;
-  border: 1px solid #ff8a86;
-  padding: 9px 16px; border-radius: var(--r-sm); font-family: var(--font-mono);
-  font-size: 12px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
-  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  background: linear-gradient(180deg, #ff5f5f, #dc3545); color: #fff;
+  border: 1px solid #ff8f8f;
+  height: 40px; padding: 0 18px; border-radius: var(--r-md);
+  font-family: var(--font-main); font-size: 13px; font-weight: 700; letter-spacing: 0.8px;
+  cursor: pointer; display: flex; align-items: center; gap: 9px; white-space: nowrap;
   flex: none;  /* en una ventana estrecha se encogen los indicadores, no él */
-  box-shadow: 0 6px 18px rgba(var(--red-rgb), 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 22px rgba(var(--red-rgb), 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   transition: transform 140ms var(--ease-out), filter 140ms var(--ease-out);
 }
 /* El halo que late va en una capa aparte y solo cambia de tamaño y de
@@ -187,23 +226,82 @@ code {
   animation: emergencyGlow 2.5s var(--ease-out) infinite;
 }
 .emergency-btn:active { transform: scale(0.97); }
-.emergency-btn i { font-size: 16px; }
+.emergency-btn i { font-size: 18px; }
 @keyframes emergencyGlow {
   0%        { opacity: 0.8; transform: scale(1); }
-  70%, 100% { opacity: 0; transform: scale(1.14, 1.42); }
+  70%, 100% { opacity: 0; transform: scale(1.12, 1.4); }
 }
 
-/* ─── LAYOUT ────────────────────────────────────────────────────────────── */
+/* ─── BARRA DE FASE DE VOZ ─────────────────────────────────────────────── */
+/* Barra ancha siempre visible que indica en qué fase está el ciclo de voz.
+   El estado "PUEDES HABLAR" (verde) es la señal para cuándo el juez habla.
+   Cada fase solo cambia el tono (`--tone`): el icono, el filo de la izquierda
+   y el degradado salen de ahí. El texto va siempre en blanco, para que se lea. */
 
-.main { display: grid; grid-template-columns: 240px 1fr 300px; flex: 1; min-height: 0; }
+.voice-phase-banner {
+  --tone: var(--text-dim); --tone-rgb: 127, 138, 150; --fuerza: 0.1;
+  flex: none; position: relative;
+  display: flex; align-items: center; gap: 12px;
+  min-height: 50px; padding: 8px 20px 8px 24px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface) linear-gradient(90deg, rgba(var(--tone-rgb), var(--fuerza)),
+                              rgba(var(--tone-rgb), 0.04) 55%, transparent 85%);
+}
+.voice-phase-banner::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--tone);
+}
+.vpb-pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--tone); flex-shrink: 0; }
+.vpb-icon {
+  flex: none; width: 32px; height: 32px; border-radius: 50%; font-size: 17px;
+  display: grid; place-items: center;
+  color: var(--tone); background: rgba(var(--tone-rgb), 0.16);
+}
+.vpb-text  { font-size: 15px; font-weight: 600; letter-spacing: 0.2px; }
+.vpb-hint  { font-size: 13px; color: var(--text-muted); margin-left: auto; text-align: right; }
 
-/* ─── SIDEBAR ───────────────────────────────────────────────────────────── */
+/* Apagado — discreto, sin animación. */
+.phase-off    { --fuerza: 0.05; }
+.phase-off .vpb-pulse { animation: none; opacity: 0.5; }
+.phase-off .vpb-text { color: var(--text-muted); }
+
+/* En reposo — gris frío, pulso lento. MECH duerme pero oye el wake. */
+.phase-dormant { --tone: #8fa3b8; --tone-rgb: 143, 163, 184; --fuerza: 0.12; }
+.phase-dormant .vpb-pulse { animation: pulse 2.2s infinite; }
+
+/* PUEDES HABLAR — verde, pulso marcado para llamar la atención. */
+.phase-waiting { --tone: var(--ok); --tone-rgb: var(--green-rgb); --fuerza: 0.3; }
+.phase-waiting .vpb-pulse { animation: pulse 1s infinite; }
+.phase-waiting .vpb-text  { font-size: 17px; font-weight: 700; color: var(--ok); letter-spacing: 0.6px; }
+
+/* Grabando — acento, pulso rápido. */
+.phase-listen { --tone: var(--accent); --tone-rgb: var(--accent-rgb); --fuerza: 0.24; }
+.phase-listen .vpb-pulse { animation: pulse 0.7s infinite; }
+
+/* Transcribiendo / pensando — ámbar, trabajo en curso. */
+.phase-work   { --tone: var(--amber); --tone-rgb: var(--amber-rgb); --fuerza: 0.2; }
+.phase-work .vpb-pulse { animation: pulse 1.4s infinite; }
+
+/* MECH hablando — el acento a toda fuerza. */
+.phase-speak  { --tone: var(--accent); --tone-rgb: var(--accent-rgb); --fuerza: 0.32; }
+.phase-speak .vpb-pulse { animation: pulse 1.1s infinite; }
+
+/* ─── ARMAZÓN ───────────────────────────────────────────────────────────── */
+
+.main { display: grid; grid-template-columns: 248px minmax(0, 1fr) 320px; flex: 1; min-height: 0; }
+
+/* ─── MENÚ LATERAL ──────────────────────────────────────────────────────── */
 
 .sidebar {
   position: relative;  /* de aquí cuelga el resaltado deslizante (.nav-glider) */
   background: var(--surface); border-right: 1px solid var(--border);
-  padding: 18px 12px; display: flex; flex-direction: column; gap: 4px;
+  padding: 10px; display: flex; flex-direction: column; gap: 3px;
+  /* Si la ventana es muy baja el menú se desplaza, pero sin barra a la
+     vista (le robaba sitio a los nombres). */
+  overflow-y: auto; min-height: 0; scrollbar-width: none;
 }
+.sidebar::-webkit-scrollbar { display: none; }
 /* Al cargar el panel, el menú entra en cascada (una sola vez). app.js le
    pone a cada elemento su turno en `--n`. */
 .sidebar-label, .nav-item {
@@ -212,31 +310,36 @@ code {
 }
 @keyframes navIn { from { opacity: 0; transform: translateX(-10px); } }
 .sidebar-label {
-  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--text-dim); font-family: var(--font-mono);
-  padding: 12px 10px 6px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--text-dim); padding: 12px 12px 4px;
 }
 .nav-item {
-  position: relative;
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: var(--r-sm); cursor: pointer;
-  font-size: 13px; color: var(--text-muted);
-  border: 1px solid transparent;
+  position: relative; flex: none;
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  min-height: 40px; padding: 0 11px; border-radius: var(--r-md); cursor: pointer;
+  font-family: var(--font-main); font-size: 13.5px; font-weight: 500; white-space: nowrap;
+  color: var(--text-muted); text-decoration: none; text-align: left;
+  background: transparent; border: 1px solid transparent;
   transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
               transform 140ms var(--ease-out);
 }
 .nav-item:active { transform: scale(0.98); }
 .nav-item.active {
-  background: var(--surface3); color: var(--text); border-color: var(--border);
+  background: rgba(var(--accent-rgb), 0.12); color: var(--text);
+  border-color: rgba(var(--accent-rgb), 0.28);
 }
 /* La vista en la que estás: una barrita de acento a la izquierda. */
 .nav-item.active::before {
-  content: ''; position: absolute; left: -1px; top: 9px; bottom: 9px; width: 3px;
+  content: ''; position: absolute; left: -1px; top: 10px; bottom: 10px; width: 3px;
   border-radius: 0 3px 3px 0; background: var(--accent);
-  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.8);
 }
-.nav-item i { font-size: 16px; transition: transform 200ms var(--ease-out), color 150ms var(--ease-out); }
-.nav-item.active i { color: var(--accent); transform: scale(1.1); }
+.nav-item i { font-size: 19px; transition: transform 200ms var(--ease-out), color 150ms var(--ease-out); }
+.nav-item.active i { color: var(--accent); transform: scale(1.08); }
+/* Los que abren otra página (biblioteca, proyección) llevan una flechita. */
+.nav-item .nav-ext { margin-left: auto; font-size: 14px; opacity: 0.45; }
+.nav-item.active .nav-ext { transform: none; }
+.sidebar-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); }
 
 /* El resaltado de la vista en la que estás es UNA sola pieza que se desliza
    de un botón a otro (app.js le pone la altura y la posición; solo se anima
@@ -245,15 +348,16 @@ code {
 .nav-glider { display: none; }
 @media (min-width: 701px) {
   .nav-glider {
-    display: block; position: absolute; left: 12px; right: 12px; top: 0;
-    border-radius: var(--r-sm); background: var(--surface3); border: 1px solid var(--border);
+    display: block; position: absolute; left: 10px; right: 10px; top: 0;
+    border-radius: var(--r-md);
+    background: rgba(var(--accent-rgb), 0.12); border: 1px solid rgba(var(--accent-rgb), 0.28);
     pointer-events: none;
     transition: transform 320ms var(--ease-out);
   }
   .nav-glider::before {
-    content: ''; position: absolute; left: -1px; top: 9px; bottom: 9px; width: 3px;
+    content: ''; position: absolute; left: -1px; top: 10px; bottom: 10px; width: 3px;
     border-radius: 0 3px 3px 0; background: var(--accent);
-    box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7);
+    box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.8);
   }
   .has-glider .nav-item { z-index: 1; }
   .has-glider .nav-item.active { background: transparent; border-color: transparent; }
@@ -261,21 +365,28 @@ code {
 }
 .nav-badge {
   margin-left: auto; background: var(--red); color: white;
-  font-size: 10px; padding: 2px 6px; border-radius: 10px; font-family: var(--font-mono);
+  font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600;
 }
 .nav-badge-yellow {
-  margin-left: auto; background: rgba(var(--amber-rgb), 0.16); color: var(--amber);
-  font-size: 10px; padding: 2px 6px; border-radius: 10px; font-family: var(--font-mono);
+  margin-left: auto; background: rgba(var(--amber-rgb), 0.18); color: var(--amber);
+  font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600; letter-spacing: 0.5px;
 }
 
-/* ─── CONTENT ──────────────────────────────────────────────────────────── */
+/* ─── CONTENIDO ─────────────────────────────────────────────────────────── */
 
-.content { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+/* `container-type`: la vista Voz se parte en dos columnas según el ancho que
+   le queda de verdad (con o sin panel derecho), no según el de la ventana. */
+.content {
+  display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0;
+  container-type: inline-size; container-name: contenido;
+}
 .view {
   display: none; flex-direction: column; height: 100%;
-  padding: 24px; gap: 18px; overflow-y: auto;
+  padding: 24px 28px 48px; gap: 18px; overflow-y: auto;
 }
 .view.visible { display: flex; }
+/* Que en una pantalla muy ancha las tarjetas no se estiren sin fin. */
+.view > * { flex: none; width: 100%; max-width: 1120px; margin-left: auto; margin-right: auto; }
 /* Al cambiar de vista CON EL RATÓN, lo de dentro entra en cascada (app.js
    pone `.entra`). Con las teclas 1/2/3 no: lo que se dispara con el teclado
    tiene que ser inmediato. */
@@ -287,106 +398,239 @@ code {
 .view.entra > :nth-child(n+6) { animation-delay: 200ms; }
 @keyframes viewIn { from { opacity: 0; transform: translateY(12px); } }
 
-.view-title { font-size: 18px; font-weight: 600; letter-spacing: -0.2px; display: flex; align-items: center; gap: 10px; }
-.section-sub { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-top: -6px; }
+.view-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 12px; }
+/* El icono del título, en una pastilla de su propio color. */
+.view-title i {
+  flex: none; width: 40px; height: 40px; border-radius: 12px; font-size: 21px;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+.section-sub { font-size: 13px; color: var(--text-muted); line-height: 1.65; margin-top: -8px; }
+.section-sub b { color: var(--text); font-weight: 600; }
 
-/* ─── VOICE VIEW ───────────────────────────────────────────────────────── */
+/* ─── TARJETAS ──────────────────────────────────────────────────────────── */
+/* Todas las cajas del panel comparten el mismo dibujo. */
 
+.fw-card, .proj-box, .voice-hero, .voice-talk, .voice-quick, .trivia-box, .translator-box {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-xl); padding: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+/* El título de una tarjeta. */
+.card-title {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.card-title i { font-size: 17px; color: var(--accent); }
+.card-title.tone-green i, .card-title.tone-green { color: var(--ok); }
+.card-title.tone-amber i, .card-title.tone-amber { color: var(--amber); }
+/* Rótulo pequeño encima de algo. */
+.kicker {
+  font-size: 11px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;
+  color: var(--text-dim);
+}
+/* Texto de ayuda dentro de una tarjeta. */
+.note { font-size: 12.5px; color: var(--text-muted); line-height: 1.7; margin-top: 4px; }
+.note b { color: var(--text); font-weight: 600; }
+
+/* ─── VISTA VOZ ─────────────────────────────────────────────────────────── */
+
+.voice-top, .voice-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+@container contenido (min-width: 760px) {
+  .voice-top   { grid-template-columns: minmax(290px, 350px) minmax(0, 1fr); }
+  .voice-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* La tarjeta del micrófono. */
 .voice-hero {
   position: relative; overflow: hidden;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 18px; padding: 28px;
-  display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 24px 20px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;
 }
-/* Un foco tenue detrás del micrófono, para que sea lo primero que se ve. */
+/* Un foco tenue detrás del micrófono, del color de la fase. */
 .voice-hero::before {
-  content: ''; position: absolute; left: 50%; top: -120px; width: 620px; height: 420px;
-  transform: translateX(-50%); pointer-events: none;
-  background: radial-gradient(closest-side, rgba(var(--red-rgb), 0.13), transparent);
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(260px 200px at 50% 96px, rgba(var(--orb-rgb), 0.2), transparent);
 }
 .voice-hero > * { position: relative; }
 
 .voice-btn {
-  width: 96px; height: 96px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, #23272b, var(--surface2));
-  border: 2px solid var(--red);
+  width: 116px; height: 116px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 50% 30%, #262e38, var(--surface) 72%);
+  border: 2.5px solid var(--orb);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; position: relative; user-select: none;
-  box-shadow: 0 0 0 6px rgba(var(--red-rgb), 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
-  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out),
-              border-color 160ms var(--ease-out);
+  box-shadow: 0 0 0 8px rgba(var(--orb-rgb), 0.1), 0 14px 34px rgba(0, 0, 0, 0.5);
+  transition: transform 160ms var(--ease-out);
 }
 .voice-btn:active { transform: scale(0.96); }
-.voice-btn.listening { border-color: var(--red-soft); }
 .voice-btn.listening::before {
-  content: ''; position: absolute; width: 116px; height: 116px; border-radius: 50%;
-  border: 2px solid rgba(var(--red-rgb), 0.35); animation: ripple 1.5s ease-out infinite;
+  content: ''; position: absolute; width: 138px; height: 138px; border-radius: 50%;
+  border: 2px solid rgba(var(--orb-rgb), 0.45); animation: ripple 1.5s ease-out infinite;
 }
 .voice-btn.listening::after {
-  content: ''; position: absolute; width: 140px; height: 140px; border-radius: 50%;
-  border: 1px solid rgba(var(--red-rgb), 0.16); animation: ripple 1.5s ease-out 0.5s infinite;
+  content: ''; position: absolute; width: 166px; height: 166px; border-radius: 50%;
+  border: 1px solid rgba(var(--orb-rgb), 0.22); animation: ripple 1.5s ease-out 0.5s infinite;
 }
 @keyframes ripple {
   0%   { transform: scale(0.9); opacity: 1; }
   100% { transform: scale(1.2); opacity: 0; }
 }
-.voice-btn i { font-size: 36px; color: var(--red); }
-.voice-status { font-size: 13px; color: var(--text-muted); font-family: var(--font-mono); }
+.voice-btn i { font-size: 44px; color: var(--orb); }
+.voice-status { font-size: 15px; font-weight: 600; color: var(--text); }
+
+.wave-bars { display: flex; align-items: center; gap: 4px; height: 30px; }
+.wave-bar { width: 4px; border-radius: 2px; background: var(--orb); opacity: 0.3; transition: height 0.1s; }
+.wave-bar.active { opacity: 1; }
 
 /* Idioma activo: español por defecto; los demás, solo si lo despiertan en
    ese idioma. Se ve UN botón con el idioma en el que está MECH; los diez
-   salen en un menú al pulsarlo (para probar sin micrófono). Antes eran diez
-   botones en fila y una pista de cinco líneas: con diez idiomas no cabía. */
-.lang-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
-.lang-row .lang-label { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); font-family: var(--font-mono); }
+   salen en un menú al pulsarlo (para probar sin micrófono). */
+.lang-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  width: 100%; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.lang-row .lang-label { font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--text-dim); }
 /* La etiqueta de dos letras (ES, EN, JA…). */
 .lang-code {
-  flex: none; min-width: 28px; text-align: center;
-  font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 1px;
-  color: var(--accent); background: rgba(var(--accent-rgb), 0.12);
-  border: 1px solid rgba(var(--accent-rgb), 0.3); border-radius: 5px; padding: 2px 5px;
+  flex: none; min-width: 30px; text-align: center;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  color: var(--accent); background: rgba(var(--accent-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-rgb), 0.35); border-radius: 6px; padding: 2px 5px;
 }
-.lang-btn { border-radius: 999px; padding: 7px 14px 7px 12px; gap: 9px; }
-.lang-btn > i { font-size: 15px; color: var(--accent); }
-.lang-btn .lang-name { font-family: var(--font-main); font-size: 13px; }
-.lang-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); line-height: 1.7; }
+.lang-btn { border-radius: 999px; padding: 0 14px 0 12px; gap: 9px; }
+.lang-btn > i { font-size: 17px; color: var(--accent); }
+.lang-btn .lang-name { font-size: 14px; font-weight: 500; }
+.lang-hint { flex-basis: 100%; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
 
-/* El menú de idiomas: dos columnas, y en cada idioma la frase que lo
-   despierta (que es lo que hay que saber en el stand). */
-.lang-pop { width: min(500px, calc(100vw - 16px)); padding: 10px; }
-.lang-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.lang-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.lang-grid .lang-name { font-family: var(--font-main); font-size: 13px; color: var(--text); }
-.lang-grid .lang-name small { font-size: 11px; color: var(--text-muted); margin-left: 7px; }
-.lang-wake {
-  font-size: 10px; color: var(--text-dim);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+/* En la tarjeta: rótulo, micrófono, estado y ondas; luego el idioma y, al
+   final, el botón de cortar. (`order`: el HTML los trae en otro orden.) */
+.voice-hero .lang-row { order: 1; }
+#interrupt-btn { order: 2; width: 100%; }
+/* Cortar la narración solo tiene sentido mientras MECH habla. */
+body:not([data-phase="speaking"]) #interrupt-btn { opacity: 0.6; }
+
+/* La tarjeta de la conversación en curso. */
+.voice-talk { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.field-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--text-dim);
 }
-@media (max-width: 480px) { .lang-grid { grid-template-columns: 1fr; } }
+.field-label i { font-size: 15px; }
+.transcript-box {
+  background: var(--inset); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 14px 16px; text-align: left;
+  font-size: 15px; color: var(--text); min-height: 56px; width: 100%; line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.transcript-placeholder, .ai-empty { color: var(--text-dim); font-style: italic; }
+/* Lo que dice MECH: mismo cuadro, con el filo del color de acento. */
+.ai-response {
+  flex: 1;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.14), rgba(var(--accent-rgb), 0.04));
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md); padding: 14px 16px; text-align: left;
+  font-size: 14px; color: var(--text); line-height: 1.7;
+  width: 100%; min-height: 96px; overflow-wrap: anywhere;
+}
+.ai-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 8px;
+}
+
+.text-input-row { display: flex; gap: 8px; width: 100%; }
+.text-input {
+  flex: 1; min-width: 0; height: 42px; background-color: var(--inset); border: 1px solid var(--border-strong);
+  color: var(--text); padding: 0 14px; border-radius: var(--r-md);
+  font-family: var(--font-main); font-size: 14px; outline: none;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+}
+.text-input-row .btn { height: 42px; }
+/* Varios desplegables de Ajustes llevan también esta clase: que no se coma
+   el hueco de la flecha. */
+select.text-input { padding-right: 34px; }
+.text-input::placeholder { color: var(--text-dim); }
+.text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2); }
+
+/* Comandos rápidos: una rejilla de teclas con su icono. */
+.voice-quick { display: flex; flex-direction: column; gap: 14px; }
+.cmd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.cmd-chip {
+  background: var(--surface3); border: 1px solid var(--border); border-radius: var(--r-md);
+  min-height: 46px; padding: 6px 12px 6px 8px; font-size: 13px; font-weight: 500; color: var(--text);
+  cursor: pointer; display: flex; align-items: center; gap: 10px;
+  transition: background-color 150ms var(--ease-out), border-color 150ms var(--ease-out),
+              transform 140ms var(--ease-out);
+}
+.cmd-chip:active { transform: scale(0.98); }
+.cmd-chip i {
+  flex: none; width: 32px; height: 32px; border-radius: 9px; font-size: 17px;
+  display: grid; place-items: center;
+  color: var(--accent); background: rgba(var(--accent-rgb), 0.13);
+  transition: transform 200ms var(--ease-out);
+}
+
+/* ─── BOTONES ───────────────────────────────────────────────────────────── */
+
+.btn {
+  min-height: 38px; padding: 0 14px; border-radius: var(--r-md);
+  font-size: 13px; font-weight: 500; font-family: var(--font-main); cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background: var(--surface3); color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
+              border-color 150ms var(--ease-out), transform 140ms var(--ease-out),
+              filter 150ms var(--ease-out);
+}
+.btn i { font-size: 17px; }
+.btn:active { transform: scale(0.97); }
+/* Botones de color: todos iguales, cambia el tono (`--c`). TEÑIDOS por
+   defecto; con `.btn-solid`, RELLENOS: es la acción principal de su tarjeta.
+   `btn-purple` es el nombre de antes del botón de acento. */
+.btn-green  { --c: var(--ok);       --c-rgb: var(--green-rgb);  --c-ink: #03251a; }
+.btn-purple,
+.btn-accent { --c: var(--accent);   --c-rgb: var(--accent-rgb); --c-ink: var(--accent-ink); }
+.btn-red    { --c: var(--red-soft); --c-rgb: var(--red-rgb);    --c-ink: #fff; }
+.btn-amber  { --c: var(--amber);    --c-rgb: var(--amber-rgb);  --c-ink: #2b1a00; }
+.btn-green, .btn-purple, .btn-accent, .btn-red, .btn-amber {
+  background: rgba(var(--c-rgb), 0.15); border-color: rgba(var(--c-rgb), 0.45); color: var(--c);
+}
+.btn-solid.btn-green, .btn-solid.btn-purple, .btn-solid.btn-accent, .btn-solid.btn-amber {
+  background: var(--c); border-color: transparent; color: var(--c-ink); font-weight: 600;
+  box-shadow: 0 6px 18px rgba(var(--c-rgb), 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.btn-solid.btn-red {
+  background: var(--red); border-color: transparent; color: #fff; font-weight: 600;
+  box-shadow: 0 6px 18px rgba(var(--red-rgb), 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
 
 /* ─── MENÚS DESPLEGABLES ───────────────────────────────────────────────── */
-/* Los usa el idioma de arriba y todos los desplegables del panel (app.js
-   convierte cada <select> en uno de estos; el <select> sigue ahí, escondido,
-   guardando el valor). El desplegable cuelga de <body> con `position: fixed`
-   y app.js lo coloca junto a su botón: así no lo recorta ninguna tarjeta, y
-   se abre hacia arriba si abajo no cabe. Se anima solo con `transform` y
-   `opacity`, y cierra más rápido de lo que abre. */
+/* Los usa el idioma de la vista Voz, la ayuda de atajos y todos los
+   desplegables del panel (app.js convierte cada <select> en uno de estos; el
+   <select> sigue ahí, escondido, guardando el valor). El desplegable cuelga
+   de <body> con `position: fixed` y app.js lo coloca junto a su botón: así
+   no lo recorta ninguna tarjeta, y se abre hacia arriba si abajo no cabe. Se
+   anima solo con `transform` y `opacity`, y cierra más rápido de lo que abre. */
 .menu { position: relative; display: inline-flex; min-width: 0; }
 .menu-btn {
-  display: inline-flex; align-items: center; gap: 8px; min-width: 0;
-  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
-  font-family: var(--font-mono); font-size: 12px; padding: 7px 10px;
-  border-radius: var(--r-sm); cursor: pointer; text-align: left;
+  display: inline-flex; align-items: center; gap: 8px; min-width: 0; min-height: 38px;
+  background: var(--surface3); border: 1px solid var(--border-strong); color: var(--text);
+  font-family: var(--font-main); font-size: 13px; padding: 0 12px;
+  border-radius: var(--r-md); cursor: pointer; text-align: left;
   transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out),
               transform 140ms var(--ease-out);
 }
 .menu-btn:active { transform: scale(0.97); }
-.menu-btn[aria-expanded="true"] { border-color: rgba(var(--accent-rgb), 0.7); background: var(--surface3); }
+.menu-btn[aria-expanded="true"] { border-color: var(--accent); background: var(--surface4); }
 /* La flechita: un ángulo dibujado con dos bordes, que se da la vuelta al abrir. */
 .menu-caret {
   flex: none; width: 7px; height: 7px; margin: 0 2px 0 auto;
-  border-right: 1.5px solid var(--text-muted); border-bottom: 1.5px solid var(--text-muted);
+  border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted);
   transform: translateY(-2px) rotate(45deg);
   transition: transform 220ms var(--ease-out);
 }
@@ -394,9 +638,9 @@ code {
 
 .menu-pop {
   position: fixed; left: 0; top: 0; z-index: 200;
-  background: #171b1e; border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  background: var(--surface3); border: 1px solid var(--border-strong); border-radius: var(--r-lg);
   padding: 6px; overflow-y: auto; overscroll-behavior: contain;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   opacity: 0; transform: translateY(-8px) scale(0.96);
   visibility: hidden; pointer-events: none;
   transition: opacity 110ms var(--ease-out), transform 110ms var(--ease-out),
@@ -408,25 +652,25 @@ code {
   transition: opacity 150ms var(--ease-out), transform 220ms var(--ease-out), visibility 0s;
 }
 .menu-pop-title {
-  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--text-dim); font-family: var(--font-mono); padding: 4px 6px 9px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--text-dim); padding: 6px 8px 10px;
 }
 .menu-pop-foot {
-  font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); line-height: 1.6;
-  padding: 9px 6px 2px; margin-top: 8px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-muted); line-height: 1.6;
+  padding: 10px 8px 4px; margin-top: 8px; border-top: 1px solid var(--border-strong);
 }
 .menu-item {
   display: flex; align-items: center; gap: 10px; width: 100%;
   background: transparent; border: 1px solid transparent; border-radius: var(--r-sm);
-  padding: 8px 10px; color: var(--text-muted);
-  font-family: var(--font-mono); font-size: 12px; text-align: left; cursor: pointer;
+  padding: 9px 10px; color: var(--text-muted);
+  font-family: var(--font-main); font-size: 13px; text-align: left; cursor: pointer;
   transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out),
               transform 120ms var(--ease-out);
 }
 .menu-item:active { transform: scale(0.98); }
 .menu-item.active {
-  color: var(--text); background: rgba(var(--accent-rgb), 0.1);
-  border-color: rgba(var(--accent-rgb), 0.32);
+  color: var(--text); background: rgba(var(--accent-rgb), 0.14);
+  border-color: rgba(var(--accent-rgb), 0.4);
 }
 /* La marca del elegido: una palomita hecha con dos bordes. */
 .menu-item.active::after {
@@ -443,10 +687,30 @@ code {
 }
 @keyframes menuItemIn { from { opacity: 0; transform: translateY(6px); } }
 
+/* El menú de idiomas: dos columnas, y en cada idioma la frase que lo
+   despierta (que es lo que hay que saber en el stand). */
+.lang-pop { width: min(520px, calc(100vw - 16px)); padding: 10px; }
+.lang-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.lang-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.lang-grid .lang-name { font-size: 14px; font-weight: 500; color: var(--text); }
+.lang-grid .lang-name small { font-size: 12px; font-weight: 400; color: var(--text-muted); margin-left: 7px; }
+.lang-wake {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 480px) { .lang-grid { grid-template-columns: 1fr; } }
+
+/* La ayuda de atajos (botón del pie del menú lateral). */
+.keys-pop { width: min(340px, calc(100vw - 16px)); padding: 10px; }
+.cmd-entry { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: var(--r-sm); }
+.cmd-entry + .cmd-entry { border-top: 1px solid var(--border); border-radius: 0; }
+.cmd-trigger { font-family: var(--font-mono); color: var(--accent); font-size: 12px; }
+.cmd-desc    { color: var(--text-muted); font-size: 12.5px; line-height: 1.5; }
+
 /* Un <select> convertido en menú. */
 .msel { flex: 0 0 auto; }
 .msel-wide { flex: 1; }
-.msel-btn { width: 100%; min-width: 132px; justify-content: space-between; }
+.msel-btn { width: 100%; min-width: 140px; justify-content: space-between; }
 .msel-label {
   display: inline-flex; align-items: center; gap: 8px; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -457,504 +721,439 @@ code {
 }
 /* Los desplegables de idioma (traductor, saludo): diez opciones en dos
    columnas en vez de una tira larga. */
-.msel-pop.msel-langs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; min-width: 300px; }
+.msel-pop.msel-langs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; min-width: 310px; }
 
-.wave-bars { display: flex; align-items: center; gap: 3px; height: 32px; }
-.wave-bar { width: 4px; border-radius: 2px; background: var(--red); opacity: 0.28; transition: height 0.1s; }
-.wave-bar.active { opacity: 0.95; }
+/* ─── VISTA STAND ───────────────────────────────────────────────────────── */
 
-.transcript-box {
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: var(--r-md); padding: 14px 18px; text-align: left;
-  font-size: 14px; color: var(--text); min-height: 56px; width: 100%; line-height: 1.6;
-}
-.transcript-placeholder { color: var(--text-dim); font-style: italic; }
-/* Lo que dice MECH: mismo cuadro, con el filo del color de acento. */
-.ai-response {
-  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.03));
-  border: 1px solid rgba(var(--accent-rgb), 0.22);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--r-md); padding: 14px 18px; text-align: left;
-  font-size: 13px; color: var(--text); line-height: 1.7;
-  width: 100%; min-height: 56px;
-}
-.ai-label {
-  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--accent); font-family: var(--font-mono); margin-bottom: 8px;
-}
-
-.text-input-row { display: flex; gap: 8px; width: 100%; }
-.text-input {
-  flex: 1; background-color: var(--surface2); border: 1px solid var(--border);
-  color: var(--text); padding: 12px 16px; border-radius: var(--r-md);
-  font-family: var(--font-main); font-size: 14px; outline: none;
-  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
-}
-/* Varios desplegables de Ajustes llevan también esta clase: que no se coma
-   el hueco de la flecha. */
-select.text-input { padding-right: 34px; }
-.text-input::placeholder { color: var(--text-dim); }
-.text-input:focus { border-color: rgba(var(--accent-rgb), 0.7); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14); }
-
-.cmd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.cmd-chip {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
-  padding: 11px 14px; font-size: 12px; color: var(--text-muted);
-  cursor: pointer; display: flex; align-items: center; gap: 10px;
-  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
-              border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
-}
-.cmd-chip:active { transform: scale(0.98); }
-.cmd-chip i {
-  font-size: 15px; color: var(--accent); opacity: 0.85;
-  transition: transform 200ms var(--ease-out), opacity 150ms var(--ease-out);
-}
-
-/* ─── STAND VIEW ───────────────────────────────────────────────────────── */
-
-.stand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.proj-box {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-lg); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
+.stand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.proj-box { display: flex; flex-direction: column; gap: 14px; }
 .proj-box-label {
-  font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 1px;
-  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
+  color: var(--text-muted); display: flex; align-items: center; gap: 9px;
 }
+.proj-box-label i { font-size: 17px; color: var(--accent); }
 .screen-frame {
-  background: #000; border-radius: var(--r-sm); aspect-ratio: 16 / 9;
-  position: relative; overflow: hidden; border: 1px solid var(--border);
+  background: #000; border-radius: var(--r-md); aspect-ratio: 16 / 9;
+  position: relative; overflow: hidden; border: 1px solid var(--border-strong);
   display: flex; align-items: center; justify-content: center;
 }
-.screen-off-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: #3a4046; }
+.screen-off-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 3px; color: #4a5562; }
 .screen-frame img, .screen-frame video { width: 100%; height: 100%; object-fit: contain; }
 
 .upload-zone {
   border: 1.5px dashed var(--border-strong); border-radius: var(--r-md);
-  padding: 20px; text-align: center; cursor: pointer;
+  padding: 22px; text-align: center; cursor: pointer; background: var(--inset);
   position: relative;
   transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
 }
 .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-.upload-zone i { font-size: 24px; color: var(--text-muted); display: block; margin-bottom: 6px; }
-.upload-zone p { font-size: 13px; color: var(--text-muted); }
-.upload-zone .hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+.upload-zone i { font-size: 26px; color: var(--accent); display: block; margin-bottom: 8px; }
+.upload-zone p { font-size: 14px; font-weight: 500; color: var(--text); }
+.upload-zone .hint { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
 
-.proj-controls { display: flex; gap: 8px; margin-top: 4px; }
+.proj-controls { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.btn {
-  padding: 8px 14px; border-radius: var(--r-sm);
-  font-size: 12px; font-family: var(--font-mono); cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--surface2); color: var(--text-muted);
-  display: flex; align-items: center; gap: 6px;
-  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
-              border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
-}
-.btn:active { transform: scale(0.97); }
-/* Botones de color: todos iguales, cambia el tono (`--c`). `btn-purple` es
-   el nombre de antes del botón principal; hoy es el acento. */
-.btn-green  { --c: var(--ok);       --c-rgb: var(--green-rgb); }
-.btn-purple,
-.btn-accent { --c: var(--accent);   --c-rgb: var(--accent-rgb); }
-.btn-red    { --c: var(--red-soft); --c-rgb: var(--red-rgb); }
-.btn-amber  { --c: var(--amber);    --c-rgb: var(--amber-rgb); }
-.btn-green, .btn-purple, .btn-accent, .btn-red, .btn-amber {
-  background: rgba(var(--c-rgb), 0.12); border-color: rgba(var(--c-rgb), 0.34); color: var(--c);
-}
-
-/* ─── IMMERSIVE VIEW ───────────────────────────────────────────────────── */
+/* ─── VISTA INMERSIVO ───────────────────────────────────────────────────── */
 
 .immersive-demo {
-  background: #000; border-radius: var(--r-lg); aspect-ratio: 16 / 9;
-  position: relative; overflow: hidden; border: 1px solid var(--border);
+  background: #000; border-radius: var(--r-xl); aspect-ratio: 16 / 9;
+  position: relative; overflow: hidden; border: 1px solid var(--border-strong);
   display: flex; align-items: center; justify-content: center;
 }
 .immersive-demo canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .immersive-overlay { position: relative; z-index: 2; text-align: center; pointer-events: none; }
 .immersive-overlay h2 {
   font-size: 20px; font-weight: 700; color: white;
-  text-shadow: 0 0 30px rgba(var(--accent-rgb), 0.8);
-  font-family: var(--font-mono); letter-spacing: 3px;
+  text-shadow: 0 0 30px rgba(var(--accent-rgb), 0.8); letter-spacing: 4px;
 }
-.immersive-overlay p { font-size: 11px; color: rgba(255, 255, 255, 0.5); margin-top: 8px; font-family: var(--font-mono); }
+.immersive-overlay p { font-size: 12px; color: rgba(255, 255, 255, 0.6); margin-top: 8px; }
 
-/* ─── FIRMWARE / SENSORS / ARDUINO ─────────────────────────────────────── */
+/* ─── FIRMWARE / SENSORES / ARDUINO ─────────────────────────────────────── */
 
-.fw-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-lg); padding: 18px;
-  display: flex; flex-direction: column; gap: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-}
+.fw-card { display: flex; flex-direction: column; gap: 10px; }
+/* Un botón suelto al pie de una tarjeta (Guardar, Reconectar…): de su
+   tamaño, no estirado de lado a lado. */
+.fw-card > .btn { align-self: flex-start; margin-top: 8px; }
 .fw-row {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  font-size: 13px; padding: 9px 0; border-bottom: 1px solid var(--border);
 }
-.fw-row:last-child { border: none; }
-.fw-key { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.6px; }
-.fw-val { color: var(--text); font-family: var(--font-mono); font-size: 12px; }
+.fw-row:last-of-type { border: none; }
+.fw-key { color: var(--text-muted); font-size: 13px; }
+/* Una `fw-key` que abre una tarjeta es su título. */
+.fw-card > .fw-key:first-child {
+  font-size: 12px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.fw-val { color: var(--text); font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
 
 .init-btn {
-  background: rgba(var(--red-rgb), 0.12); border: 1px solid rgba(var(--red-rgb), 0.35);
+  background: rgba(var(--red-rgb), 0.14); border: 1px solid rgba(var(--red-rgb), 0.4);
   color: var(--red-soft); padding: 12px 20px; border-radius: var(--r-md);
-  font-family: var(--font-mono); font-size: 13px; cursor: pointer;
-  text-align: center; letter-spacing: 1px;
+  font-family: var(--font-main); font-size: 13px; font-weight: 600; cursor: pointer;
+  text-align: center;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   transition: background-color 150ms var(--ease-out), transform 140ms var(--ease-out);
 }
 .init-btn:active { transform: scale(0.97); }
 
 .warning-box {
-  background: rgba(var(--red-rgb), 0.06); border: 1px solid rgba(var(--red-rgb), 0.24);
-  border-left: 3px solid var(--red);
-  border-radius: var(--r-md); padding: 16px;
+  background: rgba(var(--red-rgb), 0.08); border: 1px solid rgba(var(--red-rgb), 0.3);
+  border-left: 4px solid var(--red);
+  border-radius: var(--r-lg); padding: 16px 18px;
 }
+.warning-title { font-size: 13px; font-weight: 700; color: var(--red-soft); margin-bottom: 6px; }
 
 .sensor-item {
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 13.5px; padding: 10px 0; border-bottom: 1px solid var(--border);
 }
-.sensor-name { color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
-.sensor-val { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 5px; }
-.val-ok     { background: rgba(var(--green-rgb), 0.14); color: var(--ok); }
-.val-off    { background: var(--surface2);              color: var(--text-dim); }
-.val-active { background: rgba(var(--amber-rgb), 0.15); color: var(--amber); }
-.val-err    { background: rgba(var(--red-rgb), 0.15);   color: var(--red-soft); }
+.sensor-name { color: var(--text); display: flex; align-items: center; gap: 10px; }
+.sensor-name i { font-size: 18px; color: var(--text-muted); }
+.sensor-val {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.6px;
+  padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.val-ok     { background: rgba(var(--green-rgb), 0.16); color: var(--ok); }
+.val-off    { background: var(--surface3);              color: var(--text-muted); }
+.val-active { background: rgba(var(--amber-rgb), 0.18); color: var(--amber); }
+.val-err    { background: rgba(var(--red-rgb), 0.18);   color: var(--red-soft); }
 
 /* Botones del Arduino: como teclas. Se hunden al pulsar, que aquí importa:
    varios se mantienen apretados para mover el robot. */
-.arduino-cmd-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 8px; }
+.arduino-cmd-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
 .arduino-btn {
-  background: linear-gradient(180deg, #1b1f23, var(--surface2));
-  border: 1px solid var(--border); border-radius: var(--r-sm);
-  padding: 11px 8px; font-size: 11px; font-family: var(--font-mono);
-  color: var(--text-muted); cursor: pointer;
+  min-height: 48px; padding: 6px 8px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(180deg, #262e38, var(--surface3));
+  border: 1px solid var(--border-strong); border-radius: 12px;
+  font-family: var(--font-main); font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+  color: var(--text); cursor: pointer;
   text-align: center; user-select: none; touch-action: manipulation;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 0 rgba(0, 0, 0, 0.45);
-  transition: color 150ms var(--ease-out), border-color 150ms var(--ease-out),
-              transform 100ms var(--ease-out);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 3px 0 rgba(0, 0, 0, 0.5);
+  transition: border-color 150ms var(--ease-out), transform 100ms var(--ease-out);
 }
+.arduino-btn i { font-size: 18px; color: var(--amber); }
 .arduino-btn:active {
-  background: var(--amber); color: #1a1205; border-color: var(--amber);
-  transform: translateY(2px) scale(0.98);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: var(--amber); color: #241500; border-color: var(--amber);
+  transform: translateY(3px) scale(0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.arduino-btn.danger { color: var(--red-soft); border-color: rgba(var(--red-rgb), 0.34); }
+.arduino-btn:active i { color: #241500; }
+.arduino-btn.danger { color: var(--red-soft); border-color: rgba(var(--red-rgb), 0.5); }
+.arduino-btn.danger i { color: var(--red-soft); }
 .arduino-btn.danger:active { background: var(--red); color: #fff; border-color: var(--red); }
+.arduino-btn.danger:active i { color: #fff; }
+/* No hay icono de flecha hacia abajo en el subconjunto local: se le da la
+   vuelta al de arriba. */
+.ti-down { display: inline-block; transform: rotate(180deg); }
 
-.slider-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
-.slider-row label {
-  font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
-  min-width: 60px;
-}
-.slider-row input[type="range"] { flex: 1; }
+/* ─── DESLIZADORES, CASILLAS Y CAJAS ────────────────────────────────────── */
+
+.slider-row { display: flex; align-items: center; gap: 14px; min-height: 40px; }
+.slider-row label { font-size: 13px; color: var(--text-muted); min-width: 60px; }
+.slider-row input[type="range"] { flex: 1; min-width: 0; }
 .slider-row .val {
-  font-family: var(--font-mono); font-size: 11px; color: var(--text);
-  min-width: 36px; text-align: right; font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono); font-size: 12px; color: var(--text);
+  min-width: 44px; text-align: right; font-variant-numeric: tabular-nums;
 }
 
-/* Deslizadores: riel fino y una perilla clara con aro de acento. */
+/* Deslizadores: el riel se RELLENA de acento hasta la perilla (`--p` lo pone
+   app.js: el navegador no sabe hacerlo solo) y la perilla es blanca. */
 input[type="range"] {
   -webkit-appearance: none; appearance: none;
-  height: 20px; background: transparent; cursor: pointer;
+  height: 22px; background: transparent; cursor: pointer;
 }
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px; border-radius: 2px; background: var(--surface3);
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(to right, var(--accent) var(--p, 50%), var(--surface4) var(--p, 50%));
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
-  background: var(--text); border: 0;
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28), 0 2px 6px rgba(0, 0, 0, 0.5);
+  width: 18px; height: 18px; margin-top: -6px; border-radius: 50%;
+  background: #fff; border: 0;
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.3), 0 2px 6px rgba(0, 0, 0, 0.5);
   transition: transform 120ms var(--ease-out);
 }
-input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.18); }
-input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface3); }
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
+input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--surface4); }
+input[type="range"]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--accent); }
 input[type="range"]::-moz-range-thumb {
-  width: 14px; height: 14px; border-radius: 50%; background: var(--text); border: 0;
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
+  width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 0;
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.3);
 }
 
 select, input[type="text"] {
-  background-color: var(--surface2); border: 1px solid var(--border);
-  color: var(--text); font-family: var(--font-mono); font-size: 12px;
-  padding: 7px 10px; border-radius: var(--r-sm); width: 100%; outline: none;
+  background-color: var(--inset); border: 1px solid var(--border-strong);
+  color: var(--text); font-family: var(--font-main); font-size: 13px;
+  min-height: 38px; padding: 0 12px; border-radius: var(--r-md); width: 100%; outline: none;
   transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
 }
 select:focus, input[type="text"]:focus {
-  border-color: rgba(var(--accent-rgb), 0.7); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2);
 }
 /* La flecha de los desplegables, dibujada con dos degradados (así no hace
    falta ninguna imagen). */
 select {
-  -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 30px;
+  -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 32px;
   background-image:
     linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
     linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
-  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
-select option { background: var(--surface2); color: var(--text); }
-
-/* ─── RIGHT PANEL ──────────────────────────────────────────────────────── */
-
-.right-panel {
-  background: var(--surface); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-.panel-section {
-  padding: 14px 16px; border-bottom: 1px solid var(--border); overflow: hidden;
-}
-.panel-section.grow { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-.panel-title {
-  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--text-dim); font-family: var(--font-mono); margin-bottom: 10px;
-}
-
-.chat-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 200px; padding: 4px 0; }
-.chat-bubble {
-  max-width: 88%; padding: 8px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5;
-  overflow-wrap: anywhere;
-  animation: bubbleIn 260ms var(--ease-out) backwards;
-}
-.chat-user { background: var(--surface3); color: var(--text); align-self: flex-end; border-bottom-right-radius: 3px; transform-origin: 100% 100%; }
-.chat-mech {
-  background: rgba(var(--accent-rgb), 0.1); border: 1px solid rgba(var(--accent-rgb), 0.2);
-  color: var(--text); align-self: flex-start; border-bottom-left-radius: 3px; transform-origin: 0 100%;
-}
-/* Cada mensaje nuevo sale de la esquina de quien habla. */
-@keyframes bubbleIn { from { opacity: 0; transform: translateY(8px) scale(0.94); } }
-
-.log-list { display: flex; flex-direction: column; gap: 0; overflow-y: auto; flex: 1; }
-.log-item {
-  display: flex; gap: 8px; font-size: 10px; font-family: var(--font-mono);
-  padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.035); align-items: flex-start;
-}
-.log-time { color: var(--text-dim); flex-shrink: 0; font-size: 9px; padding-top: 1px; font-variant-numeric: tabular-nums; }
-.log-msg  { flex: 1; line-height: 1.45; overflow-wrap: anywhere; }
-.log-ok   { color: var(--ok); }
-.log-err  { color: var(--red-soft); }
-.log-info { color: #8fdff1; }
-.log-warn { color: var(--amber); }
-
-.ws-badge {
-  font-size: 10px; font-family: var(--font-mono); padding: 5px 10px; border-radius: 999px;
-  display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent;
-}
-.ws-connected    { background: rgba(var(--green-rgb), 0.12); color: var(--ok);       border-color: rgba(var(--green-rgb), 0.3); }
-.ws-disconnected { background: rgba(var(--red-rgb), 0.12);   color: var(--red-soft); border-color: rgba(var(--red-rgb), 0.3); }
-
-.cmd-entry { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 6px; }
-.cmd-trigger { font-family: var(--font-mono); color: var(--accent); font-size: 10px; margin-bottom: 3px; }
-.cmd-desc    { color: var(--text-muted); font-size: 11px; }
-
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 3px; }
-
-/* ─── BANNER DE FASE DE VOZ ────────────────────────────────────────────── */
-/* Barra ancha siempre visible que indica en qué fase está el ciclo de voz.
-   El estado "PUEDES HABLAR" (verde) es la señal para cuándo el juez habla.
-   Cada fase solo cambia el tono (`--tone`): el color del texto, el filo de la
-   izquierda y el degradado salen de ahí. */
-
-.voice-phase-banner {
-  --tone: var(--text-muted); --tone-rgb: 131, 140, 148; --fuerza: 0.14;
-  position: relative;
-  display: flex; align-items: center; gap: 14px;
-  padding: 12px 24px; font-family: var(--font-mono);
-  border-bottom: 1px solid var(--border);
-  color: var(--tone);
-  background: var(--surface) linear-gradient(90deg, rgba(var(--tone-rgb), var(--fuerza)),
-                              rgba(var(--tone-rgb), 0.03) 58%, transparent);
-  transition: color 200ms var(--ease-out);
-}
-.voice-phase-banner::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: var(--tone);
-}
-.vpb-pulse { width: 11px; height: 11px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.vpb-text  { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
-.vpb-hint  { font-size: 12px; opacity: 0.75; margin-left: auto; font-family: var(--font-main); }
-
-/* Apagado — discreto, sin animación. */
-.phase-off    { --fuerza: 0.05; }
-.phase-off .vpb-pulse { animation: none; opacity: 0.4; }
-
-/* En reposo — gris frío, pulso lento. MECH duerme pero oye el wake. */
-.phase-dormant { --tone: #93a1ad; --tone-rgb: 147, 161, 173; --fuerza: 0.1; }
-.phase-dormant .vpb-pulse { animation: pulse 2.2s infinite; opacity: 0.6; }
-
-/* PUEDES HABLAR — verde, pulso marcado para llamar la atención. */
-.phase-waiting { --tone: var(--ok); --tone-rgb: var(--green-rgb); --fuerza: 0.22; }
-.phase-waiting .vpb-pulse { animation: pulse 1s infinite; }
-.phase-waiting .vpb-text  { font-size: 17px; }
-
-/* Grabando — acento, pulso rápido. */
-.phase-listen { --tone: var(--accent); --tone-rgb: var(--accent-rgb); --fuerza: 0.18; }
-.phase-listen .vpb-pulse { animation: pulse 0.7s infinite; }
-
-/* Transcribiendo / pensando — ámbar, trabajo en curso. */
-.phase-work   { --tone: var(--amber); --tone-rgb: var(--amber-rgb); --fuerza: 0.16; }
-.phase-work .vpb-pulse { animation: pulse 1.4s infinite; }
-
-/* MECH hablando — el acento a toda fuerza. */
-.phase-speak  { --tone: #a5ecfa; --tone-rgb: var(--accent-rgb); --fuerza: 0.3; }
-.phase-speak .vpb-pulse { animation: pulse 1.1s infinite; }
-
-/* ─── VISTA AJUSTES ────────────────────────────────────────────────────── */
-
-/* Verde = se aplica en vivo · ámbar = hay que reiniciar el servidor. */
-.settings-live    { box-shadow: inset 3px 0 0 var(--teal), inset 0 1px 0 rgba(255, 255, 255, 0.035); }
-.settings-restart { box-shadow: inset 3px 0 0 var(--amber), inset 0 1px 0 rgba(255, 255, 255, 0.035); }
-/* 122px = lo que ocupa la etiqueta más larga («Saludo rotaciones»). Con el
-   mismo ancho para todas, los deslizadores empiezan en la misma línea. */
-.settings-live .slider-row label,
-.settings-restart .slider-row label { min-width: 122px; cursor: help; }
-/* Los desplegables y cajas de Ajustes, del mismo tamaño que el resto de la
-   fila (la clase `text-input` los hacía tan altos como la caja de comandos). */
-.slider-row .text-input {
-  padding: 7px 10px; font-family: var(--font-mono); font-size: 12px;
-  border-radius: var(--r-sm);
-}
-.slider-row select.text-input { padding-right: 30px; }
+select option { background: var(--surface3); color: var(--text); }
 
 /* Los interruptores son casillas de verificación de siempre, pintadas como
    una palanquita: el control es el mismo, solo cambia el dibujo. */
-.switch { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; }
+.switch { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; min-width: 0; }
 .switch input {
   -webkit-appearance: none; appearance: none; flex: none;
-  position: relative; width: 32px; height: 18px; border-radius: 999px;
-  background: var(--surface3); border: 1px solid var(--border-strong);
+  position: relative; width: 40px; height: 22px; border-radius: 999px;
+  background: var(--surface4); border: 1px solid var(--border-strong);
   cursor: pointer;
   transition: background-color 160ms var(--ease-out), border-color 160ms var(--ease-out);
 }
 .switch input::after {
   content: ''; position: absolute; top: 2px; left: 2px;
-  width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted);
-  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out);
+  width: 16px; height: 16px; border-radius: 50%; background: var(--text-muted);
+  transition: transform 180ms var(--ease-out), background-color 160ms var(--ease-out);
 }
-.switch input:checked { background: rgba(var(--green-rgb), 0.26); border-color: rgba(var(--green-rgb), 0.65); }
-.switch input:checked::after { transform: translateX(14px); background: var(--ok); }
-.switch-text { font-size: 12px; color: var(--text-muted); }
+.switch input:checked { background: var(--accent); border-color: var(--accent); }
+.switch input:checked::after { transform: translateX(18px); background: #fff; }
+.switch-text { font-size: 13px; color: var(--text); }
+
+/* ─── VISTA AJUSTES ────────────────────────────────────────────────────── */
+
+/* Verde = se aplica en vivo · ámbar = hay que reiniciar el servidor. */
+.settings-live    { border-left: 3px solid var(--ok); }
+.settings-restart { border-left: 3px solid var(--amber); }
+/* Las filas, separadas por una raya fina para seguirlas con la vista. */
+.settings-live .slider-row + .slider-row,
+.settings-restart .slider-row + .slider-row { border-top: 1px solid rgba(255, 255, 255, 0.045); }
+/* Todas las etiquetas del mismo ancho: los controles empiezan en la misma
+   línea. Llevan su explicación al dejar el ratón encima (`title`). */
+.settings-live .slider-row label:first-child,
+.settings-restart .slider-row label:first-child { flex: none; width: 168px; min-width: 0; cursor: help; }
+.settings-live .slider-row .val,
+.settings-restart .slider-row .val { min-width: 72px; }
+/* Rótulo que separa un grupo de ajustes del siguiente. */
+.set-group {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--accent); margin-top: 14px; padding-top: 4px;
+}
+.set-group::after { content: ''; flex: 1; height: 1px; background: var(--border-strong); }
+/* Los desplegables y cajas de Ajustes, del mismo tamaño que el resto de la
+   fila (la clase `text-input` los hacía tan altos como la caja de comandos). */
+.slider-row .text-input { height: 38px; font-size: 13px; }
+.slider-row select.text-input { padding-right: 32px; }
 
 /* ─── Trivia (vista Voz) ──────────────────────────────────────────────
    El juego corre en el servidor y se proyecta; esta tarjeta sirve para
    lanzarlo y para responder SIN micrófono cuando se está probando. */
-.trivia-box {
-  width: 100%; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: var(--r-md); padding: 12px 14px; display: flex;
-  flex-direction: column; gap: 10px; text-align: left;
-  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+.trivia-box, .translator-box {
+  display: flex; flex-direction: column; gap: 12px; text-align: left; min-width: 0;
+  transition: border-color 200ms var(--ease-out);
 }
-.trivia-box.active { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.08); }
-.trivia-q {
-  font-size: 12px; color: var(--text); line-height: 1.5; min-height: 18px;
+.trivia-box.active, .translator-box.active {
+  border-color: rgba(var(--accent-rgb), 0.7);
+  box-shadow: var(--shadow-card), 0 0 0 1px rgba(var(--accent-rgb), 0.35), 0 0 30px rgba(var(--accent-rgb), 0.12);
 }
-.trivia-q .tq-empty { color: var(--text-muted); }
+.trivia-q { font-size: 14px; color: var(--text); line-height: 1.55; min-height: 22px; overflow-wrap: anywhere; }
+.trivia-q .tq-empty { color: var(--text-dim); }
 .trivia-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.trivia-opts:empty { display: none; }
 .trivia-opt {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
-  color: var(--text); font-size: 11px; padding: 6px 10px; cursor: pointer;
-  font-family: var(--font-main); max-width: 220px; overflow: hidden;
+  background: var(--surface3); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  color: var(--text); font-size: 12.5px; min-height: 34px; padding: 0 12px; cursor: pointer;
+  font-family: var(--font-main); max-width: 240px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
   transition: border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
 }
 .trivia-opt:active:not(:disabled) { transform: scale(0.97); }
 .trivia-opt:disabled { opacity: .45; cursor: default; }
-.trivia-opt b { font-family: var(--font-mono); color: var(--accent); margin-right: 6px; }
+.trivia-opt b { font-family: var(--font-mono); color: var(--accent); margin-right: 7px; }
 
 /* ─── Modo traductor (vista Voz) ──────────────────────────────────────
    MECH de intérprete entre dos personas. Por voz se activa con
    «traduce MECH»; esta tarjeta permite elegir el par sin micrófono. */
-.translator-box {
-  width: 100%; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: var(--r-md); padding: 12px 14px; display: flex;
-  flex-direction: column; gap: 10px; text-align: left;
-  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
-}
-.translator-box.active { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.08); }
 .translator-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .translator-label {
-  font-size: 10px; letter-spacing: 2px; color: var(--text-muted);
-  font-family: var(--font-mono); display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1.1px; color: var(--text-muted);
+  display: inline-flex; align-items: center; gap: 9px;
 }
-.translator-label i { color: var(--accent); font-size: 13px; }
+.translator-label i { color: var(--accent); font-size: 17px; }
 .translator-state {
-  font-size: 10px; letter-spacing: 0.5px; font-family: var(--font-mono); color: var(--text-muted);
-  border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.5px; color: var(--text-muted);
+  background: var(--surface3); border: 1px solid var(--border-strong);
+  border-radius: 999px; padding: 4px 11px; white-space: nowrap;
 }
-.translator-state.tr-on { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.14); }
-.translator-state.tr-waiting { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.7); }
+.translator-state.tr-on { color: var(--accent-ink); border-color: transparent; background: var(--accent); }
+.translator-state.tr-waiting { color: #2b1a00; border-color: transparent; background: var(--amber); }
 /* Turno terminado pero con el par recordado: listo para otro
    «traduce MECH» sin volver a preguntar los idiomas. */
 .translator-state.tr-idle { color: var(--text); border-color: var(--border-strong); }
 .translator-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.translator-row > i { color: var(--text-dim); }
+.translator-row > i { color: var(--text-dim); font-size: 17px; }
 .translator-select {
-  background-color: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
-  color: var(--text); font-family: var(--font-mono); font-size: 11px;
-  padding: 6px 30px 6px 10px; cursor: pointer;
   /* La regla global de `select` los pone al 100%: aquí van en fila, así que
      se les devuelve el ancho de su contenido. */
-  width: auto; min-width: 130px; flex: 0 0 auto;
+  width: auto; min-width: 140px; flex: 0 0 auto;
 }
-.translator-hint { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); line-height: 1.7; }
-.translator-hint b { color: var(--text); font-weight: 400; }
+.translator-hint { font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+.translator-hint b { color: var(--text); font-weight: 600; }
+
+/* ─── PANEL DERECHO ────────────────────────────────────────────────────── */
+
+.right-panel {
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+}
+.panel-section {
+  padding: 14px 16px; border-bottom: 1px solid var(--border); overflow: hidden;
+}
+.panel-section:last-child { border-bottom: 0; }
+.panel-section.grow { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.panel-title {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 12px;
+}
+.panel-title i { font-size: 16px; color: var(--accent); }
+
+.chat-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; padding: 2px 2px 2px 0; }
+.chat-bubble {
+  flex: none; max-width: 90%; padding: 9px 13px; border-radius: 14px; font-size: 13px; line-height: 1.55;
+  overflow-wrap: anywhere;
+  animation: bubbleIn 260ms var(--ease-out) backwards;
+}
+/* Quien habla va relleno de acento y a la derecha; MECH, a la izquierda. */
+.chat-user {
+  background: var(--accent); color: var(--accent-ink); font-weight: 500;
+  align-self: flex-end; border-bottom-right-radius: 4px; transform-origin: 100% 100%;
+}
+.chat-mech {
+  background: var(--surface3); border: 1px solid var(--border-strong);
+  color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; transform-origin: 0 100%;
+}
+/* Cada mensaje nuevo sale de la esquina de quien habla. */
+@keyframes bubbleIn { from { opacity: 0; transform: translateY(8px) scale(0.94); } }
+
+.log-list { display: flex; flex-direction: column; gap: 0; overflow-y: auto; flex: 1; min-height: 0; }
+.log-item {
+  flex: none; display: flex; gap: 9px; font-size: 11px; font-family: var(--font-mono);
+  padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.045); align-items: flex-start;
+}
+.log-time { color: var(--text-dim); flex-shrink: 0; font-size: 10px; padding-top: 1px; font-variant-numeric: tabular-nums; }
+.log-msg  { flex: 1; line-height: 1.5; overflow-wrap: anywhere; }
+.log-ok   { color: var(--ok); }
+.log-err  { color: var(--red-soft); }
+.log-info { color: #9be7f5; }
+.log-warn { color: var(--amber); }
+
+.ws-badge {
+  font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 7px; border: 1px solid transparent;
+}
+.ws-badge i { font-size: 15px; }
+.ws-connected    { background: rgba(var(--green-rgb), 0.16); color: var(--ok);       border-color: rgba(var(--green-rgb), 0.4); }
+.ws-disconnected { background: rgba(var(--red-rgb), 0.16);   color: var(--red-soft); border-color: rgba(var(--red-rgb), 0.4); }
+
+/* Aviso de que se perdió la conexión con el robot (app.js pone
+   `.sin-servidor` en <body> cuando el WebSocket se cae). */
+.net-toast {
+  position: fixed; left: 50%; bottom: 22px; z-index: 300;
+  display: flex; align-items: center; gap: 10px;
+  background: #3a1518; border: 1px solid rgba(var(--red-rgb), 0.6); color: #ffd9d9;
+  padding: 11px 18px; border-radius: 999px; font-size: 13px; font-weight: 500;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  opacity: 0; transform: translate(-50%, 16px); pointer-events: none;
+  transition: opacity 200ms var(--ease-out), transform 260ms var(--ease-out);
+}
+.net-toast i { font-size: 18px; color: var(--red-soft); }
+body.sin-servidor .net-toast { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+/* «Buscar de nuevo»: solo cuando el panel se abrió desde la app de Windows
+   (app.js pone `.en-app`), que es quien tiene una pantalla a la que volver. */
+.net-back {
+  display: none; align-items: center; height: 30px; padding: 0 12px; margin: -4px -8px -4px 4px;
+  border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.12);
+  color: #fff; font-family: var(--font-main); font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: transform 140ms var(--ease-out);
+}
+.net-back:active { transform: scale(0.97); }
+body.en-app .net-back { display: inline-flex; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2c3540; border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
 
 /* ─── HOVER ────────────────────────────────────────────────────────────── */
 /* Todo junto y solo donde hay ratón: en una pantalla táctil el `:hover` se
    dispara con el toque y se queda puesto hasta que tocas otra cosa. */
 
 @media (hover: hover) and (pointer: fine) {
-  .emergency-btn:hover { filter: brightness(1.1); }
-  .nav-item:hover { background: var(--surface2); color: var(--text); }
-  .nav-item.active:hover { background: var(--surface3); }
+  .emergency-btn:hover { filter: brightness(1.12); }
+  .nav-item:hover { background: var(--surface3); color: var(--text); }
+  .nav-item.active:hover { background: rgba(var(--accent-rgb), 0.18); }
   .has-glider .nav-item.active:hover { background: transparent; }
   /* El icono se asoma hacia la derecha al pasar por encima. */
   .nav-item:hover i { transform: translateX(3px); }
-  .nav-item.active:hover i { transform: translateX(3px) scale(1.1); }
-  .voice-btn:hover { background-color: rgba(var(--red-rgb), 0.16); transform: scale(1.04); }
+  .nav-item.active:hover i { transform: translateX(3px) scale(1.08); }
+  .nav-item:hover .nav-ext { transform: translateX(3px); opacity: 0.9; }
+  .voice-btn:hover { transform: scale(1.04); }
   .voice-btn:active { transform: scale(0.96); }
-  .menu-btn:hover { border-color: var(--border-strong); background: var(--surface3); }
-  .menu-btn[aria-expanded="true"]:hover { border-color: rgba(var(--accent-rgb), 0.7); }
-  .menu-item:hover { background: var(--surface3); color: var(--text); }
-  .menu-item.active:hover { background: rgba(var(--accent-rgb), 0.16); }
-  .cmd-chip:hover { background: var(--surface2); color: var(--text); border-color: var(--border-strong); }
-  .cmd-chip:hover i { transform: scale(1.15); opacity: 1; }
-  .upload-zone:hover { border-color: rgba(var(--accent-rgb), 0.7); background: rgba(var(--accent-rgb), 0.05); }
-  .btn:hover { background: var(--surface3); color: var(--text); border-color: var(--border-strong); }
+  .menu-btn:hover { border-color: var(--text-dim); background: var(--surface4); }
+  .menu-btn[aria-expanded="true"]:hover { border-color: var(--accent); }
+  .menu-item:hover { background: var(--surface4); color: var(--text); }
+  .menu-item.active:hover { background: rgba(var(--accent-rgb), 0.22); }
+  .cmd-chip:hover { background: var(--surface4); border-color: rgba(var(--accent-rgb), 0.55); }
+  .cmd-chip:hover i { transform: scale(1.1); }
+  .upload-zone:hover { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.06); }
+  .btn:hover { background: var(--surface4); border-color: var(--text-dim); }
   .btn-green:hover, .btn-purple:hover, .btn-accent:hover, .btn-red:hover, .btn-amber:hover {
-    background: rgba(var(--c-rgb), 0.22); border-color: rgba(var(--c-rgb), 0.55); color: var(--c);
+    background: rgba(var(--c-rgb), 0.26); border-color: rgba(var(--c-rgb), 0.7);
   }
-  .init-btn:hover { background: rgba(var(--red-rgb), 0.22); }
+  .btn-solid.btn-green:hover, .btn-solid.btn-purple:hover, .btn-solid.btn-accent:hover,
+  .btn-solid.btn-amber:hover { background: var(--c); border-color: transparent; filter: brightness(1.1); }
+  .btn-solid.btn-red:hover { background: var(--red); border-color: transparent; filter: brightness(1.1); }
+  .init-btn:hover { background: rgba(var(--red-rgb), 0.24); }
   /* `:not(:active)`: al pulsar manda el estado de tecla hundida, no el hover. */
-  .arduino-btn:hover:not(:active) { color: var(--text); border-color: rgba(var(--amber-rgb), 0.7); }
-  .arduino-btn.danger:hover:not(:active) { color: var(--red-soft); border-color: var(--red); }
-  .trivia-opt:hover:not(:disabled) { border-color: rgba(var(--accent-rgb), 0.7); }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
+  .arduino-btn:hover:not(:active) { border-color: var(--amber); }
+  .arduino-btn.danger:hover:not(:active) { border-color: var(--red); }
+  .trivia-opt:hover:not(:disabled) { border-color: var(--accent); }
+  ::-webkit-scrollbar-thumb:hover { background: #3d4855; background-clip: content-box; }
 }
 
-/* ─── RESPONSIVE ───────────────────────────────────────────────────────── */
+/* ─── PANTALLAS MÁS ESTRECHAS ──────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
-  .main { grid-template-columns: 200px 1fr; }
+  .main { grid-template-columns: 220px minmax(0, 1fr); }
   .right-panel { display: none; }
+  .logo-sub { display: none; }
 }
 @media (max-width: 700px) {
-  .main { grid-template-columns: 1fr; }
-  .sidebar { flex-direction: row; overflow-x: auto; padding: 10px; scrollbar-width: none; }
+  /* En el teléfono se desplaza la página entera: con el armazón fijo, la
+     cabecera y el menú se comerían media pantalla. */
+  .app { height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .content { overflow: visible; }
+  .view { height: auto; overflow: visible; padding: 18px 16px 40px; }
+  .sidebar { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 10px; scrollbar-width: none; }
   .sidebar::-webkit-scrollbar { display: none; }  /* se desliza con el dedo */
   .sidebar-label { display: none; }
-  .nav-item { white-space: nowrap; }
+  .sidebar-foot { margin: 0; padding: 0; border: 0; }
+  .nav-item { white-space: nowrap; width: auto; }
   .nav-item.active::before { left: 12px; right: 12px; top: auto; bottom: -1px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
   .stand-grid { grid-template-columns: 1fr; }
   .header { flex-wrap: wrap; }
-  .status-bar { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; }
+  .status-bar { order: 3; flex-basis: 100%; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; }
+  .status-item, .ws-badge { white-space: nowrap; }
+  .vpb-hint { display: none; }
+  .settings-live .slider-row, .settings-restart .slider-row { flex-wrap: wrap; padding: 6px 0; }
+  .settings-live .slider-row label:first-child,
+  .settings-restart .slider-row label:first-child { width: 100%; }
 }
 
 /* ─── MENOS MOVIMIENTO ─────────────────────────────────────────────────── */
