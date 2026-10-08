@@ -198,6 +198,11 @@ backend/
                         personas. Solo el ESTADO (activo, par de idiomas,
                         guarda anti-eco); quien habla y pide la traducción
                         es mech_app. Se dispara con «traduce MECH».
+  sismos.py           ← Sismos recientes para la vista «Sismos» del panel.
+                        Un hilo consulta EMSC y USGS (públicas, sin clave),
+                        junta el mismo sismo contado por las dos, y guarda 7
+                        días: el mundo desde magnitud 4 y «mi zona» desde
+                        2,5. Solo librería estándar. NO predice ni alerta.
   lang.py             ← Idioma activo: español + nueve más (en/fr/pt y,
                         desde oct 2026, de/it/ja/ru/zh/ko). Español por defecto;
                         los demás SOLO si despiertan a MECH en ese idioma
@@ -252,6 +257,11 @@ frontend/
   trivia.js           ← La PANTALLA del juego, estilo Kahoot (se sirve en
                         /static/trivia.js). Pintor tonto: muestra el
                         estado que manda el servidor. Trae su CSS dentro.
+  sismos.js           ← El MAPA de la vista «Sismos» (se sirve en
+                        /static/sismos.js, cargado ANTES que app.js). Pintor:
+                        los datos los baja el servidor. Dos lienzos (mapa
+                        abajo, sismos arriba). El contorno de los países
+                        sale de vendor/mech-mapa.json, en local.
   subtitles.js        ← Subtítulos estilo cine compartidos por /projector y
                         /projector/vr. Es un pintor TONTO: muestra la línea
                         que manda el backend. El reparto y el ritmo los
@@ -408,6 +418,15 @@ scripts/
                         MECH dice, lo que proyecta y lo que le pide a Claude
                         tienen que ir en el idioma del despertar. Correrlo
                         junto con el anterior.
+  probar_sismos.py    ← La pieza que consulta los sismos, con fuentes de
+                        mentira: fichas, lugar en español, el mismo sismo en
+                        las dos fuentes, qué cuenta como «nuevo», sin
+                        internet, cambio de zona. Con `--red` consulta EMSC
+                        y USGS de verdad. Correrlo al tocar backend/sismos.py.
+  probar_llegada.py   ← Cuándo la cámara da por LLEGADA a una persona:
+                        fotogramas falsos sueltos, parpadeos y ruido NO son
+                        una llegada; una cara que se mantiene sí. Sin cámara
+                        ni OpenCV. Correrlo al tocar vision._Llegada.
   probar_saludo.py    ← Cuenta las órdenes que el SALUDO manda al Arduino:
                         cuántas veces llega arriba el brazo (tienen que ser
                         3), que el izquierdo no se mueva y que nunca baje de
@@ -497,6 +516,10 @@ el HTML con doble click).
   japonés y chino** (Noto Sans KR/JP/SC, 322 trozos, 7 MB), regenerable con
   `python scripts/mkfonts_cjk.py`. Las cargan el panel, `/projector` y
   `/projector/vr`. Ver «La letra de coreano, japonés y chino va incluida».
+- `mech-mapa.json` = el contorno de los países para la vista «Sismos»
+  (Natural Earth 1:50m, 500 KB), regenerable con `python scripts/mkmapa.py`.
+  Nada de mapas de internet (los de cuadritos que se bajan al moverse): sin
+  wifi la vista quedaría en negro. El preflight (§8) avisa si falta.
 - `ti-brand-arduino` **no existe en Tabler**: esos tres iconos ya estaban
   rotos incluso con internet. Se cambiaron por `ti-cpu-2`.
 
@@ -1161,6 +1184,84 @@ comporta al revés que las demás en cuatro cosas.
 - Para añadir OTRO slot así: una entrada con `promo: True` y su `segments`
   (máximo de espacios), y una lista de frases en `config` para dispararlo.
 
+### Sismos recientes — el mapa del panel (8 oct 2026)
+
+Pedido del equipo: «un mapa dentro del panel de control, como un apartado
+extra, y que el mapa animado muestre sismos recientes apenas sean públicos».
+Es la vista **Sismos** del menú lateral. `backend/sismos.py` baja los datos,
+`frontend/sismos.js` los pinta.
+
+⚠️ **Qué es y qué NO es — no lo vendas como otra cosa.** Muestra lo que YA
+tembló, tal como lo publican las redes: EMSC tarda 5-10 minutos, USGS 1-3 en
+Estados Unidos. **No predice y no es una alerta temprana**: cuando el punto
+aparece, la sacudida ya pasó. La vista lo dice arriba, en negrita. Una alerta
+de verdad (segundos de ventaja) necesita acuerdo con el OVSICORI o el USGS;
+ver handoff.md.
+
+- **Fuentes** (gratis, sin clave): **EMSC** (`seismicportal.eu`, servicio
+  FDSN) y **USGS** (los GeoJSON de `earthquake.usgs.gov`). EMSC es la que
+  trae Centroamérica: los sismos de Costa Rica llegan firmados `UNA`
+  (= OVSICORI-UNA, comprobado en la tabla de contribuyentes de EMSC), los de
+  Panamá `IGC`, los de Nicaragua `INET`. Medido el 8 oct: en una semana, 62
+  sismos a menos de 5° de Costa Rica en EMSC y **4** en USGS. Por eso van
+  las dos.
+- **El mismo sismo sale en las dos fuentes** (163 de 320 en la prueba):
+  `sismos._mismo()` los junta si coinciden en 40 s y 150 km. Se queda la
+  ficha que llegó primero y se anota la otra fuente.
+- **Qué se guarda**: 7 días. Del mundo, magnitud ≥ `SISMOS_MIN_MAG_WORLD`
+  (4.0); dentro de «mi zona» (círculo de `SISMOS_ZONE_RADIUS_KM` alrededor
+  de `SISMOS_ZONE_LAT/LON`), desde `SISMOS_MIN_MAG_ZONE` (2.5). La zona, el
+  radio y el encendido se cambian EN VIVO en la tarjeta «Mi zona» de la
+  propia vista (escribe el `.env` por `/api/config`, como Ajustes); los
+  sitios del desplegable están en `ZONAS` de `sismos.js`.
+- **La lista NO va en `state`** (ese viaja entero por WebSocket en cada
+  cambio de fase, y son cientos de fichas): el panel la pide por
+  `GET /api/sismos`; los NUEVOS llegan por el evento WS `sismos`. Mientras
+  la vista está abierta también vuelve a pedir la lista cada minuto (trae
+  las magnitudes que las redes corrigen después).
+- **«Nuevo» = apareció después de la primera carga de ESA fuente** y ocurrió
+  hace menos de 2 h. Lo primero que trae cada fuente es historia y no se
+  anuncia. Un sismo nuevo dentro de la zona se apunta en el registro (nivel
+  `warn`) y pone un punto ámbar en el menú si no se está mirando la vista.
+- **Datos que gasta**: ~15 MB al día (las dos fuentes comprimen con gzip:
+  8 KB por minuto + la semana entera cada media hora). Vale para el hotspot.
+- **Los relojes no tienen por qué coincidir**: cada respuesta lleva `ahora`
+  (hora del servidor) y el panel calcula el desfase, igual que la VR.
+- **El mapa** (`sismos.js`): Mercator, dibujado a mano en un `<canvas>`.
+  - Dos lienzos. El de abajo (80 000 puntos) **no se repinta en cada
+    fotograma**: mientras la vista se mueve se estira la última imagen
+    nítida y al parar (140 ms) se pinta bien. Sin eso, acercar el mapa
+    tardaba 85 ms por fotograma en la laptop; en la Pi iría a tirones.
+  - El de arriba se pinta ~30 veces por segundo si algo se mueve y 2 si no.
+    Nada corre con la vista cerrada (`Sismos.mostrar(false)`).
+  - ⚠️ Lo que cruza el borde del mapa (Chukotka, Fiyi, la Antártida pasan
+    de 180° a −180°) se dibuja «desenrollado» y otra vez una vuelta más
+    allá (`trazo()`). Sin eso salen rayas de lado a lado del mapa.
+  - ⚠️ Los nombres de los lugares vienen de fuera: **siempre `textContent`**,
+    nunca `innerHTML`.
+  - Con el dedo NO se arrastra el mapa (el gesto es para desplazar la
+    página); en el teléfono se mueve con los botones.
+- **Las ondas P y S al tocar un sismo** son una animación en cámara rápida
+  con velocidades típicas (6,5 y 3,7 km/s): sirven para explicar por qué
+  existe la alerta temprana. Son aproximadas y la ficha lo dice («unos»).
+- **El lugar se traduce a medias** (`sismos.lugar_es`): los patrones
+  («18 km NNE of…», «NEAR COAST OF…») y una veintena de países. Lo que no
+  encaja se queda en inglés. No es un fallo.
+- **Marca de tsunami**: es el campo `tsunami` del USGS, que significa
+  «revisar el aviso», NO que haya tsunami. La ficha lo dice así.
+- Sin dependencias nuevas (`urllib` + `gzip`). El hilo arranca siempre con
+  el servidor; apagado (`SISMOS_ENABLED=false`) se queda sin consultar nada.
+- Claves: `SISMOS_ENABLED`, `SISMOS_POLL_SECONDS`, `SISMOS_ZONE_NAME`,
+  `SISMOS_ZONE_LAT`, `SISMOS_ZONE_LON`, `SISMOS_ZONE_RADIUS_KM`,
+  `SISMOS_MIN_MAG_WORLD`, `SISMOS_MIN_MAG_ZONE`. Todas en `_LIVE_KEYS`.
+- Línea de arranque: `Sismos: mapa en el panel (vista «Sismos») · zona …`.
+
+Lo que NO se hizo, y **no hay que hacerlo salvo pedido**: que MECH lo **diga
+en voz alta** o lo **proyecte**, la tarjeta «qué hacer si tiembla», el
+simulacro y la pregunta «¿ha temblado hoy?». Se le propusieron al equipo y
+contestó que la función de seguridad es el propio mapa y que eso ya lo
+tienen cubierto (8 oct). Están apuntadas en handoff.md.
+
 ### Gestos disponibles
 
 Definidos en `backend/gestures.py` y referenciados en el system prompt de `llm.py`:
@@ -1693,6 +1794,26 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   cada 45 s aunque no hubiera nadie delante**. El reloj de ausencia se
   REINICIA en cada pérdida (`on_user_lost`), de modo que un detector que
   parpadea nunca lo completa. `_greeting_rearmed()` en mech_app.
+- **La cara tiene que MANTENERSE para contar como una llegada (8 oct
+  2026)**: el equipo reportó que MECH «a veces saluda incluso cuando no hay
+  personas al frente». Causa: a `vision.py` le bastaba **UN fotograma** con
+  cara para llamar a `on_user_detected()`, así que un reflejo o una sombra
+  que el detector confundía un instante (en la Pi corre el Haar, que da
+  falsos positivos sueltos) ya era un visitante. La regla de «visitante
+  nuevo» no lo frenaba: con la cámara vacía de verdad, el reloj de ausencia
+  SÍ se completa, y el siguiente fotograma falso saludaba.
+  Ahora decide `vision._Llegada`: cada fotograma con cara suma su duración
+  y cada uno sin cara **descuenta la mitad**; solo al llegar a
+  `GREETING_CONFIRM_SECONDS` (1.0 s, en vivo desde Ajustes → «Confirmar
+  cara»; 0 = lo de antes) se avisa a `mech_app`. Un falso positivo suelto, o
+  uno que parpadea menos de un tercio del tiempo, no llega nunca; una cara
+  real que el detector pierde a ratos sí (~2 s viéndola el 70 %).
+  ⚠️ Solo cambia CUÁNDO se avisa de la llegada (y por tanto el saludo):
+  `present` / `state["vision"]["user_present"]`, el acercarse y el gate de
+  proyección siguen reaccionando al primer fotograma, como antes. Y una
+  presencia que no llegó a confirmarse **no** cuenta como «se fue alguien»
+  (no reinicia el reloj de ausencia). Medido con
+  `python scripts/probar_llegada.py`. **Sin probar en la Pi.**
 - **Saludo SOLO EN REPOSO (sep 2026)**: el saludo por cámara se dispara
   únicamente con MECH **en reposo** (`GREETING_ONLY_DORMANT`, default true,
   en vivo desde Ajustes → «Saludar por cámara solo en reposo»). Despierto
@@ -1780,6 +1901,16 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   la pantalla de búsqueda en el navegador (no encontrado, dirección a mano,
   encontrado, volver desde el panel). **Sin probar con el robot ni abriendo
   el icono de verdad**: el equipo tiene que instalarla y probarla.
+- **Mapa de sismos recientes en el panel (8 oct 2026)** — vista «Sismos»:
+  mapa animado con los sismos de los últimos 7 días (EMSC + USGS, sin
+  clave), lista, ficha con las ondas P y S, repaso animado del periodo y
+  «mi zona» configurable en vivo. Informa de lo que ya tembló; **no predice
+  ni alerta**. Ver «Sismos recientes — el mapa del panel». Verificado:
+  `scripts/probar_sismos.py` (48 comprobaciones + las fuentes reales) y la
+  vista en el navegador con un servidor de mentira que corre
+  `backend/sismos.py` de verdad (datos reales, llegada en vivo, cambio de
+  zona, apagar/encender, escritorio ancho, 1440 px y teléfono). **Sin probar
+  en la Pi.**
 - **Modo música: SOLO explicado, nada programado (6 oct 2026)** — el equipo
   pidió «modo música MECH» / «MECH activa modo música» (que busque la canción
   en YouTube u otra plataforma y ponga el video) y pidió expresamente que
@@ -1915,9 +2046,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 17. **`VOICE_WAKE_PHRASES_{EN,FR,PT}` en el `.env` de la Pi tapan el
     default**, igual que la lista en español. Si «wake up MECH» /
     «bonjour MECH» / «bom dia MECH» no funcionan, revisar esas claves.
-17e. **Si MECH saluda solo, sin nadie delante**, es el detector
-    parpadeando: subí `GREETING_REARM_SECONDS` (Ajustes → «Visitante
-    nuevo»). Y si NO saluda a un visitante nuevo, bajalo. Ojo: si la cámara
+17e. **Si MECH saluda solo, sin nadie delante**, la cámara confunde algo
+    con una cara: subí `GREETING_CONFIRM_SECONDS` (Ajustes → «Confirmar
+    cara»). Si lo que hace es REPETIR el saludo a quien sigue ahí, subí
+    `GREETING_REARM_SECONDS` (Ajustes → «Visitante nuevo»). Y si NO saluda
+    a un visitante nuevo, bajá ese último (o «Confirmar cara», si es que
+    tarda). Ojo: si la cámara
     tiene un falso positivo PERMANENTE (un póster, un reflejo), MECH creerá
     que nunca se fue nadie y no volverá a saludar — ahí el problema es la
     cámara, no esto.
@@ -2119,7 +2253,7 @@ reordenado.
   `body.sin-servidor` (lo ponen `ws.onclose` / `ws.onopen`). Con `?app=1` en
   la dirección (así lo abre la app de Windows) trae «Buscar de nuevo», que
   hace `history.back()` a la pantalla de búsqueda.
-- `index.html` pide ahora `styles.css?v=8` y `app.js?v=8`.
+- `index.html` pide ahora `styles.css?v=9` y `app.js?v=9`.
 
 ### App de Windows sin construir nada (8 oct 2026)
 
@@ -2204,7 +2338,7 @@ presentan.
   (`AUDIO_INPUT_DEVICE=Steren`) no coincidía con ninguna opción, el
   desplegable quedaba en blanco y «Guardar en .env» **borraba el micrófono**.
   Ahora se añade como opción («Steren (lo configurado ahora)»).
-- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=8`): para
+- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=9`): para
   que tras un `git pull` el navegador no mezcle el HTML nuevo con el CSS/JS
   viejos que tenía guardados. **Al tocar cualquiera de los dos, súbele el
   número.**

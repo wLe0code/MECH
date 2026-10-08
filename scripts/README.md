@@ -41,6 +41,14 @@ si se añade otro idioma que no use letras latinas. El script recorta las
 fuentes para que **solo** dibujen coreano, japonés y chino: sin ese recorte
 le cambiaban el aspecto a las flechas y símbolos de los botones del panel.
 
+## `mkmapa.py`
+
+Genera `frontend/vendor/mech-mapa.json`: el contorno de los países que dibuja
+la vista **Sismos** del panel (Natural Earth 1:50m, dominio público; 500 KB).
+Va en el repo porque el panel no puede bajar mapas de internet.
+
+Solo hay que volver a correrlo (con internet) si se pierde el archivo.
+
 ## Por qué está todo en local
 
 En la competencia **no se puede depender del wifi del recinto**. Antes los

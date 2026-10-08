@@ -62,6 +62,7 @@ _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 import lang
 import maneuvers
+import sismos
 import stt
 import translator
 import trivia
@@ -469,9 +470,20 @@ async def lifespan(app: FastAPI):
     # Visión (cámara C930e): arranca sola si está habilitada en .env.
     if config.VISION_ENABLED:
         vision.get_vision(mech).start()
+    # Sismos recientes (vista «Sismos» del panel). El hilo arranca siempre:
+    # si está apagado en la vista se queda esperando, sin consultar nada.
+    # Misma idea que las líneas de arriba: si esta NO sale, es código viejo.
+    mech.log(
+        "Sismos: mapa en el panel (vista «Sismos») · zona "
+        f"{config.SISMOS_ZONE_NAME}, {config.SISMOS_ZONE_RADIUS_KM:.0f} km"
+        + ("" if config.SISMOS_ENABLED else " · APAGADO (se enciende en esa vista)"),
+        "ok",
+    )
+    sismos.get_sismos(mech).start()
     yield
     stop_voice_loop()
     vision.get_vision(mech).stop()
+    sismos.get_sismos(mech).stop()
     mech.close()
 
 
@@ -1042,6 +1054,25 @@ async def emergency_stop():
     return {"ok": True}
 
 
+# -- Sismos recientes (vista «Sismos» del panel) ------------------------------
+
+@app.get("/api/sismos")
+async def sismos_list():
+    """La lista entera (últimos 7 días) + «mi zona» + cuándo se consultó.
+
+    No va en /api/state a propósito: son cientos de fichas y el estado viaja
+    entero por WebSocket en cada cambio de fase.
+    """
+    return sismos.get_sismos(get_app()).snapshot()
+
+
+@app.post("/api/sismos/refresh")
+async def sismos_refresh():
+    """Consultar las fuentes YA (botón «Actualizar» de la vista)."""
+    sismos.get_sismos(get_app()).despertar()
+    return {"ok": True}
+
+
 @app.get("/api/state")
 async def api_state():
     mech = get_app()
@@ -1095,6 +1126,16 @@ _LIVE_KEYS = {
     "TRIVIA_QUESTIONS": int,             # cuántas por partida
     "TRIVIA_OFFER_AFTER_PLAN": _to_bool,  # ¿la ofrece sola al terminar?
     "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
+    "GREETING_CONFIRM_SECONDS": float,  # cuánto debe verse la cara para saludar
+    # Sismos recientes (se cambian desde la propia vista «Sismos»).
+    "SISMOS_ENABLED": _to_bool,
+    "SISMOS_POLL_SECONDS": float,
+    "SISMOS_ZONE_NAME": str,
+    "SISMOS_ZONE_LAT": float,
+    "SISMOS_ZONE_LON": float,
+    "SISMOS_ZONE_RADIUS_KM": float,
+    "SISMOS_MIN_MAG_WORLD": float,
+    "SISMOS_MIN_MAG_ZONE": float,
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
     "DRIVE_INVERT_FORWARD": _to_bool,  # adelante/atrás al revés (todas las ruedas)
     "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos
@@ -1164,6 +1205,7 @@ async def get_config():
             "TRIVIA_QUESTIONS": config.TRIVIA_QUESTIONS,
             "TRIVIA_OFFER_AFTER_PLAN": config.TRIVIA_OFFER_AFTER_PLAN,
             "GREETING_REARM_SECONDS": config.GREETING_REARM_SECONDS,
+            "GREETING_CONFIRM_SECONDS": config.GREETING_CONFIRM_SECONDS,
             "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,
             "DRIVE_INVERT_FORWARD": config.DRIVE_INVERT_FORWARD,
             "ARM_WAVE_BOTH": config.ARM_WAVE_BOTH,
@@ -1229,6 +1271,9 @@ async def set_config(c: ConfigUpdate):
             restart_needed.append(key)
 
     mech = get_app()
+    if any(k.startswith("SISMOS_") for k in applied):
+        # Que el cambio de zona (o el encendido) se note ya, no al minuto.
+        sismos.get_sismos(mech).despertar()
     if applied:
         mech.log(f"Ajustes aplicados en vivo: {', '.join(applied)}", "ok")
     if restart_needed:

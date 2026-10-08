@@ -376,6 +376,9 @@ sube el **brazo derecho** hacia adelante, llega arriba **3 veces** y dice,
   aunque en ese momento parezca estar en reposo.
 - Saluda **una vez por visitante**: para volver a hacerlo, la cámara tiene
   que quedarse vacía un rato (Ajustes → «Visitante nuevo»).
+- La cara tiene que **mantenerse cerca de un segundo** en la cámara antes
+  de que MECH salude (Ajustes → «Confirmar cara»): así no saluda a un
+  reflejo o a una sombra que la cámara confunde un instante.
 - Para probarlo: panel → vista **Arduino** → **👋 SALUDAR AHORA**. Se salta
   la espera, pero MECH tiene que estar **en reposo**; si no, el panel dice
   por qué no saluda.
@@ -431,6 +434,41 @@ Iniciar MECH): la lista de obras con video se arma al arrancar.
 
 ---
 
+## 7 bis. El mapa de sismos
+
+Panel → **Sismos** (menú de la izquierda). Es un mapa del mundo con los
+sismos de los últimos 7 días, que se actualiza solo cada minuto.
+
+> **Qué es y qué no.** Muestra lo que **ya tembló**, en cuanto las redes
+> sísmicas lo publican: entre 2 y 10 minutos después. **No predice sismos y
+> no es una alerta**: cuando el punto aparece, la sacudida ya pasó. Ante una
+> emergencia se sigue a las autoridades, no al panel.
+
+- **Colores**: rojo = última hora · ámbar = últimas 24 horas · gris = esta
+  semana. **Tamaño** = magnitud. Los que acaban de pasar laten.
+- **Arriba**: el periodo (1 hora / 24 horas / 7 días) y la magnitud mínima.
+- **Repasar**: vuelve a pasar el periodo en unos segundos; cada sismo aparece
+  a su hora. Sirve para enseñarlo aunque en ese momento no esté temblando.
+- **Mundo / Mi zona / + / −**: mover el mapa. Con el ratón también se
+  arrastra y se acerca con la rueda.
+- **Tocar un punto** (o un renglón de la lista): sale su ficha —
+  profundidad, a cuántos km de tu zona, quién lo reportó— y se dibujan sus
+  dos ondas en cámara rápida: la **P** (rápida y suave) y la **S** (más
+  lenta, la que sacude). La ficha dice cuánto tardó cada una en llegar.
+- **Mi zona** (tarjeta de abajo): dónde está MECH y de qué radio es el
+  círculo. Dentro del círculo salen también los sismos pequeños (desde 2,5);
+  del resto del mundo, desde 4. Se guarda con **Guardar** y se aplica al
+  momento. Ahí mismo se **apaga** la consulta si no se quiere gastar datos.
+- Si llega un sismo dentro de tu zona y estás en otra vista, sale un **punto
+  ámbar** junto a «Sismos» en el menú, y una línea en el registro.
+
+Los datos vienen de **EMSC** (reúne las redes de cada país; los de Costa Rica
+llegan del OVSICORI-UNA) y del **USGS**. Las dos son públicas y sin clave.
+Necesita internet en la Raspberry Pi; sin internet el mapa se queda con lo
+último que bajó y lo avisa arriba a la izquierda.
+
+---
+
 ## 8. Cuando algo no funciona
 
 **Lo primero, siempre: mirar el panel.** MECH escribe ahí todo lo que oye y
@@ -446,13 +484,14 @@ todo lo que hace. La mayoría de las veces el problema se ve de una.
 | **No se deja interrumpir** | Prueba el botón **«Interrumpir narración»** de la vista Voz. Si por ahí SÍ corta, el problema es de audio: baja **«Umbral al narrar»**. |
 | **Se corta solo a media narración** | Es su propio eco. Sube **«Umbral al narrar»**, o apaga **«Interrumpir»**. |
 | **No saluda a nadie** | ¿Está despierto? Solo saluda en reposo (§6). ¿Está encendida la cámara? |
-| **Saluda solo, sin nadie delante** | El detector parpadea: sube **«Visitante nuevo»**. |
+| **Saluda solo, sin nadie delante** | La cámara confunde algo con una cara: sube **«Confirmar cara»**. Si lo que hace es REPETIR el saludo, sube **«Visitante nuevo»**. |
 | **El brazo saluda hacia atrás** | Ajustes → **«Sentido brazos»**. |
 | **Un botón de movimiento va al revés** | §5, «Si un control va al revés». |
 | **No se oye** | Que el parlante esté encendido, conectado y con volumen. |
 | **Los videos de marketing se ven pero no se oyen** | La proyección se abrió sin el permiso de autoplay. Ciérrala y ábrela con el icono **Proyectar MECH** (ese ya lo lleva). |
 | **La proyección de marketing dura un segundo** | Es el formato de los videos. El panel dice cuáles fallaron y da el comando para reconvertirlos. |
 | **Las ruedas no se mueven** | Prueba `MOVE:0:0:100` desde el panel (vista Arduino → comando crudo) con el bucle de voz apagado. |
+| **El mapa de sismos dice «sin conexión con las fuentes»** | La Raspberry Pi no tiene internet (o el wifi del recinto bloquea esas páginas). El mapa sigue con lo último que bajó. Con el hotspot del celular vuelve solo en un minuto. |
 | **No veo la Pi desde Windows** | La wifi del recinto puede estar aislando los equipos entre sí. Usa el hotspot del celular para los dos. |
 
 ### El chequeo antes del evento

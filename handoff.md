@@ -38,6 +38,17 @@ una app…», encima de `c1b4c4d`), **sin probar en la Pi ni con el robot**:
 preguntar cómo se ve y si la app encontró al robot. El modo música sigue
 esperando sus respuestas.
 
+**Segunda sesión del 8 oct (§2.undecies):** el equipo reportó que MECH **a
+veces saluda sin nadie delante**. Arreglado (la cara tiene que mantenerse
+~1 s, perilla «Confirmar cara») y simulado. También volvió a preguntar
+por la **plataforma de sismos**: se le contó lo investigado el 5 oct y
+contestó que por ahora quiere **un mapa dentro del panel** con los sismos
+recientes. **Hecho** (§2.duodecies). Las dos cosas se **subieron a GitHub
+el mismo 8 oct** («dale, súbelo»), en un solo commit encima de `4f792cd`,
+**sin probar en la Pi**: preguntar cómo fue. Sobre la «función de
+seguridad»: el equipo dijo que **es el propio mapa y que eso ya lo tienen
+cubierto** — no hay nada más pendiente de sismos (§2.quater, punto 0).
+
 > ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** La sesión del
 > 6 oct empezó leyendo este handoff en una copia local que estaba **2
 > commits atrasada** (todavía decía «cuatro idiomas») y trabajó media sesión
@@ -81,6 +92,12 @@ esperando sus respuestas.
 10. **8 oct, sin probar en la Pi ni con el robot** (§2.decies): el panel
     rediseñado «como una app» y la app de Windows sin construir
     (`windows\Instalar MECH.bat`).
+11. **8 oct, segunda sesión, subido y sin probar en la Pi**
+    (§2.undecies): MECH ya no saluda por un fotograma suelto; la cara tiene
+    que mantenerse (Ajustes → «Confirmar cara», 1 s).
+12. **8 oct, segunda sesión, subido y sin probar en la Pi**
+    (§2.duodecies): vista nueva **«Sismos»** en el panel, con un mapa
+    animado de los sismos recientes (EMSC + USGS). Informa, no predice.
 
 ---
 
@@ -654,6 +671,96 @@ y la pantalla de búsqueda: no encontrado → dirección a mano → «¡Conectad
 (que Edge abra la página local en modo aplicación y que desde ahí alcance al
 robot); y que `mech.local` responda en la red del equipo.
 
+### 2.undecies «A veces saluda cuando no hay nadie» (8 oct, 2.ª sesión)
+
+Reporte del equipo, tal cual: «a veces saluda incluso cuando no hay personas
+al frente de él». No dijeron cada cuánto ni qué había delante.
+
+- **Causa encontrada en el código**: `vision.py` avisaba de una llegada con
+  **UN solo fotograma** con cara. En la Pi corre el detector Haar (Python
+  3.13, sin mediapipe), que suelta falsos positivos de un fotograma con
+  reflejos y sombras. La regla de «visitante nuevo» (§3.nonies) evita
+  REPETIR el saludo a quien sigue ahí, pero no esto: con la cámara vacía el
+  reloj de ausencia se completa, y el siguiente fotograma falso saluda.
+- **Arreglo**: clase `vision._Llegada`. Cada fotograma con cara suma su
+  duración, cada uno sin cara descuenta la mitad, y solo al llegar a
+  **`GREETING_CONFIRM_SECONDS`** (1.0 s) se llama a `on_user_detected()`.
+  En vivo desde Ajustes → **«Confirmar cara»** (0 a 3 s; 0 = lo de antes).
+  Una presencia que no se confirmó tampoco cuenta como «se fue alguien».
+- **Lo que NO se tocó, a propósito**: `user_present` del panel, el
+  acercarse (`VISION_APPROACH`) y el gate de proyección siguen reaccionando
+  al primer fotograma. Si el equipo ve que el robot AVANZA hacia nadie, es
+  la misma causa y el mismo remedio (pasar `confirmed` a `_behave`), pero
+  no lo pidieron.
+- Archivos: `backend/vision.py`, `config.py`, `server.py`, `.env.example`,
+  `frontend/index.html` (slider + `?v=9`), `app.js`, `docs/USO.md`,
+  `CLAUDE.md` y `scripts/probar_llegada.py` (nuevo).
+- Verificado sin hardware: `probar_llegada.py` (16 comprobaciones con la
+  pieza real y un reloj de mentira: un fotograma falso cada 30 s, parpadeo
+  de 1 de cada 10, ráfagas de 3, ruido al azar del 15 % → 0 llegadas; con
+  la perilla en 0 esos mismos fotogramas dan 20; persona delante → llega al
+  segundo; vista el 70 % del tiempo → 1,9 s; llega y se va; gira la cabeza;
+  dos visitantes). El slider se vio en el navegador con el servidor de
+  mentira. **NO verificado**: nada con la cámara real. Si en la Pi sigue
+  saludando solo, el falso positivo dura más de lo supuesto: subir
+  «Confirmar cara» y **preguntar qué tiene delante** (un póster con caras o
+  una foto son caras de verdad para el detector; eso no lo arregla ninguna
+  perilla).
+- Un hueco que se vio de paso y NO se tocó: si alguien es saludado, MECH
+  narra (la visión se pausa) y esa persona se va durante la narración,
+  nadie avisa de que «se fue», y el siguiente visitante no recibe saludo
+  (el de después sí). Es lo contrario de lo que reportaron; mencionarlo solo
+  si se quejan de que no saluda.
+
+### 2.duodecies Mapa de sismos en el panel (8 oct, 2.ª sesión)
+
+Pedido, tal cual: «por el momento me gustaría un mapa dentro del panel de
+control, como un apartado extra, y que el mapa animado muestre sismos
+recientes apenas sean públicos». Detalle técnico en CLAUDE.md («Sismos
+recientes — el mapa del panel»).
+
+- **Qué hay**: vista **Sismos** en el menú lateral. Mapa del mundo (se
+  acerca y se arrastra), puntos por magnitud y edad (rojo última hora,
+  ámbar 24 h, gris semana), los recientes laten, lista al lado, ficha al
+  tocar uno (profundidad, km a la zona, quién lo reportó, y sus ondas P y S
+  animadas), botón **Repasar** (pasa el periodo en unos segundos) y la
+  tarjeta **Mi zona** (encendido, sitio y radio, en vivo).
+- **De dónde salen los datos**: EMSC + USGS, las dos sin clave. Lo que no se
+  sabía el 5 oct: **EMSC trae los sismos de Costa Rica que publica el
+  OVSICORI** (firma `UNA`), unos 5-10 min después. No hizo falta pedirle
+  acceso a nadie para el mapa.
+- ⚠️ **No es una alerta** y la vista lo dice. Si el equipo lo presenta a los
+  jueces como «predice sismos» o «alerta temprana», es falso: corregirlo.
+- Archivos: `backend/sismos.py` (nuevo), `server.py` (hilo, `/api/sismos`,
+  `/api/sismos/refresh`, claves en vivo), `config.py`, `preflight.py`,
+  `.env.example`, `frontend/sismos.js` (nuevo), `index.html`, `app.js` (dos
+  líneas), `styles.css`, `frontend/vendor/mech-mapa.json` (nuevo, 500 KB),
+  `scripts/mkmapa.py` y `scripts/probar_sismos.py` (nuevos), `docs/USO.md`
+  (§7 bis), `docs/FRONTEND.md`, `scripts/README.md`, `CLAUDE.md`.
+- No se añadió ningún icono (el del menú es `ti-sphere`, que ya estaba) ni
+  ninguna dependencia de Python.
+- **Verificado en la laptop**: `probar_sismos.py` (48 comprobaciones; con
+  `--red` contra las fuentes de verdad: 321 sismos en 2,9 s, 30 cerca de
+  Costa Rica, 163 juntados entre fuentes). Y la vista en el navegador con un
+  servidor de mentira que corre **`backend/sismos.py` de verdad**: carga con
+  datos reales, filtros, repaso, ficha y ondas, un sismo nuevo que llega en
+  vivo (destello, primero en la lista, punto en el menú desde otra vista),
+  cambio de zona a Puerto Rico y vuelta, apagar/encender, a 1800 px (dos
+  columnas), 1440 px y tamaño de teléfono; sin errores de consola.
+- **NO verificado**: nada en la Pi. En concreto: que la Pi alcance las dos
+  fuentes desde la red del colegio (algunas redes bloquean), cómo va de
+  fluido el mapa en la Pi, y el servidor FastAPI real (`/api/sismos` se
+  probó con el servidor de mentira; `server.py` solo se compiló).
+- **Para volver a verlo sin la Pi**: `.claude/launch.json` tiene
+  `panel-sismos` (puerto 8766), que apunta a `panel_sismos.py` en el
+  scratchpad de ESTA sesión — si ya no existe, hay que rehacerlo: son 100
+  líneas que envuelven el `panel_falso.py` de siempre, le añaden
+  `/api/sismos` con la clase `Sismos` real y un `POST /__sismo` para meter
+  un sismo nuevo de mentira. ⚠️ Con el panel de vista previa escondido el
+  navegador NO pinta fotogramas: una captura puede mostrar el mapa «sin
+  moverse» aunque el código funcione (pasó: el vuelo a la zona parecía no
+  ocurrir). Contar fotogramas con `requestAnimationFrame` antes de creerlo.
+
 ### 2.quater Preguntas abiertas con el equipo
 
 Ninguna bloquea nada, pero conviene cerrarlas en la próxima sesión:
@@ -662,7 +769,30 @@ Ninguna bloquea nada, pero conviene cerrarlas en la próxima sesión:
     que el equipo está esperando para seguir.
 
 0. **Alerta de sismos** (§2.quinquies, punto 3): ¿se implementa? ¿con qué
-   fuente? ¿para dónde (Costa Rica, Puerto Rico, California)?
+   fuente? ¿para dónde (Costa Rica, Puerto Rico, California)? El 8 oct el
+   equipo volvió a sacarlo y pidió, por ahora, **el mapa del panel**
+   (hecho, §2.duodecies). Preguntó también por ideas para «una función de
+   seguridad que informe al usuario, aunque no prediga». ✅ **Cerrado el
+   mismo 8 oct**: el equipo contestó que «la idea de seguridad es
+   precisamente el mapa, su función es alertar al usuario de los sismos
+   cercanos, pero ya tenemos eso cubierto». O sea: **no programar ninguna
+   de las de abajo salvo que la pidan.** Quedan apuntadas por si vuelven:
+   1. **Aviso hablado y proyectado** cuando llega un sismo dentro de la
+      zona y por encima de cierta magnitud: MECH lo dice («acaba de temblar
+      a 80 km…») y proyecta el mapa. Decisiones pendientes: ¿interrumpe una
+      narración o espera?, ¿desde qué magnitud?
+   2. **«¿Qué hago si tiembla?»**: una tarjeta en el panel y una orden de
+      voz, con las recomendaciones OFICIALES (CNE). El texto lo tiene que
+      dar o revisar el equipo, como los `facts` de las obras: no inventarlo.
+   3. **Simulacro**: «MECH, simulacro de sismo» → guía los pasos y
+      cronometra. Encaja con las escuelas unidocentes de su proyecto.
+   4. **«MECH, ¿ha temblado hoy?»**: contesta con los datos del mapa.
+   5. **Proyectar el mapa** en `/projector` como una «obra» más.
+   6. **Alerta temprana de verdad**: escribirle al OVSICORI pidiendo
+      acceso; el hueco para otra fuente ya está en `backend/sismos.py`.
+   ⚠️ El equipo dice que el mapa «alerta»: informa de lo que YA tembló
+   (2-10 min después). Se le explicó dos veces; si lo presentan como alerta
+   temprana o predicción, volver a decirlo.
 
 1. **«Parlante alámbrico» en `web/evolucion.html`** (y en `web/js/i18n.js`)
    figura como novedad de MECH-4, y el equipo dijo que ya no usa parlantes
@@ -1480,6 +1610,36 @@ fila, es que también quedó guardado el `index.html` viejo → Ctrl+Shift+R.
      que entrar sola.
    - Apagar el robot con el panel abierto: sale «Sin conexión con MECH» con
      «Buscar de nuevo».
+
+### 0000000) Mapa de sismos (§2.duodecies; subido el 8 oct, sin probar)
+
+Al arrancar tiene que salir `Sismos: mapa en el panel (vista «Sismos») ·
+zona Costa Rica, 300 km` y, unos segundos después, `Sismos: N en los
+últimos 7 días, M de ellos cerca de Costa Rica`.
+
+1. Panel → **Sismos**. Arriba a la izquierda del mapa: punto verde y «En
+   vivo · actualizado hace X s». Si dice «Sin conexión con las fuentes», la
+   Pi no llega a internet (o la red bloquea esas páginas): probar con el
+   hotspot. Copiar lo que salga en el registro entre corchetes.
+2. **Mi zona** → tiene que acercarse a Costa Rica con su círculo. Tocar un
+   punto: sale la ficha y se dibujan las dos ondas.
+3. **Repasar** con «7 días»: los puntos aparecen en orden durante 20 s.
+4. **Que no vaya a tirones en la Pi** al arrastrar el mapa y al usar la
+   rueda. Si va lento, decirlo: hay margen (menos puntos en el mapa).
+5. Cambiar «Dónde está MECH» a otro sitio → Guardar → el mapa vuela allí y
+   la lista dice «cerca de <sitio>». Volver a Costa Rica.
+6. Abrir el panel desde un teléfono: tiene que caber sin desbordarse.
+
+### 000000) Saludo sin nadie delante (§2.undecies; subido el 8 oct, sin probar)
+
+1. Encender la visión, dejar a MECH **en reposo** y el stand vacío un buen
+   rato (10 min), con la proyección puesta si es como va a estar en el
+   evento: no debe saludar. En el panel puede seguir saliendo algún «usuario
+   presente» suelto en Sensores; lo que importa es que no salga «Usuario
+   detectado por la cámara» ni el saludo.
+2. Pararse delante: tiene que saludar en 1-2 s. Si tarda demasiado, bajar
+   Ajustes → «Confirmar cara»; si sigue saludando solo, subirla.
+3. Irse 20 s y volver: saluda otra vez (regla de «Visitante nuevo»).
 
 ### 0000) Panel con menús y letra coreana (§2.nonies) — ✅ probado el 8 oct
 

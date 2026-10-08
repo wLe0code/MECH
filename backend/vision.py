@@ -138,6 +138,57 @@ def _make_detector(app):
     )
 
 
+class _Llegada:
+    """Decide cuándo una cara en cámara cuenta como una PERSONA que llegó.
+
+    Antes bastaba un fotograma con cara para avisar a mech_app, y MECH
+    saludaba a un reflejo o a una sombra que el detector confundía un
+    instante (oct 2026). Ahora la cara tiene que mantenerse
+    `config.GREETING_CONFIRM_SECONDS`: cada fotograma con cara suma su
+    duración y cada fotograma sin cara descuenta la mitad, así que un falso
+    positivo suelto (o uno que parpadea de vez en cuando) nunca llega a la
+    cuenta, y una cara real que el detector pierde a ratos sí.
+
+    `update()` devuelve "llego" (una vez, al confirmarse), "se_fue" (solo si
+    había llegado alguien confirmado) o None. `present` sigue siendo el de
+    siempre (hay cara, con el margen de LOST_AFTER_S): lo usan el panel y el
+    acercarse.
+    """
+
+    def __init__(self) -> None:
+        self.present = False
+        self.confirmed = False
+        self._seen_s = 0.0
+        self._last_seen = 0.0
+        self._prev: float | None = None
+
+    def update(self, hay_cara: bool, now: float) -> str | None:
+        # Tope de 0.3 s por fotograma: si la Pi se atasca, un hueco largo no
+        # puede contar como un segundo entero de cara.
+        dt = 0.0 if self._prev is None else min(max(now - self._prev, 0.0), 0.3)
+        self._prev = now
+        if hay_cara:
+            self.present = True
+            self._last_seen = now
+            self._seen_s += dt
+            if not self.confirmed and self._seen_s >= config.GREETING_CONFIRM_SECONDS:
+                self.confirmed = True
+                return "llego"
+            return None
+        self._seen_s = max(0.0, self._seen_s - dt * 0.5)
+        if self.present and now - self._last_seen > LOST_AFTER_S:
+            era_alguien = self.confirmed
+            self.reset()
+            return "se_fue" if era_alguien else None
+        return None
+
+    def reset(self) -> None:
+        """Olvida a quien hubiera, sin avisar a nadie (pausa al narrar)."""
+        self.present = False
+        self.confirmed = False
+        self._seen_s = 0.0
+
+
 class Vision:
     """Hilo de visión. Publica su estado en mech_app.state["vision"]."""
 
@@ -242,7 +293,7 @@ class Vision:
         # Estado suavizado.
         x_s = 0.0
         dist_s: float | None = None
-        last_seen = 0.0
+        llegada = _Llegada()
         present = False
         last_emit = 0.0
         frame_interval = 1.0 / TARGET_FPS
@@ -270,6 +321,7 @@ class Vision:
                         present = False
                         dist_s = None
                         self._release_drive()
+                    llegada.reset()
                     if now - last_emit > 0.5:
                         last_emit = now
                         self._publish(enabled=True, present=False, x=0.0,
@@ -291,14 +343,17 @@ class Vision:
                     # Suavizado exponencial (la detección tiembla frame a frame).
                     x_s += (cx - x_s) * 0.4
                     dist_s = distance if dist_s is None else dist_s + (distance - dist_s) * 0.3
-                    last_seen = now
-                    if not present:
-                        present = True
-                        self._on_detected()
-                elif present and now - last_seen > LOST_AFTER_S:
-                    present = False
-                    dist_s = None
+
+                # Una cara suelta todavía no es "llegó alguien": tiene que
+                # mantenerse (ver _Llegada). Así MECH no saluda a un reflejo.
+                aviso = llegada.update(face is not None, now)
+                present = llegada.present
+                if aviso == "llego":
+                    self._on_detected()
+                elif aviso == "se_fue":
                     self._on_lost()
+                if not present:
+                    dist_s = None
 
                 self._behave(present, x_s, dist_s)
 

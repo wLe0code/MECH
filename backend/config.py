@@ -124,6 +124,12 @@ GREETING_COOLDOWN = float(os.environ.get("GREETING_COOLDOWN", "45"))
 # frenaba. Ahora el reloj se REINICIA con cada pérdida: si el detector
 # parpadea, nunca llega a esta cuenta y MECH no repite el saludo.
 GREETING_REARM_SECONDS = float(os.environ.get("GREETING_REARM_SECONDS", "20"))
+# Cuánto tiene que MANTENERSE una cara en la cámara para contar como una
+# persona de verdad (segundos). Antes bastaba UN fotograma: un reflejo o una
+# sombra que el detector confundía un instante ya era "llegó alguien", y MECH
+# saludaba sin nadie delante (oct 2026). Los fotogramas sin cara descuentan,
+# así que un falso positivo suelto nunca llega a la cuenta. 0 = como antes.
+GREETING_CONFIRM_SECONDS = float(os.environ.get("GREETING_CONFIRM_SECONDS", "1.0"))
 # Idioma del SALUDO (la frase que MECH suelta al ver llegar a alguien estando
 # en reposo). ESPAÑOL por defecto (oct 2026, pedido del equipo): en reposo
 # MECH está en español, así que saluda en español. En sep 2026 estuvo en
@@ -1372,6 +1378,28 @@ VISION_PROJECT_GATE = _bool_env("VISION_PROJECT_GATE", "false")
 # va a 100. Con estos motores y el L298N, menos de 100 normalmente solo
 # zumba. Los BRAZOS son la excepción (van suaves, ver ARM_*).
 VISION_MAX_SPEED = int(os.environ.get("VISION_MAX_SPEED", "100"))
+
+
+# === Sismos recientes (vista «Sismos» del panel) =============================
+# Un mapa con lo que YA tembló, en cuanto las redes sísmicas lo publican
+# (2-10 minutos después). NO predice ni es una alerta temprana. Las fuentes
+# (EMSC y USGS) son públicas y sin clave. Ver backend/sismos.py.
+# Todo se cambia en vivo desde la propia vista del panel (tarjeta «Mi zona»).
+SISMOS_ENABLED = _bool_env("SISMOS_ENABLED", "true")
+# Cada cuántos segundos se pregunta por lo nuevo (mínimo 20). Las fuentes se
+# actualizan cada minuto: bajar de 60 no trae nada antes y gasta más datos.
+SISMOS_POLL_SECONDS = float(os.environ.get("SISMOS_POLL_SECONDS", "60"))
+# «Mi zona»: el sitio donde está el robot. Dentro de este círculo se guardan
+# también los sismos pequeños (los que la gente siente) y el panel los
+# resalta y dice a cuántos km fueron. Por defecto, Costa Rica entera.
+SISMOS_ZONE_NAME = os.environ.get("SISMOS_ZONE_NAME", "Costa Rica").strip() or "Mi zona"
+SISMOS_ZONE_LAT = float(os.environ.get("SISMOS_ZONE_LAT", "9.9"))
+SISMOS_ZONE_LON = float(os.environ.get("SISMOS_ZONE_LON", "-84.1"))
+SISMOS_ZONE_RADIUS_KM = float(os.environ.get("SISMOS_ZONE_RADIUS_KM", "300"))
+# Magnitud mínima que se guarda: del mundo entero y de «mi zona». Bajar la
+# del mundo llena el mapa (de 2.5 para arriba son ~1700 sismos por semana).
+SISMOS_MIN_MAG_WORLD = float(os.environ.get("SISMOS_MIN_MAG_WORLD", "4.0"))
+SISMOS_MIN_MAG_ZONE = float(os.environ.get("SISMOS_MIN_MAG_ZONE", "2.5"))
 
 
 def assert_required() -> None:

@@ -251,6 +251,7 @@ def check_red() -> None:
         "narrar una obra: el guion lo escribe Claude",
         "hablar: la voz la genera ElevenLabs",
         "las imágenes de respaldo de Gemini",
+        "el mapa de sismos del panel: se queda con lo último que bajó (y lo dice)",
     ):
         _print(f"    - {linea}")
     _print("")
@@ -522,6 +523,14 @@ def check_frontend() -> None:
             _di(_FAIL, "Faltan archivos de fuente", ", ".join(perdidos))
         else:
             _di(_OK, f"Las {len(set(refs))} fuentes del panel estan en disco")
+
+    # El contorno de los países para la vista «Sismos» (también va en local).
+    if (front / "vendor" / "mech-mapa.json").exists():
+        _di(_OK, "El mapa de la vista «Sismos» está en disco")
+    else:
+        _di(_WARN, "Falta frontend/vendor/mech-mapa.json",
+            "La vista «Sismos» mostrará los puntos sin el mapa detrás.\n"
+            "-> ¿un git pull a medias? Se regenera con: python scripts/mkmapa.py")
 
     # Que no se haya colado otra vez una URL externa en las páginas.
     externas = []

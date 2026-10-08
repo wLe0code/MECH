@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="vendor/mech-fonts-cjk.css">
 <!-- El `?v=` es para que el navegador NO use la copia vieja guardada tras un
      `git pull`: al cambiar styles.css o app.js, súbele el número a los dos. -->
-<link rel="stylesheet" href="/static/styles.css?v=8">
+<link rel="stylesheet" href="/static/styles.css?v=9">
 </head>
 <body>
 <div class="app">
@@ -59,6 +59,7 @@
       <div class="nav-item active" data-view="voice"     onclick="UI.showView('voice', this)"><i class="ti ti-microphone"></i>Voz / Comandos</div>
       <div class="nav-item"        data-view="stand"     onclick="UI.showView('stand', this)"><i class="ti ti-device-projector"></i>Proyección Stand</div>
       <div class="nav-item"        data-view="immersive" onclick="UI.showView('immersive', this)"><i class="ti ti-360"></i>Espacio Inmersivo</div>
+      <div class="nav-item"        data-view="sismos"    onclick="UI.showView('sismos', this)"><i class="ti ti-sphere"></i>Sismos</div>
       <div class="sidebar-label">Hardware</div>
       <div class="nav-item"        data-view="firmware"  onclick="UI.showView('firmware', this)"><i class="ti ti-cpu"></i>Firmware</div>
       <div class="nav-item"        data-view="sensors"   onclick="UI.showView('sensors', this)"><i class="ti ti-radar"></i>Sensores</div>
@@ -358,6 +359,95 @@
             Detiene motores (<code>MODE:STOP</code>), corta el audio de TTS en curso,
             apaga la proyección y termina el bucle de voz. Puedes activarlo con el
             botón rojo del header o con la <strong>barra espaciadora</strong>.
+          </div>
+        </div>
+      </div>
+
+      <!-- SISMOS VIEW: el mapa lo pinta sismos.js; los datos los baja el
+           servidor (backend/sismos.py). Esta página no consulta internet. -->
+      <div class="view" id="view-sismos">
+        <div class="view-title"><i class="ti ti-sphere" style="color:var(--amber)"></i>Sismos recientes</div>
+        <div class="section-sub">
+          Lo que <b>ya tembló</b>, en cuanto las redes sísmicas lo publican (entre 2 y 10 minutos después).
+          <b>No predice sismos ni es una alerta oficial</b>: ante una emergencia, sigue las indicaciones de las autoridades.
+        </div>
+
+        <div class="sm-top">
+          <div class="fw-card sm-mapa-card">
+            <div class="sm-barra">
+              <div class="sm-seg" id="sm-periodo" role="group" aria-label="Periodo">
+                <button type="button" data-s="3600">1 hora</button>
+                <button type="button" data-s="86400" class="on">24 horas</button>
+                <button type="button" data-s="604800">7 días</button>
+              </div>
+              <div class="sm-seg" id="sm-mag" role="group" aria-label="Magnitud mínima">
+                <button type="button" data-m="0" class="on">Todos</button>
+                <button type="button" data-m="4">4+</button>
+                <button type="button" data-m="5">5+</button>
+                <button type="button" data-m="6">6+</button>
+              </div>
+              <span class="sm-hueco"></span>
+              <button class="btn" id="sm-repasar" type="button" title="Vuelve a pasar el periodo elegido en unos segundos: cada sismo aparece a su hora."><i class="ti ti-player-play"></i><span id="sm-repasar-txt">Repasar</span></button>
+              <button class="btn" id="sm-actualizar" type="button" title="Consultar las fuentes ahora"><i class="ti ti-refresh"></i></button>
+            </div>
+            <div class="sm-mapa" id="sm-mapa">
+              <canvas id="sm-base" aria-hidden="true"></canvas>
+              <canvas id="sm-capa" role="img" aria-label="Mapa del mundo con los sismos recientes. La lista de al lado tiene los mismos datos."></canvas>
+              <div class="sm-estado gris" id="sm-estado"><span class="sm-luz"></span><span id="sm-estado-txt">Cargando…</span></div>
+              <div class="sm-reloj" id="sm-reloj"><span id="sm-reloj-txt"></span><span class="sm-reloj-riel"><span id="sm-reloj-barra"></span></span></div>
+              <div class="sm-botones">
+                <button type="button" id="sm-mundo">Mundo</button>
+                <button type="button" id="sm-zona">Mi zona</button>
+                <button type="button" id="sm-mas" class="cuadrado" title="Acercar">+</button>
+                <button type="button" id="sm-menos" class="cuadrado" title="Alejar">−</button>
+              </div>
+              <div class="sm-leyenda">
+                <span><i class="e1"></i>última hora</span>
+                <span><i class="e2"></i>24 horas</span>
+                <span><i class="e3"></i>esta semana</span>
+                <span class="sm-leyenda-tam">más grande = más fuerte</span>
+              </div>
+              <div class="sm-tip" id="sm-tip"></div>
+            </div>
+          </div>
+
+          <div class="fw-card sm-lista-card">
+            <div class="card-title"><i class="ti ti-radar"></i>Últimos sismos</div>
+            <div class="note" id="sm-cuenta"></div>
+            <!-- La ficha del elegido y la lista se desplazan juntas. -->
+            <div class="sm-rollo" id="sm-rollo">
+              <div class="sm-ficha" id="sm-ficha" hidden></div>
+              <div class="sm-lista" id="sm-lista"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fw-card settings-live">
+          <div class="card-title tone-green"><i class="ti ti-flag"></i>Mi zona</div>
+          <div class="slider-row">
+            <label title="Con esto apagado, MECH no consulta nada por internet y el mapa se queda con lo último que bajó.">Sismos</label>
+            <label class="switch">
+              <input type="checkbox" id="sm-activo" checked>
+              <span class="switch-text">Consultar los sismos por internet</span>
+            </label>
+          </div>
+          <div class="slider-row">
+            <label title="El sitio donde está el robot. Dentro de su círculo el mapa muestra también los sismos pequeños (los que la gente siente) y dice a cuántos kilómetros fueron.">Dónde está MECH</label>
+            <select class="text-input" id="sm-zona-sel" style="flex:1"></select>
+          </div>
+          <div class="slider-row">
+            <label title="El tamaño del círculo de «mi zona». Con 300 km entra Costa Rica entera y un poco de los países vecinos.">Radio</label>
+            <input type="range" min="100" max="1000" step="50" value="300" id="sm-radio">
+            <span class="val" id="sm-radio-val">300 km</span>
+          </div>
+          <button class="btn btn-accent btn-solid" id="sm-guardar" type="button">
+            <i class="ti ti-device-floppy"></i>Guardar
+          </button>
+          <div class="note" id="sm-zona-msg"></div>
+          <div class="note">
+            Los datos vienen de dos fuentes públicas: <b>EMSC</b> (reúne lo que publican las redes de cada país;
+            los de Costa Rica llegan del OVSICORI-UNA) y <b>USGS</b>. Del mundo se muestran los de magnitud 4 para arriba;
+            dentro de tu zona, desde 2,5. Gasta poco internet (unos 15 MB al día).
           </div>
         </div>
       </div>
@@ -686,6 +776,11 @@
             <span class="val" id="set-greetrearm-val">20 s</span>
           </div>
           <div class="slider-row">
+            <label title="Cuánto tiene que mantenerse una cara en la cámara para que MECH la cuente como una persona y salude. Sube esto si MECH saluda sin nadie delante (un reflejo o una sombra que la cámara confunde un instante). Bájalo si tarda en saludar a quien llega. 0 = saluda al primer fotograma, como antes.">Confirmar cara</label>
+            <input type="range" min="0" max="3" step="0.1" value="1" id="set-greetconfirm" oninput="UI.settingLabel('set-greetconfirm','greetconfirm')">
+            <span class="val" id="set-greetconfirm-val">1 s</span>
+          </div>
+          <div class="slider-row">
             <label title="Con esto activado, MECH solo saluda EN REPOSO. Despierto está narrando, conversando o traduciendo, y saludar encima corta la experiencia del visitante que ya está atendiendo. El botón «SALUDAR AHORA» respeta la misma regla. Y aunque se apague, MECH NUNCA saluda mientras presenta algo.">Saludo</label>
             <label class="switch">
               <input type="checkbox" id="set-greetdormant">
@@ -910,6 +1005,9 @@
   <button class="net-back" id="net-back" type="button">Buscar de nuevo</button>
 </div>
 
-<script src="/static/app.js?v=8"></script>
+<!-- Antes que app.js: rellena su desplegable de zonas, y app.js convierte
+     los desplegables en menús al arrancar. -->
+<script src="/static/sismos.js?v=9"></script>
+<script src="/static/app.js?v=9"></script>
 </body>
 </html>

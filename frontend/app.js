@@ -157,6 +157,7 @@
       case 'trivia':      applyTrivia(msg); break;
       case 'facing':      applyFacing(msg.facing); break;
       case 'mic_level':   applyMicLevel(msg); break;
+      case 'sismos':      if (window.Sismos) window.Sismos.evento(msg); break;
       case 'pong':        break;
     }
   }
@@ -1000,6 +1001,7 @@
       setSlider('set-beam', 'beam', L.WHISPER_BEAM_SIZE);
       setSlider('set-greetcd', 'greetcd', L.GREETING_COOLDOWN);
       setSlider('set-greetrearm', 'greetrearm', L.GREETING_REARM_SECONDS);
+      setSlider('set-greetconfirm', 'greetconfirm', L.GREETING_CONFIRM_SECONDS);
       if ($('set-greetdormant')) $('set-greetdormant').checked = !!L.GREETING_ONLY_DORMANT;
       if ($('set-greetlang') && L.GREETING_LANGUAGE) $('set-greetlang').value = L.GREETING_LANGUAGE;
       // Calibración del giro de 180°
@@ -1079,6 +1081,7 @@
         WHISPER_BEAM_SIZE: String(parseInt($('set-beam').value)),
         GREETING_COOLDOWN: $('set-greetcd').value,
         GREETING_REARM_SECONDS: $('set-greetrearm').value,
+        GREETING_CONFIRM_SECONDS: $('set-greetconfirm').value,
         GREETING_ONLY_DORMANT: $('set-greetdormant').checked ? 'true' : 'false',
         GREETING_LANGUAGE: $('set-greetlang').value,
         TURN_180_SECONDS: $('set-turnsec').value,
@@ -1138,7 +1141,7 @@
                           wave: ' s', greetcd: ' s', turnsec: ' s', latsec: ' s', turnvel: '', latvel: '',
                           wavehigh: '°', waveswing: '°', waverep: '', kick: ' s',
                           advsec: ' s', advvel: '', advmax: ' s',
-                          hpf: ' Hz', agc: ' dBFS', beam: '', greetrearm: ' s' };
+                          hpf: ' Hz', agc: ' dBFS', beam: '', greetrearm: ' s', greetconfirm: ' s' };
   function setSlider(inputId, key, value) {
     const el = $(inputId);
     if (!el || value === undefined || value === null) return;
@@ -1200,6 +1203,8 @@
       moverGlider(!!navEl);
       // Al abrir Ajustes, traemos los valores actuales del backend.
       if (name === 'settings') API.loadSettings();
+      // El mapa de sismos solo trabaja (dibuja, pide datos) mientras se ve.
+      if (window.Sismos) window.Sismos.mostrar(name === 'sismos');
     },
 
     // Actualiza la etiqueta de un slider de ajustes con su unidad.

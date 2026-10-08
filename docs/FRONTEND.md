@@ -129,6 +129,7 @@ panel en su propia ventana. No hace falta Python ni saberse la IP.
 | **Espacio Inmersivo** | Vista previa del contenido inmersivo. Durante una narración aparecen aquí en vivo los **videos pre-renderizados** de la biblioteca (si la obra está completa) o, en su defecto, las imágenes generadas por NanoBanana. |
 | **Firmware** | Estado del servidor, modelo de Claude, estado del Arduino, modo actual del robot. |
 | **Sensores** | Resumen del estado de mic, parlante, proyectores, Arduino, cámara, WebSocket. |
+| **Sismos** | Mapa animado de los sismos recientes (EMSC + USGS), con lista, ficha de cada uno y «mi zona». Informa de lo que ya tembló; no predice ni alerta. Ver [`USO.md`](USO.md) §7 bis. |
 
 Además, en `/library` (página aparte, **Biblioteca de videos**) subes los `.mp4`
 pre-renderizados de cada obra. Ver [`GUIA.md`](GUIA.md) §6 y
@@ -165,6 +166,8 @@ El backend implementa esto en `MechApp.emergency_stop()`. Llega vía `POST /api/
 | `POST /api/language/{es\|en}` | — | Cambia el idioma (voz, narración y subtítulos) |
 | `POST /api/emergency/stop` | — | PARO DE EMERGENCIA |
 | `GET  /api/state` | — | Estado completo (JSON) |
+| `GET  /api/sismos` | — | Sismos de los últimos 7 días + «mi zona» + cuándo se consultó |
+| `POST /api/sismos/refresh` | — | Consulta las fuentes de sismos ahora |
 | `GET  /api/library` | — | Lista de obras y cuántos segmentos están subidos |
 | `POST /api/library/{slug}/{segment}` | multipart `file` | Sube el `.mp4` de un segmento |
 | `DELETE /api/library/{slug}/{segment}` | — | Borra el `.mp4` de un segmento |
@@ -184,6 +187,7 @@ Conecta a `ws://<pi>:8000/ws`. Recibirás un primer mensaje con el estado comple
 {"type": "image",       "url": "/generated/Romeo_1.png"}     // imagen AI nueva (fallback)
 {"type": "video",       "url": "/videos/romeo_julieta/seg01.mp4"}  // video pre-renderizado (biblioteca)
 {"type": "subtitle",    "text": "Verona amanece dividida.", "lang": "es"}  // línea a mostrar AHORA (null = borrar)
+{"type": "sismos",      "nuevos": [ ... ], "consultado": 1791500000, "error": null}  // sismos que acaban de publicarse
 ```
 
 **Cliente → Server:**

@@ -1089,6 +1089,176 @@ body.en-app .net-back { display: inline-flex; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #2c3540; border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
 
+/* ─── VISTA SISMOS ──────────────────────────────────────────────────────── */
+/* El mapa lo pinta frontend/sismos.js en dos lienzos. Aquí va lo de
+   alrededor: la barra de filtros, lo que flota sobre el mapa y la lista.
+   Los tres colores de los puntos son los de siempre y significan lo mismo:
+   rojo = acaba de pasar, ámbar = hoy, gris azulado = esta semana. */
+
+.sm-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+@container contenido (min-width: 900px) {
+  .sm-top { grid-template-columns: minmax(0, 1fr) 320px; }
+  /* La lista mide lo que mida el mapa y se desplaza por dentro: `height: 0`
+     + `min-height: 100%` hace que la tarjeta NO estire la fila. */
+  .sm-lista-card { height: 0; min-height: 100%; }
+  .sm-lista-card .sm-rollo { max-height: none; }
+}
+.sm-mapa-card { padding: 14px; gap: 12px; }
+
+/* Barra de filtros: grupos de botones pegados («uno de estos»). */
+.sm-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.sm-hueco { flex: 1; }
+.sm-seg {
+  display: inline-flex; padding: 3px; gap: 2px;
+  background: var(--inset); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.sm-seg button {
+  min-height: 30px; padding: 0 12px; border: 0; border-radius: 7px; cursor: pointer;
+  background: transparent; color: var(--text-muted);
+  font-family: var(--font-main); font-size: 12.5px; font-weight: 500;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
+              transform 140ms var(--ease-out);
+}
+.sm-seg button:active { transform: scale(0.97); }
+.sm-seg button.on { background: var(--surface4); color: var(--text); font-weight: 600; }
+
+/* El mapa. El fondo es el mar. */
+.sm-mapa {
+  position: relative; overflow: hidden; aspect-ratio: 16 / 9; min-height: 280px;
+  border-radius: var(--r-lg); border: 1px solid var(--border);
+  background: radial-gradient(120% 90% at 50% 40%, #101923 0%, #0a0f15 100%);
+}
+.sm-mapa canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#sm-capa { cursor: grab; }
+.sm-mapa.arrastrando #sm-capa { cursor: grabbing; }
+
+/* Lo que flota encima: todo con el mismo cristal oscuro. */
+.sm-estado, .sm-leyenda, .sm-reloj, .sm-tip, .sm-botones button {
+  background: rgba(10, 14, 19, 0.82); border: 1px solid var(--border-strong);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.sm-estado {
+  position: absolute; left: 10px; top: 10px; max-width: calc(100% - 20px);
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 11px; border-radius: 999px;
+  font-size: 12px; color: var(--text); pointer-events: auto;
+}
+.sm-luz { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
+.sm-estado.verde .sm-luz { background: var(--ok); animation: smLate 2.4s var(--ease-out) infinite; }
+.sm-estado.ambar .sm-luz { background: var(--amber); }
+.sm-estado.ambar { border-color: rgba(var(--amber-rgb), 0.5); }
+@keyframes smLate { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
+
+.sm-botones { position: absolute; right: 10px; top: 10px; display: flex; gap: 6px; }
+.sm-botones button {
+  min-height: 32px; padding: 0 12px; border-radius: var(--r-sm); cursor: pointer;
+  color: var(--text); font-family: var(--font-main); font-size: 12.5px; font-weight: 500;
+  transition: border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
+}
+.sm-botones button.cuadrado { width: 32px; padding: 0; font-size: 17px; line-height: 1; }
+.sm-botones button:active { transform: scale(0.95); }
+
+.sm-leyenda {
+  position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px);
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  padding: 6px 11px; border-radius: var(--r-sm);
+  font-size: 11.5px; color: var(--text-muted); pointer-events: none;
+}
+.sm-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.sm-leyenda i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid; }
+.sm-leyenda .e1 { color: var(--red);   background: rgba(var(--red-rgb), 0.35); }
+.sm-leyenda .e2 { color: var(--amber); background: rgba(var(--amber-rgb), 0.35); }
+.sm-leyenda .e3 { color: #869cb2;      background: rgba(134, 156, 178, 0.25); }
+.sm-leyenda-tam { color: var(--text-dim); }
+
+/* El reloj del repaso: solo se ve mientras corre. */
+.sm-reloj {
+  position: absolute; right: 10px; bottom: 10px;
+  display: flex; flex-direction: column; gap: 5px; min-width: 190px;
+  padding: 7px 12px; border-radius: var(--r-sm); text-align: center;
+  font-family: var(--font-mono); font-size: 12px; color: var(--text);
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.sm-reloj.on { opacity: 1; transform: none; }
+.sm-reloj-riel { height: 3px; border-radius: 3px; background: var(--surface4); overflow: hidden; }
+#sm-reloj-barra { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+
+/* La etiqueta que sigue al ratón. La coloca sismos.js con `transform`. */
+.sm-tip {
+  position: absolute; left: 0; top: 0; max-width: 260px;
+  padding: 6px 10px; border-radius: var(--r-sm);
+  font-size: 12px; line-height: 1.45; color: var(--text); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  opacity: 0; pointer-events: none; transition: opacity 120ms var(--ease-out);
+}
+.sm-tip.on { opacity: 1; }
+
+/* La lista. */
+.sm-lista-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sm-lista-card .note { margin-top: -4px; min-height: 1.7em; }
+/* La ficha del elegido y la lista se desplazan juntas (`.sm-rollo`). */
+.sm-rollo {
+  flex: 1; min-height: 0; max-height: 460px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px; margin: 0 -8px; padding: 0 8px;
+}
+.sm-lista { display: flex; flex-direction: column; gap: 4px; }
+.sm-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 8px 10px; border-radius: var(--r-md); border: 1px solid transparent;
+  background: transparent; color: var(--text); cursor: pointer; font-family: var(--font-main);
+  transition: background-color 150ms var(--ease-out), border-color 150ms var(--ease-out),
+              transform 140ms var(--ease-out);
+}
+.sm-item:active { transform: scale(0.98); }
+.sm-item.sel { background: rgba(var(--accent-rgb), 0.12); border-color: rgba(var(--accent-rgb), 0.5); }
+.sm-item-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sm-lugar { font-size: 13px; font-weight: 500; line-height: 1.35; }
+.sm-item .sm-lugar { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sm-sub { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+.sm-item.cerca .sm-sub { color: var(--accent); }
+/* La magnitud, en una pastilla del color de su edad. */
+.sm-mag {
+  flex: none; width: 42px; height: 30px; border-radius: var(--r-sm);
+  display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+}
+.sm-mag.grande { width: 58px; height: 46px; font-size: 19px; border-radius: var(--r-md); }
+.sm-mag.e1 { background: rgba(var(--red-rgb), 0.2);   color: var(--red-soft); }
+.sm-mag.e2 { background: rgba(var(--amber-rgb), 0.18); color: var(--amber); }
+.sm-mag.e3 { background: var(--surface3);              color: var(--text-muted); }
+.sm-vacio { padding: 14px 10px; font-size: 12.5px; color: var(--text-dim); }
+
+/* La ficha del sismo elegido. */
+.sm-ficha {
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  background: var(--inset); border: 1px solid rgba(var(--accent-rgb), 0.45); border-radius: var(--r-lg);
+  animation: viewIn 220ms var(--ease-out) backwards;
+}
+.sm-ficha[hidden] { display: none; }
+.sm-ficha-cab { display: flex; align-items: flex-start; gap: 12px; }
+.sm-ficha-tit { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sm-ficha-tit .sm-lugar { font-size: 14px; font-weight: 600; }
+.sm-cerrar {
+  flex: none; width: 28px; height: 28px; border-radius: 8px; border: 0; cursor: pointer;
+  background: var(--surface3); color: var(--text-muted); font-size: 18px; line-height: 1;
+  transition: transform 140ms var(--ease-out);
+}
+.sm-cerrar:active { transform: scale(0.94); }
+.sm-datos { display: flex; flex-direction: column; gap: 9px; }
+.sm-dato { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; line-height: 1.5; color: var(--text); }
+.sm-aviso {
+  padding: 9px 11px; border-radius: var(--r-sm); font-size: 12.5px; line-height: 1.5;
+  background: rgba(var(--amber-rgb), 0.14); border: 1px solid rgba(var(--amber-rgb), 0.45); color: var(--amber);
+}
+.sm-enlace { align-self: flex-start; font-size: 12.5px; font-weight: 600; color: var(--accent); text-decoration: none; }
+
+/* Punto en el menú lateral: llegó un sismo en tu zona y no estás mirando. */
+.nav-item.sm-novedad::after {
+  content: ''; margin-left: auto; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--amber); box-shadow: 0 0 0 3px rgba(var(--amber-rgb), 0.22);
+}
+
 /* ─── HOVER ────────────────────────────────────────────────────────────── */
 /* Todo junto y solo donde hay ratón: en una pantalla táctil el `:hover` se
    dispara con el toque y se queda puesto hasta que tocas otra cosa. */
@@ -1123,6 +1293,12 @@ body.en-app .net-back { display: inline-flex; }
   .arduino-btn:hover:not(:active) { border-color: var(--amber); }
   .arduino-btn.danger:hover:not(:active) { border-color: var(--red); }
   .trivia-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .sm-seg button:hover { color: var(--text); }
+  .sm-botones button:hover { border-color: var(--accent); }
+  .sm-item:hover { background: var(--surface3); }
+  .sm-item.sel:hover { background: rgba(var(--accent-rgb), 0.18); }
+  .sm-cerrar:hover { color: var(--text); background: var(--surface4); }
+  .sm-enlace:hover { text-decoration: underline; }
   ::-webkit-scrollbar-thumb:hover { background: #3d4855; background-clip: content-box; }
 }
 
@@ -1147,6 +1323,10 @@ body.en-app .net-back { display: inline-flex; }
   .nav-item { white-space: nowrap; width: auto; }
   .nav-item.active::before { left: 12px; right: 12px; top: auto; bottom: -1px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
   .stand-grid { grid-template-columns: 1fr; }
+  .sm-mapa { aspect-ratio: 4 / 3; }
+  .sm-leyenda .sm-leyenda-tam { display: none; }
+  .sm-botones { top: auto; bottom: 46px; }
+  .sm-reloj { bottom: auto; top: 46px; }
   .header { flex-wrap: wrap; }
   .status-bar { order: 3; flex-basis: 100%; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; }
   .status-item, .ws-badge { white-space: nowrap; }
@@ -1164,7 +1344,7 @@ body.en-app .net-back { display: inline-flex; }
   .logo-dot, .dot-active, .vpb-pulse, .emergency-btn::after,
   .voice-btn.listening::before, .voice-btn.listening::after,
   .sidebar-label, .nav-item, .view.entra > *, .chat-bubble,
-  .menu-pop.open .menu-item { animation: none !important; }
+  .menu-pop.open .menu-item, .sm-luz, .sm-ficha { animation: none !important; }
   .emergency-btn::after { opacity: 0; }
   /* Los menús siguen apareciendo y el resaltado sigue cambiando de sitio,
      pero sin deslizarse. */
