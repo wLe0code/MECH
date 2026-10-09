@@ -71,6 +71,7 @@ import tts
 import video_library
 import vision
 import voice_phrases
+import youtube_music
 from mech_app import get_app
 
 # -- Paths -------------------------------------------------------------------
@@ -480,14 +481,21 @@ async def lifespan(app: FastAPI):
         )
     if config.MUSIC_ENABLED:
         # Misma idea: si esta línea NO sale, la Pi corre código viejo.
-        mech.log(
-            "Modo música: decí «modo música MECH» o «activa modo música». Busca "
-            f"en Apple Music ({config.MUSIC_COUNTRY}) y suena el fragmento de "
-            "30 s en la pantalla de proyección"
-            + ("" if config.MUSIC_ALLOW_EXPLICIT else " · sin letras explícitas")
-            + ".",
-            "ok",
-        )
+        if youtube_music.disponible():
+            mech.log(
+                "Modo música: decí «modo música MECH» o «activa modo música». "
+                "Pone la canción entera desde YouTube, en la pantalla de proyección"
+                + ("" if config.MUSIC_ALLOW_EXPLICIT else " · con el filtro estricto")
+                + ".",
+                "ok",
+            )
+        else:
+            mech.log(
+                "Modo música: NO disponible — "
+                + (youtube_music.por_que_no() or "YouTube no responde")
+                + ". Ver docs/USO.md, «Modo música».",
+                "warn",
+            )
     # Autostart en reposo: MECH queda escuchando solo "ok MECH".
     if config.VOICE_AUTOSTART:
         mech.log("Voz en reposo: di 'ok MECH' para activarlo.", "info")
@@ -1230,7 +1238,7 @@ _LIVE_KEYS = {
     "TRIVIA_QUESTIONS": int,             # cuántas por partida
     "TRIVIA_OFFER_AFTER_PLAN": _to_bool,  # ¿la ofrece sola al terminar?
     "MUSIC_ENABLED": _to_bool,           # el modo música
-    "MUSIC_ALLOW_EXPLICIT": _to_bool,    # ¿canciones con letra explícita?
+    "MUSIC_ALLOW_EXPLICIT": _to_bool,    # ¿contenido explícito en la búsqueda?
     "MUSIC_VOLUME": float,               # volumen de la música en la pantalla
     "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
     "GREETING_CONFIRM_SECONDS": float,  # cuánto debe verse la cara para saludar

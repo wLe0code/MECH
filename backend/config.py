@@ -1311,21 +1311,23 @@ VOICE_NO_PHRASES_KO = _frases(
 
 # === Modo MÚSICA (ver backend/music.py) ======================================
 # «modo música MECH» / «activa modo música»: MECH pregunta qué canción y de
-# qué artista, la busca en el catálogo de Apple Music, la pone y al terminar
-# pregunta si quiere otra. Se corta con «oye MECH», como una narración.
+# qué artista, busca su video en YouTube, lo pone y al terminar pregunta si
+# quiere otra. Se corta con «oye MECH», como una narración.
 #
-# QUÉ SUENA: el fragmento oficial de 30 segundos que Apple da de cada canción
-# (buscador público, sin cuenta ni clave). Las canciones ENTERAS piden la
-# cuenta de desarrollador de Apple y que el navegador de la Pi abra audio
-# protegido; ver handoff.md.
+# QUÉ SUENA: la canción ENTERA, con su video, desde YouTube (reproductor
+# oficial en la pantalla de proyección). Necesita una clave gratuita de Google
+# (`YOUTUBE_API_KEY`). **Sin clave el modo no funciona**: MECH lo dice y no
+# entra. (Hasta el 8 oct 2026 había además un respaldo con fragmentos de 30 s
+# de Apple Music; el equipo pidió quitarlo y dejar solo YouTube.)
 #
 # Va todo junto aquí (y no repartido idioma por idioma como lo demás) para
 # poder revisar el modo entero de un vistazo.
 MUSIC_ENABLED = _activo("MUSIC_ENABLED")
-# País del catálogo donde se busca (código de dos letras de la tienda).
+# País desde el que se busca en YouTube (código de dos letras): decide qué
+# videos están disponibles y cuáles salen primero.
 MUSIC_COUNTRY = os.environ.get("MUSIC_COUNTRY", "CR").strip().upper() or "CR"
-# ¿Se permiten canciones marcadas como explícitas? En un stand con jueces y
-# estudiantes, mejor no: por defecto se buscan solo las versiones limpias.
+# ¿Se permite contenido explícito? En un stand con jueces y estudiantes,
+# mejor no: por defecto se busca con el filtro estricto de YouTube.
 MUSIC_ALLOW_EXPLICIT = _activo("MUSIC_ALLOW_EXPLICIT", "false")
 # Volumen de la música en la pantalla de proyección (0 a 1).
 MUSIC_VOLUME = float(os.environ.get("MUSIC_VOLUME", "0.9"))
@@ -1334,9 +1336,14 @@ MUSIC_VOLUME = float(os.environ.get("MUSIC_VOLUME", "0.9"))
 MUSIC_DRAIN_SECONDS = float(os.environ.get("MUSIC_DRAIN_SECONDS", "0.8"))
 # Si en estos segundos ninguna pantalla avisa de que la canción empezó a
 # sonar, se da por fallida (¿está abierta la proyección?).
-MUSIC_START_TIMEOUT = float(os.environ.get("MUSIC_START_TIMEOUT", "12"))
-# Tope de una canción, por si la pantalla nunca avisa de que terminó.
-MUSIC_MAX_SECONDS = float(os.environ.get("MUSIC_MAX_SECONDS", "420"))
+MUSIC_START_TIMEOUT = float(os.environ.get("MUSIC_START_TIMEOUT", "25"))
+# Lo más que puede durar una canción (segundos). Sirve para descartar en
+# YouTube los «10 horas de…» y como tope si la pantalla nunca avisa del final.
+MUSIC_MAX_SECONDS = float(os.environ.get("MUSIC_MAX_SECONDS", "600"))
+# Clave de la «YouTube Data API v3» (gratis, console.cloud.google.com). Da
+# unas 99 canciones al día. Vacía, se prueba con GOOGLE_API_KEY (la de
+# Gemini), que solo sirve si ese proyecto tiene activada la API de YouTube.
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "").strip()
 # Modelo que ENTIENDE el pedido («cheip of yu de ed chiran» → Shape of You,
 # Ed Sheeran). Vacío = el mismo de las narraciones.
 CLAUDE_MUSIC_MODEL = os.environ.get("CLAUDE_MUSIC_MODEL", "").strip() or CLAUDE_MODEL

@@ -198,10 +198,11 @@ backend/
                         (preguntando canción / artista, sonando, ¿seguimos?).
                         Quien habla, busca y manda la canción a la pantalla
                         es mech_app.
-  apple_music.py      ← Busca canciones en el catálogo de Apple Music con el
-                        buscador PÚBLICO de Apple (sin cuenta ni clave).
-                        Devuelve título, artista, carátula y el fragmento de
-                        30 s. Solo librería estándar.
+  youtube_music.py    ← Busca el VIDEO de YouTube de una canción (YouTube
+                        Data API v3, clave `YOUTUBE_API_KEY`): de ahí sale
+                        TODO lo que suena en el modo música. Solo videos que
+                        dejan incrustarse, de duración de canción y sin
+                        restricción de edad. Solo librería estándar.
   translator.py       ← Modo TRADUCTOR: MECH de intérprete entre dos
                         personas. Solo el ESTADO (activo, par de idiomas,
                         guarda anti-eco); quien habla y pide la traducción
@@ -263,9 +264,10 @@ frontend/
                         Maneja eventos image y video, con loop en video, y
                         pinta los SUBTÍTULOS de la narración abajo.
   music.js            ← Modo música en la PANTALLA de proyección (se sirve
-                        en /static/music.js): reproduce la canción, muestra
-                        la carátula y avisa al servidor de cuándo empieza y
-                        cuándo termina. Trae su CSS dentro, como trivia.js.
+                        en /static/music.js): pone el video con el
+                        reproductor oficial de YouTube y avisa al servidor de
+                        cuándo empieza y cuándo termina. Trae su CSS dentro,
+                        como trivia.js.
   trivia.js           ← La PANTALLA del juego, estilo Kahoot (se sirve en
                         /static/trivia.js). Pintor tonto: muestra el
                         estado que manda el servidor. Trae su CSS dentro.
@@ -416,7 +418,8 @@ scripts/
                         micrófono a punto de abrirse sea una orden), una
                         sesión completa por idioma en el bucle de voz real,
                         y los casos raros (cortar, no encontrar, sin
-                        pantalla, eco). `--red` busca canciones de verdad.
+                        pantalla, sin clave, eco). `--red` busca canciones de
+                        verdad en YouTube (necesita `YOUTUBE_API_KEY`).
                         Correrlo al tocar las frases `music_*` de lang.py,
                         las listas VOICE_MUSIC_* o el flujo.
   probar_idiomas.py   ← Los DIEZ idiomas sin micrófono: que cada frase
@@ -1217,62 +1220,87 @@ MECH: «¿Qué canción quieres escuchar, y de qué artista?»        (+ chime)
 «Despacito»                     (sin artista → lo pregunta UNA vez)
 MECH: «¿De qué artista es?»                                      (+ chime)
 «de Luis Fonsi»
-MECH: «Ahí va: Despacito, de Luis Fonsi y Daddy Yankee.»  → suena
+MECH: «Ahí va: Despacito, de Luis Fonsi.»  → suena, con su video
 MECH: «¿Seguimos con la música, o prefieres hacer algo distinto?»
 «otra canción» / «sí» → pregunta cuál · «no» → «Listo, apago la música.»
 cualquier otra orden → sale del modo y la atiende
 ```
 
-⚠️ **QUÉ SUENA: el fragmento oficial de 30 segundos, NO la canción entera.**
-El equipo quería «conectar su cuenta de Apple Music» (de pago). Lo que se
-encontró, y hay que tener claro antes de prometer nada:
+**QUÉ SUENA: SOLO YouTube** (decisión del equipo, 8 oct). La canción entera,
+con su video, en la pantalla de proyección, con el reproductor oficial.
 
-- La canción ENTERA solo se puede reproducir desde un programa con MusicKit,
-  que pide: (1) estar en el **Apple Developer Program** (~99 USD/año; es
-  OTRA cosa que la suscripción a Apple Music), (2) una clave MusicKit para
-  firmar el «developer token», (3) que alguien **inicie sesión con el Apple
-  ID en la pantalla** (Claude no puede escribir contraseñas, y ese permiso
-  caduca a los ~6 meses), y (4) que el navegador abra audio protegido
-  (Widevine). En Chromium de la Raspberry Pi eso es **dudoso**: hay un
-  paquete `libwidevinecdm0` con reportes mezclados y, desde 2026, un Chrome
-  oficial para arm64 que lo trae. **Nadie lo ha confirmado con Apple Music
-  en una Pi 5.** Hay que probarlo en la de ellos (abrir music.apple.com en
-  el Chromium de la Pi, iniciar sesión y darle a una canción).
-- Lo que SÍ funciona sin nada de eso: el **buscador público de Apple**
-  (iTunes Search API, `apple_music.py`): catálogo real, carátula y un
-  `previewUrl` de 30 s que es un archivo de audio normal.
-- El modo está hecho para **enchufar la canción entera sin rehacerlo**: la
-  ficha lleva el `id` de Apple (el mismo que usa MusicKit) y todo el audio
-  pasa por `sonar()` de `frontend/music.js`. El resto (frases, flujo,
-  pantalla, panel) no cambia.
+> **Historial, para no repetirlo.** Primero se hizo con el catálogo de Apple
+> Music y su fragmento de 30 s (commit `2945620`), porque la canción entera
+> de Apple pide una cuenta de DESARROLLADOR de pago (~99 USD/año, distinta
+> de la suscripción) además de iniciar sesión en la pantalla. El equipo
+> probó que la Pi SÍ reproduce music.apple.com entero, pero prefirió YouTube
+> (tiene YouTube Premium) y luego pidió expresamente **«quita lo de Apple
+> Music y deja solo lo de reproducir videos de YouTube»**. `apple_music.py`
+> y el respaldo de 30 s ya no existen: **no los vuelvas a meter** salvo que
+> lo pidan.
 
-Cómo está hecho:
-
-- **Estado** en [`backend/music.py`](backend/music.py) (etapas `ask` →
-  `artist` → `playing` → `again`), **flujo** en `mech_app`
-  (`start_music`, `handle_music_request`, `_play_track`,
-  `handle_music_again`, `stop_music`), rama propia en
-  `server._voice_loop_worker` (antes de los comandos normales, como la
-  trivia). Entrar y salir se miran en `handle_text_command`, **salir antes
-  que entrar** («sal del modo música» lleva dentro «modo música»).
+- **Clave**: `YOUTUBE_API_KEY` en el `.env` (gratis; cómo sacarla, en
+  `docs/USO.md` §4 bis y en `.env.example`). Vacía, se prueba con
+  `GOOGLE_API_KEY`, que solo sirve si ese proyecto de Google tiene activada
+  «YouTube Data API v3» (las claves de AI Studio suelen venir limitadas a
+  Gemini). Cada canción gasta 101 de las 10 000 unidades diarias: ~99
+  canciones al día. Lo buscado se recuerda 6 h. La clave solo permite
+  búsquedas públicas: no da acceso a la cuenta de nadie.
+- ⚠️ **Sin clave (o con la cuota agotada) el modo NO funciona, y no hay
+  respaldo.** Al pedirlo, MECH dice `music_unavailable` («Ahora mismo me es
+  imposible poner música») y **no entra al modo**; el panel dice por qué
+  (`youtube_music.por_que_no()`). Con la clave mal se deja de intentar hasta
+  reiniciar; con la cuota agotada, una hora. Si el fallo aparece ya dentro
+  del modo (al buscar), dice `music_error` y pregunta si seguimos.
 - **El pedido lo pone en limpio Claude** (`llm.interpret_song`, llamada
-  corta con salida estructurada, modelo `CLAUDE_MUSIC_MODEL`). No es un
-  lujo: Whisper escribe los títulos en otro idioma «como suenan» y el
-  buscador de Apple **no perdona una letra** («ed chiran» = 0 resultados).
-  Si Claude falla, se busca con lo que se oyó tal cual. Si el visitante NO
-  dijo el artista, Claude deja el campo vacío a propósito (aunque lo sepa) y
-  MECH lo pregunta: es lo que pidió el equipo. «No sé» → busca solo por
-  título.
-- **Suena en la PANTALLA de proyección**, no en el backend
-  (`frontend/music.js`, un `<audio>`): es el mismo camino que los videos de
-  marketing y donde tendría que sonar la canción entera. La pantalla avisa
-  con `POST /api/music/event` (`playing` / `ended` / `error`) y
-  `_play_track` espera. Si en `MUSIC_START_TIMEOUT` (12 s) nadie dice
-  `playing`, es que no hay proyección abierta o el navegador bloqueó el
-  sonido: lo dice en vez de esperar la canción entera.
-  ⚠️ Una canción solo EMPIEZA con el evento WS `music` (trae `play_id`
-  nuevo). `state["music"]` llega en cada cambio de fase y solo sirve para
-  callar: si también arrancara, cada cambio de fase reiniciaría la canción.
+  corta con salida estructurada, modelo `CLAUDE_MUSIC_MODEL`). Whisper
+  escribe los títulos en otro idioma «como suenan» («cheip of yu de ed
+  chiran»), y con eso YouTube encuentra cualquier cosa menos la canción.
+  **De ahí sale también el nombre que MECH dice y que se pinta**: nunca el
+  título del video («Luis Fonsi - Despacito ft. … (Official Video)»). Si
+  Claude falla, se busca con lo que se oyó tal cual. Si el visitante NO dijo
+  el artista, Claude deja el campo vacío a propósito (aunque lo sepa) y MECH
+  lo pregunta: es lo que pidió el equipo. «No sé» → busca solo por título y
+  la anuncia sin artista (`music_playing_title`). «Algo de Queen» → busca
+  por el artista.
+- **Qué videos valen** (`youtube_music.buscar`): `videoEmbeddable=true` +
+  `videoSyndicated=true` (que dejen reproducirse fuera de youtube.com),
+  categoría Música, `safeSearch=strict` salvo `MUSIC_ALLOW_EXPLICIT`, no
+  directos, no de mayores de edad (no se reproducen incrustados), no
+  bloqueados en `MUSIC_COUNTRY`, y entre 45 s y `MUSIC_MAX_SECONDS` (600).
+  Se ordenan: el oficial primero, karaokes/covers/remixes al final (salvo
+  que se pidan).
+- ⚠️ **Aun así un video puede negarse al ponerlo** (errores 101/150: su
+  dueño no lo deja fuera de YouTube). Por eso se mandan hasta TRES
+  candidatos y la pantalla (`frontend/music.js`) prueba el siguiente; cada
+  uno tiene 10 s para arrancar. Si ninguno arranca, avisa `error` con el
+  motivo y MECH lo dice. La pantalla le dice al servidor CUÁL suena
+  (`youtube:<id>`) y de eso depende cuánto se espera el final
+  (`_music_wait_seconds`: la duración de ESE video + 90 s).
+- **Suena en la PANTALLA de proyección**, no en el backend: ahí vive el
+  reproductor de YouTube. La pantalla avisa con `POST /api/music/event`
+  (`playing` / `ended` / `error`) y `_play_track` espera. Si en
+  `MUSIC_START_TIMEOUT` (25 s) nadie dice `playing`, es que no hay
+  proyección abierta o el navegador no dejó arrancar el video: lo dice en
+  vez de esperar la canción entera.
+  ⚠️ Un video solo EMPIEZA con el evento WS `music` (trae `play_id` nuevo).
+  `state["music"]` llega en cada cambio de fase y solo sirve para callar:
+  si también arrancara, cada cambio de fase reiniciaría la canción.
+- ⚠️ **El reproductor va A LA VISTA y sin nada encima**, y no se descarga ni
+  se extrae el audio: es lo que piden las condiciones de YouTube. No lo
+  «mejores» escondiendo el video para oír solo la música, ni con `yt-dlp`.
+- ⚠️ El código de YouTube se baja de youtube.com **desde `music.js`, la
+  primera vez que hace falta**. No va como `<script>` en el HTML: el
+  preflight §8 exige que la proyección cargue sin internet.
+- ⚠️ El CSS de `music.js` va dentro de una cadena de JavaScript entre
+  comillas invertidas: **una comilla invertida en un comentario de ese CSS
+  rompe el archivo entero** (pasó: la pantalla se quedaba sin modo música y
+  sin dar error visible).
+- **Anuncios**: el equipo tiene YouTube Premium. Con la sesión iniciada en
+  el Chromium de la Pi (el kiosko usa el perfil normal de Chromium, sin
+  `--user-data-dir`), no deberían salir. **No está confirmado** que Premium
+  valga en un reproductor incrustado: hay que mirarlo en la Pi. Si salen,
+  no hay arreglo por código.
 - **«oye MECH» la corta** con el mismo listener de las narraciones.
   `stop_presentation()` suelta la espera y le manda a la pantalla que calle
   YA. Después: «Entendido. ¿Seguimos…?»; y si la frase traía algo más
@@ -1301,29 +1329,34 @@ Cómo está hecho:
   salir: «para» y «música» salen en cualquier pregunta normal.
   `scripts/probar_musica.py` comprueba todo esto en los diez idiomas —
   **no reescribas una frase `music_*` sin correrlo**.
+- **Estado** en [`backend/music.py`](backend/music.py) (etapas `ask` →
+  `artist` → `playing` → `again`), **flujo** en `mech_app` (`start_music`,
+  `handle_music_request`, `_music_find_and_play`, `_play_track`,
+  `handle_music_again`, `stop_music`), rama propia en
+  `server._voice_loop_worker` (antes de los comandos normales, como la
+  trivia). Entrar y salir se miran en `handle_text_command`, **salir antes
+  que entrar** («sal del modo música» lleva dentro «modo música»).
 - **Diez idiomas**: tres listas por idioma (`VOICE_MUSIC_PHRASES`,
   `_STOP_`, `_MORE_`), todas juntas en la sección «Modo MÚSICA» de
-  `config.py` (no repartidas idioma por idioma), y 12 frases `music_*` en
-  `lang.py`. Los rótulos de la pantalla («Modo música», «Fragmento de 30
-  segundos · Apple Music») también salen de `lang.py`.
+  `config.py` (no repartidas idioma por idioma), y 13 frases `music_*` en
+  `lang.py` (entre ellas el rótulo de la pantalla, «Modo música»).
   En ruso NO están «включи / выключи музыку» (encender/apagar, a una letra).
-- **Letra explícita**: apagada por defecto (`MUSIC_ALLOW_EXPLICIT=false` →
-  `explicit=No` en la búsqueda). Cualquier visitante puede pedir cualquier
-  canción delante de los jueces.
 - Mientras el modo está activo MECH **no saluda** por cámara, y dormirlo o
   el paro de emergencia lo sacan del modo.
 - Panel: tarjeta **MODO MÚSICA** (vista Voz) — escribir «canción, artista»
   y **Poner** (sin micrófono: separa «el modo falla» de «no te entendió»),
-  **Preguntar** y **Parar**. Ajustes → grupo «Modo música».
+  **Preguntar** y **Parar**. Ajustes → grupo «Modo música» (activar,
+  contenido explícito, volumen).
 - Endpoints: `POST /api/music/start` · `/play` `{text}` · `/stop` ·
   `/event` (lo usa la pantalla).
-- Claves: `MUSIC_ENABLED`, `MUSIC_ALLOW_EXPLICIT`, `MUSIC_VOLUME` (las tres
-  en vivo), `MUSIC_COUNTRY`, `MUSIC_DRAIN_SECONDS`, `MUSIC_START_TIMEOUT`,
-  `MUSIC_MAX_SECONDS`, `CLAUDE_MUSIC_MODEL`,
-  `VOICE_MUSIC{,_STOP,_MORE}_PHRASES{,_EN,…,_KO}`.
-- Línea de arranque: `Modo música: decí «modo música MECH»…`.
-- Necesita internet (buscar y bajar el audio) y la proyección abierta. En
-  `/projector/vr` no suena, a propósito (como el marketing).
+- Claves: `YOUTUBE_API_KEY`, `MUSIC_ENABLED`, `MUSIC_ALLOW_EXPLICIT`,
+  `MUSIC_VOLUME` (las tres últimas en vivo), `MUSIC_COUNTRY`,
+  `MUSIC_DRAIN_SECONDS`, `MUSIC_START_TIMEOUT`, `MUSIC_MAX_SECONDS`,
+  `CLAUDE_MUSIC_MODEL`, `VOICE_MUSIC{,_STOP,_MORE}_PHRASES{,_EN,…,_KO}`.
+- Línea de arranque: `Modo música: … Pone la canción entera desde YouTube…`
+  (verde) o `Modo música: NO disponible — <motivo>` (ámbar).
+- Necesita internet y la proyección abierta. En `/projector/vr` no suena, a
+  propósito (como el marketing).
 
 ### Sismos recientes — el mapa del panel (8 oct 2026)
 
@@ -2052,19 +2085,21 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `backend/sismos.py` de verdad (datos reales, llegada en vivo, cambio de
   zona, apagar/encender, escritorio ancho, 1440 px y teléfono). **Sin probar
   en la Pi.**
-- **Modo música, con fragmentos de 30 s de Apple Music (8 oct 2026)** —
-  «modo música MECH» / «activa modo música» → pregunta canción y artista →
-  la busca en el catálogo de Apple Music → suena en la proyección con su
-  carátula → pregunta si seguimos. Se corta con «oye MECH». En los diez
-  idiomas. **Suena el fragmento oficial de 30 s, no la canción entera**: eso
-  necesita la cuenta de DESARROLLADOR de Apple y que la Pi abra audio
-  protegido (ver «Modo MÚSICA»). Verificado sin hardware:
-  `scripts/probar_musica.py` (88 comprobaciones: frases, una sesión entera
-  por idioma en el bucle de voz real, cortar, no encontrar, sin pantalla,
-  eco; con `--red`, canciones reales), la pantalla en el navegador sonando
-  un fragmento de verdad (empieza, termina, se corta, audio roto) y la
-  tarjeta del panel. **Sin probar**: nada en la Pi, y `llm.interpret_song`
-  nunca ha llamado a Claude de verdad (en la laptop no hay clave).
+- **Modo música con YouTube (8 oct 2026)** — «modo música MECH» / «activa
+  modo música» → pregunta canción y artista → busca su video en YouTube →
+  suena ENTERA en la proyección → pregunta si seguimos. Se corta con «oye
+  MECH». En los diez idiomas. Necesita la clave `YOUTUBE_API_KEY` (sin ella,
+  MECH dice que no puede y no entra). Ver «Modo MÚSICA». Verificado sin
+  hardware: `scripts/probar_musica.py` (102 comprobaciones: frases, una
+  sesión entera por idioma en el bucle de voz real, cortar, no encontrar,
+  sin pantalla, sin clave, cuota agotada, eco, y la búsqueda con respuestas
+  de mentira de Google), y la pantalla en el navegador con un video REAL de
+  YouTube (salta el que no sirve, suena, avisa al terminar, se corta, y
+  avisa del error si ninguno sirve). **Sin probar**: nada en la Pi; **la
+  búsqueda en YouTube nunca se hizo de verdad** (no había clave: se probó
+  con respuestas copiadas del formato de Google; con la clave,
+  `probar_musica.py --red` la hace de verdad); y `llm.interpret_song` nunca
+  ha llamado a Claude de verdad.
 - **Modo inglés bajo demanda (ago 2026)** — `backend/lang.py` guarda el idioma
   activo. «wake up MECH» despierta en INGLÉS (Whisper en `en`, narración de
   Claude en inglés, frases fijas y subtítulos en inglés); «ok MECH» /
@@ -2288,14 +2323,16 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     preguntar) antes que adivinar, y por eso `scripts/probar_trivia.py` mide
     las dos caras. Si aflojás el matcher para pillar un caso, corré ese
     script.
-27d. **Si el modo música dice «algo falló al reproducirla»**, casi nunca es
-    el modo: la canción suena en la PANTALLA de proyección. Mirá el registro
-    del panel, que dice cuál de estas fue: no hay ninguna proyección abierta
-    («Ninguna pantalla empezó a reproducir»), el navegador bloqueó el sonido
-    (se abrió sin `--autoplay-policy=no-user-gesture-required`: usar el
-    icono «Proyectar MECH» o tocar la pantalla una vez) o no pudo bajar el
-    audio (internet). Y si no ENCUENTRA la canción, probar a escribirla en
-    la tarjeta del panel: si por ahí sí, fue Whisper o `interpret_song`.
+27d. **Si MECH dice «me es imposible poner música»**, el modo no puede usar
+    YouTube: falta `YOUTUBE_API_KEY` en el `.env` de la Pi, esa clave no
+    tiene activada «YouTube Data API v3», o se acabó la cuota del día. El
+    motivo sale en el registro y en la línea de arranque. Y si dice «algo
+    falló al reproducirla», el video no arrancó en la PANTALLA: no hay
+    proyección abierta, se abrió sin el icono «Proyectar MECH» (sin
+    `--autoplay-policy=no-user-gesture-required` el video no arranca solo),
+    no hay internet, o ninguno de los tres videos se deja poner fuera de
+    YouTube. Si pone OTRA canción, probar a escribirla en la tarjeta del
+    panel: si por ahí acierta, fue Whisper o `interpret_song`.
 27e. **«oye MECH» no corta la canción**: el micrófono está oyendo la
     música. Bajar Ajustes → «Volumen música», decirlo más cerca, o el botón
     «Parar» del panel. No hay más magia posible sin cancelación de eco.
@@ -2412,7 +2449,7 @@ reordenado.
   `body.sin-servidor` (lo ponen `ws.onclose` / `ws.onopen`). Con `?app=1` en
   la dirección (así lo abre la app de Windows) trae «Buscar de nuevo», que
   hace `history.back()` a la pantalla de búsqueda.
-- `index.html` pide ahora `styles.css?v=10` y `app.js?v=10` (y `sismos.js?v=10`).
+- `index.html` pide ahora `styles.css?v=12` y `app.js?v=12` (y `sismos.js?v=12`).
 
 ### App de Windows sin construir nada (8 oct 2026)
 
@@ -2497,7 +2534,7 @@ presentan.
   (`AUDIO_INPUT_DEVICE=Steren`) no coincidía con ninguna opción, el
   desplegable quedaba en blanco y «Guardar en .env» **borraba el micrófono**.
   Ahora se añade como opción («Steren (lo configurado ahora)»).
-- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=10`): para
+- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=12`): para
   que tras un `git pull` el navegador no mezcle el HTML nuevo con el CSS/JS
   viejos que tenía guardados. **Al tocar cualquiera de los dos, súbele el
   número.**

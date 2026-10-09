@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="vendor/mech-fonts-cjk.css">
 <!-- El `?v=` es para que el navegador NO use la copia vieja guardada tras un
      `git pull`: al cambiar styles.css o app.js, súbele el número a los dos. -->
-<link rel="stylesheet" href="/static/styles.css?v=10">
+<link rel="stylesheet" href="/static/styles.css?v=12">
 </head>
 <body>
 <div class="app">
@@ -254,7 +254,7 @@
           </div>
 
           <!-- Modo música: «modo música MECH» -> pregunta canción y artista
-               -> la busca en Apple Music -> suena en la proyección -> pregunta
+               -> busca su video en YouTube -> suena en la proyección -> pregunta
                si seguimos. Aquí se pide escribiendo, que es como se separa
                «el modo falla» de «no te entendió al hablar». -->
           <div class="translator-box music-box" id="music-box">
@@ -267,7 +267,7 @@
               <input class="text-input" id="music-text" type="text" style="flex:1;min-width:200px"
                      placeholder="Canción y artista (ej. Despacito, de Luis Fonsi)">
               <button class="btn btn-purple" id="mu-play" onclick="API.musicPlay()"
-                      title="Busca esa canción en Apple Music y la pone, sin usar el micrófono.">
+                      title="Busca el video de esa canción en YouTube y lo pone, sin usar el micrófono.">
                 <i class="ti ti-player-play"></i>Poner
               </button>
               <button class="btn" id="mu-ask" onclick="API.musicStart()"
@@ -283,8 +283,8 @@
               <b>«modo música MECH»</b> o <b>«activa modo música»</b> → pregunta la canción y el artista →
               la pone → al terminar pregunta si seguimos · <b>«oye MECH»</b> la corta ·
               <b>«apaga la música»</b> sale del modo.
-              Suena en la <b>pantalla de proyección</b>: tiene que estar abierta.
-              Hoy es el fragmento de 30 s de Apple Music.
+              Pone el <b>video de YouTube</b> de la canción en la
+              <b>pantalla de proyección</b>: tiene que estar abierta.
             </span>
           </div>
         </div><!-- /voice-tools -->
@@ -880,10 +880,10 @@
             </label>
           </div>
           <div class="slider-row">
-            <label title="Apagado (lo recomendado en el stand), solo se buscan las versiones sin letra explícita de las canciones.">Letras</label>
+            <label title="Apagado (lo recomendado en el stand), YouTube busca con su filtro estricto: deja fuera los videos marcados como contenido para adultos.">Filtro</label>
             <label class="switch">
               <input type="checkbox" id="set-music-explicit">
-              <span class="switch-text">Permitir canciones con letra explícita</span>
+              <span class="switch-text">Permitir contenido explícito</span>
             </label>
           </div>
           <div class="slider-row">
@@ -1062,7 +1062,7 @@
 
 <!-- Antes que app.js: rellena su desplegable de zonas, y app.js convierte
      los desplegables en menús al arrancar. -->
-<script src="/static/sismos.js?v=10"></script>
-<script src="/static/app.js?v=10"></script>
+<script src="/static/sismos.js?v=12"></script>
+<script src="/static/app.js?v=12"></script>
 </body>
 </html>

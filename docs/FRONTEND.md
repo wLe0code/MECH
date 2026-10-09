@@ -192,7 +192,7 @@ Conecta a `ws://<pi>:8000/ws`. Recibirás un primer mensaje con el estado comple
 {"type": "video",       "url": "/videos/romeo_julieta/seg01.mp4"}  // video pre-renderizado (biblioteca)
 {"type": "subtitle",    "text": "Verona amanece dividida.", "lang": "es"}  // línea a mostrar AHORA (null = borrar)
 {"type": "sismos",      "nuevos": [ ... ], "consultado": 1791500000, "error": null}  // sismos que acaban de publicarse
-{"type": "music",       "stage": "playing", "play_id": 3, "track": { ... }}       // modo música: la canción que tiene que sonar (track null = callar)
+{"type": "music",       "stage": "playing", "play_id": 3, "track": { ... }}       // modo música: la canción que tiene que sonar; track.youtube = videos de YouTube (track null = callar)
 ```
 
 **Cliente → Server:**

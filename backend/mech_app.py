@@ -24,7 +24,6 @@ from typing import Any, Awaitable, Callable
 
 import sounddevice as sd
 
-import apple_music
 import config
 import gestures
 import image_gen
@@ -41,6 +40,7 @@ import voice_phrases
 import tts
 import video_library
 import voices
+import youtube_music
 from arduino_link import ArduinoLink, get_link
 from interrupt_listener import InterruptListener
 
@@ -111,6 +111,9 @@ class MechApp:
         self._music_done = threading.Event()
         self._music_result: str | None = None   # "ended" | "error"
         self._music_play_id = 0
+        # Cuál de los videos candidatos está sonando: "youtube:<id>". Lo dice
+        # la pantalla al empezar; de ahí sale cuánto se espera el final.
+        self._music_source = ""
         # Dónde va la reproducción en la pantalla principal (/projector), para
         # que el visor VR del teléfono se enganche en el mismo segundo en vez
         # de empezar el video desde cero. Lo reporta el propio <video>.
@@ -836,7 +839,7 @@ class MechApp:
         snap["lang"] = lang.current()
         # Los rótulos de la pantalla, en el idioma del despertar.
         snap["label"] = lang.say("music_label")
-        snap["note"] = lang.say("music_preview_note")
+        snap["note"] = "YouTube"            # se llama igual en los diez idiomas
         snap["volume"] = max(0.0, min(1.0, float(config.MUSIC_VOLUME)))
         snap["play_id"] = self._music_play_id
         self.state["music"] = snap
@@ -865,6 +868,17 @@ class MechApp:
 
     def start_music(self) -> None:
         """Entra al modo música y pregunta qué canción (y de quién)."""
+        if not youtube_music.disponible():
+            # Sin YouTube no hay nada que poner: se dice, y NO se entra al
+            # modo (no tiene sentido preguntar por una canción que no sonará).
+            self.log(
+                "Modo música no disponible: "
+                + (youtube_music.por_que_no() or "YouTube no responde") + ".", "warn")
+            with self._talking_alone():
+                tts.speak(lang.say("music_unavailable"), blocking=True)
+                time.sleep(config.MUSIC_DRAIN_SECONDS)
+            self.chime_pending = True
+            return
         music.ask()
         self.log("Modo música: pregunto qué canción quiere.", "ok")
         self._emit_music()
@@ -911,8 +925,8 @@ class MechApp:
         """Lo que contestó a «¿qué canción?» (o a «¿de qué artista?»).
 
         El pedido lo pone en limpio Claude (`llm.interpret_song`): Whisper
-        escribe los títulos en otro idioma como suenan y el buscador de Apple
-        no perdona una letra. Si falta el artista, se pregunta UNA vez: es lo
+        escribe los títulos en otro idioma como suenan, y con eso YouTube
+        encuentra cualquier cosa menos la canción. Si falta el artista, se pregunta UNA vez: es lo
         que garantiza que la canción sea la que quería.
         """
         text = (text or "").strip()
@@ -973,21 +987,32 @@ class MechApp:
         return True
 
     def _music_find_and_play(self, titulo: str, artista: str) -> None:
-        """Busca la canción en Apple Music y la pone. Luego, lo que toque."""
+        """Busca el video de la canción en YouTube y lo pone. Luego, lo que toque."""
         try:
-            canciones = apple_music.buscar(titulo, artista)
+            videos = youtube_music.buscar(titulo, artista)
         except Exception as e:
-            self.log(f"No pude buscar en Apple Music (¿hay internet?): {e}", "err")
+            # Clave que no sirve, cuota agotada o sin internet: el motivo va
+            # al panel tal cual lo explica `youtube_music`.
+            self.log(f"No pude buscar en YouTube: {e}", "err")
             self._music_offer_more(lang.say("music_error"))
             return
-        if not canciones:
+        if not videos:
             self.log(
-                f"Apple Music no tiene «{titulo}»"
-                + (f" de «{artista}»" if artista else "") + ".", "warn")
+                f"YouTube no tiene un video que se pueda poner de «{titulo or artista}»"
+                + (f" de «{artista}»" if titulo and artista else "") + ".", "warn")
             self._music_offer_more(lang.say("music_not_found"))
             return
+        # El nombre que se dice y se pinta es el que entendió Claude (limpio),
+        # no el título del video («Luis Fonsi - Despacito ft. … (Official)»).
+        # Si solo se dijo un artista («algo de Queen»), ese es el nombre.
+        cancion = {
+            "title": titulo or artista,
+            "artist": artista if titulo else "",
+            "seconds": videos[0]["seconds"],
+            "youtube": videos,
+        }
         with self._presentation():      # mientras suena, MECH no saluda
-            final = self._play_track(canciones[0])
+            final = self._play_track(cancion)
         if final == "stopped":
             # La pararon desde el panel, con el paro o durmiéndolo. Nadie va a
             # hablar después, así que la fase se suelta AQUÍ: si se quedara en
@@ -1009,6 +1034,15 @@ class MechApp:
             self._music_offer_more(lang.say("music_error"))
         else:
             self._music_offer_more()
+
+    def _music_wait_seconds(self, track: dict) -> float:
+        """Cuánto esperar el final: lo que dura el video que dijo la pantalla."""
+        vid = (self._music_source or "").split(":", 1)[-1]
+        dura = next((v.get("seconds") or 0 for v in track.get("youtube") or []
+                     if v.get("id") == vid), 0)
+        # Margen ancho: lo que tarda en cargar, y anuncios si la sesión del
+        # navegador no es Premium.
+        return min(config.MUSIC_MAX_SECONDS, dura or config.MUSIC_MAX_SECONDS) + 90
 
     def _music_release_phase(self) -> None:
         """Deja la fase de voz como toca cuando MECH se queda callado."""
@@ -1034,7 +1068,10 @@ class MechApp:
         tts.clear_stop()
         self._narration_interrupted = False
         self.pending_command = None
-        anuncio = lang.say("music_playing", title=track["title"], artist=track["artist"])
+        if track.get("artist"):
+            anuncio = lang.say("music_playing", title=track["title"], artist=track["artist"])
+        else:
+            anuncio = lang.say("music_playing_title", title=track["title"])
         self.state["last_ai_response"] = anuncio
         self.emit("ai_response", text=anuncio)
         self.set_voice_phase("speaking")
@@ -1042,12 +1079,14 @@ class MechApp:
 
         self._music_play_id += 1
         self._music_result = None
+        self._music_source = ""
         self._music_started.clear()
         self._music_done.clear()
         music.play(track)
         self.log(
-            f"Suena: {track['title']} — {track['artist']} "
-            "(fragmento de 30 s de Apple Music).", "ok")
+            f"Pongo: {track['title']}"
+            + (f" — {track['artist']}" if track.get("artist") else "")
+            + " (YouTube).", "ok")
         if not self._subscribers:
             self.log(
                 "OJO: no hay ninguna pantalla conectada (/projector). La "
@@ -1068,9 +1107,7 @@ class MechApp:
                         "warn")
                     self._music_result = "error"
                 else:
-                    # El fragmento dura 30 s; se deja margen por si tarda en
-                    # cargar. El tope general es para canciones enteras.
-                    tope = min(config.MUSIC_MAX_SECONDS, 45.0)
+                    tope = self._music_wait_seconds(track)
                     if not self._music_done.wait(timeout=tope):
                         self.log("La pantalla no avisó del final de la canción.", "warn")
                         self._music_result = "ended"
@@ -1089,6 +1126,14 @@ class MechApp:
         if play_id != self._music_play_id or not music.is_playing():
             return False                # es de una canción anterior
         if event == "playing":
+            self._music_source = detail or ""
+            candidatos = [v.get("id") for v in (music.track() or {}).get("youtube") or []]
+            vid = self._music_source.split(":", 1)[-1]
+            if candidatos and vid in candidatos[1:]:
+                # El primero no se dejó poner fuera de YouTube: es otra
+                # versión de la misma canción (suele ser la de la letra).
+                self.log("El primer video no se dejó reproducir aquí: suena "
+                         "otra versión de la canción.", "info")
             self._music_started.set()
         elif event == "ended":
             self._music_result = "ended"

@@ -2,9 +2,8 @@
 
 Idea (pedido del equipo, oct 2026): «como en Alexa». Se le dice **«modo
 música MECH»** o **«activa modo música»**; pregunta qué canción y de qué
-artista (el artista es lo que garantiza que sea la correcta), la busca en el
-catálogo de Apple Music, la pone, y al terminar pregunta si quiere otra o
-hacer otra cosa.
+artista (el artista es lo que garantiza que sea la correcta), busca su video
+en YouTube, lo pone, y al terminar pregunta si quiere otra o hacer otra cosa.
 
     Usuario:  «ok MECH»                -> despierta
     Usuario:  «activa modo música»
@@ -22,15 +21,14 @@ hacer otra cosa.
 Mientras suena se puede cortar con **«oye MECH»** (en el idioma en que
 despertó), igual que una narración: para la música y vuelve a preguntar.
 
-**Qué suena.** Hoy, el fragmento oficial de 30 segundos que Apple publica de
-cada canción (ver `apple_music.py`). Las canciones enteras necesitan la
-cuenta de desarrollador de Apple; el modo ya está hecho para enchufarlas
-(`full` en la ficha de la canción) sin cambiar nada de lo demás.
+**Qué suena.** La canción entera, con su video, desde YouTube (ver
+`youtube_music.py`). Necesita la clave `YOUTUBE_API_KEY`; sin ella MECH dice
+que no puede poner música y no entra al modo.
 
 **Dónde suena.** En la PANTALLA de proyección (`frontend/music.js`), no en
-este proceso: es el mismo camino que los videos de marketing, y es donde
-tendrá que sonar la canción entera (el audio protegido solo lo abre un
-navegador). La pantalla avisa cuando empieza y cuando termina.
+este proceso: ahí vive el reproductor oficial de YouTube, y es el mismo
+camino que los videos de marketing. La pantalla avisa cuando empieza y
+cuando termina.
 
 **El eco.** MECH habla y enseguida abre el micrófono, cuatro veces por
 canción. Tres defensas, las mismas del traductor y la trivia: la espera de
@@ -55,7 +53,8 @@ from collections import deque
 _stage: str = "off"
 # Título que ya dijo el visitante, mientras se le pregunta el artista.
 _pending_title: str = ""
-# La canción que suena (o la última que sonó). Ver `apple_music._cancion`.
+# La canción que suena (o la última que sonó):
+#   {title, artist, seconds, youtube: [{id, title, channel, seconds, thumb}]}
 _track: dict | None = None
 # Veces seguidas que no se entendió el pedido. A la segunda se deja de
 # insistir (ver `mech_app.handle_music_request`).

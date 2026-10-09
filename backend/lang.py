@@ -565,6 +565,33 @@ _PHRASES: dict[str, dict[str, str]] = {
         "zh": "这就播放{artist}的《{title}》。",
         "ko": "{artist}의 '{title}' 들려 드릴게요.",
     },
+    # Lo mismo cuando no se sabe el artista («no sé de quién es»).
+    "music_playing_title": {
+        "es": "Ahí va: {title}.",
+        "en": "Here it is: {title}.",
+        "fr": "C'est parti : {title}.",
+        "pt": "Aqui vai: {title}.",
+        "de": "Los geht's: {title}.",
+        "it": "Eccola: {title}.",
+        "ja": "「{title}」をかけます。",
+        "ru": "Ставлю: {title}.",
+        "zh": "这就播放《{title}》。",
+        "ko": "'{title}' 들려 드릴게요.",
+    },
+    # Piden el modo y YouTube no está disponible (falta la clave, se acabó la
+    # cuota del día). Lo dice y NO entra al modo.
+    "music_unavailable": {
+        "es": "Ahora mismo me es imposible poner música.",
+        "en": "I can't play music right now.",
+        "fr": "Je ne peux pas mettre de musique pour le moment.",
+        "pt": "Agora é impossível tocar música.",
+        "de": "Im Moment kann ich leider keine Musik abspielen.",
+        "it": "In questo momento mi è impossibile mettere musica.",
+        "ja": "今は音楽をかけられません。",
+        "ru": "Сейчас у меня не получится поставить музыку.",
+        "zh": "现在没办法播放歌曲。",
+        "ko": "지금은 음악을 틀 수 없어요.",
+    },
     # No entendió el pedido: lo vuelve a pedir.
     "music_not_understood": {
         "es": "Me perdí. Dime el nombre de la canción y quién la canta.",
@@ -643,7 +670,7 @@ _PHRASES: dict[str, dict[str, str]] = {
         "zh": "好的，我停止音乐了。",
         "ko": "알겠습니다. 음악을 끌게요.",
     },
-    # Estas dos NO se dicen: son rótulos de la pantalla mientras suena.
+    # Esta NO se dice: es el rótulo de la pantalla mientras suena.
     "music_label": {
         "es": "Modo música",
         "en": "Music mode",
@@ -655,18 +682,6 @@ _PHRASES: dict[str, dict[str, str]] = {
         "ru": "Режим музыки",
         "zh": "音乐模式",
         "ko": "음악 모드",
-    },
-    "music_preview_note": {
-        "es": "Fragmento de 30 segundos · Apple Music",
-        "en": "30-second preview · Apple Music",
-        "fr": "Extrait de 30 secondes · Apple Music",
-        "pt": "Excerto de 30 segundos · Apple Music",
-        "de": "30-Sekunden-Ausschnitt · Apple Music",
-        "it": "Anteprima di 30 secondi · Apple Music",
-        "ja": "30秒の試聴 · Apple Music",
-        "ru": "Отрывок 30 секунд · Apple Music",
-        "zh": "30秒试听 · Apple Music",
-        "ko": "30초 미리듣기 · Apple Music",
     },
 }
 

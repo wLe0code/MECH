@@ -486,8 +486,9 @@ def interpret_song(text: str, language: str | None = None) -> dict:
 
     Llamada corta y aparte del prompt grande, como la del traductor: aquí lo
     que importa es la latencia. Hace falta porque Whisper escribe los títulos
-    en otro idioma "como suenan", y el buscador de Apple no perdona una
-    letra: sin este paso, casi ninguna canción en inglés aparecería.
+    en otro idioma "como suenan" («cheip of yu de ed chiran»), y con eso
+    YouTube encuentra cualquier cosa menos la canción. También es de donde
+    sale el nombre limpio que MECH dice y que se pinta en la pantalla.
     """
     text = (text or "").strip()
     if not text:

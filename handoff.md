@@ -49,16 +49,30 @@ el mismo 8 oct** («dale, súbelo»), en un solo commit encima de `4f792cd`,
 seguridad»: el equipo dijo que **es el propio mapa y que eso ya lo tienen
 cubierto** — no hay nada más pendiente de sismos (§2.quater, punto 0).
 
-**Tercera cosa del 8 oct (§2.terdecies): el MODO MÚSICA está hecho**, con
-el catálogo de Apple Music, en los diez idiomas. ⚠️ **Suena el fragmento de
-30 segundos, no la canción entera.** El equipo cree que basta con «conectar
-su cuenta de Apple de pago»: no basta (hace falta la cuenta de
-DESARROLLADOR, que es otra, y que la Pi abra audio protegido). Se le explicó
-al entregar; **falta que diga si la saca y que pruebe en la Pi** (§2.quater,
-punto 00). **Subido a GitHub el 8 oct** («súbelo a github»), **sin probar en
-la Pi**: preguntar cómo fue. Al subirlo el equipo preguntó «¿mi suscripción
-de Apple Music no funciona entonces? ¿qué alternativas tenemos?»: se le
-contestó con las opciones de §2.quater punto 00 y **falta que elija**.
+**Tercera cosa del 8 oct (§2.terdecies y §2.quaterdecies): el MODO MÚSICA
+está hecho, en los diez idiomas, y suena SOLO desde YouTube.** Cómo se llegó:
+primero se hizo y se subió con fragmentos de 30 s de Apple Music (commit
+`2945620`); el equipo prefirió YouTube («creo que prefiero que usemos
+YouTube Premium») y al final pidió, tal cual: **«quita lo de Apple Music y
+deja solo lo de reproducir videos de YouTube, ya te subo la API key»**.
+Hecho: `backend/apple_music.py` ya no existe y no hay respaldo de 30 s.
+
+> ⚠️ **LO PRIMERO DE LA PRÓXIMA SESIÓN — tres cosas del modo música:**
+> 1. **La versión solo-YouTube YA ESTÁ en GitHub** («súbelo a github», 8
+>    oct; commit «Modo música solo con YouTube…», encima de `2945620`). La
+>    Pi la recibe al abrir «Iniciar MECH» (hace `git pull`). **Sin probar en
+>    la Pi**: preguntar cómo fue.
+> 2. **La clave de YouTube**: el equipo dijo «ya te subo la API key» y la
+>    sesión terminó antes de que llegara. **Preguntar si ya la tiene.** Va en
+>    `backend/.env` (en la Pi para usarlo; en la laptop solo para probar),
+>    línea `YOUTUBE_API_KEY=…`. ⚠️ **Nunca a git, ni repetirla en el chat, ni
+>    en este archivo.** Mejor que la pegue el equipo en el `.env` que
+>    escribirla en el chat. En la laptop se dejó creado `backend/.env` con
+>    la línea `YOUTUBE_API_KEY=` **vacía** para que la pegue ahí (está en
+>    `.gitignore`; si esa línea sigue vacía, todavía no la ha puesto).
+> 3. **Con la clave, lo primero es la búsqueda de verdad**, que nunca se ha
+>    hecho: `scripts/probar_musica.py --red` (cómo correrlo aquí, en
+>    §2.terdecies). Si falla, el mensaje dice el motivo que da Google.
 
 > ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** La sesión del
 > 6 oct empezó leyendo este handoff en una copia local que estaba **2
@@ -106,8 +120,10 @@ contestó con las opciones de §2.quater punto 00 y **falta que elija**.
 11. **8 oct, segunda sesión, subido y sin probar en la Pi**
     (§2.undecies): MECH ya no saluda por un fotograma suelto; la cara tiene
     que mantenerse (Ajustes → «Confirmar cara», 1 s).
-13. **8 oct, subido y sin probar en la Pi** (§2.terdecies): **modo
-    música** («modo música MECH») con fragmentos de 30 s de Apple Music.
+13. **8 oct, sin probar en la Pi** (§2.terdecies, §2.quaterdecies): **modo
+    música** («modo música MECH»): pone el **video de YouTube** de la
+    canción, entero. **Subido el 8 oct.** Falta la **clave**
+    `YOUTUBE_API_KEY` (sin ella MECH dice que no puede poner música).
 12. **8 oct, segunda sesión, subido y sin probar en la Pi**
     (§2.duodecies): vista nueva **«Sismos»** en el panel, con un mapa
     animado de los sismos recientes (EMSC + USGS). Informa, no predice.
@@ -774,83 +790,45 @@ recientes — el mapa del panel»).
   moverse» aunque el código funcione (pasó: el vuelo a la zona parecía no
   ocurrir). Contar fotogramas con `requestAnimationFrame` antes de creerlo.
 
-### 2.terdecies Modo música con Apple Music (8 oct)
+### 2.terdecies Modo música (8 oct) — el modo en sí
 
-Pedido, tal cual: «la idea es que te conecte a una cuenta de Apple Music y
-ese modo música sea como en Alexa: "modo música MECH" o "activa modo
-música", luego pregunta qué canción quiere escuchar el usuario y de qué
-artista para garantizar que sea la correcta, la reproduce y cuando termina
-pregunta si quiere escuchar otra canción o si quiere hacer otra cosa;
-también que durante el modo música MECH pueda seguir siendo interrumpido por
-"oye MECH"; que esté adaptado a los 10 idiomas». Con esto quedaron
-contestadas casi todas las seis preguntas de §2.nonies.
+Pedido, tal cual: «ese modo música sea como en Alexa: "modo música MECH" o
+"activa modo música", luego pregunta qué canción quiere escuchar el usuario
+y de qué artista para garantizar que sea la correcta, la reproduce y cuando
+termina pregunta si quiere escuchar otra canción o si quiere hacer otra
+cosa; también que durante el modo música MECH pueda seguir siendo
+interrumpido por "oye MECH"; que esté adaptado a los 10 idiomas». De dónde
+sale la música cambió tres veces el mismo día (§2.quaterdecies); **el flujo
+no cambió**. Detalle técnico en CLAUDE.md, «Modo MÚSICA».
 
-**Lo que hay que saber antes de tocar nada** (detalle en CLAUDE.md, «Modo
-MÚSICA»):
-
-- Antes de programar se investigó Apple y se le preguntó al equipo (con
-  opciones) qué quería que sonara. Contestó, sin elegir opción: **«es una
-  cuenta de apple de pago»**. O sea: cree que su suscripción a Apple Music
-  alcanza. **No alcanza**: las canciones enteras piden el Apple Developer
-  Program (~99 USD/año, otra cosa), una clave MusicKit, que ELLOS inicien
-  sesión en la pantalla de la Pi, y que el Chromium de la Pi abra audio
-  protegido (dudoso; sin confirmar en ninguna parte).
-- Se construyó lo que vale en cualquier caso: el modo entero, buscando en
-  el catálogo real de Apple Music (buscador público, sin cuenta) y sonando
-  el **fragmento oficial de 30 s**. La canción entera se enchufa después en
-  un solo sitio (`sonar()` de `frontend/music.js` + un token en el backend).
-- ⚠️ **Claude no puede iniciar sesión por ellos** ni escribir su contraseña
-  de Apple. Si lo piden, explicarlo: lo hacen ellos en la pantalla.
-
-**Qué se hizo**: `backend/music.py` (estado), `backend/apple_music.py`
-(búsqueda), `llm.interpret_song` (Claude pone el pedido en limpio),
-métodos en `mech_app.py`, rama en el bucle de voz y endpoints en
-`server.py`, 30 listas de frases en `config.py` (3 × 10 idiomas), 12 frases
-× 10 idiomas en `lang.py`, `voice_phrases.is_music*`, `frontend/music.js`
-(reproductor + pantalla), `projector.html` (tres líneas), tarjeta y ajustes
-en el panel (`index.html`, `app.js`, `styles.css`; `?v=10`),
-`scripts/probar_musica.py`, `.env.example`, `docs/USO.md` (§4 bis),
-`docs/FRONTEND.md`, `preflight.py` (una línea).
+**Las piezas**: `backend/music.py` (estado: `ask` → `artist` → `playing` →
+`again`), `backend/youtube_music.py` (búsqueda), `llm.interpret_song`
+(Claude pone el pedido en limpio), los métodos `*music*` de `mech_app.py`,
+la rama del bucle de voz y los endpoints `/api/music/*` en `server.py`, 30
+listas de frases en `config.py` (3 × 10 idiomas, todas juntas en la sección
+«Modo MÚSICA»), 13 frases × 10 idiomas en `lang.py`,
+`voice_phrases.is_music*`, `frontend/music.js` (la pantalla: reproductor de
+YouTube), `projector.html` (tres líneas), tarjeta y ajustes en el panel,
+`scripts/probar_musica.py`.
 
 De paso: `scripts/probar_idiomas.py` tenía una comprobación rota desde el
 6 oct (buscaba los botones de idioma en `index.html`; desde el rediseño los
 pinta `app.js`). Ahora mira la tabla `LANGS`. Y se registraron las listas de
 música en `probar_idiomas.py` y `probar_comandos_idioma.py`.
 
-**Verificado en la laptop**:
-- `probar_musica.py`: 88 comprobaciones (93 con `--red`). Las frases en los
-  diez idiomas con el reconocedor real; una sesión completa por idioma por
-  el bucle de voz REAL (8 frases dichas, todas en su idioma); cortar con
-  «oye MECH» sola y con pedido pegado; canción inexistente; sin internet;
-  sin pantalla; pantalla que no abre el audio; no entender dos veces;
-  cambiar de tema; decir la canción de una; parar desde el panel; dormirlo;
-  el eco de las tres preguntas y de la despedida en los diez idiomas.
-- `probar_idiomas.py` (375), `probar_comandos_idioma.py` (195),
-  `probar_trivia.py` (50/50): todo bien con las listas nuevas dentro.
-- La búsqueda contra Apple de verdad (Despacito, Bohemian Rhapsody,
-  Thriller con el artista mal escrito, Malpaís).
-- La pantalla (`/projector`) en el navegador con un fragmento REAL: suena,
-  carátula, barra de avance, avisa `playing` y `ended`, un `state` no la
-  reinicia, se calla al cortarla, y un audio roto avisa `error`.
-- La tarjeta del panel en sus cinco estados y sus botones.
+**Cómo se corren las pruebas en esta laptop** (el único Python es el de
+Spyder, 3.8; ver §2): con un envoltorio `correr38.py` que simula `dotenv` y
+carga `voice_phrases` con el `removesuffix` escrito a la antigua. Estaba en
+el scratchpad de la sesión; **si ya no existe, son 40 líneas y hay que
+rehacerlo**. Se usa así (Git Bash):
 
-**NO verificado** (todo esto es lo primero que hay que mirar en la Pi):
-- **`llm.interpret_song` nunca llamó a Claude de verdad** (sin clave en la
-  laptop). Copia el patrón de `make_quiz`, pero es la pieza con más riesgo.
-- Cómo transcribe Whisper `base` un título de canción, sobre todo en otro
-  idioma. Si falla mucho: `WHISPER_MODEL=small`.
-- Que el Chromium de la Pi baje y suene el fragmento (es un `.m4a` normal;
-  no debería haber problema) y que el volumen sea razonable.
-- **Cortar con «oye MECH» con música sonando**: el micrófono oye la
-  canción. Es lo que más puede fallar. Mirar «Oí mientras narraba: …» en el
-  panel y la CPU de la Pi.
-- Las frases en los nueve idiomas que no son español, dichas por una
-  persona (solo se probó el texto).
+    PY="$LOCALAPPDATA/Programs/Spyder/Python/python.exe"
+    PYTHONIOENCODING=utf-8 "$PY" <scratchpad>/correr38.py scripts/probar_musica.py
+    PYTHONIOENCODING=utf-8 "$PY" <scratchpad>/correr38.py scripts/probar_musica.py --red
 
-Cómo se corrieron las pruebas aquí (el Python de la laptop es 3.8): con un
-envoltorio `correr38.py` que simula `dotenv` y carga `voice_phrases` con el
-`removesuffix` escrito a la antigua. Estaba en el scratchpad de la sesión;
-si ya no existe, son 30 líneas (ver §2: «En esta laptop el único Python…»).
+`--red` hace la búsqueda REAL en YouTube: necesita `YOUTUBE_API_KEY` en el
+entorno o en `backend/.env`. En la Pi (Python 3.13) los scripts corren
+directos, sin envoltorio.
 
 Un defecto VIEJO que se vio de paso y NO se tocó: en alemán, el «no»
 (`nein`) casa con cualquier frase que lleve «ein» (a una letra). «Ja, ein
@@ -858,41 +836,124 @@ Quiz bitte» al ofrecimiento de la trivia se toma como un NO. En el modo
 música se esquivó mirando «otra canción» antes que el no. Arreglarlo de
 verdad es tocar el matcher o la lista: preguntarle al equipo si le importa.
 
+### 2.quaterdecies El modo música suena SOLO desde YouTube (8 oct)
+
+**Cómo se llegó aquí** (para no repetir la discusión):
+
+1. El equipo pidió Apple Music y contestó «es una cuenta de apple de pago».
+   Su suscripción no alcanza: la canción entera de Apple pide además una
+   cuenta de **desarrollador** (~99 USD/año, hay que ser mayor de edad).
+   Se hizo con el fragmento oficial de 30 s y **se subió** (`2945620`).
+2. Preguntó por alternativas y contó que tiene **YouTube Premium** (viene
+   con su Gemini Pro). Antes quiso probar Apple en la Pi: music.apple.com
+   «pasó de los 40 segundos y pone una foto como del álbum». O sea, **la Pi
+   SÍ reproduce el audio protegido de Apple**; lo único que faltaba era la
+   cuenta de desarrollador.
+3. Aun así: **«creo que prefiero que usemos YouTube Premium»**. Se añadió
+   YouTube para la canción entera, con Apple de respaldo.
+4. Preguntó para qué hace falta la «YouTube Data API v3» y si cuesta (se le
+   explicó: es solo el BUSCADOR —de «Despacito, Luis Fonsi» al número del
+   video—, gratis, ~99 canciones al día, no toca su cuenta ni su Premium).
+5. Y cerró: **«quita lo de Apple Music y deja solo lo de reproducir videos
+   de YouTube, ya te subo la API key»**.
+
+⚠️ **No vuelvas a meter Apple ni un respaldo de 30 s** salvo que lo pidan.
+
+**Qué cambió en la última pasada (solo-YouTube), subida el 8 oct:**
+
+- Borrado `backend/apple_music.py`. Nuevo `backend/youtube_music.py`.
+- `mech_app.py`: `start_music()` comprueba `youtube_music.disponible()`; si
+  no (sin clave, clave mala, cuota agotada) dice `music_unavailable` y **no
+  entra al modo**. `_music_find_and_play` busca solo en YouTube. El nombre
+  que MECH dice y pinta es el que puso en limpio Claude, no el del video.
+- `lang.py`: frases nuevas `music_unavailable` y `music_playing_title` (la
+  canción sin artista: «no sé de quién es»); se quitó `music_preview_note`.
+- `config.py`: fuera `MUSIC_YOUTUBE_ENABLED`. `server.py`: línea de arranque
+  nueva y fuera esa clave de las «en vivo». `preflight.py`: una línea.
+- `frontend/music.js` reescrito (solo el reproductor de YouTube: prueba
+  hasta tres videos; si ninguno arranca, avisa del error). Panel: fuera el
+  interruptor «Usar YouTube»; `index.html` pide `?v=12`.
+- `scripts/probar_musica.py` reescrito. Documentación: `CLAUDE.md`,
+  `docs/USO.md` (§4 bis), `docs/FRONTEND.md`, `backend/.env.example`.
+
+Se subió **por rutas** (como siempre: otra sesión trabaja en `web/`), en un
+solo commit. Lo que NO se sube nunca: `backend/.env` (ahí va la clave),
+`.agents/`, `skills-lock.json`, `windows/config.txt`, `.claude/launch.json`.
+
+**Lo que tiene que hacer el equipo** (Claude no puede hacerlo por ellos: no
+inicia sesión ni escribe contraseñas):
+
+1. **La clave**: console.cloud.google.com (cualquier cuenta de Google) →
+   crear proyecto → «APIs y servicios» → habilitar **YouTube Data API v3**
+   → «Credenciales» → «Crear credenciales» → **Clave de API** → línea
+   `YOUTUBE_API_KEY=…` en `backend/.env` **de la Pi** → reiniciar.
+2. **Sin anuncios**: en el Chromium de la Pi, entrar a youtube.com e
+   iniciar sesión con la cuenta Premium.
+3. Que la Pi tenga el código nuevo: abrir «Iniciar MECH» con internet.
+
+**Verificado en la laptop:**
+
+- `probar_musica.py`: **102 comprobaciones, todo bien**. Las frases en los
+  diez idiomas con el reconocedor real; una sesión completa por idioma por
+  el bucle de voz REAL; cortar con «oye MECH» sola y con pedido pegado;
+  canción inexistente; sin internet; sin pantalla; pantalla que no arranca
+  el video; no entender dos veces; cambiar de tema; decir la canción de
+  una; «no sé» de quién es; parar desde el panel; dormirlo; **sin clave y
+  con la cuota agotada** (no entra al modo); el eco de las preguntas y de
+  la despedida en los diez idiomas; y `youtube_music.buscar` contra
+  respuestas escritas a mano con el formato de Google (filtros, orden,
+  errores de clave y de cuota).
+- `probar_idiomas.py`, `probar_comandos_idioma.py`, `probar_trivia.py`
+  (50/50), `probar_sismos.py`, `probar_llegada.py`: todo bien.
+- La pantalla (`/projector`) en el navegador con un video REAL de YouTube:
+  el primer candidato (inventado) da error y salta al segundo, suena, avisa
+  `playing youtube:<id>` y `ended`; sin ningún candidato bueno avisa
+  `error` en ~1 s; se calla al cortarla; un `state` no la reinicia.
+
+**NO verificado** (lo primero que hay que mirar; pasos en §4):
+
+- **La búsqueda en YouTube nunca se hizo de verdad** (no había clave). Es
+  lo primero que puede fallar. Con la clave: `probar_musica.py --red`.
+- Que `GOOGLE_API_KEY` (la de Gemini) sirva para YouTube si no se pone
+  `YOUTUBE_API_KEY`. Lo más probable es que no (las claves de AI Studio
+  suelen venir limitadas a Gemini); el registro lo dirá a la primera
+  canción.
+- **`llm.interpret_song` nunca llamó a Claude de verdad** (sin clave en la
+  laptop). Copia el patrón de `make_quiz`, pero es una pieza con riesgo.
+- Cómo transcribe Whisper `base` un título de canción, sobre todo en otro
+  idioma. Si falla mucho: `WHISPER_MODEL=small`.
+- **Que Premium quite los anuncios en el reproductor incrustado.** No se
+  encontró confirmación oficial. Si salen con la sesión iniciada, no hay
+  arreglo por código (se podría probar a permitir las cookies de terceros
+  en el Chromium de la Pi).
+- Qué tan a menudo el video OFICIAL se niega a incrustarse (entonces sale
+  otra versión, por ejemplo la que lleva la letra; si ninguna de las tres
+  arranca, MECH dice que algo falló).
+- **Cortar con «oye MECH» con música sonando**: el micrófono oye la
+  canción. Mirar «Oí mientras narraba: …» en el panel y la CPU de la Pi.
+- El volumen del video frente a la voz de MECH.
+- Las frases en los nueve idiomas que no son español, dichas por una
+  persona (solo se probó el texto).
+
+Vista previa en la laptop: configuración `panel-sismos` de
+`.claude/launch.json` (puerto 8766; ver §2.duodecies). Para simular que el
+servidor manda una canción a la proyección: `POST /__push` con un evento
+`{"type":"music","stage":"playing","play_id":N,"track":{"title":…,
+"artist":…,"youtube":[{"id":"<11 letras>","seconds":…}]},"volume":0.9}`.
+
 ### 2.quater Preguntas abiertas con el equipo
 
 Ninguna bloquea nada, pero conviene cerrarlas en la próxima sesión:
 
-00. **Modo música — canciones enteras** (§2.terdecies). El modo ya está,
-    con fragmentos de 30 s. Para la canción entera faltan DOS cosas que
-    solo puede hacer el equipo, y hay que preguntarle por las dos:
-    1. ¿Tienen (o van a sacar) la cuenta de **desarrollador** de Apple? En
-       developer.apple.com → Account → Membership tiene que decir «Apple
-       Developer Program». La suscripción a Apple Music NO es eso.
-    2. Probar en la Pi: abrir **music.apple.com** en el Chromium, iniciar
-       sesión y darle a una canción. Si suena entera, la Pi puede; si dice
-       que el navegador no es compatible o no suena, hay que instalar
-       `libwidevinecdm0` (o Chrome para arm64) y volver a probar.
-    Con las dos en «sí»: se añade MusicKit (clave `.p8`, Team ID y Key ID en
-    el `.env`; el backend firma el token — hará falta `pyjwt` +
-    `cryptography`; la pantalla carga MusicKit JS desde Apple SOLO al
-    usarlo, para no romper el «nada de internet» del preflight §8).
-    Si alguna es «no»: quedarse con los 30 s, o una de estas, que se le
-    explicaron el 8 oct al preguntar por alternativas (**no ha elegido**):
-    - **Canciones propias en la Pi** (archivos subidos como los videos):
-      enteras y sin internet, pero solo las que suban. Lo más fiable para
-      la competencia. Ojo: las descargas de Apple Music (suscripción) van
-      protegidas y NO sirven; sí las compradas o las que tengan en MP3.
-    - **YouTube** (reproductor oficial incrustado en la proyección): entero
-      y gratis, pero muchos videos musicales no dejan incrustarse, puede
-      haber anuncios y pide una clave gratis de Google para buscar.
-    - **AirPlay** desde un iPhone hacia la Pi (`shairport-sync`): usa su
-      suscripción tal cual y suena por el parlante de MECH, pero la canción
-      se elige en el teléfono, no hablándole a MECH.
-    - **Spotify** con la Pi como altavoz Connect: funciona en la Pi sin el
-      problema del audio protegido, pero pide Spotify Premium (otra
-      suscripción).
-    En cualquiera de ellas se reutiliza todo el modo (frases, flujo,
-    pantalla, panel): solo cambia de dónde sale el audio.
+00. **Modo música**: ✅ decidido — **solo YouTube** (§2.quaterdecies).
+    Quedan tres cosas del equipo: la **clave** `YOUTUBE_API_KEY` («ya te
+    subo la API key»: no llegó antes de cerrar la sesión), decir si **se
+    sube a GitHub** la versión solo-YouTube, y **probarlo en la Pi** (§4).
+    Alternativas que se le explicaron y NO eligió, por si pregunta otra
+    vez: canciones propias guardadas en la Pi (sin internet, lo más fiable
+    en una competencia), AirPlay desde un iPhone (`shairport-sync`),
+    Spotify Connect (pide Spotify Premium) y Apple Music entero (la Pi
+    puede reproducirlo; faltaría la cuenta de desarrollador de 99 USD/año).
 
 0. **Alerta de sismos** (§2.quinquies, punto 3): ¿se implementa? ¿con qué
    fuente? ¿para dónde (Costa Rica, Puerto Rico, California)? El 8 oct el
@@ -1737,30 +1798,46 @@ fila, es que también quedó guardado el `index.html` viejo → Ctrl+Shift+R.
    - Apagar el robot con el panel abierto: sale «Sin conexión con MECH» con
      «Buscar de nuevo».
 
-### 00000000) Modo música (§2.terdecies; subido el 8 oct, sin probar)
+### 00000000) Modo música con YouTube (§2.terdecies y §2.quaterdecies; sin probar)
 
-Al arrancar tiene que salir `Modo música: decí «modo música MECH»…`.
-Necesita internet y la **proyección abierta** (icono «Proyectar MECH»).
+Antes: el código nuevo en la Pi («Iniciar MECH» con internet), la clave
+`YOUTUBE_API_KEY` en el `.env` de la Pi, la sesión de YouTube Premium
+iniciada en su Chromium, internet y la **proyección abierta** (icono
+«Proyectar MECH»). En el arranque tiene que salir, en verde,
+`Modo música: … Pone la canción entera desde YouTube…`. Si sale en ámbar
+`Modo música: NO disponible — …`, dice el motivo ahí mismo.
 
+0. **En la laptop, con la clave** (antes de ir a la Pi):
+   `probar_musica.py --red` (§2.terdecies). Tiene que encontrar videos para
+   las canciones de prueba. Si Google contesta un error, copiarlo tal cual.
 1. **Sin micrófono primero** (separa el modo del audio): panel → Voz →
-   tarjeta MODO MÚSICA → escribir «Despacito, de Luis Fonsi» → **Poner**.
-   MECH dice «Ahí va: Despacito, de…», en la proyección sale la carátula y
-   suenan 30 s; luego pregunta si seguimos. Si dice «Algo falló al
-   reproducirla», copiar la línea del registro (dice el motivo).
-   - Si aquí falla al BUSCAR con un error de Claude: es
-     `llm.interpret_song`, que nunca se probó con la API real. Copiar el
-     error exacto.
-2. **Por voz**: «ok MECH» → «modo música MECH» → «Despacito» → pregunta el
+   tarjeta MODO MÚSICA → «Despacito, de Luis Fonsi» → **Poner**. MECH dice
+   «Ahí va: Despacito, de Luis Fonsi», en la proyección se ve el VIDEO con
+   un pie «Modo música · Despacito · Luis Fonsi · YouTube» y suena entero.
+   - «Me es imposible poner música»: falta la clave o Google la rechazó
+     (copiar la línea ámbar del registro).
+   - «Algo falló al reproducirla»: copiar la línea del registro (dice el
+     motivo que dio la pantalla).
+   - Un error de Claude al BUSCAR: es `llm.interpret_song`, que nunca se
+     probó con la API real. Copiar el error exacto.
+2. **¿Salen anuncios?** Si sí, comprobar que el Chromium de la Pi tiene la
+   sesión de Premium (entrar a youtube.com y mirar el avatar).
+3. Tres o cuatro canciones conocidas: ¿sale el video oficial u otra
+   versión? ¿Alguna falla del todo?
+4. **Por voz**: «ok MECH» → «modo música MECH» → «Despacito» → pregunta el
    artista → «Luis Fonsi» → suena → «otra canción» → otra → «no».
-3. **Cortarla**: a media canción, «oye MECH». Tiene que callar y preguntar.
+5. **Cortarla**: a media canción, «oye MECH». Tiene que callar y preguntar.
    Si no hace caso: bajar Ajustes → «Volumen música» y repetir. Anotar qué
    sale en «Oí mientras narraba: …».
-4. Una canción en inglés pedida en español («Shape of You, de Ed Sheeran»):
+6. Dejar una canción ENTERA: al terminar, MECH tiene que preguntar si
+   seguimos. Si se queda callado mucho rato, anotar cuánto.
+7. Una canción en inglés pedida en español («Shape of You, de Ed Sheeran»):
    ver en el registro qué oyó Whisper y qué buscó.
-5. En otro idioma: «wake up MECH» → «music mode MECH» → todo en inglés,
-   incluida la pantalla («Music mode», «30-second preview»).
-6. Que no se quede sordo: «Parar» desde el panel a media canción y luego
+8. En otro idioma: «wake up MECH» → «music mode MECH» → todo en inglés,
+   incluido el pie de la pantalla («Music mode»).
+9. Que no se quede sordo: «Parar» desde el panel a media canción y luego
    darle otra orden cualquiera por voz.
+10. Volumen: si la música tapa a MECH o al revés, Ajustes → «Volumen música».
 
 ### 0000000) Mapa de sismos (§2.duodecies; subido el 8 oct, sin probar)
 

@@ -570,14 +570,14 @@
     const t = m.track || null;
     ahora.textContent = '';
     if (t) {
-      ahora.textContent = `${t.title} — ${t.artist}`;
-      marcarEscritura(ahora, t.title + t.artist);
+      ahora.textContent = t.artist ? `${t.title} — ${t.artist}` : t.title;
+      marcarEscritura(ahora, t.title + (t.artist || ''));
     } else {
       const vacio = document.createElement('span');
       vacio.className = 'tq-empty';
       vacio.textContent = m.stage === 'artist' && m.pending_title
         ? `«${m.pending_title}»: falta el artista.`
-        : (m.last ? `Lo último: ${m.last.title} — ${m.last.artist}` : 'Nada sonando.');
+        : (m.last ? `Lo último: ${m.last.title}${m.last.artist ? ' — ' + m.last.artist : ''}` : 'Nada sonando.');
       ahora.appendChild(vacio);
       marcarEscritura(ahora, vacio.textContent);
     }
@@ -890,7 +890,7 @@
       const caja = $('music-text');
       const text = (caja.value || '').trim();
       if (!text) { caja.focus(); return; }
-      log(`Busco en Apple Music: ${text}`, 'info');
+      log(`Busco en YouTube: ${text}`, 'info');
       const res = await fetchJSON('/api/music/play', { json: { text } });
       if (res && !res.ok) log(res.reason || 'No se pudo pedir la canción.', 'warn');
       else if (res) caja.value = '';
