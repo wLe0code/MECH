@@ -252,6 +252,7 @@ def check_red() -> None:
         "hablar: la voz la genera ElevenLabs",
         "las imágenes de respaldo de Gemini",
         "el mapa de sismos del panel: se queda con lo último que bajó (y lo dice)",
+        "el modo música: busca y baja las canciones de Apple Music",
     ):
         _print(f"    - {linea}")
     _print("")

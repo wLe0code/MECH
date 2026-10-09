@@ -158,6 +158,7 @@
       case 'facing':      applyFacing(msg.facing); break;
       case 'mic_level':   applyMicLevel(msg); break;
       case 'sismos':      if (window.Sismos) window.Sismos.evento(msg); break;
+      case 'music':       applyMusic(msg); break;
       case 'pong':        break;
     }
   }
@@ -544,6 +545,44 @@
     final:    { texto: 'RESULTADO',  cls: 'tr-idle' },
   };
 
+  // ─── Modo música ──────────────────────────────────────────────────
+  // El modo corre en el servidor (backend/music.py) y la canción suena en la
+  // pantalla de proyección; esta tarjeta enseña en qué va y deja pedir una
+  // canción escribiendo.
+  const MUSIC_ETAPAS = {
+    ask:     { texto: '¿QUÉ CANCIÓN?', cls: 'tr-waiting' },
+    artist:  { texto: '¿DE QUÉ ARTISTA?', cls: 'tr-waiting' },
+    playing: { texto: 'SONANDO', cls: 'tr-on' },
+    again:   { texto: '¿SEGUIMOS?', cls: 'tr-waiting' },
+  };
+  function applyMusic(m) {
+    m = m || {};
+    const box = $('music-box');
+    if (!box) return;
+    const activo = !!m.active;
+    box.classList.toggle('active', activo);
+    const et = MUSIC_ETAPAS[m.stage] || { texto: 'APAGADO', cls: '' };
+    const badge = $('music-state');
+    badge.textContent = activo ? et.texto : 'APAGADO';
+    badge.className = 'translator-state ' + (activo ? et.cls : '');
+    // Qué suena. El título y el artista vienen de fuera: con textContent.
+    const ahora = $('music-now');
+    const t = m.track || null;
+    ahora.textContent = '';
+    if (t) {
+      ahora.textContent = `${t.title} — ${t.artist}`;
+      marcarEscritura(ahora, t.title + t.artist);
+    } else {
+      const vacio = document.createElement('span');
+      vacio.className = 'tq-empty';
+      vacio.textContent = m.stage === 'artist' && m.pending_title
+        ? `«${m.pending_title}»: falta el artista.`
+        : (m.last ? `Lo último: ${m.last.title} — ${m.last.artist}` : 'Nada sonando.');
+      ahora.appendChild(vacio);
+      marcarEscritura(ahora, vacio.textContent);
+    }
+  }
+
   function applyTrivia(t) {
     t = t || {};
     const box = $('trivia-box');
@@ -641,6 +680,8 @@
 
     // Trivia
     applyTrivia(s.trivia);
+    // Modo música
+    applyMusic(s.music);
 
     // Hacia dónde mira (maniobra de 180°)
     applyFacing(s.facing || 'projection');
@@ -839,6 +880,27 @@
       if (res && !res.ok) log(res.reason || 'No se pudo empezar la trivia.', 'warn');
     },
 
+    // ─── Modo música ────────────────────────────────────────────────
+    async musicStart() {
+      const res = await fetchJSON('/api/music/start');
+      if (res && !res.ok) log(res.reason || 'No se pudo entrar al modo música.', 'warn');
+    },
+
+    async musicPlay() {
+      const caja = $('music-text');
+      const text = (caja.value || '').trim();
+      if (!text) { caja.focus(); return; }
+      log(`Busco en Apple Music: ${text}`, 'info');
+      const res = await fetchJSON('/api/music/play', { json: { text } });
+      if (res && !res.ok) log(res.reason || 'No se pudo pedir la canción.', 'warn');
+      else if (res) caja.value = '';
+    },
+
+    async musicStop() {
+      const res = await fetchJSON('/api/music/stop');
+      if (res && !res.ok) log(res.reason || 'El modo música no está activo.', 'warn');
+    },
+
     async triviaStop() {
       const res = await fetchJSON('/api/trivia/stop');
       if (res && !res.ok) log(res.reason || 'No hay ninguna trivia en marcha.', 'warn');
@@ -983,6 +1045,9 @@
       if ($('set-trivia')) $('set-trivia').checked = L.TRIVIA_ENABLED !== false;
       if ($('set-trivia-offer')) $('set-trivia-offer').checked = L.TRIVIA_OFFER_AFTER_PLAN !== false;
       setSlider('set-trivia-n', 'trivian', L.TRIVIA_QUESTIONS);
+      if ($('set-music')) $('set-music').checked = L.MUSIC_ENABLED !== false;
+      if ($('set-music-explicit')) $('set-music-explicit').checked = !!L.MUSIC_ALLOW_EXPLICIT;
+      setSlider('set-music-vol', 'musicvol', L.MUSIC_VOLUME);
       setSlider('set-ienergy', 'ienergy', L.INTERRUPT_ENERGY_FACTOR);
       if ($('set-armmode')) $('set-armmode').value = L.ARM_GESTURE_MODE || 'full';
       if ($('set-wheels')) $('set-wheels').checked = !!L.GESTURE_WHEELS;
@@ -1065,6 +1130,9 @@
         TRIVIA_ENABLED: $('set-trivia').checked ? 'true' : 'false',
         TRIVIA_OFFER_AFTER_PLAN: $('set-trivia-offer').checked ? 'true' : 'false',
         TRIVIA_QUESTIONS: String(parseInt($('set-trivia-n').value)),
+        MUSIC_ENABLED: $('set-music').checked ? 'true' : 'false',
+        MUSIC_ALLOW_EXPLICIT: $('set-music-explicit').checked ? 'true' : 'false',
+        MUSIC_VOLUME: $('set-music-vol').value,
         INTERRUPT_ENERGY_FACTOR: $('set-ienergy').value,
         ARM_GESTURE_MODE: $('set-armmode').value,
         GESTURE_WHEELS: $('set-wheels').checked ? 'true' : 'false',
@@ -1137,7 +1205,7 @@
 
   // Helpers de sliders de ajustes (texto con unidad).
   const SETTING_UNITS = { vad: '', silence: ' s', lead: ' s', listen: ' s', energy: '×', ienergy: '×', dist: ' m',
-                          trivian: ' preguntas',
+                          trivian: ' preguntas', musicvol: '',
                           wave: ' s', greetcd: ' s', turnsec: ' s', latsec: ' s', turnvel: '', latvel: '',
                           wavehigh: '°', waveswing: '°', waverep: '', kick: ' s',
                           advsec: ' s', advvel: '', advmax: ' s',
@@ -1231,6 +1299,13 @@
       UI.showView('immersive');
     }
   });
+
+  // Enter en la caja de «Canción y artista» = botón «Poner».
+  if ($('music-text')) {
+    $('music-text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); API.musicPlay(); }
+    });
+  }
 
   // ─── Botón de paro de emergencia ──────────────────────────────────
   $('emergency-btn').addEventListener('click', () => API.emergencyStop());

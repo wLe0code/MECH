@@ -1309,6 +1309,191 @@ VOICE_NO_PHRASES_KO = _frases(
     "아니,싫어,안 해,안 할래,안할래,나중에,다음에,괜찮아요,됐어요",
 )
 
+# === Modo MÚSICA (ver backend/music.py) ======================================
+# «modo música MECH» / «activa modo música»: MECH pregunta qué canción y de
+# qué artista, la busca en el catálogo de Apple Music, la pone y al terminar
+# pregunta si quiere otra. Se corta con «oye MECH», como una narración.
+#
+# QUÉ SUENA: el fragmento oficial de 30 segundos que Apple da de cada canción
+# (buscador público, sin cuenta ni clave). Las canciones ENTERAS piden la
+# cuenta de desarrollador de Apple y que el navegador de la Pi abra audio
+# protegido; ver handoff.md.
+#
+# Va todo junto aquí (y no repartido idioma por idioma como lo demás) para
+# poder revisar el modo entero de un vistazo.
+MUSIC_ENABLED = _activo("MUSIC_ENABLED")
+# País del catálogo donde se busca (código de dos letras de la tienda).
+MUSIC_COUNTRY = os.environ.get("MUSIC_COUNTRY", "CR").strip().upper() or "CR"
+# ¿Se permiten canciones marcadas como explícitas? En un stand con jueces y
+# estudiantes, mejor no: por defecto se buscan solo las versiones limpias.
+MUSIC_ALLOW_EXPLICIT = _activo("MUSIC_ALLOW_EXPLICIT", "false")
+# Volumen de la música en la pantalla de proyección (0 a 1).
+MUSIC_VOLUME = float(os.environ.get("MUSIC_VOLUME", "0.9"))
+# Espera tras cada frase de MECH antes de volver a abrir el micrófono (el
+# parlante Bluetooth arrastra buffer y MECH se oiría a sí mismo).
+MUSIC_DRAIN_SECONDS = float(os.environ.get("MUSIC_DRAIN_SECONDS", "0.8"))
+# Si en estos segundos ninguna pantalla avisa de que la canción empezó a
+# sonar, se da por fallida (¿está abierta la proyección?).
+MUSIC_START_TIMEOUT = float(os.environ.get("MUSIC_START_TIMEOUT", "12"))
+# Tope de una canción, por si la pantalla nunca avisa de que terminó.
+MUSIC_MAX_SECONDS = float(os.environ.get("MUSIC_MAX_SECONDS", "420"))
+# Modelo que ENTIENDE el pedido («cheip of yu de ed chiran» → Shape of You,
+# Ed Sheeran). Vacío = el mismo de las narraciones.
+CLAUDE_MUSIC_MODEL = os.environ.get("CLAUDE_MUSIC_MODEL", "").strip() or CLAUDE_MODEL
+
+# Tres listas por idioma:
+#   VOICE_MUSIC_PHRASES       entrar al modo.
+#   VOICE_MUSIC_STOP_PHRASES  salir. ⚠️ Tienen que ser frases que nadie diga
+#                             pidiendo otra cosa: se miran SIEMPRE, también
+#                             fuera del modo («para la música» no está: «para»
+#                             y «música» salen en cualquier pregunta normal).
+#                             Lleva también lo que MECH dice al salir, para que
+#                             su propio eco se reconozca y muera en silencio.
+#   VOICE_MUSIC_MORE_PHRASES  «otra canción». Solo se miran justo después de
+#                             que MECH pregunta si seguimos.
+# Las preguntas que MECH hace (lang.py, `music_*`) están escritas para NO
+# contener ninguna de estas frases ni un sí/no: se oiría a sí mismo.
+# `scripts/probar_musica.py` lo comprueba en los diez idiomas.
+VOICE_MUSIC_PHRASES = _frases(
+    "VOICE_MUSIC_PHRASES",
+    "modo musica mech,modo musica,activa modo musica,activa el modo musica,"
+    "activar modo musica,pon musica mech",
+)
+VOICE_MUSIC_STOP_PHRASES = _frases(
+    "VOICE_MUSIC_STOP_PHRASES",
+    "sal del modo musica,salir del modo musica,apaga la musica,"
+    "quita la musica,deten la musica,basta de musica",
+)
+VOICE_MUSIC_MORE_PHRASES = _frases(
+    "VOICE_MUSIC_MORE_PHRASES",
+    "otra cancion,otra mas,pon otra,una mas,la siguiente,otro tema",
+)
+VOICE_MUSIC_PHRASES_EN = _frases(
+    "VOICE_MUSIC_PHRASES_EN",
+    "music mode mech,music mode,activate music mode,turn on music mode,"
+    "play some music mech",
+)
+VOICE_MUSIC_STOP_PHRASES_EN = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_EN",
+    "exit music mode,leave music mode,stop the music,turn off the music,"
+    "no more music",
+)
+VOICE_MUSIC_MORE_PHRASES_EN = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_EN",
+    "another song,another one,one more,play another,next song",
+)
+VOICE_MUSIC_PHRASES_FR = _frases(
+    "VOICE_MUSIC_PHRASES_FR",
+    "mode musique mech,mode musique,active le mode musique,"
+    "mets de la musique mech",
+)
+VOICE_MUSIC_STOP_PHRASES_FR = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_FR",
+    "quitte le mode musique,arrete la musique,coupe la musique,"
+    "eteins la musique",
+)
+VOICE_MUSIC_MORE_PHRASES_FR = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_FR",
+    "une autre chanson,encore une,une autre,la suivante",
+)
+VOICE_MUSIC_PHRASES_PT = _frases(
+    "VOICE_MUSIC_PHRASES_PT",
+    "modo musica mech,modo musica,ativa o modo musica,ativar modo musica,"
+    "toca musica mech",
+)
+VOICE_MUSIC_STOP_PHRASES_PT = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_PT",
+    "sai do modo musica,sair do modo musica,desliga a musica,"
+    "tira a musica,chega de musica",
+)
+VOICE_MUSIC_MORE_PHRASES_PT = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_PT",
+    "outra musica,outra cancao,mais uma,toca outra,a proxima",
+)
+VOICE_MUSIC_PHRASES_DE = _frases(
+    "VOICE_MUSIC_PHRASES_DE",
+    "musikmodus mech,musikmodus,musik modus,aktiviere den musikmodus,"
+    "spiel musik mech",
+)
+VOICE_MUSIC_STOP_PHRASES_DE = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_DE",
+    "musikmodus beenden,beende den musikmodus,stopp die musik,musik aus,"
+    "mach die musik aus,keine musik mehr",
+)
+VOICE_MUSIC_MORE_PHRASES_DE = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_DE",
+    "noch ein lied,noch eins,ein anderes lied,nächstes lied,noch einen song",
+)
+VOICE_MUSIC_PHRASES_IT = _frases(
+    "VOICE_MUSIC_PHRASES_IT",
+    "modalita musica mech,modalita musica,attiva la modalita musica,"
+    "metti la musica mech",
+)
+VOICE_MUSIC_STOP_PHRASES_IT = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_IT",
+    "esci dalla modalita musica,ferma la musica,spegni la musica,"
+    "togli la musica,basta musica",
+)
+VOICE_MUSIC_MORE_PHRASES_IT = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_IT",
+    "altra canzone,ancora una,la prossima,un altra",
+)
+# Japonés y chino van sin espacios: cada trozo se busca DENTRO de lo oído.
+VOICE_MUSIC_PHRASES_JA = _frases(
+    "VOICE_MUSIC_PHRASES_JA",
+    "音楽モード,ミュージックモード,音楽をかけて,音楽かけて,音楽を流して",
+)
+VOICE_MUSIC_STOP_PHRASES_JA = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_JA",
+    "音楽モードを終了,音楽モード終了,音楽を止め,音楽止め,音楽をやめ,"
+    "音楽を消して",
+)
+VOICE_MUSIC_MORE_PHRASES_JA = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_JA",
+    "もう一曲,もう1曲,別の曲,次の曲,他の曲",
+)
+# Ni «включи музыку» ni «выключи музыку»: están a una letra una de otra y el
+# matcher las confundiría (encender ↔ apagar).
+VOICE_MUSIC_PHRASES_RU = _frases(
+    "VOICE_MUSIC_PHRASES_RU",
+    "режим музыки mech,режим музыки,музыкальный режим,поставь музыку mech",
+)
+VOICE_MUSIC_STOP_PHRASES_RU = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_RU",
+    "выйди из режима музыки,останови музыку,останавливаю музыку,"
+    "убери музыку,хватит музыки",
+)
+VOICE_MUSIC_MORE_PHRASES_RU = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_RU",
+    "другую песню,ещё одну,еще одну,следующую песню,поставь другую",
+)
+VOICE_MUSIC_PHRASES_ZH = _frases(
+    "VOICE_MUSIC_PHRASES_ZH",
+    "音乐模式,音樂模式,放音乐,放音樂,放首歌,来点音乐,來點音樂",
+)
+VOICE_MUSIC_STOP_PHRASES_ZH = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_ZH",
+    "退出音乐模式,退出音樂模式,关闭音乐,關閉音樂,停止音乐,停止音樂,"
+    "关掉音乐,關掉音樂,不听音乐了,不聽音樂了",
+)
+VOICE_MUSIC_MORE_PHRASES_ZH = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_ZH",
+    "再来一首,再來一首,下一首,换一首,換一首,另一首",
+)
+# Coreano: un espacio separa trozos que tienen que aparecer los dos.
+VOICE_MUSIC_PHRASES_KO = _frases(
+    "VOICE_MUSIC_PHRASES_KO",
+    "음악 모드,음악모드,뮤직 모드,음악 틀어줘,음악 틀어 줘,노래 틀어줘",
+)
+VOICE_MUSIC_STOP_PHRASES_KO = _frases(
+    "VOICE_MUSIC_STOP_PHRASES_KO",
+    "음악 모드 종료,음악 꺼줘,음악 꺼 줘,음악 끌게,음악 그만,음악 멈춰",
+)
+VOICE_MUSIC_MORE_PHRASES_KO = _frases(
+    "VOICE_MUSIC_MORE_PHRASES_KO",
+    "다른 노래,다음 노래,다음 곡,하나 더,한 곡 더,한곡 더",
+)
+
 # Micrófono de entrada. Vacío = dispositivo por defecto del sistema.
 # Se puede poner el índice (número) o parte del nombre del dispositivo.
 # El mic del proyecto es el Steren MIC-9010 (receptor USB); la C930e queda

@@ -62,6 +62,7 @@ _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 import lang
 import maneuvers
+import music
 import sismos
 import stt
 import translator
@@ -331,6 +332,31 @@ def _voice_loop_worker():
                     # micrófono debería estar cerrado; si algo entra, es eco.
                     continue
 
+            # MODO MÚSICA: MECH acaba de preguntar qué canción (o de qué
+            # artista, o si seguimos) y esto es la respuesta. Va antes que los
+            # comandos normales porque aquí «Despacito, de Luis Fonsi» no es
+            # una pregunta para Claude. Mientras SUENA una canción este hilo
+            # está ocupado dentro de `handle_music_request` y el micrófono lo
+            # tiene el listener de «oye MECH».
+            if music.is_active():
+                if voice_phrases.is_sleep_any(text):
+                    app_state.go_dormant()
+                    continue
+                if voice_phrases.is_music_stop(text):
+                    app_state.stop_music()
+                    continue
+                if music.is_asking():
+                    app_state.handle_music_request(text)
+                    continue
+                if music.is_offering_more():
+                    # Si devuelve False es que pidió otra cosa: NO hacemos
+                    # `continue`, y el texto sigue su camino normal (ya salió
+                    # del modo).
+                    if app_state.handle_music_again(text):
+                        continue
+                else:
+                    continue
+
             # Despierto: ¿pidió reposo? (en el idioma con el que despertó)
             if voice_phrases.is_sleep_any(text):
                 app_state.go_dormant()
@@ -450,6 +476,16 @@ async def lifespan(app: FastAPI):
             + (" · la ofrece sola al terminar de narrar"
                if config.TRIVIA_OFFER_AFTER_PLAN else " · solo si la piden")
             + " — decí «juguemos una trivia».",
+            "ok",
+        )
+    if config.MUSIC_ENABLED:
+        # Misma idea: si esta línea NO sale, la Pi corre código viejo.
+        mech.log(
+            "Modo música: decí «modo música MECH» o «activa modo música». Busca "
+            f"en Apple Music ({config.MUSIC_COUNTRY}) y suena el fragmento de "
+            "30 s en la pantalla de proyección"
+            + ("" if config.MUSIC_ALLOW_EXPLICIT else " · sin letras explícitas")
+            + ".",
             "ok",
         )
     # Autostart en reposo: MECH queda escuchando solo "ok MECH".
@@ -989,6 +1025,74 @@ async def translate_stop():
     return {"ok": True}
 
 
+# -- Modo música (ver backend/music.py) ---------------------------------------
+
+class MusicText(BaseModel):
+    text: str = ""
+
+
+class MusicEvent(BaseModel):
+    play_id: int = 0
+    event: str = ""        # "playing" | "ended" | "error"
+    detail: str = ""
+
+
+@app.post("/api/music/start")
+async def music_start():
+    """Entra al modo música desde el panel: MECH pregunta qué canción."""
+    if not config.MUSIC_ENABLED:
+        raise HTTPException(400, "El modo música está desactivado (MUSIC_ENABLED).")
+    if music.is_playing():
+        return {"ok": False, "reason": "Ya hay una canción sonando."}
+    threading.Thread(target=get_app().start_music, daemon=True).start()
+    return {"ok": True}
+
+
+@app.post("/api/music/play")
+async def music_play(m: MusicText):
+    """Pide una canción SIN micrófono («Despacito, de Luis Fonsi»).
+
+    Es para separar «el modo falla» de «no te entendió al hablar»: si por
+    aquí suena y hablando no, el problema es de audio.
+    """
+    if not config.MUSIC_ENABLED:
+        raise HTTPException(400, "El modo música está desactivado (MUSIC_ENABLED).")
+    texto = (m.text or "").strip()
+    if not texto:
+        raise HTTPException(400, "Escribe la canción y el artista.")
+    if music.is_playing():
+        return {"ok": False, "reason": "Ya hay una canción sonando. Párala primero."}
+    mech = get_app()
+
+    def _pedir():
+        if not music.is_asking():
+            music.ask()
+        mech.handle_music_request(texto)
+
+    threading.Thread(target=_pedir, daemon=True).start()
+    return {"ok": True}
+
+
+@app.post("/api/music/stop")
+async def music_stop():
+    """Para la canción y sale del modo, sin que MECH diga nada."""
+    mech = get_app()
+    if not music.is_active():
+        return {"ok": False, "reason": "El modo música no está activo."}
+    mech.stop_music(announce=False)
+    return {"ok": True}
+
+
+@app.post("/api/music/event")
+async def music_event(e: MusicEvent):
+    """La pantalla de proyección avisa: la canción empezó, terminó o falló.
+
+    El backend no sabe cuánto tarda en cargar ni cuándo acaba de verdad: lo
+    sabe quien la reproduce (igual que con los videos de marketing).
+    """
+    return {"ok": get_app().music_event(e.play_id, e.event, e.detail)}
+
+
 @app.post("/api/trivia/start")
 async def trivia_start():
     """Arranca el juego de preguntas desde el panel.
@@ -1125,6 +1229,9 @@ _LIVE_KEYS = {
     "TRIVIA_ENABLED": _to_bool,          # el juego de preguntas
     "TRIVIA_QUESTIONS": int,             # cuántas por partida
     "TRIVIA_OFFER_AFTER_PLAN": _to_bool,  # ¿la ofrece sola al terminar?
+    "MUSIC_ENABLED": _to_bool,           # el modo música
+    "MUSIC_ALLOW_EXPLICIT": _to_bool,    # ¿canciones con letra explícita?
+    "MUSIC_VOLUME": float,               # volumen de la música en la pantalla
     "GREETING_REARM_SECONDS": float,   # ausencia para "visitante nuevo"
     "GREETING_CONFIRM_SECONDS": float,  # cuánto debe verse la cara para saludar
     # Sismos recientes (se cambian desde la propia vista «Sismos»).
@@ -1204,6 +1311,9 @@ async def get_config():
             "TRIVIA_ENABLED": config.TRIVIA_ENABLED,
             "TRIVIA_QUESTIONS": config.TRIVIA_QUESTIONS,
             "TRIVIA_OFFER_AFTER_PLAN": config.TRIVIA_OFFER_AFTER_PLAN,
+            "MUSIC_ENABLED": config.MUSIC_ENABLED,
+            "MUSIC_ALLOW_EXPLICIT": config.MUSIC_ALLOW_EXPLICIT,
+            "MUSIC_VOLUME": config.MUSIC_VOLUME,
             "GREETING_REARM_SECONDS": config.GREETING_REARM_SECONDS,
             "GREETING_CONFIRM_SECONDS": config.GREETING_CONFIRM_SECONDS,
             "MOTOR_KICK_SECONDS": config.MOTOR_KICK_SECONDS,

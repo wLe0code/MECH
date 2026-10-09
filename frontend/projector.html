@@ -60,6 +60,7 @@
 
 <script src="/static/subtitles.js"></script>
 <script src="/static/trivia.js"></script>
+<script src="/static/music.js"></script>
 <script>
 /* Pantalla de proyección fullscreen.
  *
@@ -85,6 +86,13 @@ const subs = window.MechSubs
    momento. Ver frontend/trivia.js y backend/trivia.py. */
 const juego = window.MechTrivia
   ? MechTrivia.create(document.body)
+  : { apply() {}, clear() {} };
+
+/* Modo música: la canción que MECH pone suena AQUÍ (y se ve su carátula).
+   Esta página avisa al servidor de cuándo empieza y cuándo termina. Ver
+   frontend/music.js y backend/music.py. */
+const musica = window.MechMusic
+  ? MechMusic.create(document.body)
   : { apply() {}, clear() {} };
 
 let ws = null;
@@ -288,6 +296,7 @@ function detectVideo(url) {
 function applyState(s) {
   subs.set(s.current_subtitle, s.subtitle_lang);
   juego.apply(s.trivia);
+  musica.apply(s.music, false);   // el estado solo sabe PARAR la canción
   // La playlist promo (marketing) manda sobre todo lo demás.
   if (s.current_playlist) {
     // Si ya la estamos reproduciendo, no la reiniciamos (esto se llama en
@@ -326,6 +335,9 @@ function connect() {
     } else if (msg.type === 'trivia') {
       // Pregunta, resultado o marcador del juego (ver backend/trivia.py).
       juego.apply(msg);
+    } else if (msg.type === 'music') {
+      // Modo música: empezar la canción (o callarla).
+      musica.apply(msg, true);
     } else if (msg.type === 'subtitle') {
       // El guion del segmento que MECH está narrando (o null al terminar).
       subs.set(msg.text, msg.lang);

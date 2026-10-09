@@ -166,6 +166,10 @@ El backend implementa esto en `MechApp.emergency_stop()`. Llega vía `POST /api/
 | `POST /api/language/{es\|en}` | — | Cambia el idioma (voz, narración y subtítulos) |
 | `POST /api/emergency/stop` | — | PARO DE EMERGENCIA |
 | `GET  /api/state` | — | Estado completo (JSON) |
+| `POST /api/music/start` | — | Entra al modo música (MECH pregunta qué canción) |
+| `POST /api/music/play` | `{"text": "Despacito, de Luis Fonsi"}` | Pide una canción sin micrófono |
+| `POST /api/music/stop` | — | Para la canción y sale del modo |
+| `POST /api/music/event` | `{"play_id": 3, "event": "ended"}` | La pantalla avisa: `playing`, `ended` o `error` |
 | `GET  /api/sismos` | — | Sismos de los últimos 7 días + «mi zona» + cuándo se consultó |
 | `POST /api/sismos/refresh` | — | Consulta las fuentes de sismos ahora |
 | `GET  /api/library` | — | Lista de obras y cuántos segmentos están subidos |
@@ -188,6 +192,7 @@ Conecta a `ws://<pi>:8000/ws`. Recibirás un primer mensaje con el estado comple
 {"type": "video",       "url": "/videos/romeo_julieta/seg01.mp4"}  // video pre-renderizado (biblioteca)
 {"type": "subtitle",    "text": "Verona amanece dividida.", "lang": "es"}  // línea a mostrar AHORA (null = borrar)
 {"type": "sismos",      "nuevos": [ ... ], "consultado": 1791500000, "error": null}  // sismos que acaban de publicarse
+{"type": "music",       "stage": "playing", "play_id": 3, "track": { ... }}       // modo música: la canción que tiene que sonar (track null = callar)
 ```
 
 **Cliente → Server:**

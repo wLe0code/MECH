@@ -49,6 +49,17 @@ el mismo 8 oct** («dale, súbelo»), en un solo commit encima de `4f792cd`,
 seguridad»: el equipo dijo que **es el propio mapa y que eso ya lo tienen
 cubierto** — no hay nada más pendiente de sismos (§2.quater, punto 0).
 
+**Tercera cosa del 8 oct (§2.terdecies): el MODO MÚSICA está hecho**, con
+el catálogo de Apple Music, en los diez idiomas. ⚠️ **Suena el fragmento de
+30 segundos, no la canción entera.** El equipo cree que basta con «conectar
+su cuenta de Apple de pago»: no basta (hace falta la cuenta de
+DESARROLLADOR, que es otra, y que la Pi abra audio protegido). Se le explicó
+al entregar; **falta que diga si la saca y que pruebe en la Pi** (§2.quater,
+punto 00). **Subido a GitHub el 8 oct** («súbelo a github»), **sin probar en
+la Pi**: preguntar cómo fue. Al subirlo el equipo preguntó «¿mi suscripción
+de Apple Music no funciona entonces? ¿qué alternativas tenemos?»: se le
+contestó con las opciones de §2.quater punto 00 y **falta que elija**.
+
 > ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** La sesión del
 > 6 oct empezó leyendo este handoff en una copia local que estaba **2
 > commits atrasada** (todavía decía «cuatro idiomas») y trabajó media sesión
@@ -95,6 +106,8 @@ cubierto** — no hay nada más pendiente de sismos (§2.quater, punto 0).
 11. **8 oct, segunda sesión, subido y sin probar en la Pi**
     (§2.undecies): MECH ya no saluda por un fotograma suelto; la cara tiene
     que mantenerse (Ajustes → «Confirmar cara», 1 s).
+13. **8 oct, subido y sin probar en la Pi** (§2.terdecies): **modo
+    música** («modo música MECH») con fragmentos de 30 s de Apple Music.
 12. **8 oct, segunda sesión, subido y sin probar en la Pi**
     (§2.duodecies): vista nueva **«Sismos»** en el panel, con un mapa
     animado de los sismos recientes (EMSC + USGS). Informa, no predice.
@@ -761,12 +774,125 @@ recientes — el mapa del panel»).
   moverse» aunque el código funcione (pasó: el vuelo a la zona parecía no
   ocurrir). Contar fotogramas con `requestAnimationFrame` antes de creerlo.
 
+### 2.terdecies Modo música con Apple Music (8 oct)
+
+Pedido, tal cual: «la idea es que te conecte a una cuenta de Apple Music y
+ese modo música sea como en Alexa: "modo música MECH" o "activa modo
+música", luego pregunta qué canción quiere escuchar el usuario y de qué
+artista para garantizar que sea la correcta, la reproduce y cuando termina
+pregunta si quiere escuchar otra canción o si quiere hacer otra cosa;
+también que durante el modo música MECH pueda seguir siendo interrumpido por
+"oye MECH"; que esté adaptado a los 10 idiomas». Con esto quedaron
+contestadas casi todas las seis preguntas de §2.nonies.
+
+**Lo que hay que saber antes de tocar nada** (detalle en CLAUDE.md, «Modo
+MÚSICA»):
+
+- Antes de programar se investigó Apple y se le preguntó al equipo (con
+  opciones) qué quería que sonara. Contestó, sin elegir opción: **«es una
+  cuenta de apple de pago»**. O sea: cree que su suscripción a Apple Music
+  alcanza. **No alcanza**: las canciones enteras piden el Apple Developer
+  Program (~99 USD/año, otra cosa), una clave MusicKit, que ELLOS inicien
+  sesión en la pantalla de la Pi, y que el Chromium de la Pi abra audio
+  protegido (dudoso; sin confirmar en ninguna parte).
+- Se construyó lo que vale en cualquier caso: el modo entero, buscando en
+  el catálogo real de Apple Music (buscador público, sin cuenta) y sonando
+  el **fragmento oficial de 30 s**. La canción entera se enchufa después en
+  un solo sitio (`sonar()` de `frontend/music.js` + un token en el backend).
+- ⚠️ **Claude no puede iniciar sesión por ellos** ni escribir su contraseña
+  de Apple. Si lo piden, explicarlo: lo hacen ellos en la pantalla.
+
+**Qué se hizo**: `backend/music.py` (estado), `backend/apple_music.py`
+(búsqueda), `llm.interpret_song` (Claude pone el pedido en limpio),
+métodos en `mech_app.py`, rama en el bucle de voz y endpoints en
+`server.py`, 30 listas de frases en `config.py` (3 × 10 idiomas), 12 frases
+× 10 idiomas en `lang.py`, `voice_phrases.is_music*`, `frontend/music.js`
+(reproductor + pantalla), `projector.html` (tres líneas), tarjeta y ajustes
+en el panel (`index.html`, `app.js`, `styles.css`; `?v=10`),
+`scripts/probar_musica.py`, `.env.example`, `docs/USO.md` (§4 bis),
+`docs/FRONTEND.md`, `preflight.py` (una línea).
+
+De paso: `scripts/probar_idiomas.py` tenía una comprobación rota desde el
+6 oct (buscaba los botones de idioma en `index.html`; desde el rediseño los
+pinta `app.js`). Ahora mira la tabla `LANGS`. Y se registraron las listas de
+música en `probar_idiomas.py` y `probar_comandos_idioma.py`.
+
+**Verificado en la laptop**:
+- `probar_musica.py`: 88 comprobaciones (93 con `--red`). Las frases en los
+  diez idiomas con el reconocedor real; una sesión completa por idioma por
+  el bucle de voz REAL (8 frases dichas, todas en su idioma); cortar con
+  «oye MECH» sola y con pedido pegado; canción inexistente; sin internet;
+  sin pantalla; pantalla que no abre el audio; no entender dos veces;
+  cambiar de tema; decir la canción de una; parar desde el panel; dormirlo;
+  el eco de las tres preguntas y de la despedida en los diez idiomas.
+- `probar_idiomas.py` (375), `probar_comandos_idioma.py` (195),
+  `probar_trivia.py` (50/50): todo bien con las listas nuevas dentro.
+- La búsqueda contra Apple de verdad (Despacito, Bohemian Rhapsody,
+  Thriller con el artista mal escrito, Malpaís).
+- La pantalla (`/projector`) en el navegador con un fragmento REAL: suena,
+  carátula, barra de avance, avisa `playing` y `ended`, un `state` no la
+  reinicia, se calla al cortarla, y un audio roto avisa `error`.
+- La tarjeta del panel en sus cinco estados y sus botones.
+
+**NO verificado** (todo esto es lo primero que hay que mirar en la Pi):
+- **`llm.interpret_song` nunca llamó a Claude de verdad** (sin clave en la
+  laptop). Copia el patrón de `make_quiz`, pero es la pieza con más riesgo.
+- Cómo transcribe Whisper `base` un título de canción, sobre todo en otro
+  idioma. Si falla mucho: `WHISPER_MODEL=small`.
+- Que el Chromium de la Pi baje y suene el fragmento (es un `.m4a` normal;
+  no debería haber problema) y que el volumen sea razonable.
+- **Cortar con «oye MECH» con música sonando**: el micrófono oye la
+  canción. Es lo que más puede fallar. Mirar «Oí mientras narraba: …» en el
+  panel y la CPU de la Pi.
+- Las frases en los nueve idiomas que no son español, dichas por una
+  persona (solo se probó el texto).
+
+Cómo se corrieron las pruebas aquí (el Python de la laptop es 3.8): con un
+envoltorio `correr38.py` que simula `dotenv` y carga `voice_phrases` con el
+`removesuffix` escrito a la antigua. Estaba en el scratchpad de la sesión;
+si ya no existe, son 30 líneas (ver §2: «En esta laptop el único Python…»).
+
+Un defecto VIEJO que se vio de paso y NO se tocó: en alemán, el «no»
+(`nein`) casa con cualquier frase que lleve «ein» (a una letra). «Ja, ein
+Quiz bitte» al ofrecimiento de la trivia se toma como un NO. En el modo
+música se esquivó mirando «otra canción» antes que el no. Arreglarlo de
+verdad es tocar el matcher o la lista: preguntarle al equipo si le importa.
+
 ### 2.quater Preguntas abiertas con el equipo
 
 Ninguna bloquea nada, pero conviene cerrarlas en la próxima sesión:
 
-00. **Modo música** (§2.nonies, punto 3): las seis preguntas. Es lo único
-    que el equipo está esperando para seguir.
+00. **Modo música — canciones enteras** (§2.terdecies). El modo ya está,
+    con fragmentos de 30 s. Para la canción entera faltan DOS cosas que
+    solo puede hacer el equipo, y hay que preguntarle por las dos:
+    1. ¿Tienen (o van a sacar) la cuenta de **desarrollador** de Apple? En
+       developer.apple.com → Account → Membership tiene que decir «Apple
+       Developer Program». La suscripción a Apple Music NO es eso.
+    2. Probar en la Pi: abrir **music.apple.com** en el Chromium, iniciar
+       sesión y darle a una canción. Si suena entera, la Pi puede; si dice
+       que el navegador no es compatible o no suena, hay que instalar
+       `libwidevinecdm0` (o Chrome para arm64) y volver a probar.
+    Con las dos en «sí»: se añade MusicKit (clave `.p8`, Team ID y Key ID en
+    el `.env`; el backend firma el token — hará falta `pyjwt` +
+    `cryptography`; la pantalla carga MusicKit JS desde Apple SOLO al
+    usarlo, para no romper el «nada de internet» del preflight §8).
+    Si alguna es «no»: quedarse con los 30 s, o una de estas, que se le
+    explicaron el 8 oct al preguntar por alternativas (**no ha elegido**):
+    - **Canciones propias en la Pi** (archivos subidos como los videos):
+      enteras y sin internet, pero solo las que suban. Lo más fiable para
+      la competencia. Ojo: las descargas de Apple Music (suscripción) van
+      protegidas y NO sirven; sí las compradas o las que tengan en MP3.
+    - **YouTube** (reproductor oficial incrustado en la proyección): entero
+      y gratis, pero muchos videos musicales no dejan incrustarse, puede
+      haber anuncios y pide una clave gratis de Google para buscar.
+    - **AirPlay** desde un iPhone hacia la Pi (`shairport-sync`): usa su
+      suscripción tal cual y suena por el parlante de MECH, pero la canción
+      se elige en el teléfono, no hablándole a MECH.
+    - **Spotify** con la Pi como altavoz Connect: funciona en la Pi sin el
+      problema del audio protegido, pero pide Spotify Premium (otra
+      suscripción).
+    En cualquiera de ellas se reutiliza todo el modo (frases, flujo,
+    pantalla, panel): solo cambia de dónde sale el audio.
 
 0. **Alerta de sismos** (§2.quinquies, punto 3): ¿se implementa? ¿con qué
    fuente? ¿para dónde (Costa Rica, Puerto Rico, California)? El 8 oct el
@@ -1610,6 +1736,31 @@ fila, es que también quedó guardado el `index.html` viejo → Ctrl+Shift+R.
      que entrar sola.
    - Apagar el robot con el panel abierto: sale «Sin conexión con MECH» con
      «Buscar de nuevo».
+
+### 00000000) Modo música (§2.terdecies; subido el 8 oct, sin probar)
+
+Al arrancar tiene que salir `Modo música: decí «modo música MECH»…`.
+Necesita internet y la **proyección abierta** (icono «Proyectar MECH»).
+
+1. **Sin micrófono primero** (separa el modo del audio): panel → Voz →
+   tarjeta MODO MÚSICA → escribir «Despacito, de Luis Fonsi» → **Poner**.
+   MECH dice «Ahí va: Despacito, de…», en la proyección sale la carátula y
+   suenan 30 s; luego pregunta si seguimos. Si dice «Algo falló al
+   reproducirla», copiar la línea del registro (dice el motivo).
+   - Si aquí falla al BUSCAR con un error de Claude: es
+     `llm.interpret_song`, que nunca se probó con la API real. Copiar el
+     error exacto.
+2. **Por voz**: «ok MECH» → «modo música MECH» → «Despacito» → pregunta el
+   artista → «Luis Fonsi» → suena → «otra canción» → otra → «no».
+3. **Cortarla**: a media canción, «oye MECH». Tiene que callar y preguntar.
+   Si no hace caso: bajar Ajustes → «Volumen música» y repetir. Anotar qué
+   sale en «Oí mientras narraba: …».
+4. Una canción en inglés pedida en español («Shape of You, de Ed Sheeran»):
+   ver en el registro qué oyó Whisper y qué buscó.
+5. En otro idioma: «wake up MECH» → «music mode MECH» → todo en inglés,
+   incluida la pantalla («Music mode», «30-second preview»).
+6. Que no se quede sordo: «Parar» desde el panel a media canción y luego
+   darle otra orden cualquiera por voz.
 
 ### 0000000) Mapa de sismos (§2.duodecies; subido el 8 oct, sin probar)
 

@@ -139,6 +139,10 @@ FAMILIAS = {
     "VOICE_TRIVIA_STOP_PHRASES": vp.is_trivia_stop,
     "VOICE_YES_PHRASES": vp.is_yes,
     "VOICE_NO_PHRASES": vp.is_no,
+    # Modo música (el modo entero lo prueba scripts/probar_musica.py).
+    "VOICE_MUSIC_PHRASES": vp.is_music,
+    "VOICE_MUSIC_STOP_PHRASES": vp.is_music_stop,
+    "VOICE_MUSIC_MORE_PHRASES": vp.is_music_more,
 }
 
 # Una frase "de bandera" por comando e idioma, escrita como la diría un

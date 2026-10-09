@@ -513,6 +513,9 @@ def main() -> int:
         "VOICE_TRIVIA_STOP_PHRASES": vp.is_trivia_stop,
         "VOICE_YES_PHRASES": vp.is_yes,
         "VOICE_NO_PHRASES": vp.is_no,
+        "VOICE_MUSIC_PHRASES": vp.is_music,
+        "VOICE_MUSIC_STOP_PHRASES": vp.is_music_stop,
+        "VOICE_MUSIC_MORE_PHRASES": vp.is_music_more,
     }
     for code in NUEVOS:
         malas = []
@@ -612,9 +615,12 @@ def main() -> int:
     sin_pantalla = [c for c in lang.SUPPORTED if not re.search(rf"^    {c}: \{{", trivia_js, re.M)]
     comprobar(not sin_pantalla, "frontend/trivia.js (textos de la pantalla)",
               "faltan: " + ", ".join(sin_pantalla))
-    panel = (RAIZ / "frontend" / "index.html").read_text(encoding="utf-8")
-    sin_chip = [c for c in lang.SUPPORTED if f'id="lang-{c}"' not in panel]
-    comprobar(not sin_chip, "frontend/index.html (un chip por idioma)",
+    # Desde el 6 oct 2026 el menú de idiomas del panel lo pinta app.js con su
+    # tabla LANGS (antes eran chips escritos en index.html, y esto miraba ahí).
+    panel = (RAIZ / "frontend" / "app.js").read_text(encoding="utf-8")
+    sin_chip = [c for c in lang.SUPPORTED
+                if not re.search(rf"^\s+{c}: \{{ nombre:", panel, re.M)]
+    comprobar(not sin_chip, "frontend/app.js (LANGS: una opción por idioma)",
               "faltan: " + ", ".join(sin_chip))
 
     print(f"\n{'TODO BIEN' if not fallos else f'⚠️  {fallos} fallo(s)'}.")

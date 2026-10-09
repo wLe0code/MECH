@@ -503,6 +503,171 @@ _PHRASES: dict[str, dict[str, str]] = {
         "zh": "这句我没能翻译出来。可以再说一遍吗？",
         "ko": "그 문장은 번역하지 못했어요. 다시 말씀해 주시겠어요?",
     },
+    # --- Modo MÚSICA (ver backend/music.py) --------------------------------
+    # ⚠️ Casi todas se dicen con el micrófono a punto de abrirse, así que son
+    # eco en potencia. Por eso están escritas con cuidado:
+    #   - ninguna pregunta lleva un sí/no del idioma («Claro», «No encontré»,
+    #     «sin», «nos»…) ni las frases de «otra canción» o de salir del modo:
+    #     MECH se contestaría a sí mismo;
+    #   - `music_off` es la EXCEPCIÓN: tiene que casar con la orden de salir
+    #     (igual que «Listo, dejo de traducir»), para que su eco se reconozca
+    #     y muera en silencio en vez de irse a Claude.
+    # `scripts/probar_musica.py` lo comprueba en los diez idiomas: no las
+    # reescribas sin correrlo.
+    "music_ask": {
+        "es": "¿Qué canción quieres escuchar, y de qué artista?",
+        "en": "Which song would you like to hear, and by which artist?",
+        "fr": "Quelle chanson veux-tu écouter, et de quel artiste ?",
+        "pt": "Que música queres ouvir, e de que artista?",
+        "de": "Welches Lied möchtest du hören, und von wem ist es?",
+        "it": "Quale canzone vuoi ascoltare, e di quale artista?",
+        "ja": "どの曲を聴きたいですか？アーティストの名前も教えてください。",
+        "ru": "Какую песню ты хочешь послушать, и кто её исполняет?",
+        "zh": "你想听哪首歌？是哪位歌手唱的？",
+        "ko": "어떤 노래를 듣고 싶으세요? 가수 이름도 알려 주세요.",
+    },
+    # Cuando ya dijo que quiere otra.
+    "music_ask_more": {
+        "es": "¿Cuál ponemos? Dime la canción y el artista.",
+        "en": "Which one? Tell me the song and the artist.",
+        "fr": "Laquelle ? Dis-moi la chanson et l'artiste.",
+        "pt": "Qual? Diz-me a música e o artista.",
+        "de": "Welches? Sag mir das Lied und den Künstler.",
+        "it": "Quale? Dimmi la canzone e l'artista.",
+        "ja": "どれにしますか？曲名とアーティストを教えてください。",
+        "ru": "Какую? Назови песню и исполнителя.",
+        "zh": "想听哪一首？告诉我歌名和歌手。",
+        "ko": "어떤 곡으로 할까요? 노래 제목과 가수를 말씀해 주세요.",
+    },
+    # Dijo la canción pero no de quién es.
+    "music_artist": {
+        "es": "¿De qué artista es?",
+        "en": "Who is it by?",
+        "fr": "C'est de quel artiste ?",
+        "pt": "De que artista é?",
+        "de": "Von wem ist das Lied?",
+        "it": "Di quale artista è?",
+        "ja": "どのアーティストの曲ですか？",
+        "ru": "Кто её исполняет?",
+        "zh": "这首歌是谁唱的？",
+        "ko": "어느 가수의 노래인가요?",
+    },
+    # Justo antes de que suene (aquí el micrófono está cerrado).
+    "music_playing": {
+        "es": "Ahí va: {title}, de {artist}.",
+        "en": "Here it is: {title}, by {artist}.",
+        "fr": "C'est parti : {title}, de {artist}.",
+        "pt": "Aqui vai: {title}, de {artist}.",
+        "de": "Los geht's: {title}, von {artist}.",
+        "it": "Eccola: {title}, di {artist}.",
+        "ja": "{artist}の「{title}」をかけます。",
+        "ru": "Ставлю: {title}, исполняет {artist}.",
+        "zh": "这就播放{artist}的《{title}》。",
+        "ko": "{artist}의 '{title}' 들려 드릴게요.",
+    },
+    # No entendió el pedido: lo vuelve a pedir.
+    "music_not_understood": {
+        "es": "Me perdí. Dime el nombre de la canción y quién la canta.",
+        "en": "I missed that. Tell me the song title and who sings it.",
+        "fr": "J'ai mal compris. Dis-moi le titre de la chanson et qui la chante.",
+        "pt": "Perdi-me. Diz-me o nome da música e quem a canta.",
+        "de": "Das habe ich verpasst. Sag mir den Titel und wer das Lied singt.",
+        "it": "Mi sono perso. Dimmi il titolo della canzone e chi la canta.",
+        "ja": "聞き取れませんでした。曲名と歌っている人を教えてください。",
+        "ru": "Я плохо расслышал. Назови песню и того, кто её поёт.",
+        "zh": "我没听清。请告诉我歌名，还有谁唱的。",
+        "ko": "잘 못 들었어요. 노래 제목과 가수를 다시 말씀해 주세요.",
+    },
+    # Estas dos van SEGUIDAS de `music_again` (la pregunta de si seguimos).
+    "music_not_found": {
+        "es": "Esa canción se me escapa.",
+        "en": "I couldn't find that song.",
+        "fr": "Cette chanson m'échappe.",
+        "pt": "Essa música escapa-me.",
+        "de": "Dieses Lied entgeht mir gerade.",
+        "it": "Quella canzone mi sfugge.",
+        "ja": "その曲は見つかりませんでした。",
+        "ru": "Эта песня от меня ускользает.",
+        "zh": "这首歌我找不到。",
+        "ko": "그 곡은 찾지 못했어요.",
+    },
+    "music_error": {
+        "es": "Algo falló al reproducirla.",
+        "en": "Something went wrong while playing it.",
+        "fr": "Un souci est survenu pendant la lecture.",
+        "pt": "Algo falhou ao reproduzi-la.",
+        "de": "Beim Abspielen ist etwas schiefgelaufen.",
+        "it": "Qualcosa è andato storto durante la riproduzione.",
+        "ja": "再生中に問題が起きました。",
+        "ru": "При воспроизведении случилась ошибка.",
+        "zh": "播放的时候出了点问题。",
+        "ko": "재생하는 중에 문제가 생겼어요.",
+    },
+    # Lo dice al terminar cada canción: ¿otra, o hacemos otra cosa?
+    "music_again": {
+        "es": "¿Seguimos con la música, o prefieres hacer algo distinto?",
+        "en": "Want to keep listening, or would you rather do something else?",
+        "fr": "On continue en musique, ou tu préfères faire autre chose ?",
+        "pt": "Continuamos com a música, ou preferes fazer algo diferente?",
+        "de": "Weiter mit Musik, oder möchtest du etwas anderes machen?",
+        "it": "Continuiamo con la musica, o preferisci fare qualcosa di diverso?",
+        "ja": "音楽を続けますか？それとも、ほかのことをしますか？",
+        "ru": "Продолжим слушать музыку или займёмся чем-то другим?",
+        "zh": "还想继续听歌吗？还是做点别的？",
+        "ko": "음악을 계속 들을까요? 혹은 다른 걸 하고 싶으세요?",
+    },
+    # Lo antepone a `music_again` cuando lo cortan con «oye MECH». No puede
+    # ser «Claro»: en español es un sí.
+    "music_ack": {
+        "es": "Entendido.",
+        "en": "Got it.",
+        "fr": "Entendu.",
+        "pt": "Entendido.",
+        "de": "Verstanden.",
+        "it": "Capito.",
+        "ja": "わかりました。",
+        "ru": "Понял.",
+        "zh": "明白。",
+        "ko": "알겠습니다.",
+    },
+    # ⚠️ Esta SÍ tiene que casar con la orden de salir (ver arriba).
+    "music_off": {
+        "es": "Listo, apago la música.",
+        "en": "All right, I'll stop the music.",
+        "fr": "Très bien, on arrête la musique.",
+        "pt": "Certo, desligo a música.",
+        "de": "Alles klar, ich stoppe die Musik.",
+        "it": "Va bene, fermo la musica.",
+        "ja": "わかりました。音楽を止めます。",
+        "ru": "Хорошо, останавливаю музыку.",
+        "zh": "好的，我停止音乐了。",
+        "ko": "알겠습니다. 음악을 끌게요.",
+    },
+    # Estas dos NO se dicen: son rótulos de la pantalla mientras suena.
+    "music_label": {
+        "es": "Modo música",
+        "en": "Music mode",
+        "fr": "Mode musique",
+        "pt": "Modo música",
+        "de": "Musikmodus",
+        "it": "Modalità musica",
+        "ja": "音楽モード",
+        "ru": "Режим музыки",
+        "zh": "音乐模式",
+        "ko": "음악 모드",
+    },
+    "music_preview_note": {
+        "es": "Fragmento de 30 segundos · Apple Music",
+        "en": "30-second preview · Apple Music",
+        "fr": "Extrait de 30 secondes · Apple Music",
+        "pt": "Excerto de 30 segundos · Apple Music",
+        "de": "30-Sekunden-Ausschnitt · Apple Music",
+        "it": "Anteprima di 30 secondi · Apple Music",
+        "ja": "30秒の試聴 · Apple Music",
+        "ru": "Отрывок 30 секунд · Apple Music",
+        "zh": "30秒试听 · Apple Music",
+        "ko": "30초 미리듣기 · Apple Music",
+    },
 }
 
 

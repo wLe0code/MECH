@@ -194,6 +194,14 @@ backend/
                         al terminar una obra. Solo el ESTADO (etapa,
                         preguntas, marcador, historial, guarda anti-eco);
                         quien habla, proyecta y llama a Claude es mech_app.
+  music.py            ← Modo MÚSICA («modo música MECH»): solo el ESTADO
+                        (preguntando canción / artista, sonando, ¿seguimos?).
+                        Quien habla, busca y manda la canción a la pantalla
+                        es mech_app.
+  apple_music.py      ← Busca canciones en el catálogo de Apple Music con el
+                        buscador PÚBLICO de Apple (sin cuenta ni clave).
+                        Devuelve título, artista, carátula y el fragmento de
+                        30 s. Solo librería estándar.
   translator.py       ← Modo TRADUCTOR: MECH de intérprete entre dos
                         personas. Solo el ESTADO (activo, par de idiomas,
                         guarda anti-eco); quien habla y pide la traducción
@@ -254,6 +262,10 @@ frontend/
   projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
                         Maneja eventos image y video, con loop en video, y
                         pinta los SUBTÍTULOS de la narración abajo.
+  music.js            ← Modo música en la PANTALLA de proyección (se sirve
+                        en /static/music.js): reproduce la canción, muestra
+                        la carátula y avisa al servidor de cuándo empieza y
+                        cuándo termina. Trae su CSS dentro, como trivia.js.
   trivia.js           ← La PANTALLA del juego, estilo Kahoot (se sirve en
                         /static/trivia.js). Pintor tonto: muestra el
                         estado que manda el servidor. Trae su CSS dentro.
@@ -399,6 +411,14 @@ scripts/
                         orden, texto) y lo que NO debe adivinar («no sé»,
                         una palabra que vale para dos opciones). 50/50.
                         Correrlo al tocar parse_answer().
+  probar_musica.py    ← El MODO MÚSICA entero: las frases en los diez
+                        idiomas (que nada de lo que MECH dice con el
+                        micrófono a punto de abrirse sea una orden), una
+                        sesión completa por idioma en el bucle de voz real,
+                        y los casos raros (cortar, no encontrar, sin
+                        pantalla, eco). `--red` busca canciones de verdad.
+                        Correrlo al tocar las frases `music_*` de lang.py,
+                        las listas VOICE_MUSIC_* o el flujo.
   probar_idiomas.py   ← Los DIEZ idiomas sin micrófono: que cada frase
                         despierte en SU idioma, que las órdenes no se pisen
                         entre idiomas (ni con lo que se dice en el stand), el
@@ -1184,6 +1204,127 @@ comporta al revés que las demás en cuatro cosas.
 - Para añadir OTRO slot así: una entrada con `promo: True` y su `segments`
   (máximo de espacios), y una lista de frases en `config` para dispararlo.
 
+### Modo MÚSICA — «modo música MECH» (8 oct 2026)
+
+Pedido del equipo: «como Alexa». Decirle **«modo música MECH»** o **«activa
+modo música»**; pregunta qué canción y de qué artista «para garantizar que
+sea la correcta», la reproduce, y al terminar pregunta si quiere otra o
+hacer otra cosa; que se pueda cortar con «oye MECH»; y en los diez idiomas.
+
+```
+«modo música MECH»
+MECH: «¿Qué canción quieres escuchar, y de qué artista?»        (+ chime)
+«Despacito»                     (sin artista → lo pregunta UNA vez)
+MECH: «¿De qué artista es?»                                      (+ chime)
+«de Luis Fonsi»
+MECH: «Ahí va: Despacito, de Luis Fonsi y Daddy Yankee.»  → suena
+MECH: «¿Seguimos con la música, o prefieres hacer algo distinto?»
+«otra canción» / «sí» → pregunta cuál · «no» → «Listo, apago la música.»
+cualquier otra orden → sale del modo y la atiende
+```
+
+⚠️ **QUÉ SUENA: el fragmento oficial de 30 segundos, NO la canción entera.**
+El equipo quería «conectar su cuenta de Apple Music» (de pago). Lo que se
+encontró, y hay que tener claro antes de prometer nada:
+
+- La canción ENTERA solo se puede reproducir desde un programa con MusicKit,
+  que pide: (1) estar en el **Apple Developer Program** (~99 USD/año; es
+  OTRA cosa que la suscripción a Apple Music), (2) una clave MusicKit para
+  firmar el «developer token», (3) que alguien **inicie sesión con el Apple
+  ID en la pantalla** (Claude no puede escribir contraseñas, y ese permiso
+  caduca a los ~6 meses), y (4) que el navegador abra audio protegido
+  (Widevine). En Chromium de la Raspberry Pi eso es **dudoso**: hay un
+  paquete `libwidevinecdm0` con reportes mezclados y, desde 2026, un Chrome
+  oficial para arm64 que lo trae. **Nadie lo ha confirmado con Apple Music
+  en una Pi 5.** Hay que probarlo en la de ellos (abrir music.apple.com en
+  el Chromium de la Pi, iniciar sesión y darle a una canción).
+- Lo que SÍ funciona sin nada de eso: el **buscador público de Apple**
+  (iTunes Search API, `apple_music.py`): catálogo real, carátula y un
+  `previewUrl` de 30 s que es un archivo de audio normal.
+- El modo está hecho para **enchufar la canción entera sin rehacerlo**: la
+  ficha lleva el `id` de Apple (el mismo que usa MusicKit) y todo el audio
+  pasa por `sonar()` de `frontend/music.js`. El resto (frases, flujo,
+  pantalla, panel) no cambia.
+
+Cómo está hecho:
+
+- **Estado** en [`backend/music.py`](backend/music.py) (etapas `ask` →
+  `artist` → `playing` → `again`), **flujo** en `mech_app`
+  (`start_music`, `handle_music_request`, `_play_track`,
+  `handle_music_again`, `stop_music`), rama propia en
+  `server._voice_loop_worker` (antes de los comandos normales, como la
+  trivia). Entrar y salir se miran en `handle_text_command`, **salir antes
+  que entrar** («sal del modo música» lleva dentro «modo música»).
+- **El pedido lo pone en limpio Claude** (`llm.interpret_song`, llamada
+  corta con salida estructurada, modelo `CLAUDE_MUSIC_MODEL`). No es un
+  lujo: Whisper escribe los títulos en otro idioma «como suenan» y el
+  buscador de Apple **no perdona una letra** («ed chiran» = 0 resultados).
+  Si Claude falla, se busca con lo que se oyó tal cual. Si el visitante NO
+  dijo el artista, Claude deja el campo vacío a propósito (aunque lo sepa) y
+  MECH lo pregunta: es lo que pidió el equipo. «No sé» → busca solo por
+  título.
+- **Suena en la PANTALLA de proyección**, no en el backend
+  (`frontend/music.js`, un `<audio>`): es el mismo camino que los videos de
+  marketing y donde tendría que sonar la canción entera. La pantalla avisa
+  con `POST /api/music/event` (`playing` / `ended` / `error`) y
+  `_play_track` espera. Si en `MUSIC_START_TIMEOUT` (12 s) nadie dice
+  `playing`, es que no hay proyección abierta o el navegador bloqueó el
+  sonido: lo dice en vez de esperar la canción entera.
+  ⚠️ Una canción solo EMPIEZA con el evento WS `music` (trae `play_id`
+  nuevo). `state["music"]` llega en cada cambio de fase y solo sirve para
+  callar: si también arrancara, cada cambio de fase reiniciaría la canción.
+- **«oye MECH» la corta** con el mismo listener de las narraciones.
+  `stop_presentation()` suelta la espera y le manda a la pantalla que calle
+  YA. Después: «Entendido. ¿Seguimos…?»; y si la frase traía algo más
+  («oye MECH, pon Thriller de Michael Jackson») se trata como la respuesta.
+  ⚠️ El micrófono oye la música: es la versión fuerte del problema de
+  «MECH se transcribe a sí mismo» (más CPU en la Pi, y cortar cuesta más).
+  Palancas: Ajustes → «Volumen música» y «Umbral al narrar». El botón
+  **Parar** del panel corta sin micrófono.
+- **Al preguntar si seguimos, el orden importa**: salir → «otra canción» →
+  no → sí → (ni una ni otra) Claude decide si es una canción dicha de una o
+  si cambió de tema; si cambió, `handle_music_again` devuelve **False** y el
+  texto sigue su camino normal (nadie se queda encerrado, como en la
+  trivia). «Otra» va ANTES que el no porque en alemán «noch EIN Lied» casa
+  con «nein».
+- **Eco** — cuatro preguntas por canción con el micrófono abriéndose detrás.
+  Defensas: `MUSIC_DRAIN_SECONDS`, la guarda `music.spoken()` +
+  `sounds_like_same`, y sobre todo que **las frases están escritas para no
+  contener ninguna orden**: nada de «Claro» (es un sí), «No encontré» (es un
+  no), «sin»/«nos» (el matcher los da por «sí»/«no»: perdona una letra de
+  más), «otra canción», etc. La despedida `music_off` es la excepción y
+  **tiene que casar con «salir»** («Listo, apago la música» ↔ «apaga la
+  música»): fuera del modo esa orden se ignora en silencio, así su eco
+  muere ahí en vez de irse a Claude. Solo se ignora si la frase es CORTA
+  (`_frase_corta`): una pregunta larga que casualmente lleve esas palabras
+  sigue a Claude. ⚠️ Por eso mismo «para la música» NO está en las listas de
+  salir: «para» y «música» salen en cualquier pregunta normal.
+  `scripts/probar_musica.py` comprueba todo esto en los diez idiomas —
+  **no reescribas una frase `music_*` sin correrlo**.
+- **Diez idiomas**: tres listas por idioma (`VOICE_MUSIC_PHRASES`,
+  `_STOP_`, `_MORE_`), todas juntas en la sección «Modo MÚSICA» de
+  `config.py` (no repartidas idioma por idioma), y 12 frases `music_*` en
+  `lang.py`. Los rótulos de la pantalla («Modo música», «Fragmento de 30
+  segundos · Apple Music») también salen de `lang.py`.
+  En ruso NO están «включи / выключи музыку» (encender/apagar, a una letra).
+- **Letra explícita**: apagada por defecto (`MUSIC_ALLOW_EXPLICIT=false` →
+  `explicit=No` en la búsqueda). Cualquier visitante puede pedir cualquier
+  canción delante de los jueces.
+- Mientras el modo está activo MECH **no saluda** por cámara, y dormirlo o
+  el paro de emergencia lo sacan del modo.
+- Panel: tarjeta **MODO MÚSICA** (vista Voz) — escribir «canción, artista»
+  y **Poner** (sin micrófono: separa «el modo falla» de «no te entendió»),
+  **Preguntar** y **Parar**. Ajustes → grupo «Modo música».
+- Endpoints: `POST /api/music/start` · `/play` `{text}` · `/stop` ·
+  `/event` (lo usa la pantalla).
+- Claves: `MUSIC_ENABLED`, `MUSIC_ALLOW_EXPLICIT`, `MUSIC_VOLUME` (las tres
+  en vivo), `MUSIC_COUNTRY`, `MUSIC_DRAIN_SECONDS`, `MUSIC_START_TIMEOUT`,
+  `MUSIC_MAX_SECONDS`, `CLAUDE_MUSIC_MODEL`,
+  `VOICE_MUSIC{,_STOP,_MORE}_PHRASES{,_EN,…,_KO}`.
+- Línea de arranque: `Modo música: decí «modo música MECH»…`.
+- Necesita internet (buscar y bajar el audio) y la proyección abierta. En
+  `/projector/vr` no suena, a propósito (como el marketing).
+
 ### Sismos recientes — el mapa del panel (8 oct 2026)
 
 Pedido del equipo: «un mapa dentro del panel de control, como un apartado
@@ -1911,12 +2052,19 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `backend/sismos.py` de verdad (datos reales, llegada en vivo, cambio de
   zona, apagar/encender, escritorio ancho, 1440 px y teléfono). **Sin probar
   en la Pi.**
-- **Modo música: SOLO explicado, nada programado (6 oct 2026)** — el equipo
-  pidió «modo música MECH» / «MECH activa modo música» (que busque la canción
-  en YouTube u otra plataforma y ponga el video) y pidió expresamente que
-  antes se explicara qué implica y se preguntaran las dudas. Las preguntas y
-  lo explicado están en `handoff.md` (§2.nonies). **No lo implementes sin
-  sus respuestas.**
+- **Modo música, con fragmentos de 30 s de Apple Music (8 oct 2026)** —
+  «modo música MECH» / «activa modo música» → pregunta canción y artista →
+  la busca en el catálogo de Apple Music → suena en la proyección con su
+  carátula → pregunta si seguimos. Se corta con «oye MECH». En los diez
+  idiomas. **Suena el fragmento oficial de 30 s, no la canción entera**: eso
+  necesita la cuenta de DESARROLLADOR de Apple y que la Pi abra audio
+  protegido (ver «Modo MÚSICA»). Verificado sin hardware:
+  `scripts/probar_musica.py` (88 comprobaciones: frases, una sesión entera
+  por idioma en el bucle de voz real, cortar, no encontrar, sin pantalla,
+  eco; con `--red`, canciones reales), la pantalla en el navegador sonando
+  un fragmento de verdad (empieza, termina, se corta, audio roto) y la
+  tarjeta del panel. **Sin probar**: nada en la Pi, y `llm.interpret_song`
+  nunca ha llamado a Claude de verdad (en la laptop no hay clave).
 - **Modo inglés bajo demanda (ago 2026)** — `backend/lang.py` guarda el idioma
   activo. «wake up MECH» despierta en INGLÉS (Whisper en `en`, narración de
   Claude en inglés, frases fijas y subtítulos en inglés); «ok MECH» /
@@ -2140,6 +2288,17 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     preguntar) antes que adivinar, y por eso `scripts/probar_trivia.py` mide
     las dos caras. Si aflojás el matcher para pillar un caso, corré ese
     script.
+27d. **Si el modo música dice «algo falló al reproducirla»**, casi nunca es
+    el modo: la canción suena en la PANTALLA de proyección. Mirá el registro
+    del panel, que dice cuál de estas fue: no hay ninguna proyección abierta
+    («Ninguna pantalla empezó a reproducir»), el navegador bloqueó el sonido
+    (se abrió sin `--autoplay-policy=no-user-gesture-required`: usar el
+    icono «Proyectar MECH» o tocar la pantalla una vez) o no pudo bajar el
+    audio (internet). Y si no ENCUENTRA la canción, probar a escribirla en
+    la tarjeta del panel: si por ahí sí, fue Whisper o `interpret_song`.
+27e. **«oye MECH» no corta la canción**: el micrófono está oyendo la
+    música. Bajar Ajustes → «Volumen música», decirlo más cerca, o el botón
+    «Parar» del panel. No hay más magia posible sin cancelación de eco.
 27c. **Si la trivia no arranca**, mirá el arranque del server: tiene que
     salir la línea «Trivia: 3 preguntas por partida…». Si no sale, la Pi
     corre código viejo (git pull sin reiniciar) o está apagada en Ajustes.
@@ -2253,7 +2412,7 @@ reordenado.
   `body.sin-servidor` (lo ponen `ws.onclose` / `ws.onopen`). Con `?app=1` en
   la dirección (así lo abre la app de Windows) trae «Buscar de nuevo», que
   hace `history.back()` a la pantalla de búsqueda.
-- `index.html` pide ahora `styles.css?v=9` y `app.js?v=9`.
+- `index.html` pide ahora `styles.css?v=10` y `app.js?v=10` (y `sismos.js?v=10`).
 
 ### App de Windows sin construir nada (8 oct 2026)
 
@@ -2338,7 +2497,7 @@ presentan.
   (`AUDIO_INPUT_DEVICE=Steren`) no coincidía con ninguna opción, el
   desplegable quedaba en blanco y «Guardar en .env» **borraba el micrófono**.
   Ahora se añade como opción («Steren (lo configurado ahora)»).
-- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=9`): para
+- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=10`): para
   que tras un `git pull` el navegador no mezcle el HTML nuevo con el CSS/JS
   viejos que tenía guardados. **Al tocar cualquiera de los dos, súbele el
   número.**
