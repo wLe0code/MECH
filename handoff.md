@@ -69,6 +69,78 @@ GitHub el 9 oct** («súbelo a github»), **sin probar en la Pi**: preguntar
 cómo fue. Si el modo música sigue sin sonar allí, pedir la línea del panel
 que empieza por «YouTube» o «Modo música».
 
+> 🔴 **FALLO ABIERTO, SIN ARREGLAR (9 oct, último mensaje del equipo) — es
+> lo primero que toca.** Tal cual: «se pone bien la tarjeta y el video, pero
+> al final el video no logra reproducirse en sí, y vuelve a la pantalla de
+> esperando contenido». O sea: la búsqueda ya funciona y la pantalla recibe
+> la canción, pero el reproductor de YouTube **no llega a sonar**; a los 25 s
+> (`MUSIC_START_TIMEOUT`) el servidor la da por fallida, MECH dice «algo
+> falló al reproducirla» y la proyección vuelve al reposo. La sesión se
+> cortó a media investigación (el equipo pidió dejar el handoff para que
+> siga otra persona). **No se cambió código por este fallo.**
+>
+> **Hipótesis principal (SIN confirmar; no se vio la Pi):** el navegador no
+> deja arrancar el video CON SONIDO sin un clic (política de autoplay).
+> - En la Pi, «Iniciar MECH» abre solo el PANEL con
+>   `chromium --app=…` (`pi/panel-mech.sh`), **sin** el permiso de autoplay.
+>   Después «Proyectar MECH» lanza
+>   `chromium --kiosk --autoplay-policy=no-user-gesture-required …`
+>   (`pi/proyector-mech.sh`), pero **con Chromium ya abierto las banderas de
+>   la línea de comandos se ignoran**: la ventana nueva se abre dentro del
+>   proceso que ya corría. Resultado: la proyección queda sin permiso, el
+>   reproductor se queda con el botón rojo de «play» y nunca avisa `playing`.
+>   (Lo mismo dejaría MUDOS los videos de marketing: preguntarle al equipo
+>   si últimamente sale «Toca la pantalla para activar el sonido».)
+> - Si lo probaron en el navegador de una laptop (menú «Proyección» del
+>   panel), pasa igual: sin un clic en esa página no hay sonido.
+> - En la prueba de esta sesión SÍ sonó, pero en el navegador de vista
+>   previa de la laptop, que deja el autoplay.
+>
+> **Cómo confirmarlo en dos minutos (pedírselo al equipo):**
+> 1. La línea del panel tras el fallo: «Ninguna pantalla empezó a reproducir
+>    la canción…» o «La pantalla no pudo reproducir la canción: …» (esta
+>    trae el motivo; si habla de «código 101/150», NO es autoplay: son
+>    videos que no se dejan incrustar).
+> 2. En la Pi: cerrar TODAS las ventanas de Chromium (el panel también),
+>    abrir solo «Proyectar MECH» y pedir la canción desde el panel de otra
+>    laptop. Si así suena, la hipótesis es cierta.
+> 3. O más rápido: hacer UN clic en la pantalla de proyección y volver a
+>    pedir la canción.
+>
+> **Arreglo propuesto (nada hecho todavía):**
+> 1. `pi/panel-mech.sh`: lanzar Chromium también con
+>    `--autoplay-policy=no-user-gesture-required`, para que el proceso que
+>    arranca primero ya tenga el permiso. (No cubre un Chromium abierto a
+>    mano antes; decirlo en `docs/USO.md`.)
+> 2. `frontend/music.js`: si a los ~4 s el reproductor sigue sin empezar y
+>    sin dar error (estado -1 o 5 de la IFrame API), en vez de saltar de
+>    candidato en candidato: `mute()` + `playVideo()` (mudo siempre se puede)
+>    y enseñar «Toca la pantalla para activar el sonido», con `unMute()` al
+>    clic — como ya hace la playlist de marketing en `projector.html`. Y
+>    avisar al servidor del motivo para que el panel lo diga claro.
+> 3. Si hace falta algo a prueba de todo: política de Chromium
+>    `AutoplayAllowlist` para `http://localhost:8000`
+>    (`/etc/chromium/policies/managed/`, pide `sudo`), o un
+>    `--user-data-dir` propio para la proyección (proceso aparte seguro,
+>    pero pierde la sesión de YouTube Premium del perfil normal).
+>    **Preguntar antes de tocar la configuración del sistema de la Pi.**
+>
+> **Para verlo sin la Pi:** `.claude/launch.json` → `proyeccion-prueba`
+> (puerto 8765; el script `proyector_falso.py` estaba en el scratchpad de
+> la sesión del 9 oct — si no existe son 60 líneas de `http.server` que
+> sirven `frontend/` en `/projector`, `/static` y `/vendor` y contestan OK a
+> los POST). No tiene WebSocket: la canción se manda desde la consola con
+> `musica.apply({type:'music', stage:'playing', play_id:1, label:'Modo
+> música', note:'YouTube', volume:0.5, track:{title:'Bohemian Rhapsody',
+> artist:'Queen', seconds:360, youtube:[{id:'fJ9rUzIMcZQ', channel:'Queen
+> Official', seconds:360,
+> thumb:'https://i.ytimg.com/vi/fJ9rUzIMcZQ/hqdefault.jpg'}]}}, true)`.
+> Para reproducir el fallo hay que abrirla en un navegador SIN el permiso
+> (una ventana nueva de Chrome/Edge, sin hacer clic en la página).
+>
+> Lo demás del 9 oct (clave de YouTube, sismos, tarjeta, bolitas) está
+> subido y descrito en §2.quindecies y §2.sexdecies.
+
 > ⚠️ **LO PRIMERO DE LA PRÓXIMA SESIÓN — tres cosas del modo música**
 > (escrito el 8 oct; lo del 9 oct, en §2.quindecies, va por delante)**:**
 > 1. **La versión solo-YouTube YA ESTÁ en GitHub** («súbelo a github», 8
