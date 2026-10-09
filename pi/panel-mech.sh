@@ -63,4 +63,13 @@ decir "  Abriendo el panel."
 if [ "$BIN" = "firefox" ]; then
     exec "$BIN" "http://localhost:8000/"
 fi
-exec "$BIN" --app="http://localhost:8000/" --noerrdialogs
+# ⚠️ El permiso de sonido (`--autoplay-policy=...`) va TAMBIÉN aquí, aunque el
+# panel no reproduzca nada. Chromium es UN solo programa: la primera ventana
+# que se abre decide con qué permisos corre, y las que se abren después se
+# meten en ese mismo programa SIN mirar sus propias banderas. «Iniciar MECH»
+# abre este panel antes de que nadie toque «Proyectar MECH», así que sin
+# esto la proyección se quedaba sin el permiso: el modo música no llegaba a
+# sonar y los videos de marketing salían mudos (oct 2026). No lo quites.
+exec "$BIN" --app="http://localhost:8000/" \
+    --autoplay-policy=no-user-gesture-required \
+    --noerrdialogs

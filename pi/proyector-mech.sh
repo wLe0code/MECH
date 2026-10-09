@@ -9,8 +9,19 @@
 # los videos del slot de marketing se ven MUDOS y la pantalla muestra "toca
 # la pantalla para activar el sonido". Es un fallo que ya costó una prueba
 # entera, por eso este script existe.
+#
+# ⚠️ Y el flag solo cuenta si este es el PRIMER Chromium que se abre. Chromium
+# es un solo programa: si ya hay uno abierto, la ventana nueva se mete en ese
+# y las banderas de esta línea se ignoran. Por eso `panel-mech.sh` lleva el
+# mismo flag, y por eso aquí se mira si hay un Chromium abierto SIN él (uno
+# abierto a mano, o el panel de antes de actualizar): en ese caso se cierra
+# y se vuelve a abrir bien. Fue la causa de que el modo música «pusiera la
+# tarjeta y el video, pero no llegara a sonar» (oct 2026).
 
 set -u
+
+REPO="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+PERMISO="--autoplay-policy=no-user-gesture-required"
 
 echo "  MECH — abrir la proyección"
 
@@ -46,10 +57,69 @@ if [ "$LISTO" -eq 0 ]; then
     exit 1
 fi
 
+# ── ¿Hay ya un Chromium abierto SIN el permiso de sonido? ───────────────
+# Se miran solo los procesos PRINCIPALES de Chromium (los hijos —pestañas,
+# gráficos— llevan `--type=`). Deja en SIN_PERMISO sus números y en
+# HABIA_PANEL si alguno era el panel de MECH.
+SIN_PERMISO=""
+HABIA_PANEL=0
+for pid in $(pgrep -u "$(id -u)" -x 'chromium(-browser?)?' 2>/dev/null); do
+    [ -r "/proc/$pid/cmdline" ] || continue
+    ORDEN="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)"
+    case "$ORDEN" in *--type=*) continue ;; esac
+    case "$ORDEN" in *"$PERMISO"*) continue ;; esac
+    SIN_PERMISO="$SIN_PERMISO $pid"
+    case "$ORDEN" in *--app=http://localhost:8000*) HABIA_PANEL=1 ;; esac
+done
+
+if [ -n "$SIN_PERMISO" ]; then
+    echo
+    echo "  OJO: ya hay un Chromium abierto, y se abrió SIN el permiso de sonido."
+    echo "  La proyección se metería en ese mismo Chromium y saldría MUDA:"
+    echo "  ni el modo música ni los videos de marketing se oirían."
+    echo
+    echo "  Para arreglarlo hay que cerrarlo (TODAS sus ventanas) y abrirlo de"
+    echo "  nuevo con el permiso."
+    [ "$HABIA_PANEL" -eq 1 ] && echo "  El panel de MECH se vuelve a abrir solo."
+    echo
+    RESP=""
+    # Sin respuesta en 15 s (o sin teclado), se hace: es lo que casi siempre
+    # se quiere, y si no la proyección no sonaría.
+    read -r -t 15 -p "  Enter = sí, hazlo    ·    n y Enter = no, déjalo así: " RESP || true
+    echo
+    case "$RESP" in
+        n|N|no|No|NO)
+            echo "  Lo dejo como está. La proyección va a pedir un toque en la"
+            echo "  pantalla para poder sonar."
+            ;;
+        *)
+            echo "  Cerrando Chromium..."
+            # shellcheck disable=SC2086
+            kill $SIN_PERMISO 2> /dev/null
+            for _ in $(seq 1 16); do
+                VIVO=0
+                for pid in $SIN_PERMISO; do
+                    kill -0 "$pid" 2> /dev/null && VIVO=1
+                done
+                [ "$VIVO" -eq 0 ] && break
+                sleep 0.5
+            done
+            # shellcheck disable=SC2086
+            [ "$VIVO" -eq 1 ] && kill -9 $SIN_PERMISO 2> /dev/null
+            sleep 1
+            if [ "$HABIA_PANEL" -eq 1 ]; then
+                echo "  Abriendo otra vez el panel..."
+                ( "$REPO/pi/panel-mech.sh" --silencioso < /dev/null > /dev/null 2>&1 & )
+                sleep 3
+            fi
+            ;;
+    esac
+fi
+
 echo "  Abriendo a pantalla completa. Para salir: Alt+F4."
 exec "$BIN" \
     --kiosk \
-    --autoplay-policy=no-user-gesture-required \
+    "$PERMISO" \
     --noerrdialogs \
     --disable-session-crashed-bubble \
     --disable-infobars \

@@ -351,12 +351,18 @@ pi/                   ← TRES accesos de ESCRITORIO en la Raspberry Pi,
                         con el código local). Banderas: `--sin-actualizar`
                         (salta el pull) y `--sin-panel`.
   proyector-mech.sh   ← "Proyectar MECH": Chromium kiosko en /projector CON
-                        el flag de autoplay (sin él los videos van MUDOS).
+                        el flag de autoplay (sin él los videos van MUDOS y
+                        el modo música no suena). Si ya hay un Chromium
+                        abierto SIN ese flag, lo dice y se ofrece a cerrarlo
+                        y abrirlo bien (ver «El permiso de sonido»).
   apagar-mech.sh      ← "Apagar MECH": para el servidor con margen para que
                         cierre bien, y solo lo fuerza si no cierra. Cierra
                         también la proyección en kiosko (SOLO esa).
   panel-mech.sh       ← Abre el panel de control. NO tiene icono propio: lo
-                        llama `iniciar-mech.sh` con `--silencioso`.
+                        llama `iniciar-mech.sh` con `--silencioso`. ⚠️ Lleva
+                        TAMBIÉN el flag de autoplay aunque no reproduzca
+                        nada: es el primer Chromium que se abre y de él
+                        hereda la proyección. No se lo quites.
   autoarranque.sh     ← Arranque automático al encender la Pi (crea/borra
                         ~/.config/autostart/mech.desktop). SIN icono a
                         propósito (el equipo quiere solo 3): se lanza con
@@ -423,7 +429,8 @@ scripts/
                         micrófono a punto de abrirse sea una orden), una
                         sesión completa por idioma en el bucle de voz real,
                         y los casos raros (cortar, no encontrar, sin
-                        pantalla, sin clave, eco). `--red` busca canciones de
+                        pantalla, sin clave, eco), y la pantalla que no deja
+                        sonar, que tarda o que se calla. `--red` busca canciones de
                         verdad en YouTube (necesita `YOUTUBE_API_KEY`).
                         Correrlo al tocar las frases `music_*` de lang.py,
                         las listas VOICE_MUSIC_* o el flujo.
@@ -496,7 +503,9 @@ python -m backend.server
 # Visor de proyección en la misma Pi (Chromium kiosko)
 chromium --kiosk --autoplay-policy=no-user-gesture-required          http://localhost:8000/projector
 # El flag de autoplay es OBLIGATORIO para que suene el audio de los videos del
-# slot de marketing; sin él el navegador los reproduce MUDOS.
+# slot de marketing y el modo música; sin él el navegador los deja MUDOS.
+# ⚠️ Solo cuenta si es el PRIMER Chromium que se abre: con otro ya abierto,
+# la ventana nueva se mete en ese y el flag se ignora.
 # En Bookworm el binario también está como chromium-browser; ambos funcionan.
 
 # Testing headless (sin web, sin panel — solo voz → Claude → TTS)
@@ -1305,11 +1314,63 @@ con su video, en la pantalla de proyección, con el reproductor oficial.
   (`youtube:<id>`) y de eso depende cuánto se espera el final
   (`_music_wait_seconds`: la duración de ESE video + 90 s).
 - **Suena en la PANTALLA de proyección**, no en el backend: ahí vive el
-  reproductor de YouTube. La pantalla avisa con `POST /api/music/event`
-  (`playing` / `ended` / `error`) y `_play_track` espera. Si en
-  `MUSIC_START_TIMEOUT` (25 s) nadie dice `playing`, es que no hay
-  proyección abierta o el navegador no dejó arrancar el video: lo dice en
-  vez de esperar la canción entera.
+  reproductor de YouTube. La pantalla avisa con `POST /api/music/event` y
+  `_play_track` espera. Los avisos: `loading` (señal de vida: «recibí la
+  canción, pruebo el video 2 de 3»), `playing`, `muted` / `unmuted` (ver el
+  punto siguiente), `ended` y `error`. Van **en fila** desde `music.js`
+  (`playing` y `muted` salen casi a la vez y podían llegar al revés).
+  El plazo `MUSIC_START_TIMEOUT` (25 s) cuenta **desde la última señal de
+  vida**, no desde que se mandó la canción: mientras la pantalla siga
+  avisando, se la espera, y es ELLA quien dice si pudo o no y por qué. Si
+  nadie da señales: «Ninguna pantalla contestó» (no hay proyección abierta,
+  o es una página vieja sin recargar).
+- ⚠️ **El permiso de sonido (9 oct 2026) — el fallo «se pone la tarjeta y
+  el video, pero no llega a reproducirse y vuelve a "Esperando
+  contenido"».** Reproducido en la laptop con un Edge sin ventana y la
+  política de autoplay por defecto: el navegador no deja arrancar un video
+  CON SONIDO sin un toque, YouTube dispara `onAutoplayBlocked`, el video se
+  queda en su carátula, la pantalla saltaba de candidato en candidato y a
+  los 25 s el servidor la daba por perdida. Dos arreglos, y hacen falta los
+  dos:
+  1. **En la Pi, que el permiso llegue de verdad.** El flag
+     `--autoplay-policy=no-user-gesture-required` solo cuenta en el PRIMER
+     Chromium que se abre (Chromium es un solo programa; las ventanas
+     siguientes se meten en él y sus banderas se ignoran). Y el primero era
+     el PANEL, que «Iniciar MECH» abre solo desde el 18 sep, sin el flag:
+     la proyección nunca lo tenía. Ahora `pi/panel-mech.sh` lo lleva, y
+     `pi/proyector-mech.sh` mira si hay un Chromium principal abierto sin
+     él (`pgrep` + `/proc/<pid>/cmdline`, sin los procesos `--type=`) y se
+     ofrece a cerrarlo y reabrirlo (Enter o 15 s = sí).
+  2. **En la página, que un bloqueo no tumbe la canción** (laptops, o un
+     Chromium que nadie relanzó). Con `onAutoplayBlocked`, `music.js`
+     arranca el video SIN sonido (eso el navegador siempre lo deja), enseña
+     en la tarjeta «Toca la pantalla para activar el sonido»
+     (`lang.say("music_tap_sound")`, viaja en `snap["hint"]`) y avisa
+     `muted`; el servidor lo apunta en el panel con qué hacer. Con el
+     primer toque —en la página o SOBRE el video— avisa `unmuted` y la
+     canción vuelve a empezar con sonido (el servidor recalcula hasta
+     cuándo espera el final: `_music_until`). Las canciones siguientes ya
+     suenan solas.
+  - El toque sobre el video no manda ningún clic a nuestra página (es otro
+    origen): se detecta con `navigator.userActivation.hasBeenActive`, que
+    se mira cada medio segundo. Y como ese toque le pone PAUSA al video,
+    `music.js` le quita la pausa (estado 2 → `playVideo()`).
+  - ⚠️ **No adivines el bloqueo por tiempo** («si a los N s no arrancó, es
+    que lo bloquearon»): silenciaría una canción que solo tarda en cargar o
+    que trae un anuncio delante. YouTube lo avisa; se usa eso.
+  - ⚠️ El aviso va EN la tarjeta, nunca sobre el video (condiciones de
+    YouTube).
+  - **La proyección lo comprueba también AL ABRIRSE** (`comprobarSonido()`
+    en `projector.html`: intenta reproducir una décima de silencio). Si el
+    navegador se niega, deja puesto «Toca la pantalla para activar el
+    sonido» y avisa por `POST /api/projection/sound`; el panel dice
+    «Proyección abierta, con permiso de sonido» o «OJO: la proyección se
+    abrió SIN permiso de sonido». **Es la línea que hay que pedirle al
+    equipo** cuando algo no suena. Vale igual para el marketing. La página
+    la repite cada vez que el servidor vuelve (lo reinician con la
+    proyección abierta), así que sale también tras un «Iniciar MECH».
+  - `projector.html` pide `music.js?v=13`: **súbele el número al tocarlo**,
+    o el Chromium de la Pi puede seguir con el archivo viejo guardado.
   ⚠️ Un video solo EMPIEZA con el evento WS `music` (trae `play_id` nuevo).
   `state["music"]` llega en cada cambio de fase y solo sirve para callar:
   si también arrancara, cada cambio de fase reiniciaría la canción.
@@ -1373,8 +1434,9 @@ con su video, en la pantalla de proyección, con el reproductor oficial.
   que entrar** («sal del modo música» lleva dentro «modo música»).
 - **Diez idiomas**: tres listas por idioma (`VOICE_MUSIC_PHRASES`,
   `_STOP_`, `_MORE_`), todas juntas en la sección «Modo MÚSICA» de
-  `config.py` (no repartidas idioma por idioma), y 13 frases `music_*` en
-  `lang.py` (entre ellas el rótulo de la pantalla, «Modo música»).
+  `config.py` (no repartidas idioma por idioma), y 14 frases `music_*` en
+  `lang.py` (dos de ellas no se dicen, se proyectan: el rótulo «Modo
+  música» y el aviso «Toca la pantalla para activar el sonido»).
   En ruso NO están «включи / выключи музыку» (encender/apagar, a una letra).
 - Mientras el modo está activo MECH **no saluda** por cámara, y dormirlo o
   el paro de emergencia lo sacan del modo.
@@ -2164,6 +2226,18 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   con respuestas copiadas del formato de Google; con la clave,
   `probar_musica.py --red` la hace de verdad); y `llm.interpret_song` nunca
   ha llamado a Claude de verdad.
+- **El modo música «ponía la tarjeta y el video pero no sonaba» (9 oct
+  2026)** — era el permiso de sonido del navegador: ver «El permiso de
+  sonido» en «Modo MÚSICA». Arreglado en los lanzadores de la Pi
+  (`panel-mech.sh`, `proyector-mech.sh`) y en la página (arranca sin sonido,
+  pide un toque y lo avisa en vez de rendirse). Verificado: el fallo y el
+  arreglo en un Edge sin ventana con la política por defecto (bloqueado →
+  suena sin sonido + aviso; toque en la tarjeta o sobre el video → vuelve a
+  empezar con sonido; segunda canción → suena sola; permitido → suena
+  directo), `probar_musica.py` (147 comprobaciones, 14 nuevas, que fallan
+  con el código de antes) y la parte nueva de `proyector-mech.sh` con un
+  `/proc` de mentira. **Sin probar en la Pi**: sobre todo el trozo de bash
+  que detecta el Chromium abierto (`pgrep -x` y `/proc` de verdad).
 - **Modo inglés bajo demanda (ago 2026)** — `backend/lang.py` guarda el idioma
   activo. «wake up MECH» despierta en INGLÉS (Whisper en `en`, narración de
   Claude en inglés, frases fijas y subtítulos en inglés); «ok MECH» /
@@ -2395,12 +2469,19 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     segunda, «YouTube: clave comprobada…», es la que dice si SIRVE). **Antes
     de adivinar, pedir esa línea**: el 9 oct el equipo dijo «no se conecta»
     y desde la laptop no se podía saber cuál de esas causas era. Y si dice «algo
-    falló al reproducirla», el video no arrancó en la PANTALLA: no hay
-    proyección abierta, se abrió sin el icono «Proyectar MECH» (sin
-    `--autoplay-policy=no-user-gesture-required` el video no arranca solo),
-    no hay internet, o ninguno de los tres videos se deja poner fuera de
-    YouTube. Si pone OTRA canción, probar a escribirla en la tarjeta del
-    panel: si por ahí acierta, fue Whisper o `interpret_song`.
+    falló al reproducirla», el registro trae el motivo: «Ninguna pantalla
+    contestó» (no hay proyección abierta, o es una página vieja) o «La
+    pantalla no pudo reproducir la canción: …» (sin internet, o ninguno de
+    los tres videos se deja poner fuera de YouTube). Si pone OTRA canción,
+    probar a escribirla en la tarjeta del panel: si por ahí acierta, fue
+    Whisper o `interpret_song`.
+27f. **Si la canción (o el marketing) se VE pero NO SUENA**, es el permiso
+    de sonido del navegador, no el código ni el parlante. Sale «Toca la
+    pantalla para activar el sonido» y el panel lo dice. Un clic en la
+    proyección lo arregla al momento; en la Pi, volver a abrir «Proyectar
+    MECH» y dar Enter. ⚠️ **Chromium es UN solo programa**: el flag de
+    autoplay de «Proyectar MECH» no sirve de nada si ya había un Chromium
+    abierto sin él. Ver «El permiso de sonido».
 27e. **«oye MECH» no corta la canción**: el micrófono está oyendo la
     música. Bajar Ajustes → «Volumen música», decirlo más cerca, o el botón
     «Parar» del panel. No hay más magia posible sin cancelación de eco.

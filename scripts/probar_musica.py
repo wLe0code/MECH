@@ -19,6 +19,10 @@ despedida vuelve a meterlo en el modo. Aquí se mira:
      canción que no existe, sin internet, sin pantalla, no entender dos
      veces, cambiar de tema, dormirlo en medio, sin clave de YouTube, la
      cuota agotada, y el eco de la despedida.
+  3 bis. La PANTALLA y el sonido: el navegador que no deja sonar sin un toque
+     (la canción arranca sin sonido, se avisa, y al tocar vuelve a empezar),
+     la pantalla que tarda pero sigue dando señales, la que se queda callada
+     y la que no existe.
   4. La BÚSQUEDA en YouTube con respuestas de mentira de Google: que descarte
      lo que no se puede o no se debe poner (videos que no dejan incrustarse,
      de mayores de edad, directos, «10 horas de…») y deje los karaokes al
@@ -42,6 +46,8 @@ from __future__ import annotations
 
 import io
 import sys
+import threading
+import time
 import types
 from pathlib import Path
 
@@ -183,6 +189,9 @@ def montar():
     h.esperas = []           # cuánto iba a esperar el final de cada canción
     h.pantalla = "normal"    # cómo se porta la pantalla de proyección
     h.yt = "bien"            # cómo se porta YouTube: bien | sin clave | cuota | caida
+    h.registro = []          # lo que MECH apunta en el panel: (nivel, texto)
+    h.hilos = []             # pantallas que contestan con retraso
+    app.log = lambda texto, nivel="info": h.registro.append((nivel, texto))
 
     def interpreta(frase, language=None):
         h.pedidos.append(("cancion", frase))
@@ -221,6 +230,23 @@ def montar():
             if h.pantalla == "error":
                 app.music_event(pid, "error", "YouTube no dejó reproducir el video aquí (código 150)")
                 return
+            if isinstance(h.pantalla, list):
+                # Una pantalla que contesta CON RETRASO: [(segundos, aviso,
+                # detalle), ...], contados desde que llega la canción.
+                pasos, h.pantalla = h.pantalla, "normal"
+
+                def lenta():
+                    t0 = time.time()
+                    for cuando, aviso, detalle in pasos:
+                        # El `sleep` de VERDAD: durante la sesión el arnés lo
+                        # cambia por uno que no espera.
+                        h.dormir_real(max(0.0, cuando - (time.time() - t0)))
+                        app.music_event(pid, aviso, detalle)
+
+                hilo = threading.Thread(target=lenta, daemon=True)
+                h.hilos.append(hilo)
+                hilo.start()
+                return
             # «segundo»: el primer video se negó y arrancó el siguiente.
             elegido = videos[1] if h.pantalla == "segundo" else videos[0]
             app.music_event(pid, "playing", "youtube:" + elegido["id"])
@@ -241,9 +267,13 @@ def montar():
 
     def correr(guion, idioma="es", awake=True):
         music.reset()
-        del h.buscadas[:], h.esperas[:]
+        del h.buscadas[:], h.esperas[:], h.registro[:]
         app._music_play_id = 0
-        return h.correr(guion, awake=awake, idioma=idioma)
+        r = h.correr(guion, awake=awake, idioma=idioma)
+        for hilo in h.hilos:
+            hilo.join(timeout=5)
+        del h.hilos[:]
+        return r
 
     h.sesion = correr
     return h
@@ -412,6 +442,119 @@ def probar_casos(h) -> None:
         ok = h.dicho == esperado and not h.a_claude and not h.music.is_active()
         check(ok, f"{lang.label(code):<10} oye sus 3 preguntas y su despedida, y no se contesta"
               + ("" if ok else f"\n           dijo: {h.dicho}\n           a Claude: {h.a_claude}"))
+
+
+def apuntado(h, trozo: str, nivel: str = "") -> bool:
+    """¿Quedó en el registro del panel una línea con ese trozo (y ese nivel)?"""
+    return any(trozo in texto and (not nivel or nivel == n) for n, texto in h.registro)
+
+
+def probar_pantalla(h) -> None:
+    print("\n=== 3 bis. La pantalla y el sonido ===")
+    es = "es"
+    entrar = lista("VOICE_MUSIC_PHRASES", es)[1]
+    A = lambda k, **f: dice(es, k, **f)
+    again = A("music_again")
+    app = h.app
+    guion = [entrar, "Despacito de Luis Fonsi", "no"]
+    bien = [A("music_ask"), A("music_playing", title="Despacito", artist="Luis Fonsi"), again, A("music_off")]
+    falla = [A("music_ask"), A("music_playing", title="Despacito", artist="Luis Fonsi"),
+             A("music_error") + " " + again, A("music_off")]
+    V1 = "youtube:VIDEO000001"
+
+    for code in lang.SUPPORTED:
+        if not lang.say("music_tap_sound", code):
+            check(False, f"falta music_tap_sound en {lang.label(code)}")
+    h.pantalla = "normal"
+    h.sesion(guion)
+    s = sonadas(h)
+    check(bool(s) and s[0].get("hint") == A("music_tap_sound"),
+          "a la pantalla le llega el aviso «toca la pantalla…» en el idioma de MECH (por si le hace falta)")
+
+    # El fallo del 9 oct: el navegador no deja SONAR sin un toque. La pantalla
+    # arranca el video sin sonido, lo avisa, y la canción NO se da por perdida.
+    h.pantalla = [(0, "loading", "video 1 de 2"), (0.02, "playing", V1),
+                  (0.03, "muted", "el navegador no deja sonar"), (0.10, "ended", "")]
+    h.sesion(guion)
+    check(h.dicho == bien, "navegador que no deja sonar: la canción sigue (sin sonido), MECH no dice que falló"
+          + ("" if h.dicho == bien else f" -> {h.dicho}"))
+    check(apuntado(h, "NO SUENA", "warn") and apuntado(h, "Tocá esa pantalla"),
+          "...y el panel dice por qué no suena y qué hacer")
+
+    # El aviso de «sin sonido» puede llegar ANTES que el de «empezó».
+    h.pantalla = [(0, "loading", ""), (0.02, "muted", ""), (0.03, "playing", V1), (0.10, "ended", "")]
+    h.sesion(guion)
+    check(h.dicho == bien and apuntado(h, "NO SUENA", "warn"),
+          "los avisos llegan al revés («sin sonido» antes que «empezó»): da igual")
+
+    # Alguien toca la pantalla: la canción vuelve a empezar con sonido, así
+    # que el final se espera DESDE AHÍ. (0,4 s de «canción»: tocan a los 0,25
+    # y termina a los 0,55, pasado el plazo de antes y dentro del nuevo.)
+    de_verdad = app._music_wait_seconds
+    app._music_wait_seconds = lambda track: 0.4
+    h.pantalla = [(0, "loading", ""), (0.02, "playing", V1), (0.03, "muted", ""),
+                  (0.25, "unmuted", ""), (0.55, "ended", "")]
+    h.sesion(guion)
+    check(h.dicho == bien and apuntado(h, "Sonido activado", "ok")
+          and not apuntado(h, "no avisó del final"),
+          "tocan la pantalla a media canción: vuelve a empezar y se espera su final desde ahí"
+          + ("" if not apuntado(h, "no avisó del final") else " -> la dio por terminada antes de tiempo"))
+    app._music_wait_seconds = de_verdad
+
+    # Una pantalla lenta que SIGUE AVISANDO («pruebo el video 2 de 3») no se
+    # da por ausente aunque tarde más que MUSIC_START_TIMEOUT en total.
+    antes = config.MUSIC_START_TIMEOUT
+    config.MUSIC_START_TIMEOUT = 0.3
+    h.pantalla = [(0, "loading", "video 1 de 3"), (0.2, "loading", "video 2 de 3"),
+                  (0.4, "loading", "video 3 de 3"), (0.6, "playing", "youtube:VIDEO000002"),
+                  (0.65, "ended", "")]
+    h.sesion(guion)
+    check(h.dicho == bien, "pantalla que tarda (0,6 s con el plazo en 0,3) pero sigue avisando: se la espera"
+          + ("" if h.dicho == bien else f" -> {h.dicho}"))
+
+    # ...y si la pantalla dice que no pudo, el motivo es EL SUYO.
+    h.pantalla = [(0, "loading", "video 1 de 1"), (0.2, "loading", "video 1 de 1"),
+                  (0.4, "error", "YouTube no dejó reproducir el video aquí (código 150)")]
+    h.sesion(guion)
+    check(h.dicho == falla and apuntado(h, "código 150", "warn")
+          and not apuntado(h, "Ninguna pantalla"),
+          "pantalla que tarda y al final no puede: el panel da el motivo de la pantalla, no «no hay pantalla»")
+
+    # Recibe la canción y no vuelve a decir nada.
+    h.pantalla = [(0, "loading", "video 1 de 2")]
+    h.sesion(guion)
+    check(h.dicho == falla and apuntado(h, "dejó de dar", "warn") and not apuntado(h, "Ninguna pantalla"),
+          "pantalla que recibe la canción y se queda callada: lo dice, y no la confunde con «no hay pantalla»")
+    config.MUSIC_START_TIMEOUT = antes
+
+    h.pantalla = "apagada"
+    h.sesion(guion)
+    check(h.dicho == falla and apuntado(h, "Ninguna pantalla contestó", "warn"),
+          "sin ninguna pantalla: dice que la canción suena en la proyección y que no hay ninguna abierta")
+    h.pantalla = "normal"
+
+    # Avisos que no cuentan.
+    h.music.reset()
+    check(app.music_event(app._music_play_id, "loading") is False,
+          "un aviso con el modo apagado no cuenta")
+    h.music.play({"title": "x", "artist": "", "seconds": 1, "youtube": []})
+    app._music_alive = 0.0
+    check(app.music_event(app._music_play_id + 7, "loading") is False and app._music_alive == 0.0,
+          "un aviso de OTRA canción (una pantalla atrasada) no cuenta como señal de vida")
+    check(app.music_event(app._music_play_id, "cualquier cosa") is False,
+          "un aviso desconocido se rechaza")
+    h.music.reset()
+
+    # La comprobación que hace la proyección al abrirse.
+    del h.registro[:]
+    app.projection_sound(False, "al abrir")
+    check(apuntado(h, "SIN permiso de sonido", "warn") and apuntado(h, "Proyectar MECH"),
+          "proyección abierta sin permiso de sonido: el panel lo avisa y dice cómo arreglarlo")
+    del h.registro[:]
+    app.projection_sound(True, "al abrir")
+    app.projection_sound(True, "con un toque")
+    check(len(h.registro) == 2 and all(n == "ok" for n, _ in h.registro),
+          "con permiso (o tras un toque): lo apunta como bueno")
 
 
 def probar_busqueda() -> None:
@@ -687,6 +830,7 @@ def main() -> int:
         h = montar()
         probar_sesiones(h)
         probar_casos(h)
+        probar_pantalla(h)
         probar_busqueda()
     except Exception as e:
         import traceback

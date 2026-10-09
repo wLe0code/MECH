@@ -1334,8 +1334,9 @@ MUSIC_VOLUME = float(os.environ.get("MUSIC_VOLUME", "0.9"))
 # Espera tras cada frase de MECH antes de volver a abrir el micrófono (el
 # parlante Bluetooth arrastra buffer y MECH se oiría a sí mismo).
 MUSIC_DRAIN_SECONDS = float(os.environ.get("MUSIC_DRAIN_SECONDS", "0.8"))
-# Si en estos segundos ninguna pantalla avisa de que la canción empezó a
-# sonar, se da por fallida (¿está abierta la proyección?).
+# Si pasan estos segundos sin que ninguna pantalla dé señales de vida, la
+# canción se da por fallida (¿está abierta la proyección?). Mientras una
+# pantalla siga avisando de que está probando videos, se la espera.
 MUSIC_START_TIMEOUT = float(os.environ.get("MUSIC_START_TIMEOUT", "25"))
 # Lo más que puede durar una canción (segundos). Sirve para descartar en
 # YouTube los «10 horas de…» y como tope si la pantalla nunca avisa del final.

@@ -114,6 +114,11 @@ class MechApp:
         # Cuál de los videos candidatos está sonando: "youtube:<id>". Lo dice
         # la pantalla al empezar; de ahí sale cuánto se espera el final.
         self._music_source = ""
+        # Última señal de vida de una pantalla para la canción en curso (0 =
+        # ninguna todavía) y hasta cuándo se espera su final. Los dos los
+        # mueve la pantalla con sus avisos; ver `music_event`.
+        self._music_alive = 0.0
+        self._music_until = 0.0
         # Dónde va la reproducción en la pantalla principal (/projector), para
         # que el visor VR del teléfono se enganche en el mismo segundo en vez
         # de empezar el video desde cero. Lo reporta el propio <video>.
@@ -840,6 +845,8 @@ class MechApp:
         # Los rótulos de la pantalla, en el idioma del despertar.
         snap["label"] = lang.say("music_label")
         snap["note"] = "YouTube"            # se llama igual en los diez idiomas
+        # Solo se ve si el navegador arrancó el video sin sonido.
+        snap["hint"] = lang.say("music_tap_sound")
         snap["volume"] = max(0.0, min(1.0, float(config.MUSIC_VOLUME)))
         snap["play_id"] = self._music_play_id
         self.state["music"] = snap
@@ -1059,10 +1066,12 @@ class MechApp:
         Devuelve cómo acabó: "ended", "error", "interrupted" o "stopped".
 
         Suena en la PANTALLA de proyección, no aquí (ver backend/music.py):
-        se le manda la ficha por WebSocket y ella avisa cuando empieza y
-        cuando termina. Si en `MUSIC_START_TIMEOUT` s ninguna pantalla dice
-        que empezó, es que no hay proyección abierta (o el navegador bloqueó
-        el sonido) y se da por fallida en vez de esperar la canción entera.
+        se le manda la ficha por WebSocket y ella avisa de cómo va (ver
+        `music_event`). Si pasan `MUSIC_START_TIMEOUT` s sin que ninguna
+        pantalla dé señales de vida, es que no hay proyección abierta y se
+        da por fallida en vez de esperar la canción entera. Mientras una
+        pantalla siga avisando («pruebo el video 2 de 3»), se la espera: es
+        ella la que dice si pudo o no, y por qué.
         """
         self.mic_release.set()          # el micrófono es del «oye MECH»
         tts.clear_stop()
@@ -1080,6 +1089,8 @@ class MechApp:
         self._music_play_id += 1
         self._music_result = None
         self._music_source = ""
+        self._music_alive = 0.0
+        self._music_until = 0.0
         self._music_started.clear()
         self._music_done.clear()
         music.play(track)
@@ -1098,19 +1109,41 @@ class MechApp:
         if self.interrupts.start():
             self.log("Podés decir «oye MECH» para cortar la canción.", "info")
         try:
-            self._music_started.wait(timeout=config.MUSIC_START_TIMEOUT)
+            # 1) A que EMPIECE. El plazo cuenta desde la última señal de vida
+            #    de una pantalla, no desde que se mandó la canción.
+            mandada = time.time()
+            while not self._music_started.is_set():
+                falta = max(mandada, self._music_alive) + config.MUSIC_START_TIMEOUT - time.time()
+                if falta <= 0:
+                    break
+                self._music_started.wait(timeout=min(falta, 0.5))
             if self._music_result is None and not self._music_done.is_set():
                 if not self._music_started.is_set():
-                    self.log(
-                        "Ninguna pantalla empezó a reproducir la canción. ¿Está "
-                        "abierta la proyección? ¿El navegador bloqueó el sonido?",
-                        "warn")
+                    if self._music_alive:
+                        self.log(
+                            "La proyección recibió la canción pero dejó de dar "
+                            "señales sin decir si pudo ponerla. Recargala (o "
+                            "cerrala y volvé a abrirla con «Proyectar MECH»).",
+                            "warn")
+                    else:
+                        self.log(
+                            "Ninguna pantalla contestó: la canción suena en la "
+                            "PROYECCIÓN y no hay ninguna abierta (o es una "
+                            "página vieja: recargala). Abrila con «Proyectar "
+                            "MECH».", "warn")
                     self._music_result = "error"
                 else:
-                    tope = self._music_wait_seconds(track)
-                    if not self._music_done.wait(timeout=tope):
-                        self.log("La pantalla no avisó del final de la canción.", "warn")
-                        self._music_result = "ended"
+                    # 2) A que TERMINE. `_music_until` lo puede correr la
+                    #    pantalla (si alguien activa el sonido, la canción
+                    #    vuelve a empezar).
+                    self._music_until = time.time() + self._music_wait_seconds(track)
+                    while not self._music_done.is_set():
+                        falta = self._music_until - time.time()
+                        if falta <= 0:
+                            self.log("La pantalla no avisó del final de la canción.", "warn")
+                            self._music_result = "ended"
+                            break
+                        self._music_done.wait(timeout=min(falta, 0.5))
         finally:
             self.interrupts.stop()
             self.arduino.set_mode("IDLE")
@@ -1125,7 +1158,24 @@ class MechApp:
         """La pantalla avisa de cómo va la canción (POST /api/music/event)."""
         if play_id != self._music_play_id or not music.is_playing():
             return False                # es de una canción anterior
-        if event == "playing":
+        self._music_alive = time.time()     # hay una pantalla, y está en ello
+        if event == "loading":
+            pass                            # solo la señal de vida
+        elif event == "muted":
+            # El video arrancó, pero el navegador no lo dejó SONAR (pide un
+            # toque). Se ve, la pantalla enseña el aviso, y aquí se explica.
+            self.log(
+                "La canción se VE pero NO SUENA: el navegador de la proyección "
+                "no deja sonar sin un toque. Tocá esa pantalla una vez (un clic "
+                "o una tecla) y vuelve a empezar con sonido. Para que no pase "
+                "más en la Pi: cerrá TODAS las ventanas de Chromium y abrí la "
+                "proyección con el icono «Proyectar MECH».", "warn")
+        elif event == "unmuted":
+            # Alguien tocó: la canción vuelve a empezar, ahora con sonido, así
+            # que su final se espera desde ahora.
+            self.log("Sonido activado en la proyección: la canción empieza de nuevo.", "ok")
+            self._music_until = time.time() + self._music_wait_seconds(music.track() or {})
+        elif event == "playing":
             self._music_source = detail or ""
             candidatos = [v.get("id") for v in (music.track() or {}).get("youtube") or []]
             vid = self._music_source.split(":", 1)[-1]
@@ -1147,6 +1197,26 @@ class MechApp:
         else:
             return False
         return True
+
+    def projection_sound(self, allowed: bool, how: str = "") -> None:
+        """La proyección dice si su navegador deja SONAR sin un toque.
+
+        Lo comprueba al abrirse (POST /api/projection/sound). Sin ese permiso
+        el modo música y los videos de marketing salen mudos: mejor saberlo
+        al abrir la pantalla que a media canción.
+        """
+        if allowed and "toque" in (how or ""):
+            self.log("Proyección: sonido activado con un toque en la pantalla.", "ok")
+        elif allowed:
+            self.log("Proyección abierta, con permiso de sonido (el modo música "
+                     "y marketing se van a oír).", "ok")
+        else:
+            self.log(
+                "OJO: la proyección se abrió SIN permiso de sonido: el modo "
+                "música y los videos de marketing saldrían MUDOS. Tocá esa "
+                "pantalla una vez (un clic o una tecla). En la Pi, para que no "
+                "haga falta: cerrá TODAS las ventanas de Chromium y abrila con "
+                "el icono «Proyectar MECH».", "warn")
 
     def handle_music_again(self, text: str) -> bool:
         """Lo que contestó a «¿seguimos con la música?».

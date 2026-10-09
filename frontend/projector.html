@@ -75,6 +75,9 @@
     font-size: clamp(13px, 1.5vw, 20px); letter-spacing: .3px;
     pointer-events: none; z-index: 10;
   }
+  /* El navegador no deja sonar sin un toque (ver «comprobarSonido» abajo): el
+     aviso se queda puesto, haya o no playlist, hasta que alguien toque. */
+  body.sin-sonido #audio-hint { display: block !important; }
   /* Permite forzar fullscreen al hacer click. */
 </style>
 </head>
@@ -87,7 +90,7 @@
 
 <script src="/static/subtitles.js"></script>
 <script src="/static/trivia.js"></script>
-<script src="/static/music.js"></script>
+<script src="/static/music.js?v=13"></script>
 <script>
 /* Pantalla de proyección fullscreen.
  *
@@ -120,7 +123,7 @@ const juego = window.MechTrivia
    cuándo termina. Ver frontend/music.js y backend/music.py. */
 const musica = window.MechMusic
   ? MechMusic.create(document.body)
-  : { apply() {}, clear() {} };
+  : { apply() {}, clear() {}, sonido() {} };
 
 /* ─── Reposo: las «bolitas» cuando no hay nada que proyectar ──────────
  *
@@ -392,6 +395,75 @@ function hideAudioHint() {
   if (el) el.style.display = 'none';
 }
 
+/* ─── ¿Este navegador deja SONAR sin un toque? ────────────────────────
+ *
+ * Los navegadores no dejan arrancar nada CON SONIDO hasta que alguien toca la
+ * página, salvo que se abran con --autoplay-policy=no-user-gesture-required
+ * (lo llevan los iconos «Iniciar MECH» y «Proyectar MECH» de la Pi). Sin ese
+ * permiso, el modo música y los videos de marketing salen MUDOS.
+ *
+ * Antes eso se descubría a media canción. Ahora se comprueba AL ABRIR la
+ * página, intentando reproducir una décima de segundo de silencio: si el
+ * navegador se niega, se pone el aviso «Toca la pantalla…» desde el primer
+ * momento y se le dice al servidor, que lo apunta en el panel. Un solo toque
+ * (o una tecla) lo arregla para todo lo que suene después.
+ */
+let sinSonido = false;
+// Lo último que se supo: null = aún no se sabe, true = deja sonar, false = no.
+// Se le repite al servidor cada vez que vuelve (ver `connect`): el equipo
+// reinicia MECH con la proyección abierta, y esa línea del panel es la que
+// dice por qué algo no suena.
+let sonidoEstado = null;
+
+function avisarSonido(permitido, como) {
+  sonidoEstado = permitido;
+  fetch('/api/projection/sound', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ allowed: permitido, how: como || '' }),
+  }).catch(() => {});
+}
+
+function silencioWav() {
+  // Una décima de segundo de silencio, hecha aquí mismo (sin archivos).
+  const n = 800;
+  const b = new DataView(new ArrayBuffer(44 + n));
+  const letras = (o, t) => { for (let i = 0; i < t.length; i++) b.setUint8(o + i, t.charCodeAt(i)); };
+  letras(0, 'RIFF'); b.setUint32(4, 36 + n, true); letras(8, 'WAVEfmt ');
+  b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, 8000, true); b.setUint32(28, 8000, true);
+  b.setUint16(32, 1, true); b.setUint16(34, 8, true);
+  letras(36, 'data'); b.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+}
+
+function comprobarSonido() {
+  let intento;
+  try { intento = new Audio(silencioWav()).play(); } catch (e) { return; }
+  if (!intento || !intento.then) return;
+  intento.then(() => avisarSonido(true, 'al abrir')).catch((e) => {
+    // Solo cuenta el «no permitido»; cualquier otro fallo no es el permiso.
+    if (!e || e.name !== 'NotAllowedError') return;
+    sinSonido = true;
+    document.body.classList.add('sin-sonido');
+    showAudioHint();
+    avisarSonido(false, 'al abrir');
+  });
+}
+
+/* Alguien tocó la pantalla (o una tecla): desde ahora el navegador deja
+   sonar. Si había una canción puesta sin sonido, se le da. */
+function tocaron() {
+  if (sinSonido) {
+    sinSonido = false;
+    document.body.classList.remove('sin-sonido');
+    hideAudioHint();
+    avisarSonido(true, 'con un toque');
+  }
+  musica.sonido();
+}
+
 function detectVideo(url) {
   return /\.(mp4|webm|mov|m4v)$/i.test(url || '');
 }
@@ -419,8 +491,16 @@ function applyState(s) {
   clear();
 }
 
+let yaConecto = false;
+
 function connect() {
   ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    // Al volver el servidor (lo reiniciaron), se le repite cómo está el
+    // sonido. La primera vez no: ya lo dijo `comprobarSonido`.
+    if (yaConecto && sonidoEstado !== null) avisarSonido(sonidoEstado, 'al reconectar');
+    yaConecto = true;
+  };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'state') applyState(msg.state);
@@ -457,6 +537,7 @@ function connect() {
 // bloqueado: ese click ES el gesto que estaba esperando.
 document.body.addEventListener('click', () => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+  tocaron();
   if (pl && pl.audio) {
     const v = stage.querySelector('video');
     if (v && v.muted) {
@@ -467,6 +548,14 @@ document.body.addEventListener('click', () => {
   }
 });
 
+document.addEventListener('keydown', tocaron);
+// Un toque DENTRO del video de YouTube también vale para el navegador, pero
+// de ese no llega ningún clic a esta página: se mira de vez en cuando.
+setInterval(() => {
+  if (sinSonido && navigator.userActivation && navigator.userActivation.hasBeenActive) tocaron();
+}, 1000);
+
+comprobarSonido();
 connect();
 </script>
 </body>

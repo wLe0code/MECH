@@ -54,9 +54,23 @@ Abre la ventana con **lo que MECH proyecta**, a pantalla completa.
 
 ⚠️ Lleva el flag **`--autoplay-policy=no-user-gesture-required`**, que **no
 es opcional**: sin él los navegadores no dejan reproducir con sonido sin un
-clic previo, los videos del slot de marketing se ven **mudos** y la pantalla
-muestra «toca la pantalla para activar el sonido». Es un fallo que ya costó
-una prueba entera.
+clic previo, los videos del slot de marketing se ven **mudos**, el **modo
+música no llega a sonar** y la pantalla muestra «toca la pantalla para
+activar el sonido». Es un fallo que ya costó una prueba entera.
+
+⚠️ **Y ese flag solo cuenta en el PRIMER Chromium que se abre.** Chromium es
+un solo programa: si ya hay uno abierto, la ventana nueva se mete en ese y
+sus propias banderas se ignoran. Como «Iniciar MECH» abre el panel ANTES de
+que nadie toque «Proyectar MECH», el panel (`panel-mech.sh`) lleva el mismo
+flag. Y si aun así hay un Chromium abierto sin él (uno abierto a mano, o el
+panel de antes de actualizar), «Proyectar MECH» lo detecta, lo explica y
+**se ofrece a cerrarlo y abrirlo bien** (Enter = sí; cierra TODAS las
+ventanas de Chromium y vuelve a abrir el panel). Si se contesta que no, la
+proyección se abre igual y pide un toque en la pantalla para poder sonar.
+
+Para saber cómo quedó: al abrirse, la proyección se lo dice al servidor y
+sale en el registro del panel — «Proyección abierta, con permiso de sonido»
+o «OJO: la proyección se abrió SIN permiso de sonido».
 
 Espera a que el servidor responda, así que se puede lanzar justo después de
 «Iniciar MECH». Para salir: **Alt+F4**.
@@ -97,6 +111,7 @@ proyección — abrir el panel ahí la taparía.
 | `bad interpreter: /bin/bash^M` | El script llegó con finales de línea de Windows. Lo previene el `.gitattributes`; si aparece, `dos2unix ~/MECH/pi/*.sh` |
 | «no encuentro Chromium» | `sudo apt install chromium` |
 | Arranca pero el panel sale viejo | En el navegador: **Ctrl+Shift+R** (recarga sin caché) |
+| La proyección no suena (modo música, marketing) | Doble click otra vez en «Proyectar MECH» y Enter cuando pregunte; o un clic en la pantalla de proyección |
 | Arranca solo y no quiero | Doble click en `pi/autoarranque.sh` para apagarlo |
 | No arranca solo aunque lo activé | El arranque automático va con la SESIÓN de escritorio: la Pi tiene que entrar al escritorio sola (sin pedir contraseña) |
 | Dice que no pudo actualizar | Sin internet, o hay cambios sin guardar en la Pi. Arranca igual; para verlo: `cd ~/MECH && git status` |

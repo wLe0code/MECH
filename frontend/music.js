@@ -7,8 +7,13 @@
  *           track: {title, artist, seconds,
  *                   youtube: [{id, seconds, channel, thumb}, ...]},
  *           label, note, volume, lang}
- *   avisa  POST /api/music/event  {play_id, event: "playing"|"ended"|"error",
- *                                  detail}
+ *   avisa  POST /api/music/event  {play_id, event, detail}
+ *            "loading"  recibí la canción, pruebo el video N (señal de vida)
+ *            "playing"  empezó (detail = "youtube:<id>")
+ *            "muted"    …pero SIN SONIDO: el navegador lo bloqueó
+ *            "unmuted"  alguien tocó la pantalla: ya suena, desde el principio
+ *            "ended"    terminó
+ *            "error"    no se pudo (detail = el motivo)
  *
  * El servidor no sabe cuánto tarda en cargar ni cuándo acaba de verdad: lo
  * sabe quien lo reproduce. Es el mismo trato que con los videos de marketing
@@ -39,9 +44,18 @@
  * «state», que llega a cada rato, solo sirve para saber que hay que callar:
  * si también arrancara videos, cada cambio de fase lo reiniciaría.
  *
- * ⚠️ AUDIO: el navegador no deja sonar sin un gesto del usuario. En la Pi,
- * Chromium se abre con --autoplay-policy=no-user-gesture-required (el icono
- * «Proyectar MECH» ya lo lleva). Sin eso el video no arranca solo.
+ * ⚠️ AUDIO: el navegador no deja arrancar un video CON SONIDO sin un gesto
+ * del usuario. En la Pi, Chromium se abre con
+ * --autoplay-policy=no-user-gesture-required (lo llevan «Iniciar MECH» y
+ * «Proyectar MECH»). Si aun así lo bloquea (la proyección abierta desde una
+ * laptop, o un Chromium que ya estaba abierto sin ese permiso), YouTube lo
+ * avisa (onAutoplayBlocked) y aquí NO se da la canción por perdida: se
+ * arranca SIN sonido —eso el navegador siempre lo deja—, se pide un toque en
+ * la tarjeta y se le dice al servidor, que lo apunta en el panel. Con el
+ * primer toque (en cualquier parte, también sobre el video) vuelve a empezar
+ * con sonido, y las canciones siguientes ya suenan solas.
+ * (Hasta el 9 oct 2026 el video se quedaba en su carátula sin arrancar, la
+ * pantalla saltaba de candidato en candidato y a los 25 s volvía al reposo.)
  *
  * ANUNCIOS: con la sesión de YouTube Premium iniciada en ESTE navegador, el
  * reproductor no debería ponerlos. Sin sesión, puede salir uno antes.
@@ -129,6 +143,17 @@ window.MechMusic = (function () {
     font-size: clamp(11px, 1.15vw, 20px); color: rgba(255,255,255,.5); letter-spacing: .04em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* El video arrancó SIN sonido (el navegador lo bloqueó): se pide un toque.
+     Va en la tarjeta, nunca sobre el video. Las barritas no bailan: no suena. */
+  .mm-aviso {
+    display: none; margin-top: .6vh; padding: 1.5vh 1.2vw; border-radius: 1.4vmin;
+    font-size: clamp(13px, 1.5vw, 28px); font-weight: 700; line-height: 1.25;
+    color: #fbbf24; background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.5);
+    animation: mm-late 1.6s ease-in-out infinite;
+  }
+  .mm-wrap.mudo .mm-aviso { display: block; }
+  .mm-wrap.mudo .mm-barras i { animation: none; }
+  @keyframes mm-late { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
   /* Pantalla de pie (un teléfono): el video arriba y la tarjeta debajo. */
   @media (max-aspect-ratio: 1/1) {
     .mm-caja { flex-direction: column; align-items: stretch; gap: 3vh; }
@@ -136,7 +161,7 @@ window.MechMusic = (function () {
     .mm-ficha { flex: none; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .mm-caja, .mm-wrap.sonando .mm-barras i { animation: none; }
+    .mm-caja, .mm-aviso, .mm-wrap.sonando .mm-barras i { animation: none; }
     .mm-avance { transition: none; }
   }`;
 
@@ -149,12 +174,21 @@ window.MechMusic = (function () {
     conEstilos = true;
   }
 
+  /* Los avisos van EN FILA: «playing» y «muted» salen casi a la vez, y si
+     cada uno fuera por su cuenta podrían llegar al servidor al revés. Cada
+     uno tiene 4 s: uno que se cuelgue no puede atascar a los demás. */
+  let fila = Promise.resolve();
   function avisar(play_id, event, detail) {
-    fetch('/api/music/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ play_id, event, detail: detail || '' }),
-    }).catch(() => {});
+    fila = fila.then(() => {
+      const corte = new AbortController();
+      const reloj = setTimeout(() => corte.abort(), 4000);
+      return fetch('/api/music/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ play_id, event, detail: detail || '' }),
+        signal: corte.signal,
+      }).catch(() => {}).then(() => clearTimeout(reloj));
+    });
   }
 
   // Un identificador de video de YouTube son 11 letras, números, - o _.
@@ -215,17 +249,27 @@ window.MechMusic = (function () {
     const va = el('span', '', tiempos);
     const dura = el('span', '', tiempos);
     const nota = el('div', 'mm-nota', ficha);
+    const aviso = el('div', 'mm-aviso', ficha);
     cont.appendChild(wrap);
 
     let player = null;     // el reproductor de YouTube en curso
     let espera = 0;        // espera a que un video arranque
     let pulso = 0;         // refresco de la barra de avance
     let actual = 0;        // play_id de lo que suena (0 = nada)
+    // Si el video va SIN SONIDO porque el navegador lo bloqueó: quién es, a
+    // qué volumen tenía que sonar y si vale activarlo sin un toque nuevo.
+    let mudo = null;       // {p, id, vol, solo}
+
+    // ¿Alguien tocó ya esta página (o el video)? Con eso el navegador deja
+    // sonar. Un toque DENTRO del video también cuenta, y de ese no nos llega
+    // ningún clic: por eso se mira aquí y no solo en el clic de la página.
+    const tocada = () => !!(navigator.userActivation && navigator.userActivation.hasBeenActive);
 
     function soltarVideo() {
       if (espera) { clearTimeout(espera); espera = 0; }
       if (pulso) { clearInterval(pulso); pulso = 0; }
-      wrap.classList.remove('sonando');
+      mudo = null;
+      wrap.classList.remove('sonando', 'mudo');
       if (player) {
         const p = player;
         player = null;
@@ -250,6 +294,22 @@ window.MechMusic = (function () {
       dura.textContent = total_s > 0 ? reloj(total_s) : '';
     }
 
+    /* Ya se puede sonar (alguien tocó): el video que iba sin sonido vuelve a
+       empezar, ahora con sonido, para que no se pierda el principio. */
+    function darSonido() {
+      if (!mudo) return;
+      const m = mudo;
+      mudo = null;
+      wrap.classList.remove('mudo');
+      try {
+        m.p.unMute();
+        m.p.setVolume(m.vol);
+        m.p.seekTo(0, true);
+        m.p.playVideo();
+      } catch (x) { /* si no puede, el reproductor lo dirá */ }
+      avisar(m.id, 'unmuted');
+    }
+
     function sonar(d) {
       const t = d.track;
       parar();
@@ -258,6 +318,7 @@ window.MechMusic = (function () {
       rotuloTxt.textContent = d.label || '';
       titulo.textContent = t.title || '';
       artista.textContent = t.artist || '';
+      aviso.textContent = d.hint || 'Toca la pantalla para activar el sonido';
       // La tarjeta entra con su animación en cada canción.
       caja.style.animation = 'none';
       void caja.offsetWidth;
@@ -285,19 +346,41 @@ window.MechMusic = (function () {
       nota.textContent = [v.channel, d.note].filter(Boolean).join('  ·  ');
       const segundos = v.seconds || d.track.seconds || 0;
       pintarAvance(0, segundos);
-      let sonando = false;
+      // Señal de vida: el servidor sabe que HAY una pantalla y que está en
+      // ello, y no la da por ausente mientras se prueban los videos.
+      avisar(id, 'loading', 'video ' + (i + 1) + ' de ' + videos.length);
+      const vol = Math.round(Math.max(0, Math.min(1, typeof d.volume === 'number' ? d.volume : 0.9)) * 100);
+      let sonando = false;     // ya arrancó (con o sin sonido)
+      let sinSonido = false;   // se tuvo que arrancar sin sonido
+      let reanudado = 0;       // cuándo se le quitó la pausa por última vez
       const siguiente = (porque) => {
         if (id === actual && !sonando) probarVideo(d, videos, i + 1, porque);
       };
       // Si en 10 s ni suena ni da error, se pasa al siguiente: no se deja la
       // pantalla esperando.
-      espera = setTimeout(() => siguiente(
-        'el video no arrancó (¿sin internet?, ¿el navegador bloqueó el sonido? ' +
-        'Abre la proyección con el icono «Proyectar MECH»)'), 10000);
+      const plazo = (porque) => {
+        if (espera) clearTimeout(espera);
+        espera = setTimeout(() => siguiente(porque), 10000);
+      };
+      plazo('el video no arrancó en 10 s (¿internet lento o cortado?)');
       cargarYouTube().then((YT) => {
         if (id !== actual || sonando) return;
         const hueco = document.createElement('div');
         marco.appendChild(hueco);
+        /* El navegador no dejó arrancar CON sonido. Sin sonido sí deja: se
+           arranca así (que al menos se vea) y se pide un toque. No es culpa
+           del video, así que NO se salta al siguiente candidato. */
+        const arrancarMudo = () => {
+          if (id !== actual || player !== p || sinSonido) return;
+          sinSonido = true;
+          try { p.mute(); p.playVideo(); } catch (x) { /* lo dirá el plazo */ }
+          if (!sonando) plazo('el navegador no dejó arrancar el video, ni siquiera sin sonido');
+        };
+        const pedirToque = (solo) => {
+          mudo = { p, id, vol, solo };
+          wrap.classList.add('mudo');
+          avisar(id, 'muted', 'el navegador de la proyección no deja sonar sin un toque en la pantalla');
+        };
         const p = new YT.Player(hueco, {
           videoId: v.id,
           width: '100%', height: '100%',
@@ -306,29 +389,50 @@ window.MechMusic = (function () {
             playsinline: 1, iv_load_policy: 3, origin: location.origin,
           },
           events: {
-            onReady: (e) => {
-              const vol = typeof d.volume === 'number' ? d.volume : 0.9;
-              try { e.target.setVolume(Math.round(Math.max(0, Math.min(1, vol)) * 100)); } catch (x) { /* da igual */ }
-              try { e.target.playVideo(); } catch (x) { /* lo dirá el reloj */ }
+            onReady: () => {
+              if (id !== actual || player !== p) return;
+              try { p.setVolume(vol); } catch (x) { /* da igual */ }
+              try { p.playVideo(); } catch (x) { /* lo dirá el plazo */ }
+            },
+            // YouTube avisa cuando el navegador no le dejó arrancar con
+            // sonido. ⚠️ No lo cambies por «si a los N s no arrancó, es que
+            // lo bloquearon»: silenciaría una canción que solo tarda en cargar.
+            onAutoplayBlocked: () => {
+              if (id !== actual || player !== p) return;
+              if (!sonando) { arrancarMudo(); return; }
+              // Lo bloqueó DESPUÉS de un toque (raro): otra vez sin sonido, y
+              // ya solo se reintenta con un toque nuevo, no por nuestra cuenta.
+              try { p.mute(); p.playVideo(); } catch (x) { /* da igual */ }
+              if (!mudo) pedirToque(false);
             },
             onStateChange: (e) => {
-              if (id !== actual) return;
+              if (id !== actual || player !== p) return;
               if (e.data === 1 && !sonando) {          // 1 = reproduciendo
                 sonando = true;
                 if (espera) { clearTimeout(espera); espera = 0; }
                 wrap.classList.add('sonando');
                 pulso = setInterval(() => {
                   if (player !== p) return;
+                  if (mudo && mudo.solo && tocada()) darSonido();
                   try { pintarAvance(p.getCurrentTime() || 0, p.getDuration() || segundos); } catch (x) { /* aún no */ }
                 }, 500);
                 avisar(id, 'playing', 'youtube:' + v.id);
+                if (sinSonido) pedirToque(true);
+              } else if (e.data === 2 && sonando) {    // 2 = en pausa
+                // Nadie pone pausa aquí (se corta con «oye MECH» o desde el
+                // panel): fue un toque sobre el video, o el navegador. Sigue.
+                // Como mucho una vez cada segundo y medio, por si insiste.
+                if (Date.now() - reanudado > 1500) {
+                  reanudado = Date.now();
+                  try { p.playVideo(); } catch (x) { /* da igual */ }
+                }
               } else if (e.data === 0 && sonando) {    // 0 = terminó
                 avisar(id, 'ended');
                 parar();
               }
             },
             onError: (e) => {
-              if (id !== actual) return;
+              if (id !== actual || player !== p) return;
               if (sonando) {
                 avisar(id, 'error', 'YouTube cortó el video (código ' + e.data + ')');
                 parar();
@@ -357,6 +461,8 @@ window.MechMusic = (function () {
         sonar(d);
       },
       clear() { parar(); },
+      /* Alguien tocó la pantalla: si la canción iba sin sonido, se le da. */
+      sonido() { darSonido(); },
     };
   }
 

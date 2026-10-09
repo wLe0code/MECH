@@ -683,6 +683,20 @@ _PHRASES: dict[str, dict[str, str]] = {
         "zh": "音乐模式",
         "ko": "음악 모드",
     },
+    # Tampoco se dice: sale en la tarjeta de la canción cuando el navegador
+    # arrancó el video SIN sonido (pide un toque para dejarlo sonar).
+    "music_tap_sound": {
+        "es": "Toca la pantalla para activar el sonido",
+        "en": "Tap the screen to turn the sound on",
+        "fr": "Touchez l'écran pour activer le son",
+        "pt": "Toque na tela para ativar o som",
+        "de": "Tippe auf den Bildschirm, um den Ton einzuschalten",
+        "it": "Tocca lo schermo per attivare l'audio",
+        "ja": "画面をタップすると音が出ます",
+        "ru": "Нажмите на экран, чтобы включить звук",
+        "zh": "点击屏幕即可开启声音",
+        "ko": "화면을 눌러 소리를 켜세요",
+    },
 }
 
 

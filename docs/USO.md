@@ -369,11 +369,18 @@ música: así NO va a poder buscar canciones — …»** con el motivo y qué
 tocar. Lo mismo se ve, sin encender el robot, con
 `python scripts/probar_musica.py --red`.
 
-Cuatro cosas que hay que saber:
+Cinco cosas que hay que saber:
 
 - **Suena en la pantalla de proyección**, no en el panel: tiene que estar
   abierta (icono **Proyectar MECH**). Ahí se ve el video de la canción y, al
   lado, su **tarjeta**: título, artista, por dónde va y de qué canal sale.
+- **Si la canción se ve pero no se oye**, y en la tarjeta sale en ámbar
+  **«Toca la pantalla para activar el sonido»**: el navegador de la
+  proyección no deja sonar nada hasta que alguien la toca. **Haz un clic (o
+  pulsa una tecla) en esa pantalla**: la canción vuelve a empezar, ya con
+  sonido, y las siguientes suenan solas. El panel lo avisa también (en el
+  registro, y ya al ABRIR la proyección: «la proyección se abrió SIN permiso
+  de sonido»). Para que no haga falta el toque, ver §8.
 - A veces YouTube no deja poner el video oficial fuera de su página; MECH
   prueba entonces otra versión de la misma canción (por ejemplo, la que
   lleva la letra).
@@ -580,10 +587,11 @@ todo lo que hace. La mayoría de las veces el problema se ve de una.
 | **El brazo saluda hacia atrás** | Ajustes → **«Sentido brazos»**. |
 | **Un botón de movimiento va al revés** | §5, «Si un control va al revés». |
 | **No se oye** | Que el parlante esté encendido, conectado y con volumen. |
-| **Los videos de marketing se ven pero no se oyen** | La proyección se abrió sin el permiso de autoplay. Ciérrala y ábrela con el icono **Proyectar MECH** (ese ya lo lleva). |
+| **Los videos de marketing se ven pero no se oyen** | La proyección no tiene permiso de sonido (sale «Toca la pantalla para activar el sonido»). Ver la fila siguiente: es lo mismo. |
+| **La canción se ve pero no suena**, o en la proyección sale **«Toca la pantalla para activar el sonido»** | El navegador no deja sonar sin un toque. **Arreglo rápido:** un clic (o una tecla) en la pantalla de proyección. **Arreglo de verdad, en la Pi:** doble clic en **Proyectar MECH** otra vez: si ve un Chromium abierto sin el permiso, se ofrece a cerrarlo y abrirlo bien (Enter). Pasa cuando Chromium ya estaba abierto de antes (a mano, o de antes de actualizar): la ventana nueva se mete en ese y hereda que no puede sonar. Si abres la proyección desde una **laptop**, siempre hace falta ese primer clic. |
 | **La proyección de marketing dura un segundo** | Es el formato de los videos. El panel dice cuáles fallaron y da el comando para reconvertirlos. |
 | **Las ruedas no se mueven** | Prueba `MOVE:0:0:100` desde el panel (vista Arduino → comando crudo) con el bucle de voz apagado. |
-| **El modo música dice «algo falló al reproducirla»** | El video suena en la **pantalla de proyección**: ¿está abierta? ¿se abrió con el icono **Proyectar MECH**? (sin él el navegador no deja que el video arranque solo). ¿Hay internet? El registro del panel dice el motivo exacto. |
+| **El modo música dice «algo falló al reproducirla»** | El registro del panel dice el motivo exacto. «Ninguna pantalla contestó» = la **proyección** no está abierta (o es una página vieja: ciérrala y ábrela con **Proyectar MECH**). «La pantalla no pudo reproducir la canción: …» = lo que dijo la pantalla: sin internet, o los videos de esa canción no se dejan poner fuera de YouTube. |
 | **MECH dice «me es imposible poner música»** | El modo no puede usar YouTube. El registro del panel dice por qué y qué tocar: falta `YOUTUBE_API_KEY` en el `.env` de la Pi (o está en otro archivo), la clave es de otro tipo (tiene que empezar por `AIza`; las de AI Studio no valen), no tiene activada «YouTube Data API v3», tiene una restricción, no hay internet, o se acabaron las búsquedas del día (vuelven al día siguiente). Tras arreglarlo no hay que reiniciar: como mucho, esperar dos minutos. |
 | **Salen anuncios antes de la canción** | El Chromium de la Pi no tiene iniciada la sesión de YouTube Premium: ábrelo, entra a youtube.com e inicia sesión. |
 | **No encuentra la canción, o pone otra** | Di el título y el artista; prueba escribiéndola en la tarjeta MODO MÚSICA del panel. Si por ahí sí, es que no te entendió al hablar. |

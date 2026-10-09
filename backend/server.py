@@ -1063,8 +1063,15 @@ class MusicText(BaseModel):
 
 class MusicEvent(BaseModel):
     play_id: int = 0
-    event: str = ""        # "playing" | "ended" | "error"
+    # "loading" (señal de vida) | "playing" | "muted" (se ve pero el navegador
+    # no la deja sonar) | "unmuted" | "ended" | "error"
+    event: str = ""
     detail: str = ""
+
+
+class ProjectionSound(BaseModel):
+    allowed: bool = True
+    how: str = ""          # "al abrir" | "con un toque"
 
 
 @app.post("/api/music/start")
@@ -1121,6 +1128,20 @@ async def music_event(e: MusicEvent):
     sabe quien la reproduce (igual que con los videos de marketing).
     """
     return {"ok": get_app().music_event(e.play_id, e.event, e.detail)}
+
+
+@app.post("/api/projection/sound")
+async def projection_sound(s: ProjectionSound):
+    """La proyección avisa, al abrirse, de si su navegador deja SONAR.
+
+    Los navegadores no dejan arrancar nada con sonido sin un toque, salvo
+    que se abran con `--autoplay-policy=no-user-gesture-required` (los
+    iconos de la Pi lo llevan). Sin ese permiso el modo música y los videos
+    de marketing salen mudos; así se sabe al abrir la pantalla, no a media
+    canción.
+    """
+    get_app().projection_sound(s.allowed, s.how)
+    return {"ok": True}
 
 
 @app.post("/api/trivia/start")
