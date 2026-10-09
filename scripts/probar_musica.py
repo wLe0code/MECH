@@ -417,9 +417,24 @@ def probar_casos(h) -> None:
 def probar_busqueda() -> None:
     print("\n=== 4. La búsqueda en YouTube, con respuestas de mentira de Google ===")
     import importlib
+    import tempfile
     import urllib.error
     import youtube_music
-    yt = importlib.reload(youtube_music)
+    # La clave se lee también del `.env`, en vivo: aquí se mira uno de
+    # mentira para que la clave DE VERDAD de esta máquina no cambie el
+    # resultado (ni se use).
+    carpeta = Path(tempfile.mkdtemp(prefix="mech-musica-")) / "backend"
+    carpeta.mkdir()
+    env_real, config.ENV_PATH = config.ENV_PATH, carpeta / ".env"
+    try:
+        _busqueda(importlib.reload(youtube_music), importlib, urllib)
+        _la_clave(importlib.reload(youtube_music), carpeta)
+    finally:
+        config.ENV_PATH = env_real
+        importlib.reload(youtube_music)
+
+
+def _busqueda(yt, importlib, urllib) -> None:
     config.YOUTUBE_API_KEY = "clave-de-mentira"
     config.MUSIC_COUNTRY, config.MUSIC_ALLOW_EXPLICIT, config.MUSIC_MAX_SECONDS = "CR", False, 600.0
     check(yt.segundos("PT3M49S") == 229 and yt.segundos("PT1H2M3S") == 3723 and yt.segundos("P0D") == 0,
@@ -494,31 +509,166 @@ def probar_busqueda() -> None:
     config.GOOGLE_API_KEY = guardada
 
 
-def clave_real() -> str:
-    """La clave para `--red`: del entorno, o de backend/.env si está ahí."""
-    import os
-    valor = os.environ.get("YOUTUBE_API_KEY", "").strip()
-    if valor:
-        return valor
-    env = base.RAIZ / "backend" / ".env"
-    if env.exists():
-        for linea in env.read_text(encoding="utf-8").splitlines():
-            if linea.strip().startswith("YOUTUBE_API_KEY="):
-                return linea.split("=", 1)[1].strip()
-    return ""
+BUENA = "AIzaSy" + "a1B2-c3D4_" * 3 + "xyz"        # con la forma de una clave de verdad
+OTRA = "AIzaSy" + "Z9y8_X7w6-" * 3 + "abc"
+NUEVA = "AQ." + "Ab8RN6" * 8 + "xy"                # las de AI Studio: YouTube no las quiere
+
+
+def _la_clave(yt, carpeta: Path) -> None:
+    """Cómo se lee la clave del `.env` (lo que falló en la Pi el 9 oct)."""
+    print("\n  -- la clave, pegada a mano en el .env --")
+    import time
+    env = carpeta / ".env"
+    plantilla = "ANTHROPIC_API_KEY=x\nVIDEO_LIBRARY_DIR=video_library"
+    config.YOUTUBE_API_KEY, guardada = "", config.GOOGLE_API_KEY
+    config.GOOGLE_API_KEY = NUEVA
+    reloj = [0]
+
+    def con(texto, crudo: bytes = b"") -> str:
+        """Escribe ese `.env` y devuelve la clave que entiende MECH."""
+        env.write_bytes(texto.encode("utf-8") + crudo)
+        reloj[0] += 5                      # que la fecha cambie aunque el disco sea lento
+        import os
+        os.utime(env, (time.time() + reloj[0], time.time() + reloj[0]))
+        return yt.clave()
+
+    check(con(plantilla + "\n") == "" and not yt.disponible()
+          and "YOUTUBE_API_KEY" in yt.por_que_no(),
+          "sin la línea no hay clave, y NO se prueba con la de Gemini nueva («AQ.…»)")
+    for nombre, texto in [
+        ("al final, bien escrita", plantilla + "\nYOUTUBE_API_KEY=" + BUENA + "\n"),
+        ("al final, sin salto de línea detrás", plantilla + "\nYOUTUBE_API_KEY=" + BUENA),
+        ("con la línea vacía de la plantilla más arriba",
+         "YOUTUBE_API_KEY=\n" + plantilla + "\nYOUTUBE_API_KEY=" + BUENA + "\n"),
+        ("con la línea vacía de la plantilla más ABAJO",
+         "YOUTUBE_API_KEY=" + BUENA + "\n" + plantilla + "\nYOUTUBE_API_KEY=\n"),
+        ("entre comillas y con espacios", plantilla + '\nYOUTUBE_API_KEY = "' + BUENA + '" \n'),
+        ("el nombre en minúsculas y con dos puntos", plantilla + "\nyoutube_api_key: " + BUENA + "\n"),
+        ("pegada a la línea de antes (el archivo no acababa en salto)",
+         plantilla + "YOUTUBE_API_KEY=" + BUENA + "\n"),
+        ("con un comentario detrás", plantilla + "\nYOUTUBE_API_KEY=" + BUENA + "  # la de YouTube\n"),
+        ("con saltos de línea de Windows", plantilla.replace("\n", "\r\n") + "\r\nYOUTUBE_API_KEY=" + BUENA + "\r\n"),
+    ]:
+        leida = con(texto)
+        check(leida == BUENA and yt.disponible() and not yt.aviso(), nombre)
+    check(con(plantilla + "\n", ("YOUTUBE_API_KEY=" + BUENA + "\r\n").encode("utf-16-le")) == BUENA,
+          "añadida con «>>» de PowerShell (queda en UTF-16)")
+    check(con(plantilla + "\n" + BUENA + "\n") == BUENA and "suelta" in yt.aviso(),
+          "la clave SUELTA, sin nombre delante: se usa, y se avisa de cómo va")
+    check(con(plantilla + "\n# YOUTUBE_API_KEY=" + BUENA + "\n") == "",
+          "una línea comentada con # no cuenta")
+    check(con(plantilla + "\nYOUTUBE_API_KEY=" + NUEVA + "\n") == NUEVA,
+          "una clave de otro tipo se usa tal cual: quien dice si vale es YouTube")
+
+    # En el archivo equivocado: MECH no la usa, pero dice dónde está.
+    con(plantilla + "\n")
+    ejemplo = carpeta / ".env.example"
+    ejemplo.write_text("YOUTUBE_API_KEY=" + BUENA + "\n", encoding="utf-8")
+    check(not yt.disponible() and ".env.example" in yt.por_que_no() and BUENA not in yt.por_que_no(),
+          "puesta en .env.example: no se usa, y el aviso dice que está ahí")
+    ejemplo.write_text("YOUTUBE_API_KEY=\n", encoding="utf-8")
+    fuera = carpeta.parent / ".env"
+    fuera.write_text("YOUTUBE_API_KEY=" + BUENA + "\n", encoding="utf-8")
+    check(not yt.disponible() and "fuera de la carpeta backend" in yt.por_que_no(),
+          "puesta en un .env fuera de backend: no se usa, y el aviso lo dice")
+    fuera.unlink()
+    config.GOOGLE_API_KEY = OTRA
+    check(yt.clave() == OTRA, "sin clave propia, la de Gemini solo se prueba si es de las de siempre («AIza…»)")
+
+    # Lo que contesta Google, y qué se le dice al equipo.
+    import json as _json
+    import urllib.error
+    original = yt.urllib.request.urlopen
+    respuesta = {}
+
+    def abrir(req, timeout=0):
+        if "red" in respuesta:
+            raise urllib.error.URLError("Temporary failure in name resolution")
+        if "html" in respuesta:
+            return io.BytesIO(b"<html>Inicia sesion en el wifi</html>")
+        raise urllib.error.HTTPError(req.full_url, respuesta["codigo"], "x", {},
+                                     io.BytesIO(_json.dumps({"error": respuesta["error"]}).encode()))
+
+    def falla(codigo, mensaje, razon="forbidden") -> str:
+        respuesta.clear()
+        respuesta.update(codigo=codigo, error={"code": codigo, "message": mensaje,
+                                               "errors": [{"reason": razon}]})
+        yt._cache.clear()
+        try:
+            yt.buscar("Despacito", "Luis Fonsi")
+        except yt.ErrorYouTube as e:
+            return e.motivo + " | " + str(e)
+        return "NO FALLÓ"
+
+    yt.urllib.request.urlopen = abrir
+    try:
+        r = falla(401, "API keys are not supported by this API. Expected OAuth2 access token", "required")
+        check(r.startswith("no encontré YOUTUBE_API_KEY", len("tipoDeClave | ")) and "Gemini" in r,
+              "sin clave propia y YouTube rechaza la de Gemini: dice que NO encontró YOUTUBE_API_KEY")
+        config.GOOGLE_API_KEY = NUEVA
+        con(plantilla + "\nYOUTUBE_API_KEY=" + NUEVA + "\n")
+        r = falla(401, "API keys are not supported by this API. Expected OAuth2 access token", "required")
+        check(r.startswith("tipoDeClave") and "AIza" in r and "AI Studio" in r,
+              "una clave «AQ.…» en YOUTUBE_API_KEY: explica qué tipo de clave hace falta")
+        check(NUEVA not in r and not yt.disponible() and "AIza" in yt.por_que_no(),
+              "…sin enseñar la clave, y deja de intentarlo con ESA clave")
+        check(con(plantilla + "\nYOUTUBE_API_KEY=" + BUENA + "\n") == BUENA and yt.disponible(),
+              "se cambia la clave en el .env con MECH encendido: la nueva vale SIN reiniciar")
+        for mensaje, razon, motivo, pista in [
+            ("API key not valid. Please pass a valid API key.", "badRequest", "keyInvalid", "cópiala otra vez"),
+            ("YouTube Data API v3 has not been used in project 1 before or it is disabled.",
+             "accessNotConfigured", "accessNotConfigured", "Habilitar APIs"),
+            ("Requests to this API youtube.googleapis.com method x are blocked.", "forbidden",
+             "restriccionApi", "Restricciones de API"),
+            ("Requests from referer <empty> are blocked.", "forbidden", "restriccionApp", "Ninguna"),
+            ("The provided API key has an IP address restriction.", "forbidden", "restriccionApp", "Ninguna"),
+        ]:
+            r = falla(400 if motivo == "keyInvalid" else 403, mensaje, razon)
+            check(r.startswith(motivo) and pista in r, f"Google: «{mensaje[:44]}…» → {motivo}")
+        check(not yt.disponible(), "con la clave rechazada no entra al modo…")
+        yt._hasta = time.time() - 1
+        check(yt.disponible(), "…pero vuelve a probar al rato (por si ya lo arreglaron en Google), sin reiniciar")
+        respuesta.clear()
+        respuesta["red"] = True
+        yt._bloqueo = ""
+        try:
+            yt.buscar("Otra", "Más")
+            check(False, "sin internet tenía que avisar")
+        except yt.ErrorYouTube as e:
+            check(e.motivo == "sinRed" and "internet" in str(e) and yt.disponible(),
+                  "sin internet: lo dice claro y NO da la clave por mala")
+        check("internet" in yt.comprobar(), "la comprobación del arranque dice lo mismo")
+        respuesta.clear()
+        respuesta["html"] = True
+        try:
+            yt.buscar("Otra", "Distinta")
+            check(False, "con el portal del wifi tenía que avisar")
+        except yt.ErrorYouTube as e:
+            check(e.motivo == "respuestaRara" and "wifi" in str(e), "el wifi contesta con su página de inicio: lo dice")
+    finally:
+        yt.urllib.request.urlopen = original
+        config.GOOGLE_API_KEY = guardada
 
 
 def probar_red() -> None:
     print("\n=== 5. YouTube DE VERDAD (necesita internet y la clave) ===")
     import importlib
+    import os
     import youtube_music
-    clave = clave_real()
-    if not clave:
-        check(False, "no hay clave: pon YOUTUBE_API_KEY en backend/.env (o como variable) y repite")
-        return
-    config.YOUTUBE_API_KEY = clave
+    # La clave: la variable de entorno o, si no, la de backend/.env — leída
+    # como la lee MECH, para probar también que la línea se entiende.
+    config.YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "").strip()
     config.MUSIC_COUNTRY, config.MUSIC_ALLOW_EXPLICIT, config.MUSIC_MAX_SECONDS = "CR", False, 600.0
     yt = importlib.reload(youtube_music)
+    if not yt.clave():
+        check(False, "no hay clave: " + yt.por_que_no())
+        return
+    if yt.aviso():
+        print("  ojo   " + yt.aviso())
+    motivo = yt.comprobar()
+    check(not motivo, "la clave sirve para YouTube" + (f" — NO: {motivo}" if motivo else ""))
+    if motivo:
+        return
     for titulo, artista in [("Despacito", "Luis Fonsi"), ("Bohemian Rhapsody", "Queen"),
                             ("Shape of You", "Ed Sheeran"), ("Como un pájaro", "Malpaís")]:
         try:

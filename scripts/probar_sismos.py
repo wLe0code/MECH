@@ -178,6 +178,77 @@ S._consultar()
 e6 = [x for x in S.snapshot()["sismos"] if x["id"] == "emsc:e6"][0]
 check(e6["mag"] == 5.1 and app.eventos[-1][1]["nuevos"] == [], "una magnitud revisada se actualiza sin contar como sismo nuevo")
 
+# ------------------------------------------ 3 bis. lo que se le cuenta a Claude
+# («MECH, ha temblado hoy?»: contesta con estos datos, no de memoria)
+print("-- Lo que MECH sabe de sismos (el resumen para Claude)")
+texto = S.para_claude()
+check("Frente a la costa de Costa Rica" in texto and "magnitud 5.1" in texto and "hace 7 min" in texto,
+      "trae el ultimo de la zona: cuando, magnitud y donde")
+check("km de aquí" in texto and "MECH está en Costa Rica" in texto
+      and "OVSICORI-UNA" in texto and "20 km de profundidad" in texto,
+      "con los km hasta MECH, la profundidad y quien lo reporto")
+check(-1 < texto.find("magnitud 7.1") < texto.find("magnitud 6.2") < texto.find("magnitud 5.8"),
+      "del resto del mundo, los mas fuertes primero")
+check("NO predice" in texto and "alerta temprana" in texto and "No inventes" in texto,
+      "y las reglas: informa de lo que ya temblo, no predice ni inventa")
+check(texto.lower().count("tsunami") == 1 and "No tienes avisos de tsunami" in texto,
+      "la marca de «tsunami» del USGS NO se le pasa (no es un aviso): solo la regla de no hablar de eso")
+check(len(texto) < 2600, "es corto (%d letras): viaja en cada pregunta" % len(texto))
+check("OJO" not in texto and "OJO" in S.para_claude(ahora=time.time() + 3600),
+      "si lleva rato sin conexion, avisa de que puede faltar lo ultimo")
+check(sismos.para_claude() == "", "sin el hilo de sismos (modo main.py) no se pasa nada")
+sismos._sismos = S
+check(sismos.para_claude() == S.para_claude(), "con el servidor en marcha, se pasa ese resumen")
+config.SISMOS_ANSWERS_ENABLED = False
+check(sismos.para_claude() == "", "apagado en la configuracion (SISMOS_ANSWERS_ENABLED): nada")
+config.SISMOS_ANSWERS_ENABLED = True
+config.SISMOS_ENABLED = False
+apagado = sismos.para_claude()
+check("apagada" in apagado and "magnitud" not in apagado and "No inventes" in apagado,
+      "con la consulta apagada en el panel: dice que no tiene los datos, sin sismos viejos")
+config.SISMOS_ENABLED = True
+vacio = sismos.Sismos(AppFalsa()).para_claude()
+check("no ha podido consultar" in vacio and "No inventes" in vacio, "sin haber consultado nunca: lo mismo")
+
+# Muchos en la zona: solo los ultimos, mas el mas fuerte de la semana.
+S2 = sismos.Sismos(AppFalsa())
+S2._bajar_usgs = lambda completa: []
+S2._bajar_emsc = lambda completa, zona, ahora: [x for x in map(sismos._de_emsc, [
+    emsc("m%d" % i, time.time() - 1800 * (i + 1), 9.5, -84.0, 2.5 + i / 100, "COSTA RICA") for i in range(12)
+] + [emsc("grande", time.time() - 5 * 86400, 10.2, -85.3, 6.4, "COSTA RICA")]) if x]
+S2._consultar()
+t2 = S2.para_claude()
+check(t2.count("lo reportó") == sismos.PARA_CLAUDE_CERCA + 1 and "13 sismos" in t2,
+      "con 13 en la zona cuenta los 13 pero detalla solo los ultimos %d…" % sismos.PARA_CLAUDE_CERCA)
+check("El más fuerte de la semana en la zona" in t2 and "magnitud 6.4" in t2 and "hace 5 días" in t2,
+      "…y aparte el mas fuerte de la semana, aunque sea de hace dias")
+check("resto del mundo" not in t2, "sin sismos lejos no inventa esa parte")
+
+# Y que de verdad viaja en la peticion a Claude (sin llamar a nadie).
+try:
+    import llm
+except Exception as e:
+    llm = None
+    print("     (sin `anthropic`/`pydantic` aqui: no miro la peticion a Claude; en la Pi si)")
+if llm:
+    pedido = {}
+    class _Mensajes:
+        def parse(self, **k):
+            pedido.update(k)
+            return types.SimpleNamespace(parsed_output="plan", stop_reason="end_turn")
+    llm.get_client = lambda: types.SimpleNamespace(messages=_Mensajes())
+    llm.plan_response("ha temblado hoy?", language="es")
+    bloques = [b["text"] for b in pedido["system"]]
+    check(len(bloques) == 3 and "Sismos recientes" in bloques[1] and "magnitud 5.1" in bloques[1],
+          "la pregunta a Claude lleva los sismos, entre el prompt y el idioma")
+    check("cache_control" in pedido["system"][0] and "cache_control" not in pedido["system"][1],
+          "fuera del bloque cacheado (cambian cada minuto: dentro lo invalidarian)")
+    config.SISMOS_ANSWERS_ENABLED = False
+    llm.plan_response("hola", language="es")
+    check(len(pedido["system"]) == 2, "apagado, la peticion va como antes")
+    config.SISMOS_ANSWERS_ENABLED = True
+sismos._sismos = None
+
 # Se cae internet: el mapa se queda con lo que tenia y lo dice UNA vez.
 RED["caida"] = {"emsc", "usgs"}
 antes = len(S.snapshot()["sismos"])

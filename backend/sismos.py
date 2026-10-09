@@ -488,7 +488,120 @@ class Sismos:
         return datos
 
 
+    # -- Lo que sabe MECH (se lo cuenta a Claude) ------------------------------
+
+    def para_claude(self, ahora: float | None = None) -> str:
+        """El resumen de sismos que se le pasa a Claude con cada pregunta.
+
+        Así MECH puede contestar «¿ha temblado hoy?» con los MISMOS datos del
+        mapa, en vez de inventar. Va corto a propósito (viaja en cada
+        petición): lo último cerca de «mi zona» y lo más fuerte del mundo.
+        Las reglas del final importan tanto como los datos: MECH informa de
+        lo que ya tembló; no predice ni alerta.
+        """
+        ahora = time.time() if ahora is None else ahora
+        zona = config.SISMOS_ZONE_NAME
+        titulo = "## Sismos recientes — datos EN VIVO de las redes sísmicas\n"
+        no_inventes = ("Si preguntan por sismos recientes, di que ahora mismo "
+                       "no tienes esos datos. No inventes ninguno.")
+        if not config.SISMOS_ENABLED:
+            return titulo + "La consulta de sismos está apagada en el panel. " + no_inventes
+        if not self._consultado:
+            return (titulo + "MECH todavía no ha podido consultar las redes sísmicas "
+                    "(¿no hay internet?). " + no_inventes)
+        with self._lock:
+            lista = [dict(s) for s in self._sismos.values()]
+        cerca = sorted((s for s in lista if s["cerca"]), key=lambda s: -s["t"])
+        lejos = [s for s in lista if not s["cerca"]]
+
+        def linea(s: dict, de_la_zona: bool) -> str:
+            partes = [f"{_hace(ahora - s['t'])} ({_hora_local(s['t'])})",
+                      f"magnitud {s['mag']}", s["lugar"], f"a {s['dist']} km de aquí"]
+            if s.get("prof") is not None:
+                partes.append(f"{s['prof']:.0f} km de profundidad")
+            if de_la_zona:
+                partes.append(f"lo reportó {s['agencia']}")
+            return "- " + " · ".join(partes)
+
+        minutos = max(0, round((ahora - self._consultado) / 60))
+        t = [titulo.rstrip(),
+             f"(consultados hace {minutos} min a EMSC y USGS; ahora son las "
+             f"{_hora_local(ahora)}, hora del robot)"]
+        if minutos > 15:
+            t.append("OJO: desde entonces no hubo conexión; puede faltar lo más reciente. Dilo si preguntan.")
+        t.append(f"MECH está en {zona}: «de aquí» es la distancia a ese punto.")
+        t.append("")
+        radio = float(config.SISMOS_ZONE_RADIUS_KM)
+        if cerca:
+            hoy = sum(1 for s in cerca if ahora - s["t"] <= 86400)
+            fuerte = max(cerca, key=lambda s: (s["mag"], s["t"]))
+            t.append(f"Cerca de {zona} (hasta {radio:.0f} km), en los últimos 7 días: "
+                     f"{len(cerca)} sismos de magnitud {config.SISMOS_MIN_MAG_ZONE} o más; "
+                     f"{hoy} en las últimas 24 horas. Los más recientes:")
+            t += [linea(s, True) for s in cerca[:PARA_CLAUDE_CERCA]]
+            if fuerte not in cerca[:PARA_CLAUDE_CERCA]:
+                t.append("El más fuerte de la semana en la zona:")
+                t.append(linea(fuerte, True))
+        else:
+            t.append(f"Cerca de {zona} (hasta {radio:.0f} km) no hay ningún sismo de magnitud "
+                     f"{config.SISMOS_MIN_MAG_ZONE} o más en los últimos 7 días.")
+        if lejos:
+            t.append("")
+            t.append(f"En el resto del mundo, los más fuertes de los últimos 7 días "
+                     f"(de {len(lejos)} de magnitud {config.SISMOS_MIN_MAG_WORLD} o más):")
+            fuertes = sorted(lejos, key=lambda s: (-s["mag"], -s["t"]))[:PARA_CLAUDE_MUNDO]
+            t += [linea(s, False) for s in fuertes]
+            ultimo = max(lejos, key=lambda s: s["t"])
+            if ultimo not in fuertes:
+                t.append("El más reciente del mundo:")
+                t.append(linea(ultimo, False))
+        t += ["", _REGLAS_CLAUDE]
+        return "\n".join(t)
+
+
+# Cuántos sismos se le cuentan a Claude: los más recientes de la zona y los
+# más fuertes del mundo. Más no ayuda a contestar y viaja en cada petición.
+PARA_CLAUDE_CERCA = 8
+PARA_CLAUDE_MUNDO = 5
+
+_REGLAS_CLAUDE = """Cómo usar estos datos:
+- SOLO si preguntan por sismos, temblores o terremotos. No los menciones por tu cuenta ni los metas en una obra.
+- Son sismos que YA ocurrieron: las redes los publican entre 2 y 10 minutos después. MECH NO predice sismos y NO es una alerta temprana; si lo preguntan, dilo así de claro.
+- No inventes ninguno ni cambies cifras. Solo tienes los últimos 7 días: si preguntan por otra fecha u otro lugar que no está aquí, dilo.
+- No tienes avisos de tsunami, ni de daños, ni de réplicas por venir: si preguntan, di que eso lo informan las autoridades.
+- Contesta en modo `qa`, con UN segmento corto y sin `image_prompt` ni video (una imagen inventada de un sismo confunde): cuándo fue, de qué magnitud, dónde y a qué distancia. Es para oírlo: «magnitud cuatro coma ocho», «hace unas dos horas».
+- Ante una emergencia lo que vale son las autoridades, no MECH."""
+
+
+def _hace(segundos: float) -> str:
+    """«hace 35 min», «hace 5 h», «hace 3 días»."""
+    minutos = max(1, round(segundos / 60))
+    if minutos < 60:
+        return f"hace {minutos} min"
+    if minutos < 36 * 60:
+        return f"hace {round(minutos / 60)} h"
+    return f"hace {round(minutos / 1440)} días"
+
+
+def _hora_local(epoch: float) -> str:
+    return time.strftime("%d/%m %H:%M", time.localtime(epoch))
+
+
 _sismos: Sismos | None = None
+
+
+def para_claude() -> str:
+    """Lo que MECH sabe de sismos, para Claude. "" si no hay nada que pasar.
+
+    "" cuando está apagado en la configuración o cuando no corre el hilo de
+    sismos (el modo `python -m backend.main`, sin servidor).
+    """
+    if not config.SISMOS_ANSWERS_ENABLED or _sismos is None:
+        return ""
+    try:
+        return _sismos.para_claude()
+    except Exception:
+        return ""       # esto nunca puede tumbar una respuesta de MECH
 
 
 def get_sismos(app) -> Sismos:

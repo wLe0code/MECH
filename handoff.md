@@ -57,7 +57,20 @@ YouTube Premium») y al final pidió, tal cual: **«quita lo de Apple Music y
 deja solo lo de reproducir videos de YouTube, ya te subo la API key»**.
 Hecho: `backend/apple_music.py` ya no existe y no hay respaldo de 30 s.
 
-> ⚠️ **LO PRIMERO DE LA PRÓXIMA SESIÓN — tres cosas del modo música:**
+**Sesión del 9 oct (§2.quindecies y §2.sexdecies): «pongo un video de
+YouTube y no se conecta, aunque agregué la API key a mano al final del
+`.env`».** No se pudo ver el fallo en la Pi (no respondía desde la laptop),
+pero se cerraron todas las formas de fallar al pegar la clave y, con la
+clave del equipo, **la búsqueda de YouTube se hizo por primera vez de verdad
+y funciona**. En el mismo mensaje pidieron tres cosas más, hechas: **MECH
+contesta sobre sismos** con los datos del mapa, la **tarjeta de la canción**
+en la proyección y las **«bolitas»** cuando no se proyecta nada. **Subido a
+GitHub el 9 oct** («súbelo a github»), **sin probar en la Pi**: preguntar
+cómo fue. Si el modo música sigue sin sonar allí, pedir la línea del panel
+que empieza por «YouTube» o «Modo música».
+
+> ⚠️ **LO PRIMERO DE LA PRÓXIMA SESIÓN — tres cosas del modo música**
+> (escrito el 8 oct; lo del 9 oct, en §2.quindecies, va por delante)**:**
 > 1. **La versión solo-YouTube YA ESTÁ en GitHub** («súbelo a github», 8
 >    oct; commit «Modo música solo con YouTube…», encima de `2945620`). La
 >    Pi la recibe al abrir «Iniciar MECH» (hace `git pull`). **Sin probar en
@@ -127,6 +140,13 @@ Hecho: `backend/apple_music.py` ya no existe y no hay respaldo de 30 s.
 12. **8 oct, segunda sesión, subido y sin probar en la Pi**
     (§2.duodecies): vista nueva **«Sismos»** en el panel, con un mapa
     animado de los sismos recientes (EMSC + USGS). Informa, no predice.
+14. **9 oct, subido y sin probar en la Pi** (§2.quindecies): la clave de
+    YouTube se lee en vivo y perdonando deslices, y el panel dice al
+    arrancar si YouTube la acepta. La clave tiene que empezar por `AIza`.
+    Con la clave del equipo la búsqueda real **funciona** (en la laptop).
+15. **9 oct, subido y sin probar en la Pi** (§2.sexdecies): MECH contesta
+    sobre sismos («¿ha temblado hoy?»), la proyección enseña la tarjeta de
+    la canción junto al video, y en reposo salen las bolitas del panel.
 
 ---
 
@@ -940,6 +960,128 @@ Vista previa en la laptop: configuración `panel-sismos` de
 servidor manda una canción a la proyección: `POST /__push` con un evento
 `{"type":"music","stage":"playing","play_id":N,"track":{"title":…,
 "artist":…,"youtube":[{"id":"<11 letras>","seconds":…}]},"volume":0.9}`.
+
+### 2.quindecies «No se conecta» con la clave ya puesta (9 oct)
+
+Reporte, tal cual: «cada vez que intento poner un video de yt, aunque haya
+agregado la api key manualmente al final del .env, no se conecta».
+
+**Lo que se sabe de cierto:**
+
+- La sesión corrió en **otra laptop** (usuario `almon`, Python **3.14** en
+  `%LOCALAPPDATA%\Python\bin\python.exe`, con `node`; no es la de Spyder de
+  §2). Su `backend/.env` es de junio y **no tiene línea de YouTube**: la
+  clave la pusieron en otro sitio (lo lógico, la Pi). No hay `git stash`
+  aquí: el «seguro del brazo» de §2.septies vive en la otra laptop.
+- La Pi **no respondía** desde aquí (`mech`, `mech.local`): no se vio su
+  registro. **No se sabe todavía cuál fue la causa real.**
+- **Comprobado contra Google de verdad**: la `GOOGLE_API_KEY` de Gemini es
+  hoy una clave nueva de AI Studio (`AQ.…`, 53 caracteres) y **YouTube la
+  rechaza** con `401 API keys are not supported by this API. Expected OAuth2
+  access token…`. Con el código de antes, si `YOUTUBE_API_KEY` no se leía
+  (mal escrita, sin reiniciar…), MECH probaba con la de Gemini: entraba al
+  modo, preguntaba canción y artista, fallaba con ese mensaje en inglés y
+  **se quedaba bloqueado hasta reiniciar**. Y lo mismo pasa si la clave de
+  YouTube se creó en AI Studio en vez de en la consola de Google Cloud.
+
+**Lo que se cambió** (detalle en CLAUDE.md, «Modo MÚSICA»):
+
+- `backend/youtube_music.py`: la clave se lee del `.env` **en vivo** y
+  perdonando deslices (comillas, espacios, minúsculas, `:`, pegada a la
+  línea anterior, línea vacía de la plantilla arriba o abajo, suelta sin
+  nombre, añadida con `>>` de PowerShell); dice si está en `.env.example` o
+  en un `.env` fuera de `backend/`; la de Gemini solo se prueba si es
+  `AIza…`; mensajes nuevos con qué tocar (tipo de clave, restricciones de
+  API y de aplicaciones, sin internet, portal del wifi); el bloqueo dura 2
+  min y es de ESA clave (antes: hasta reiniciar); `comprobar()` nuevo.
+- `backend/server.py`: al arrancar, un hilo le pregunta a YouTube si la
+  clave sirve → línea «YouTube: clave comprobada…» o «Modo música: así NO
+  va a poder buscar canciones — …».
+- `backend/preflight.py` (§3): la misma comprobación.
+- `scripts/probar_musica.py`: 31 comprobaciones nuevas (cada forma de pegar
+  la clave y cada respuesta de Google); `--red` lee la clave como MECH y
+  primero comprueba que sirve.
+- `backend/.env.example`, `docs/USO.md` (§4 bis y §8), `CLAUDE.md`.
+
+**Verificado en la laptop** (entorno aparte con numpy y python-dotenv; el
+Python 3.14 de aquí no trae nada): `probar_musica.py` TODO BIEN (con lo
+nuevo), `probar_idiomas`, `probar_comandos_idioma`, `probar_trivia` 50/50,
+`probar_saludo`, `probar_sismos`, `probar_llegada`. Y el módulo real contra
+Google: sin clave → «falta YOUTUBE_API_KEY…» sin gastar red; clave `AQ.…` →
+el mensaje del tipo de clave; clave inventada `AIza…` → «no existe o caducó».
+**NO verificado:** una búsqueda que SALGA BIEN (sigue sin haber una clave
+buena a mano), `server.py` arrancando de verdad (solo se compiló) y nada en
+la Pi.
+
+**Lo que pasó después, en la misma sesión:** el equipo pegó la clave en el
+chat (se le había pedido que no). Es del tipo bueno (`AIza…`). Se guardó en
+`backend/.env` de ESTA laptop (ignorado por git; **no está en ningún
+archivo del repo, ni debe estarlo, ni se repite aquí**) y con ella
+`probar_musica.py --red` salió entero: «la clave sirve para YouTube» y las
+cuatro canciones encontradas (Despacito, Bohemian Rhapsody, Shape of You y
+«Como un pájaro» de Malpaís). O sea: **la clave y el proyecto de Google
+están bien**; lo que fallaba en la Pi era cómo se leía (o que se probó con
+la de Gemini y quedó bloqueado hasta reiniciar), o la pantalla. Se le
+recomendó limitar la clave a «YouTube Data API v3» en la consola de Google,
+porque quedó escrita en el chat.
+
+**Cómo seguir:**
+
+1. Ya está subido: la Pi lo recibe al abrir «Iniciar MECH» con internet.
+2. Pedir la línea del panel. Si dice «clave comprobada» y sigue sin sonar,
+   el problema ya no es la clave sino la PANTALLA: pedir la línea «La
+   pantalla no pudo reproducir la canción: …» (red del colegio que bloquea
+   youtube.com, proyección abierta sin el icono «Proyectar MECH», o los
+   tres videos sin permiso de incrustarse).
+3. ⚠️ **Nunca pedir la clave por el chat.** Para saber de qué tipo es basta
+   con que digan cómo EMPIEZA (`AIza` o `AQ.`).
+
+### 2.sexdecies Sismos para MECH, tarjeta de la canción y reposo (9 oct)
+
+Tres pedidos en la misma sesión. Detalle en CLAUDE.md («MECH contesta sobre
+sismos», «Qué se ve» del modo música, y `projector.html` en el mapa de
+archivos).
+
+**1. «Dale a MECH acceso a los datos de los sismos».** Se interpretó como:
+que MECH pueda CONTESTAR con los datos del mapa («¿ha temblado hoy?»).
+`sismos.para_claude()` arma un resumen corto y `llm.plan_response()` lo
+manda en cada petición, fuera del bloque cacheado. Con sus reglas: informa
+de lo que ya tembló, no predice, no inventa, nada de tsunami/daños.
+Interruptor `SISMOS_ANSWERS_ENABLED` (sin control en el panel). **No avisa
+por su cuenta cuando tiembla**: eso sigue sin hacerse (§2.quater, punto 0).
+Si el equipo quería otra cosa con «acceso» (que lo anuncie solo, que lo
+proyecte), es lo siguiente a preguntar.
+
+**2. La tarjeta de la canción en la proyección.** El equipo vio el diseño de
+la versión de Apple Music (carátula + título + artista + barra) y lo pidió.
+`frontend/music.js` rehecho: el video de YouTube donde iba la carátula y la
+tarjeta AL LADO (nunca encima: condiciones de YouTube), con barra de avance
+real y la miniatura desenfocada de fondo. La lógica de probar hasta tres
+videos y avisar al servidor no cambió.
+
+**3. «Cuando no estés proyectando nada, pon las bolitas del panel».**
+`frontend/projector.html`: lienzo de reposo con la misma animación de la
+vista Inmersivo y el rótulo «ESPACIO INMERSIVO · Esperando contenido…». El
+rótulo se esconde mientras MECH habla sin proyectar (hay subtítulos). Si el
+equipo prefiere solo las bolitas, o otro texto para el público, es el
+`#reposo-rotulo` de esa página.
+
+**Verificado en la laptop:** `probar_sismos.py` TODO BIEN (18 comprobaciones
+nuevas; con `anthropic` instalado mira también que el bloque viaja en la
+petición) y el resumen con las redes sísmicas de verdad; las demás pruebas,
+bien. La proyección en el navegador con un servidor de mentira
+(`proyeccion-prueba` en `.claude/launch.json`, puerto 8765; el script está
+en el scratchpad de esa sesión, 60 líneas, sin WebSocket: los eventos se
+dan desde la consola con `musica.apply({...}, true)`): reposo a ~42
+fotogramas/s, se quita de golpe al entrar una imagen y vuelve al vaciarse;
+el rótulo se esconde con subtítulo; la tarjeta con un video REAL sonando
+(avisa `playing`, la barra avanza, no pisa el video, a 4:3 y a 16:9), título
+larguísimo y sin artista, miniatura con dirección rara rechazada, y al
+parar vuelve el reposo. Preflight §8: nada de internet.
+**NO verificado:** nada en la Pi (cómo de fluido va el reposo allí, y la
+tarjeta en el proyector de verdad); **Claude de verdad contestando sobre
+sismos** (no se gastó crédito de la API del equipo en probarlo); el final
+de una canción con la tarjeta nueva (la lógica no cambió).
 
 ### 2.quater Preguntas abiertas con el equipo
 

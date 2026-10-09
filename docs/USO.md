@@ -17,7 +17,7 @@ orden:
 | Icono | Qué hace |
 |---|---|
 | 🟢 **Iniciar MECH** | Descarga lo último de GitHub, arranca el servidor y abre el panel de control. Arranca igual si no hay internet. |
-| 📽️ **Proyectar MECH** | Abre la proyección a pantalla completa. |
+| 📽️ **Proyectar MECH** | Abre la proyección a pantalla completa. Mientras no hay nada que proyectar se ven unas bolitas moviéndose («Espacio inmersivo · Esperando contenido…»): es normal, no está colgada. |
 | 🔴 **Apagar MECH** | Cierra todo con cuidado. |
 
 Cuando MECH está listo suena un **tono corto**. A partir de ahí ya escucha.
@@ -348,21 +348,32 @@ MECH: «¿Seguimos con la música, o prefieres hacer algo distinto?»
    «Habilitar APIs y servicios» → buscar **YouTube Data API v3** →
    **Habilitar** → «Credenciales» → «Crear credenciales» → **Clave de API**.
    Copiarla en el archivo `backend/.env` de la Pi (está oculto: Ctrl+H en el
-   explorador de archivos), en una línea `YOUTUBE_API_KEY=…`, y reiniciar
-   con «Iniciar MECH». Da para unas 99 canciones al día y no cuesta nada.
-   **Sin esa clave el modo no funciona**: MECH dice «Ahora mismo me es
+   explorador de archivos), en una línea `YOUTUBE_API_KEY=…` (todo junto,
+   sin espacios ni comillas). Da para unas 99 canciones al día y no cuesta
+   nada. **Sin esa clave el modo no funciona**: MECH dice «Ahora mismo me es
    imposible poner música» y no entra.
+   - ⚠️ **Tiene que empezar por `AIza`** (39 caracteres). Las claves de
+     Google AI Studio —como la de Gemini, que empiezan por `AQ.`— YouTube
+     las rechaza. Si al crearla sale la opción de vincularla a una «cuenta
+     de servicio», se deja sin marcar.
+   - No hace falta reiniciar: MECH vuelve a leer el archivo cuando cambia.
 2. **Sin anuncios.** En la Pi, abrir Chromium, entrar a `youtube.com` e
    **iniciar sesión con la cuenta que tiene YouTube Premium**. La proyección
    usa ese mismo navegador.
 
 Al arrancar, el panel dice si el modo está listo («Modo música: … Pone la
-canción entera desde YouTube») o, en ámbar, por qué no.
+canción entera desde YouTube») o, en ámbar, por qué no. Unos segundos
+después sale una línea más, que es la que vale: **«YouTube: clave
+comprobada…»** (MECH le preguntó a YouTube y la clave sirve) o **«Modo
+música: así NO va a poder buscar canciones — …»** con el motivo y qué
+tocar. Lo mismo se ve, sin encender el robot, con
+`python scripts/probar_musica.py --red`.
 
 Cuatro cosas que hay que saber:
 
 - **Suena en la pantalla de proyección**, no en el panel: tiene que estar
-  abierta (icono **Proyectar MECH**). Ahí se ve el video de la canción.
+  abierta (icono **Proyectar MECH**). Ahí se ve el video de la canción y, al
+  lado, su **tarjeta**: título, artista, por dónde va y de qué canal sale.
 - A veces YouTube no deja poner el video oficial fuera de su página; MECH
   prueba entonces otra versión de la misma canción (por ejemplo, la que
   lleva la letra).
@@ -534,6 +545,20 @@ llegan del OVSICORI-UNA) y del **USGS**. Las dos son públicas y sin clave.
 Necesita internet en la Raspberry Pi; sin internet el mapa se queda con lo
 último que bajó y lo avisa arriba a la izquierda.
 
+### Preguntarle a MECH por los sismos
+
+MECH tiene los mismos datos del mapa, así que se le puede preguntar hablando
+(despierto, en cualquiera de sus idiomas):
+
+- «MECH, **¿ha temblado hoy?**»
+- «**¿Cuál fue el último sismo** cerca de aquí?»
+- «¿Hubo algún **sismo fuerte en el mundo** esta semana?»
+
+Contesta en una frase: cuándo fue, de qué magnitud, dónde y a cuántos
+kilómetros. Solo sabe de los **últimos 7 días**, y **no predice** ni tiene
+avisos de tsunami o de daños: si se le pregunta, lo dice. Si el mapa está
+apagado o no hay internet, contesta que ahora no tiene esos datos.
+
 ---
 
 ## 8. Cuando algo no funciona
@@ -559,7 +584,7 @@ todo lo que hace. La mayoría de las veces el problema se ve de una.
 | **La proyección de marketing dura un segundo** | Es el formato de los videos. El panel dice cuáles fallaron y da el comando para reconvertirlos. |
 | **Las ruedas no se mueven** | Prueba `MOVE:0:0:100` desde el panel (vista Arduino → comando crudo) con el bucle de voz apagado. |
 | **El modo música dice «algo falló al reproducirla»** | El video suena en la **pantalla de proyección**: ¿está abierta? ¿se abrió con el icono **Proyectar MECH**? (sin él el navegador no deja que el video arranque solo). ¿Hay internet? El registro del panel dice el motivo exacto. |
-| **MECH dice «me es imposible poner música»** | El modo no puede usar YouTube. El registro del panel dice por qué: falta `YOUTUBE_API_KEY` en el `.env` de la Pi, la clave no tiene activada «YouTube Data API v3», o se acabaron las búsquedas del día (vuelven al día siguiente). |
+| **MECH dice «me es imposible poner música»** | El modo no puede usar YouTube. El registro del panel dice por qué y qué tocar: falta `YOUTUBE_API_KEY` en el `.env` de la Pi (o está en otro archivo), la clave es de otro tipo (tiene que empezar por `AIza`; las de AI Studio no valen), no tiene activada «YouTube Data API v3», tiene una restricción, no hay internet, o se acabaron las búsquedas del día (vuelven al día siguiente). Tras arreglarlo no hay que reiniciar: como mucho, esperar dos minutos. |
 | **Salen anuncios antes de la canción** | El Chromium de la Pi no tiene iniciada la sesión de YouTube Premium: ábrelo, entra a youtube.com e inicia sesión. |
 | **No encuentra la canción, o pone otra** | Di el título y el artista; prueba escribiéndola en la tarjeta MODO MÚSICA del panel. Si por ahí sí, es que no te entendió al hablar. |
 | **«oye MECH» no corta la canción** | El micrófono oye la música. Dilo más cerca, baja **«Volumen música»** en Ajustes, o pulsa **Parar** en el panel. |

@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 import config
 import informacion_nuestra
 import lang
+import sismos
 import video_library
 import voices
 
@@ -228,20 +229,24 @@ def plan_response(
     # El idioma va en un bloque APARTE, DESPUÉS del bloque cacheado: así el
     # prefijo cacheado no cambia al cambiar de idioma (el caché sigue
     # sirviendo) y la instrucción de idioma queda de últimas, bien visible.
+    system = [
+        {
+            "type": "text",
+            "text": full_system_prompt,
+            "cache_control": {"type": "ephemeral"},
+        },
+    ]
+    # Los sismos recientes cambian cada minuto: también van DESPUÉS del bloque
+    # cacheado (dentro lo invalidarían en cada petición). Es lo que deja a
+    # MECH contestar «¿ha temblado hoy?» con los datos del mapa del panel.
+    en_vivo = sismos.para_claude()
+    if en_vivo:
+        system.append({"type": "text", "text": en_vivo})
+    system.append({"type": "text", "text": lang.llm_directive(language)})
     response = client.messages.parse(
         model=config.CLAUDE_MODEL,
         max_tokens=4096,
-        system=[
-            {
-                "type": "text",
-                "text": full_system_prompt,
-                "cache_control": {"type": "ephemeral"},
-            },
-            {
-                "type": "text",
-                "text": lang.llm_directive(language),
-            },
-        ],
+        system=system,
         messages=messages,
         output_format=Plan,
     )

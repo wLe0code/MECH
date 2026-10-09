@@ -12,10 +12,14 @@ Reparto del trabajo:
     reproductor de YouTube, a la vista, como piden sus condiciones.
 
 Usa la «YouTube Data API v3», que pide una CLAVE gratuita de Google
-(`YOUTUBE_API_KEY` en el `.env`; si no está, se prueba con `GOOGLE_API_KEY`,
-la de Gemini, que sirve solo si ese proyecto de Google tiene activada la API
-de YouTube). Cada canción gasta 101 unidades de las 10 000 diarias: unas 99
-canciones al día. Lo ya buscado se recuerda unas horas para no gastar de más.
+(`YOUTUBE_API_KEY` en el `.env`). Tiene que ser una «Clave de API» de las de
+siempre, las que empiezan por «AIza»: las nuevas de Google AI Studio («AQ.…»,
+como la de Gemini) YouTube las rechaza. Cada canción gasta 101 unidades de
+las 10 000 diarias: unas 99 canciones al día. Lo ya buscado se recuerda unas
+horas para no gastar de más.
+
+La clave se lee del `.env` EN VIVO y perdonando los deslices de pegarla a
+mano (ver «La clave», más abajo). ⚠️ Nada de este módulo imprime la clave.
 
 Solo se devuelven videos que YouTube deja reproducir fuera de youtube.com
 (`videoEmbeddable`), de duración de canción, y sin restricción de edad. Aun
@@ -53,9 +57,15 @@ _DISTINTO = ("karaoke", "cover", "remix", "reaction", "reaccion", "tutorial",
 _cache: dict[tuple, tuple[float, list[dict]]] = {}
 # Si la clave no sirve (no es válida, o su proyecto no tiene la API de YouTube
 # activada) no tiene sentido preguntar en cada canción: se apunta el motivo y
-# se deja de intentar hasta reiniciar. Con la cuota agotada, hasta `_hasta`.
+# se deja de intentar hasta `_hasta`. El bloqueo es de ESA clave: si la
+# cambian en el `.env`, la nueva se prueba enseguida. Y no dura hasta
+# reiniciar (así era antes): lo normal es arreglarlo en la consola de Google,
+# donde la clave no cambia, y MECH se quedaba diciendo que no podía.
 _bloqueo: str = ""
+_bloqueo_clave: str = ""
 _hasta: float = 0.0
+REINTENTO_S = 120          # clave rechazada: se vuelve a probar pasado esto
+CUOTA_S = 3600             # cuota agotada: se vuelve a probar en una hora
 
 
 def _plano(texto: str) -> str:
@@ -73,34 +83,154 @@ class ErrorYouTube(RuntimeError):
         self.motivo = motivo
 
 
+# ── La clave ────────────────────────────────────────────────────────────────
+#
+# Se lee de `backend/.env` EN VIVO, no solo al arrancar (oct 2026). El equipo
+# pegó la clave a mano al final del `.env` y «no se conectaba»: con el `.env`
+# leído una vez al arrancar, cualquier desliz al pegarla (o no reiniciar)
+# dejaba el modo sin clave, y encima se probaba con la de Gemini, que YouTube
+# rechaza con un mensaje en inglés que no dice qué hacer. Ahora:
+#   - si el archivo cambia se vuelve a leer: no hace falta reiniciar;
+#   - se entiende lo que se cuela al pegar a mano: comillas, espacios, el
+#     nombre en minúsculas, «:» en vez de «=», la línea pegada a la de antes,
+#     una línea vacía de la plantilla más arriba o más abajo, y la clave
+#     suelta sin nombre delante;
+#   - y si no está, se mira si la pusieron en un archivo que MECH no lee.
+
+_FORMA_NORMAL = re.compile(r"AIza[\w-]{35}$")      # una «Clave de API» de siempre
+_LINEA = re.compile(r"YOUTUBE[ _-]?API[ _-]?KEY\s*[=:]\s*(.*)$", re.IGNORECASE)
+_SOBRA = " \t\"'“”‘’`<>"
+
+_env_visto: tuple | None = None                    # (ruta, fecha, tamaño) ya leídos
+_env_leido: tuple[str, bool] = ("", False)
+
+
+def _en_texto(texto: str) -> tuple[str, bool]:
+    """(clave, ¿iba suelta?) de un `.env`. Manda la ÚLTIMA línea con valor."""
+    con_nombre = suelta = ""
+    # Los ceros: `>>` en PowerShell añade en UTF-16 (una letra, un cero…).
+    for linea in texto.replace("\x00", "").replace("﻿", "").splitlines():
+        linea = linea.strip()
+        if not linea or linea.startswith("#"):
+            continue
+        m = _LINEA.search(linea)
+        if m:
+            con_nombre = m.group(1).split(" #", 1)[0].strip(_SOBRA) or con_nombre
+        elif _FORMA_NORMAL.match(linea.strip(_SOBRA)):
+            suelta = linea.strip(_SOBRA)
+    return (con_nombre, False) if con_nombre else (suelta, bool(suelta))
+
+
+def _leer(ruta) -> tuple[str, bool]:
+    try:
+        return _en_texto(ruta.read_bytes().decode("utf-8", "ignore"))
+    except Exception:
+        return "", False
+
+
+def _del_env() -> tuple[str, bool]:
+    """La clave que hay AHORA en backend/.env (se relee solo si cambió)."""
+    global _env_visto, _env_leido
+    ruta = getattr(config, "ENV_PATH", None)
+    try:
+        st = ruta.stat()
+        visto = (str(ruta), st.st_mtime_ns, st.st_size)
+    except Exception:                               # no hay .env
+        _env_visto, _env_leido = None, ("", False)
+        return _env_leido
+    if visto != _env_visto:
+        _env_visto, _env_leido = visto, _leer(ruta)
+    return _env_leido
+
+
+def _clave() -> tuple[str, str]:
+    """(clave, de dónde sale): "YOUTUBE_API_KEY", "GOOGLE_API_KEY" o ""."""
+    propia = _del_env()[0] or (config.YOUTUBE_API_KEY or "").strip()
+    if propia:
+        return propia, "YOUTUBE_API_KEY"
+    # La de Gemini solo se prueba si es una clave de las de siempre. Las
+    # nuevas de AI Studio («AQ.…») YouTube las rechaza con un 401 (comprobado
+    # el 9 oct 2026): probar con ellas solo servía para entrar al modo,
+    # preguntar la canción y fallar después.
+    gemini = (config.GOOGLE_API_KEY or "").strip()
+    return (gemini, "GOOGLE_API_KEY") if _FORMA_NORMAL.match(gemini) else ("", "")
+
+
 def clave() -> str:
-    return (config.YOUTUBE_API_KEY or config.GOOGLE_API_KEY or "").strip()
+    return _clave()[0]
+
+
+def aviso() -> str:
+    """Algo mal escrito en el `.env` que se entendió igual (para el panel)."""
+    if _del_env()[1]:
+        return ("en backend/.env la clave está suelta, sin nombre delante. La "
+                "uso igual, pero la línea tiene que ser YOUTUBE_API_KEY=<la clave>")
+    return ""
+
+
+def _falta() -> str:
+    """Por qué no hay clave, con la pista de dónde puede haber quedado."""
+    falta = "falta YOUTUBE_API_KEY en backend/.env"
+    ruta = getattr(config, "ENV_PATH", None)
+    try:
+        if not ruta.exists():
+            return ("no existe backend/.env (se crea copiando backend/.env.example); "
+                    "ahí va la línea YOUTUBE_API_KEY=<la clave>")
+        for otro, nombre, ojo in (
+            (ruta.with_name(".env.example"), "backend/.env.example",
+             " y bórrala de ahí: ese archivo es la plantilla y se sube a GitHub"),
+            (ruta.parent.parent / ".env", "un .env que está fuera de la carpeta backend", ""),
+        ):
+            if _leer(otro)[0]:
+                return f"{falta}: la clave está en {nombre}, que MECH no lee. Pásala a backend/.env{ojo}"
+    except Exception:
+        pass
+    return falta + " (una línea así: YOUTUBE_API_KEY=<la clave>, sin espacios ni comillas)"
 
 
 def disponible() -> bool:
     """¿Se puede buscar en YouTube ahora mismo?"""
-    if not clave():
+    k = clave()
+    if not k:
         return False
-    if _bloqueo and (not _hasta or time.time() < _hasta):
+    if _bloqueo and _bloqueo_clave == k and time.time() < _hasta:
         return False
     return True
 
 
 def por_que_no() -> str:
     """Por qué no se puede usar YouTube (para decirlo en el panel)."""
-    if not clave():
-        return "falta YOUTUBE_API_KEY en backend/.env"
-    return _bloqueo
+    k = clave()
+    if not k:
+        return _falta()
+    return _bloqueo if _bloqueo_clave == k else ""
 
 
+_CONSOLA = "console.cloud.google.com → «APIs y servicios» → «Credenciales»"
+_CUOTA = ("quotaExceeded", "dailyLimitExceeded")
 _EXPLICADO = {
     "quotaExceeded": "se acabaron las búsquedas de hoy en YouTube (vuelven mañana)",
     "dailyLimitExceeded": "se acabaron las búsquedas de hoy en YouTube (vuelven mañana)",
-    "keyInvalid": "la clave de YouTube no es válida: revisa YOUTUBE_API_KEY en backend/.env",
-    "badRequest": "la clave de YouTube no es válida: revisa YOUTUBE_API_KEY en backend/.env",
+    "keyInvalid": (
+        "Google dice que esa clave no existe o caducó: cópiala otra vez, "
+        "entera, en YOUTUBE_API_KEY de backend/.env"),
+    "tipoDeClave": (
+        "esa clave no es del tipo que acepta YouTube. Tiene que ser una «Clave "
+        "de API» normal (empieza por «AIza» y tiene 39 caracteres), creada en "
+        + _CONSOLA + " → «Crear credenciales» → «Clave de API», sin vincularla "
+        "a una cuenta de servicio. Las de Google AI Studio (Gemini) no valen"),
     "accessNotConfigured": (
         "el proyecto de Google de esa clave no tiene activada «YouTube Data "
-        "API v3»: actívala en console.cloud.google.com"),
+        "API v3»: actívala en console.cloud.google.com → «APIs y servicios» → "
+        "«Habilitar APIs y servicios» (tarda un par de minutos en hacer efecto)"),
+    "restriccionApi": (
+        "la clave está limitada a otras APIs: en " + _CONSOLA + " → la clave → "
+        "«Restricciones de API», añade «YouTube Data API v3» (o «No "
+        "restringir clave»)"),
+    "restriccionApp": (
+        "la clave tiene una restricción de aplicaciones (sitios web, "
+        "direcciones IP o apps) que deja fuera al robot: en " + _CONSOLA
+        + " → la clave → «Restricciones de aplicaciones» → «Ninguna»"),
     "forbidden": (
         "esa clave no tiene permiso para YouTube: actívale «YouTube Data API "
         "v3» o crea una clave nueva (YOUTUBE_API_KEY)"),
@@ -109,8 +239,9 @@ _EXPLICADO = {
 
 def _pedir(recurso: str, **params) -> dict:
     """Una llamada a la API. Traduce los errores de Google a algo legible."""
-    global _bloqueo, _hasta
-    url = API + recurso + "?" + urllib.parse.urlencode(dict(params, key=clave()))
+    global _bloqueo, _bloqueo_clave, _hasta
+    k, origen = _clave()
+    url = API + recurso + "?" + urllib.parse.urlencode(dict(params, key=k))
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=ESPERA_RED_S) as r:
@@ -125,18 +256,52 @@ def _pedir(recurso: str, **params) -> dict:
                 motivo = "forbidden"
         except Exception:
             pass
-        if "API key not valid" in detalle:
+        if "API key not valid" in detalle or "API key expired" in detalle:
             motivo = "keyInvalid"
+        elif "not supported by this API" in detalle:
+            motivo = "tipoDeClave"
         elif "has not been used" in detalle or "is disabled" in detalle:
             motivo = "accessNotConfigured"
-        elif "are blocked" in detalle:
-            motivo = "forbidden"
+        elif "Requests to this API" in detalle:
+            motivo = "restriccionApi"
+        elif "are blocked" in detalle or "restriction" in detalle:
+            motivo = "restriccionApp"
         mensaje = _EXPLICADO.get(motivo) or f"YouTube contestó {e.code}: {detalle or motivo or '?'}"
-        if motivo in ("quotaExceeded", "dailyLimitExceeded"):
-            _bloqueo, _hasta = mensaje, time.time() + 3600   # se reintenta en una hora
+        if origen == "GOOGLE_API_KEY" and motivo not in _CUOTA and e.code in (400, 401, 403):
+            mensaje = ("no encontré YOUTUBE_API_KEY en backend/.env; probé con la "
+                       "clave de Gemini (GOOGLE_API_KEY) y YouTube no la acepta. "
+                       "Añade la línea YOUTUBE_API_KEY=<la clave de YouTube>")
+        if motivo in _CUOTA:
+            _bloqueo, _bloqueo_clave, _hasta = mensaje, k, time.time() + CUOTA_S
         elif e.code in (400, 401, 403):
-            _bloqueo, _hasta = mensaje, 0.0                   # hasta reiniciar
+            _bloqueo, _bloqueo_clave, _hasta = mensaje, k, time.time() + REINTENTO_S
         raise ErrorYouTube(motivo or str(e.code), mensaje)
+    except ValueError:
+        # Contestó algo que no es de YouTube: típico del wifi que pide entrar
+        # por una página antes de dejar navegar.
+        raise ErrorYouTube("respuestaRara", (
+            "en vez de YouTube contestó otra cosa: ¿el wifi pide iniciar "
+            "sesión en una página antes de dejar navegar?"))
+    except OSError as e:
+        raise ErrorYouTube("sinRed", (
+            f"no llego a YouTube ({getattr(e, 'reason', e)}): revisa el "
+            "internet de la Pi (hay redes de colegio que bloquean YouTube)"))
+
+
+def comprobar() -> str:
+    """Le pregunta a YouTube si la clave sirve. "" = sirve; si no, el motivo.
+
+    Gasta 1 unidad de las 10 000 del día. Se usa al arrancar: sin esto, una
+    clave mala no se notaba hasta la primera canción, con MECH ya habiendo
+    preguntado cuál y de quién.
+    """
+    if not clave():
+        return por_que_no()
+    try:
+        _pedir("videos", part="id", id="jNQXAC9IVRw")
+    except ErrorYouTube as e:
+        return str(e)
+    return ""
 
 
 _DURACION = re.compile(r"P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$")

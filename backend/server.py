@@ -420,6 +420,24 @@ def stop_voice_loop():
 MOVILIDAD_VERSION = "v4 (sep 2026)"
 
 
+def _comprobar_youtube() -> None:
+    """Le pregunta a YouTube si la clave del modo música SIRVE, y lo dice.
+
+    Que haya una clave en el `.env` no dice nada: puede estar mal copiada, ser
+    de otro tipo o no tener activada la API. Antes eso no se sabía hasta la
+    primera canción, con MECH ya habiendo preguntado cuál y de quién. Va en
+    un hilo para no frenar el arranque (sin internet tarda hasta 10 s).
+    """
+    mech = get_app()
+    if youtube_music.aviso():
+        mech.log("YouTube: " + youtube_music.aviso() + ".", "warn")
+    motivo = youtube_music.comprobar()
+    if motivo:
+        mech.log("Modo música: así NO va a poder buscar canciones — " + motivo + ".", "warn")
+    else:
+        mech.log("YouTube: clave comprobada, el modo música puede buscar canciones.", "ok")
+
+
 # -- FastAPI lifespan --------------------------------------------------------
 
 
@@ -489,6 +507,8 @@ async def lifespan(app: FastAPI):
                 + ".",
                 "ok",
             )
+            # Esa línea solo dice que HAY una clave. Si sirve lo sabe YouTube.
+            threading.Thread(target=_comprobar_youtube, daemon=True).start()
         else:
             mech.log(
                 "Modo música: NO disponible — "
@@ -520,7 +540,9 @@ async def lifespan(app: FastAPI):
     mech.log(
         "Sismos: mapa en el panel (vista «Sismos») · zona "
         f"{config.SISMOS_ZONE_NAME}, {config.SISMOS_ZONE_RADIUS_KM:.0f} km"
-        + ("" if config.SISMOS_ENABLED else " · APAGADO (se enciende en esa vista)"),
+        + ("" if config.SISMOS_ENABLED else " · APAGADO (se enciende en esa vista)")
+        + (" · MECH contesta sobre ellos: «¿ha temblado hoy?»"
+           if config.SISMOS_ANSWERS_ENABLED and config.SISMOS_ENABLED else ""),
         "ok",
     )
     sismos.get_sismos(mech).start()
@@ -1251,6 +1273,7 @@ _LIVE_KEYS = {
     "SISMOS_ZONE_RADIUS_KM": float,
     "SISMOS_MIN_MAG_WORLD": float,
     "SISMOS_MIN_MAG_ZONE": float,
+    "SISMOS_ANSWERS_ENABLED": _to_bool,   # ¿MECH contesta sobre sismos?
     "MOTOR_KICK_SECONDS": float,    # pulso a fondo para romper la fricción
     "DRIVE_INVERT_FORWARD": _to_bool,  # adelante/atrás al revés (todas las ruedas)
     "ARM_WAVE_BOTH": _to_bool,      # el saludo levanta los dos brazos

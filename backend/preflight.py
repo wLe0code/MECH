@@ -195,6 +195,24 @@ def check_claves() -> None:
         else:
             _di(_FAIL, f"{clave} vacía", f"Se necesita para {para}.")
 
+    # La del modo música. Es la que más se pega mal a mano, y que esté en el
+    # `.env` no dice si sirve: se le pregunta a YouTube (1 unidad de 10 000).
+    import youtube_music
+    if not youtube_music.clave():
+        _di(_WARN, "Sin clave de YouTube: el modo música no funciona",
+            youtube_music.por_que_no() + ".")
+        return
+    if youtube_music.aviso():
+        _di(_WARN, "YOUTUBE_API_KEY está mal escrita en el .env", youtube_music.aviso() + ".")
+    if SIN_RED:
+        _di(_WARN, "YOUTUBE_API_KEY está, pero con --sin-red no la compruebo")
+        return
+    motivo = youtube_music.comprobar()
+    if motivo:
+        _di(_WARN, "YOUTUBE_API_KEY: así el modo música NO va a funcionar", motivo + ".")
+    else:
+        _di(_OK, "YOUTUBE_API_KEY comprobada con YouTube (modo música)")
+
 
 # ---------------------------------------------------------------------------
 # 4. Qué necesita internet y qué no

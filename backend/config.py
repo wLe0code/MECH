@@ -1592,6 +1592,11 @@ SISMOS_ZONE_RADIUS_KM = float(os.environ.get("SISMOS_ZONE_RADIUS_KM", "300"))
 # del mundo llena el mapa (de 2.5 para arriba son ~1700 sismos por semana).
 SISMOS_MIN_MAG_WORLD = float(os.environ.get("SISMOS_MIN_MAG_WORLD", "4.0"))
 SISMOS_MIN_MAG_ZONE = float(os.environ.get("SISMOS_MIN_MAG_ZONE", "2.5"))
+# ¿MECH puede CONTESTAR sobre sismos? Encendido, con cada pregunta se le pasa
+# a Claude un resumen de lo que hay en el mapa («MECH, ¿ha temblado hoy?»,
+# «¿cuál fue el último sismo?»). Apagado, el mapa sigue igual y MECH no sabe
+# nada de sismos recientes. Ver `sismos.para_claude()`.
+SISMOS_ANSWERS_ENABLED = _bool_env("SISMOS_ANSWERS_ENABLED", "true")
 
 
 def assert_required() -> None:

@@ -7,9 +7,34 @@
      trae: los subtítulos y la trivia salían con cuadritos). Solo se cargan
      los trozos que hacen falta; en español, ninguno. -->
 <link rel="stylesheet" href="/vendor/mech-fonts-cjk.css">
+<!-- Sora y Space Mono, también en local: la pantalla de reposo y la tarjeta
+     de la canción usan la misma letra que el panel. -->
+<link rel="stylesheet" href="/vendor/mech-fonts.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden; cursor: none; }
+  /* Reposo: cuando no hay NADA que proyectar, en vez de la pantalla en negro
+     salen las «bolitas» del panel (vista Inmersivo) y su rótulo. Van DEBAJO
+     del escenario. Aparecen con un fundido y se quitan DE GOLPE: si se
+     fundieran al salir, se verían un instante sobre el video que entra. */
+  #reposo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; }
+  #reposo-rotulo {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1.6vh;
+    text-align: center; pointer-events: none; opacity: 0;
+    font-family: 'Sora', -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  #reposo-rotulo h2 {
+    font-size: clamp(20px, 2.9vw, 60px); font-weight: 700; color: #fff;
+    letter-spacing: .22em; text-indent: .22em;
+    text-shadow: 0 0 30px rgba(34, 211, 238, .8);
+  }
+  #reposo-rotulo p { font-size: clamp(12px, 1.5vw, 30px); color: rgba(255, 255, 255, .6); }
+  body.en-reposo #reposo { opacity: 1; transition: opacity .8s ease; }
+  body.en-reposo #reposo-rotulo { opacity: 1; transition: opacity .8s ease .3s; }
+  /* Mientras MECH habla sin proyectar nada (una respuesta suelta), se quedan
+     las bolitas pero no el «Esperando contenido…»: abajo van los subtítulos. */
+  body.en-reposo #subs:not(:empty) ~ #reposo-rotulo { opacity: 0; transition: none; }
   #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
   #stage img, #stage video {
     max-width: 100%; max-height: 100%;
@@ -54,8 +79,10 @@
 </style>
 </head>
 <body>
+  <canvas id="reposo" aria-hidden="true"></canvas>
   <div id="stage"></div>
   <div id="subs"></div>
+  <div id="reposo-rotulo"><h2>ESPACIO INMERSIVO</h2><p>Esperando contenido…</p></div>
   <div id="idle">MECH · STAND</div>
 
 <script src="/static/subtitles.js"></script>
@@ -88,12 +115,88 @@ const juego = window.MechTrivia
   ? MechTrivia.create(document.body)
   : { apply() {}, clear() {} };
 
-/* Modo música: la canción que MECH pone suena AQUÍ (y se ve su carátula).
-   Esta página avisa al servidor de cuándo empieza y cuándo termina. Ver
-   frontend/music.js y backend/music.py. */
+/* Modo música: la canción que MECH pone suena AQUÍ (el video y, al lado, la
+   tarjeta de la canción). Esta página avisa al servidor de cuándo empieza y
+   cuándo termina. Ver frontend/music.js y backend/music.py. */
 const musica = window.MechMusic
   ? MechMusic.create(document.body)
   : { apply() {}, clear() {} };
+
+/* ─── Reposo: las «bolitas» cuando no hay nada que proyectar ──────────
+ *
+ * Pedido del equipo (oct 2026): que la proyección no se quede en negro. Es
+ * la misma animación de la vista Inmersivo del panel (frontend/app.js,
+ * initImmDemo): 90 puntos que derivan y dejan estela, con el color respirando
+ * alrededor del cian.
+ *
+ * - El lienzo es PEQUEÑO a propósito (720 px de ancho) y el navegador lo
+ *   estira: así salen las bolitas suaves y grandes que se ven en el panel, y
+ *   la Raspberry Pi casi no trabaja (pintar 1920×1080 en cada fotograma sí
+ *   se notaría).
+ * - Solo se anima mientras se ve: en cuanto entra un video, una imagen, la
+ *   trivia o una canción, el bucle se para.
+ */
+(function () {
+  const lienzo = document.getElementById('reposo');
+  const ctx = lienzo.getContext('2d');
+  const ANCHO = 720;
+  let puntos = [];
+  let fase = 0;
+  let cuadro = 0;        // id del requestAnimationFrame en curso (0 = parado)
+
+  function medir() {
+    lienzo.width = ANCHO;
+    lienzo.height = Math.max(1, Math.round(ANCHO * innerHeight / Math.max(1, innerWidth)));
+    puntos = Array.from({ length: 90 }, () => ({
+      x: Math.random() * lienzo.width, y: Math.random() * lienzo.height,
+      r: Math.random() * 2 + 0.4,
+      vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6,
+      a: Math.random() * Math.PI * 2,
+    }));
+    ctx.fillStyle = '#060809';
+    ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+  }
+
+  function dibujar() {
+    cuadro = requestAnimationFrame(dibujar);
+    ctx.fillStyle = 'rgba(6,8,9,0.18)';          // no borra del todo: deja la estela
+    ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+    fase += 0.004;
+    const tono = 190 + Math.sin(fase) * 22;
+    for (const p of puntos) {
+      p.x += p.vx; p.y += p.vy; p.a += 0.012;
+      if (p.x < 0) p.x = lienzo.width;
+      if (p.x > lienzo.width) p.x = 0;
+      if (p.y < 0) p.y = lienzo.height;
+      if (p.y > lienzo.height) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * (1 + Math.sin(p.a) * 0.5), 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${tono + p.x / lienzo.width * 36},80%,68%,0.85)`;
+      ctx.fill();
+    }
+  }
+
+  // «Libre» = el escenario vacío y ni la trivia ni la música en pantalla.
+  function libre() {
+    return !stage.firstElementChild && !document.querySelector('.mt-wrap.on, .mm-wrap.on');
+  }
+
+  function revisar() {
+    const si = libre();
+    document.body.classList.toggle('en-reposo', si);
+    if (si && !cuadro) cuadro = requestAnimationFrame(dibujar);
+    if (!si && cuadro) { cancelAnimationFrame(cuadro); cuadro = 0; }
+  }
+
+  // El escenario avisa al instante (entra o sale un video o una imagen). La
+  // trivia y la música se pintan ENCIMA y son opacas: para ellas basta con
+  // mirar cada segundo, solo para no animar lo que no se ve.
+  new MutationObserver(revisar).observe(stage, { childList: true });
+  setInterval(revisar, 1000);
+  addEventListener('resize', medir);
+  medir();
+  revisar();
+})();
 
 let ws = null;
 

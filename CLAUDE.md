@@ -263,6 +263,11 @@ frontend/
   projector.html      ← Página fullscreen para Chromium kiosko en la Pi.
                         Maneja eventos image y video, con loop en video, y
                         pinta los SUBTÍTULOS de la narración abajo.
+                        Cuando no hay nada que proyectar NO se queda en
+                        negro (9 oct 2026): salen las «bolitas» de la vista
+                        Inmersivo del panel y su rótulo. Lienzo pequeño
+                        (720 px) estirado, a propósito: se ve suave y la Pi
+                        casi no trabaja. Se para en cuanto entra algo.
   music.js            ← Modo música en la PANTALLA de proyección (se sirve
                         en /static/music.js): pone el video con el
                         reproductor oficial de YouTube y avisa al servidor de
@@ -1240,18 +1245,40 @@ con su video, en la pantalla de proyección, con el reproductor oficial.
 > lo pidan.
 
 - **Clave**: `YOUTUBE_API_KEY` en el `.env` (gratis; cómo sacarla, en
-  `docs/USO.md` §4 bis y en `.env.example`). Vacía, se prueba con
-  `GOOGLE_API_KEY`, que solo sirve si ese proyecto de Google tiene activada
-  «YouTube Data API v3» (las claves de AI Studio suelen venir limitadas a
-  Gemini). Cada canción gasta 101 de las 10 000 unidades diarias: ~99
-  canciones al día. Lo buscado se recuerda 6 h. La clave solo permite
-  búsquedas públicas: no da acceso a la cuenta de nadie.
+  `docs/USO.md` §4 bis y en `.env.example`). Cada canción gasta 101 de las
+  10 000 unidades diarias: ~99 canciones al día. Lo buscado se recuerda 6 h.
+  La clave solo permite búsquedas públicas: no da acceso a la cuenta de nadie.
+- ⚠️ **El TIPO de clave importa** (comprobado contra Google el 9 oct 2026):
+  tiene que ser una «Clave de API» de las de siempre, que empieza por `AIza`
+  (39 caracteres). Las nuevas de Google AI Studio (`AQ.…`, 53 caracteres —
+  así es hoy la `GOOGLE_API_KEY` de Gemini) YouTube las rechaza con un 401
+  «API keys are not supported by this API». Por eso `GOOGLE_API_KEY` ya
+  **solo** se prueba como respaldo si tiene la forma `AIza…`.
+- **La clave se lee del `.env` EN VIVO y perdonando deslices**
+  (`youtube_music._del_env`, 9 oct 2026). El equipo la pegó a mano al final
+  del `.env` y «no se conectaba». Ahora: se relee cuando el archivo cambia
+  (sin reiniciar); vale con comillas, espacios, el nombre en minúsculas,
+  `:` en vez de `=`, pegada a la línea de antes, con la línea vacía de la
+  plantilla arriba o abajo (manda la última CON valor) y hasta suelta sin
+  nombre (se usa y se avisa). Si no está, `por_que_no()` dice si la
+  pusieron en `.env.example` o en un `.env` fuera de `backend/`.
+  ⚠️ **Nada de eso imprime la clave**; mantenelo así.
+- **Al arrancar se le pregunta a YouTube si la clave sirve**
+  (`youtube_music.comprobar()`, 1 unidad, en un hilo:
+  `server._comprobar_youtube`). El panel dice «YouTube: clave comprobada…»
+  o «Modo música: así NO va a poder buscar canciones — …» con el motivo
+  traducido y qué tocar en la consola de Google (clave inexistente, tipo de
+  clave, API sin activar, restricción de API, restricción de aplicaciones,
+  sin internet, portal del wifi). El preflight (§3) hace lo mismo.
 - ⚠️ **Sin clave (o con la cuota agotada) el modo NO funciona, y no hay
   respaldo.** Al pedirlo, MECH dice `music_unavailable` («Ahora mismo me es
   imposible poner música») y **no entra al modo**; el panel dice por qué
-  (`youtube_music.por_que_no()`). Con la clave mal se deja de intentar hasta
-  reiniciar; con la cuota agotada, una hora. Si el fallo aparece ya dentro
-  del modo (al buscar), dice `music_error` y pregunta si seguimos.
+  (`youtube_music.por_que_no()`). Con la clave rechazada se deja de intentar
+  **dos minutos** (`REINTENTO_S`; antes era «hasta reiniciar», y tras
+  arreglarlo en Google MECH seguía negándose) y solo con ESA clave: una
+  clave nueva en el `.env` se prueba enseguida. Con la cuota agotada, una
+  hora. Si el fallo aparece ya dentro del modo (al buscar), dice
+  `music_error` y pregunta si seguimos.
 - **El pedido lo pone en limpio Claude** (`llm.interpret_song`, llamada
   corta con salida estructurada, modelo `CLAUDE_MUSIC_MODEL`). Whisper
   escribe los títulos en otro idioma «como suenan» («cheip of yu de ed
@@ -1286,9 +1313,17 @@ con su video, en la pantalla de proyección, con el reproductor oficial.
   ⚠️ Un video solo EMPIEZA con el evento WS `music` (trae `play_id` nuevo).
   `state["music"]` llega en cada cambio de fase y solo sirve para callar:
   si también arrancara, cada cambio de fase reiniciaría la canción.
+- **Qué se ve (9 oct 2026, pedido del equipo): el video y, AL LADO, la
+  tarjeta de la canción** — rótulo «Modo música» con barritas, título,
+  artista, barra de avance con los tiempos y «canal · YouTube» — sobre la
+  miniatura del video desenfocada. Es el diseño de la primera versión (la de
+  la carátula de Apple Music, que es el que vio el equipo), con el video
+  donde iba la carátula. La barra se alimenta del propio reproductor
+  (`getCurrentTime`/`getDuration`, cada 0,5 s).
 - ⚠️ **El reproductor va A LA VISTA y sin nada encima**, y no se descarga ni
-  se extrae el audio: es lo que piden las condiciones de YouTube. No lo
-  «mejores» escondiendo el video para oír solo la música, ni con `yt-dlp`.
+  se extrae el audio: es lo que piden las condiciones de YouTube. La tarjeta
+  va al lado, nunca sobre el video. No lo «mejores» escondiendo el video
+  para oír solo la música, ni con `yt-dlp`.
 - ⚠️ El código de YouTube se baja de youtube.com **desde `music.js`, la
   primera vez que hace falta**. No va como `<script>` en el HTML: el
   preflight §8 exige que la proyección cargue sin internet.
@@ -1430,11 +1465,40 @@ ver handoff.md.
   `SISMOS_MIN_MAG_WORLD`, `SISMOS_MIN_MAG_ZONE`. Todas en `_LIVE_KEYS`.
 - Línea de arranque: `Sismos: mapa en el panel (vista «Sismos») · zona …`.
 
+**MECH contesta sobre sismos (9 oct 2026)** — pedido del equipo: «dale a
+MECH acceso a los datos de los sismos». «MECH, ¿ha temblado hoy?», «¿cuál fue
+el último sismo?», «¿hubo alguno fuerte en el mundo?» se contestan con los
+MISMOS datos del mapa, en el idioma del despertar.
+
+- `sismos.para_claude()` arma un resumen corto (~3000 letras): los 8 más
+  recientes de «mi zona» (cuándo, magnitud, lugar, km hasta MECH,
+  profundidad, quién lo reportó), el más fuerte de la semana en la zona, los
+  5 más fuertes del mundo y el más reciente. `llm.plan_response()` lo mete
+  como un bloque de `system` **después del bloque cacheado** (cambia cada
+  minuto: dentro invalidaría el caché en cada petición) y antes del idioma.
+- **Va en TODAS las peticiones**, no solo cuando se pregunta por sismos: así
+  vale en los diez idiomas y como lo escriba Whisper, sin listas de palabras.
+  Las reglas del propio bloque le dicen a Claude que lo use solo si
+  preguntan, en modo `qa`, un segmento, sin imagen.
+- ⚠️ **Las reglas del bloque importan tanto como los datos**: son sismos que
+  YA ocurrieron; MECH no predice ni alerta; no inventa; no tiene avisos de
+  tsunami, daños ni réplicas (la marca `tsunami` del USGS **no se le pasa**).
+  No las quites.
+- Sin datos (apagado en el panel, o sin internet desde el arranque) el bloque
+  dice justo eso, para que MECH conteste «ahora no tengo esos datos» en vez
+  de inventar. Con más de 15 min sin conexión avisa de que puede faltar lo
+  último.
+- Interruptor: `SISMOS_ANSWERS_ENABLED` (default true, en `_LIVE_KEYS`; sin
+  control en el panel). En `python -m backend.main` no hay hilo de sismos y
+  no se pasa nada.
+- `scripts/probar_sismos.py` mide el resumen y que viaja en la petición.
+  **Sin probar con Claude de verdad**: cómo lo cuenta solo se oye en la Pi.
+
 Lo que NO se hizo, y **no hay que hacerlo salvo pedido**: que MECH lo **diga
-en voz alta** o lo **proyecte**, la tarjeta «qué hacer si tiembla», el
-simulacro y la pregunta «¿ha temblado hoy?». Se le propusieron al equipo y
-contestó que la función de seguridad es el propio mapa y que eso ya lo
-tienen cubierto (8 oct). Están apuntadas en handoff.md.
+por su cuenta** cuando tiembla o lo **proyecte**, la tarjeta «qué hacer si
+tiembla» y el simulacro. Se le propusieron al equipo y contestó que la
+función de seguridad es el propio mapa y que eso ya lo tienen cubierto
+(8 oct). Están apuntadas en handoff.md.
 
 ### Gestos disponibles
 
@@ -2324,9 +2388,13 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     las dos caras. Si aflojás el matcher para pillar un caso, corré ese
     script.
 27d. **Si MECH dice «me es imposible poner música»**, el modo no puede usar
-    YouTube: falta `YOUTUBE_API_KEY` en el `.env` de la Pi, esa clave no
-    tiene activada «YouTube Data API v3», o se acabó la cuota del día. El
-    motivo sale en el registro y en la línea de arranque. Y si dice «algo
+    YouTube: falta `YOUTUBE_API_KEY` en el `.env` de la Pi, es una clave de
+    otro tipo (tiene que empezar por `AIza`; las `AQ.…` de AI Studio no
+    valen), no tiene activada «YouTube Data API v3», o se acabó la cuota del
+    día. El motivo sale en el registro y en las líneas de arranque (la
+    segunda, «YouTube: clave comprobada…», es la que dice si SIRVE). **Antes
+    de adivinar, pedir esa línea**: el 9 oct el equipo dijo «no se conecta»
+    y desde la laptop no se podía saber cuál de esas causas era. Y si dice «algo
     falló al reproducirla», el video no arrancó en la PANTALLA: no hay
     proyección abierta, se abrió sin el icono «Proyectar MECH» (sin
     `--autoplay-policy=no-user-gesture-required` el video no arranca solo),
