@@ -5,7 +5,8 @@ de tocar nada. Contexto de fondo (arquitectura/hardware/decisiones): **CLAUDE.md
 en la raíz — este handoff no lo reemplaza, lo complementa con el estado *vivo*.
 CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 
-**Última actualización: 9 oct 2026, segunda sesión (el fallo del modo
+**Última actualización: 10 oct 2026 (la página web al día: párrafo «10 oct»
+más abajo). Antes, 9 oct 2026, segunda sesión (el fallo del modo
 música que «no llegaba a sonar»: §2.septdecies). Lo del 8 oct, en el párrafo
 «Sesión del 8 oct» y §2.decies; lo del 6 oct, en §2.nonies.** Lo del 5 oct
 (§2.quinquies) se subió el 6 oct en dos commits encima de `62f3ebb`: «Panel
@@ -81,6 +82,25 @@ página (para que, si un navegador lo bloquea, la canción arranque sin
 sonido y pida un toque en vez de rendirse). **Subido a GitHub el 9 oct**
 (lo pidió en el mismo mensaje: «al finalizar, haz el push»). ⚠️ **Sin
 probar en la Pi**: es lo primero que hay que preguntar.
+
+**10 oct — la PÁGINA WEB al día (`web/`), subido a GitHub.** Pedido, tal
+cual: «pon que el modelo actual es el MECH-5, que tiene 6 idiomas nuevos, el
+rediseño completo del panel de control, el modo música y el modo sismos.
+Además pon que en WRO Las Américas quedamos de 4to lugar con MECH-4».
+Hecho en `web/evolucion.html` (las cinco generaciones figuran como
+lanzadas; MECH-5 es «el modelo actual» con sus cuatro novedades; MECH-4
+lleva el 4.º lugar), `web/index.html` (tarjeta «4.º lugar en WRO Las
+Américas» debajo de los tres títulos, sin contarla como título),
+`web/css/styles.css` (`.trophy-intl`, `.intl`) y `web/js/i18n.js` (todo lo
+nuevo tiene su inglés). Detalle en CLAUDE.md («Salón de trofeos» y
+«`evolucion.html`»). Verificado en el navegador: escritorio (1280), ventana
+de 626 px y teléfono (375), sin desbordes ni errores de consola, y **ninguna
+frase nueva se queda en español al pasar a inglés**. Si Vercel está
+conectado al repo, se publica sola al subir (**no se comprobó**: preguntar
+si ya se ve en la dirección pública). ⚠️ Lo que NO se puso porque el equipo no lo dio: foto, sede, fecha
+y categoría de WRO Las Américas, e imágenes de MECH-4 y MECH-5 (la figura 38
+solo compara los tres primeros). Si las tienen, pedirlas. El «parlante
+alámbrico» de MECH-4 sigue ahí (§2.quater, punto 1: sin respuesta).
 
 > **Qué preguntarle al equipo al volver** (pasos en §4, punto «El permiso
 > de sonido»):

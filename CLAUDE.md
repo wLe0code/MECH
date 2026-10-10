@@ -328,8 +328,8 @@ web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
                         unidocentes, neurociencia de la atención + referencias.
   robot.html          ← 03 · Cómo funciona, hardware por capas, construcción,
                         mecanismo, código, retos y bitácora de fotos.
-  evolucion.html      ← 04 · MECH-1 → MECH-2 → MECH-3 (actual, campeón
-                        nacional) → MECH-4 (por lanzar) → MECH-5.
+  evolucion.html      ← 04 · MECH-1 → MECH-2 → MECH-3 (campeón nacional) →
+                        MECH-4 (4.º en WRO Las Américas) → MECH-5 (actual).
   aplicaciones.html   ← 05 · Áreas de uso + modelo de negocio (costos/ingresos).
   contacto.html       ← 06 · Contacto + patrocinadores (rejilla + marquesina).
   404.html            ← Página de error (Vercel la sirve sola).
@@ -1955,13 +1955,27 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   Evolución como «debut», **sin el puesto** — a propósito; no lo pongas sin
   preguntar. Distintivo «CAMPEONES NACIONALES · WRO FUTURE INNOVATORS» en
   el hero que enlaza al salón.
-  **`evolucion.html` = cinco generaciones**: MECH-1/2/3 lanzados (MECH-3 =
-  actual y campeón nacional), MECH-4 «por lanzar» (4 idiomas, trivia,
-  traductor, «Hey MECH», parlante alámbrico, cargador el doble de rápido,
-  diseño más moderno) y MECH-5 «en preparación». Secciones: comparación
-  (fig. 38), línea de tiempo, en competencia (39–41), MECH-2, MECH-3 (seis
-  mejoras, render vs. real, desarmable/cargador/circuito, bitácora 26–34,
-  diseño 3D 21–25), MECH-4 y MECH-5.
+  **Debajo de los tres títulos va el resultado internacional (10 oct 2026,
+  pedido del equipo): «4.º lugar en WRO Las Américas», con MECH-4.** No es
+  un título, así que no cuenta entre los tres («Tres torneos. Tres títulos.»
+  sigue igual): es una tarjeta aparte, a lo ancho y en verde
+  (`.trophy-intl` en `web/css/styles.css`). La misma tarjeta sale en
+  `evolucion.html#competencias`. ⚠️ El equipo solo dijo «quedamos de 4to
+  lugar con MECH-4 en WRO Las Américas»: **no hay foto, ni sede, ni fecha,
+  ni categoría**. No las inventes; si las dan, se añaden.
+  **`evolucion.html` = cinco generaciones, las cinco LANZADAS (10 oct
+  2026)**: MECH-1, MECH-2 (campeón regional), MECH-3 (campeón nacional),
+  MECH-4 (4 idiomas, trivia, traductor, «Hey MECH», parlante alámbrico,
+  cargador el doble de rápido, diseño más moderno; **4.º lugar en WRO Las
+  Américas**) y **MECH-5 = EL MODELO ACTUAL**: seis idiomas nuevos (diez en
+  total), panel de control rediseñado, modo música y modo sismos. Secciones:
+  comparación (fig. 38), línea de tiempo, en competencia (39–41 + la tarjeta
+  de Las Américas), MECH-2, MECH-3 (seis mejoras, render vs. real,
+  desarmable/cargador/circuito, bitácora 26–34, diseño 3D 21–25), MECH-4 y
+  MECH-5 (`#mech5`, cuatro tarjetas). ⚠️ El modo sismos se describe como lo
+  que es («informa de lo que ya ocurrió: no predice»); no lo cambies a
+  «alerta» ni «predicción». La figura 38 solo compara MECH-1/2/3: no hay
+  imágenes de MECH-4 ni de MECH-5 todavía.
   **Interruptor de idioma ES/EN** (`web/js/i18n.js`): el sitio se escribe en
   español y el inglés vive en un diccionario `{texto español: HTML inglés}`.
   El botón va en la barra de navegación (inyectado por JS, así aparece en las

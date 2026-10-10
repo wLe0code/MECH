@@ -430,6 +430,11 @@ blockquote.pull cite {
   border-radius: 6px; border: 1px solid var(--border); color: var(--muted);
 }
 .tl-now .tl-tags span { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+/* resultado internacional de ese modelo: no es un título, va en otro tono */
+.tl .tl-tags span.intl {
+  color: var(--teal); border-color: color-mix(in srgb, var(--teal) 45%, transparent);
+  background: color-mix(in srgb, var(--teal) 9%, transparent);
+}
 /* título ganado por ese modelo (se anida de más para ganarle a .tl-now) */
 .tl .tl-tags span.win {
   color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, transparent);
@@ -540,6 +545,29 @@ blockquote.pull cite {
 .trophies .trophy h3 { font-size: 23px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 8px; }
 .trophies .trophy p { font-size: 14.5px; }
 .trophy .tl-tags span { color: var(--text); border-color: color-mix(in srgb, var(--amber) 30%, transparent); }
+/* Resultado internacional (4.º en WRO Las Américas). NO es un título —los
+   de arriba son primeros lugares—, así que va aparte: a lo ancho, en una
+   fila y en verde en vez de dorado. */
+.trophy-intl {
+  grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 16px 26px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--teal) 8%, var(--surface)), var(--surface) 70%);
+  border-color: color-mix(in srgb, var(--teal) 32%, transparent);
+}
+.trophy-intl .trophy-top { margin-bottom: 0; }
+.trophy-intl .medal {
+  color: #04261d;
+  background: radial-gradient(circle at 34% 28%, #c4f7e4, var(--teal) 55%, #0c6a4d);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 16%, transparent),
+              0 10px 26px -10px var(--teal);
+}
+.trophy-intl .trophy-rank { color: var(--teal); }
+.trophy-intl .trophy-body { flex: 1 1 260px; min-width: 0; }
+.trophies .trophy-intl h3 { margin-bottom: 4px; }
+.trophy-intl .tl-tags { margin-top: 0; }
+.trophy-intl .tl-tags span { border-color: color-mix(in srgb, var(--teal) 32%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .trophy-intl:hover { border-color: var(--teal); }
+}
 @media (hover: hover) and (pointer: fine) {
   .trophy:hover { transform: translateY(-5px); border-color: var(--amber); }
 }

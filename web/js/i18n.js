@@ -49,8 +49,14 @@
     'CAMPEONES NACIONALES · WRO FUTURE INNOVATORS': 'NATIONAL CHAMPIONS · WRO FUTURE INNOVATORS',
     'SALÓN DE TROFEOS': 'TROPHY ROOM',
     'Tres torneos. Tres títulos.': 'Three tournaments.<br>Three titles.',
-    'Cada prototipo se ha puesto a prueba frente a jurados y otros equipos. Estos son los títulos que ha ganado el equipo — el más reciente, la final nacional de Costa Rica.':
-      'Every prototype has been put to the test in front of judges and other teams. These are the titles the team has won — the latest, the <b>Costa Rica national final</b>.',
+    'Cada prototipo se ha puesto a prueba frente a jurados y otros equipos. Estos son los tres títulos que ha ganado el equipo y, debajo, su resultado internacional: 4.º lugar en WRO Las Américas.':
+      'Every prototype has been put to the test in front of judges and other teams. These are the three titles the team has won and, below them, its international result: <b>4th place at WRO Americas</b>.',
+    'CUARTO LUGAR · INTERNACIONAL': 'FOURTH PLACE · INTERNATIONAL',
+    '4.º lugar en WRO Las Américas': '4th place at WRO Americas',
+    'El equipo compitió con MECH‑4 en WRO Las Américas y terminó en cuarto lugar.':
+      'The team competed with MECH‑4 at WRO Americas and finished in fourth place.',
+    'WRO LAS AMÉRICAS': 'WRO AMERICAS',
+    'CON MECH‑4': 'WITH MECH‑4',
     'Ver cada modelo en competencia': 'See each model in competition',
     'FIGURA 45 · PREMIOS GANADOS POR EL EQUIPO MECH': 'FIGURE 45 · AWARDS WON BY THE MECH TEAM',
     'PRIMER LUGAR · NACIONAL': 'FIRST PLACE · NATIONAL',
@@ -335,19 +341,22 @@
     /* ── Evolución ─────────────────────────────────────────────────── */
     'LA EVOLUCIÓN': 'THE EVOLUTION',
     'Cinco generaciones. Una misma misión.': 'Five generations.<br>One same mission.',
-    'Tres modelos lanzados, MECH‑4 a punto de salir y MECH‑5 en preparación. Cada uno aprende del anterior — y el más reciente es campeón nacional.':
-      'Three models launched, <b>MECH‑4</b> about to come out and <b>MECH‑5</b> in the works. Each one learns from the last — and the latest is a national champion.',
+    'Cinco modelos lanzados, y cada uno aprende del anterior: MECH‑3 es campeón nacional, MECH‑4 quedó en 4.º lugar en WRO Las Américas y MECH‑5 es el modelo actual.':
+      'Five models launched, each one learning from the last: <b>MECH‑3</b> is a national champion, <b>MECH‑4</b> placed 4th at WRO Americas and <b>MECH‑5</b> is the current model.',
     'FIGURA 38 · COMPARACIÓN VISUAL DE LA EVOLUCIÓN': 'FIGURE 38 · VISUAL COMPARISON OF THE EVOLUTION',
     'LANZADO': 'LAUNCHED',
     'LANZADO · ACTUAL': 'LAUNCHED · CURRENT',
-    'POR LANZAR': 'COMING SOON',
-    'EN PREPARACIÓN': 'IN THE WORKS',
     'BASE DEL PROYECTO': 'PROJECT FOUNDATION',
     '+ AUTONOMÍA': '+ BATTERY LIFE',
     '+ SUBTÍTULOS': '+ SUBTITLES',
     '+ PORTABILIDAD': '+ PORTABILITY',
     '+ IDIOMAS': '+ LANGUAGES',
     '+ TRADUCTOR': '+ TRANSLATOR',
+    '🌎 4.º LUGAR · LAS AMÉRICAS': '🌎 4TH PLACE · AMERICAS',
+    '+ 6 IDIOMAS': '+ 6 LANGUAGES',
+    '+ PANEL NUEVO': '+ NEW PANEL',
+    '+ MÚSICA': '+ MUSIC',
+    '+ SISMOS': '+ EARTHQUAKES',
     '🏆 CAMPEÓN REGIONAL': '🏆 REGIONAL CHAMPION',
     '🏆 CAMPEÓN NACIONAL': '🏆 NATIONAL CHAMPION',
     'El modelo de lanzamiento: voz, proyección, movimiento y narración con IA. Estableció toda la base — estructura de aluminio y coroplast, orquestador en Python y firmware en Arduino.':
@@ -358,12 +367,12 @@
       'More accessible, portable and durable: subtitles, a rechargeable lithium battery and a body that comes apart for travel.',
     'Habla cuatro idiomas, juega trivia con el público y traduce conversaciones en tiempo real.':
       'It speaks four languages, plays trivia with the audience and translates conversations in real time.',
-    'Un modelo aún más universal, con más idiomas e indicadores más precisos.':
-      'An even more universal model, with more languages and more precise indicators.',
+    'Diez idiomas, un panel de control rediseñado por completo, modo música y modo sismos.':
+      'Ten languages, a completely redesigned control panel, music mode and earthquake mode.',
     'EN COMPETENCIA': 'IN COMPETITION',
     'Cada modelo, puesto a prueba.': 'Every model,<br>put to the test.',
-    'MECH ha competido en tres eventos oficiales de la WRO, y cada modelo llegó más lejos que el anterior: MECH‑2 ganó la regional de Guanacaste y MECH‑3, la final nacional de Costa Rica en la categoría Future Innovators.':
-      'MECH has competed in three official WRO events, and each model went further than the last: MECH‑2 won the Guanacaste regional and MECH‑3 won the <b>Costa Rica national final</b> in the Future Innovators category.',
+    'MECH ha competido en cuatro eventos oficiales de la WRO, y cada modelo llegó más lejos que el anterior: MECH‑2 ganó la regional de Guanacaste, MECH‑3 la final nacional de Costa Rica en la categoría Future Innovators, y MECH‑4 compitió en WRO Las Américas, donde el equipo quedó en 4.º lugar.':
+      'MECH has competed in four official WRO events, and each model went further than the last: MECH‑2 won the Guanacaste regional, MECH‑3 won the <b>Costa Rica national final</b> in the Future Innovators category, and MECH‑4 competed at <b>WRO Americas</b>, where the team finished in 4th place.',
     'FIGURA 39 MECH‑1 debuta en la regional WRO de Alajuela': '<span class="mono">FIGURE 39</span> MECH‑1 debuts at the Alajuela WRO regional',
     'FIGURA 40 MECH‑2, campeón de la regional WRO de Guanacaste': '<span class="mono">FIGURE 40</span> MECH‑2, champion of the Guanacaste WRO regional',
     'FIGURA 41 MECH‑3, campeón de la final nacional WRO': '<span class="mono">FIGURE 41</span> MECH‑3, champion of the WRO national final',
@@ -388,7 +397,7 @@
     'FIGURA 18 Lentes de realidad virtual': '<span class="mono">FIGURE 18</span> Virtual reality headset',
     'FIGURA 19 Movilidad finalizada': '<span class="mono">FIGURE 19</span> Mobility completed',
     'FIGURA 20 MECH‑2 completo': '<span class="mono">FIGURE 20</span> MECH‑2 complete',
-    'MECH‑3 · EL MODELO ACTUAL': 'MECH‑3 · THE CURRENT MODEL',
+    'MECH‑3 · EL CAMPEÓN NACIONAL': 'MECH‑3 · THE NATIONAL CHAMPION',
     'Más accesible. Más resistente. Más portátil.': 'More accessible.<br>More durable. More portable.',
     'Los seis aspectos que lo convierten en una versión más eficiente que sus predecesores — y el modelo con el que el equipo ganó la final nacional.':
       'The six aspects that make it a more efficient version than its predecessors — and the model the team won the national final with.',
@@ -436,9 +445,10 @@
     'FIGURA 23 · PARTE SUPERIOR': 'FIGURE 23 · UPPER SECTION',
     'FIGURA 24 · ESTRUCTURA INTERNA': 'FIGURE 24 · INTERNAL STRUCTURE',
     'FIGURA 25 · SOPORTE DE CABEZA': 'FIGURE 25 · HEAD MOUNT',
-    'MECH‑4 · A PUNTO DE LANZARSE': 'MECH‑4 · ABOUT TO LAUNCH',
+    'MECH‑4 · 4.º LUGAR EN WRO LAS AMÉRICAS': 'MECH‑4 · 4TH PLACE AT WRO AMERICAS',
     'Habla cuatro idiomas. Y juega contigo.': 'It speaks four languages.<br>And plays with you.',
-    'Las siete mejoras que ya se implementaron en el próximo modelo.': 'The seven improvements already built into the next model.',
+    'Las siete mejoras del modelo con el que el equipo compitió en WRO Las Américas.':
+      'The seven improvements in the model the team competed with at WRO Americas.',
     'Cuatro idiomas': 'Four languages',
     'Español, inglés, francés y portugués: el robot ya puede usarse en otras regiones del mundo.':
       'Spanish, English, French and Portuguese: the robot can now be used in other regions of the world.',
@@ -461,8 +471,23 @@
     'Ligeros cambios de diseño que realzan su aspecto moderno.':
       'Slight design changes that enhance its modern look.',
     'LO QUE VIENE': 'WHAT COMES NEXT',
-    'El equipo ya prepara un modelo aún más universal: más idiomas a los que puede acceder e indicadores más precisos que lo hagan todavía más versátil. Y seguirá buscando nuevas funciones según lo que reporten los usuarios o lo que el equipo considere importante.':
-      'The team is already preparing an even more <b>universal</b> model: more languages it can speak and <b>more precise indicators</b> that make it more versatile still. And it will keep looking for new features based on what users report or what the team considers important.',
+    'MECH‑5 · EL MODELO ACTUAL': 'MECH‑5 · THE CURRENT MODEL',
+    'Diez idiomas. Y mucho más que contar.': 'Ten languages.<br>And a lot more to tell.',
+    'Las cuatro novedades del modelo más reciente.': 'The four new features of the latest model.',
+    'Seis idiomas nuevos': 'Six new languages',
+    'Alemán, italiano, japonés, ruso, mandarín y coreano se suman a los cuatro de MECH‑4: ya son diez.':
+      'German, Italian, Japanese, Russian, Mandarin and Korean join the four from MECH‑4: that makes ten.',
+    'Panel de control rediseñado': 'Redesigned control panel',
+    'El panel desde el que se opera el robot se rehízo por completo: más claro, con más contraste y pensado como una app.':
+      'The panel the robot is operated from was rebuilt from scratch: clearer, with more contrast and designed like an app.',
+    'Modo música': 'Music mode',
+    'Se le pide una canción y su artista, y MECH la pone con su video en la proyección.':
+      'Ask for a song and its artist, and MECH plays it with its video on the projection.',
+    'Modo sismos': 'Earthquake mode',
+    'Un mapa con los sismos recientes del mundo y de la zona, y MECH responde si le preguntan si ha temblado. Informa de lo que ya ocurrió: no predice.':
+      'A map of recent earthquakes around the world and nearby, and MECH answers when asked whether there has been one. It reports what has already happened: it does not predict.',
+    'El equipo seguirá buscando nuevas funciones según lo que reporten los usuarios o lo que considere importante.':
+      'The team will keep looking for new features based on what users report or what it considers important.',
     'Proponer una idea': 'Suggest an idea',
 
     /* ── Aplicaciones ──────────────────────────────────────────────── */
