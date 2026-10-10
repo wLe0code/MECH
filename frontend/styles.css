@@ -957,8 +957,6 @@ select option { background: var(--surface3); color: var(--text); }
   display: flex; flex-direction: column; gap: 12px; text-align: left; min-width: 0;
   transition: border-color 200ms var(--ease-out);
 }
-/* La tarjeta del modo música ocupa las dos columnas (es la tercera). */
-.music-box { grid-column: 1 / -1; }
 .trivia-box.active, .translator-box.active {
   border-color: rgba(var(--accent-rgb), 0.7);
   box-shadow: var(--shadow-card), 0 0 0 1px rgba(var(--accent-rgb), 0.35), 0 0 30px rgba(var(--accent-rgb), 0.12);

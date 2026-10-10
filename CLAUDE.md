@@ -194,15 +194,6 @@ backend/
                         al terminar una obra. Solo el ESTADO (etapa,
                         preguntas, marcador, historial, guarda anti-eco);
                         quien habla, proyecta y llama a Claude es mech_app.
-  music.py            ← Modo MÚSICA («modo música MECH»): solo el ESTADO
-                        (preguntando canción / artista, sonando, ¿seguimos?).
-                        Quien habla, busca y manda la canción a la pantalla
-                        es mech_app.
-  youtube_music.py    ← Busca el VIDEO de YouTube de una canción (YouTube
-                        Data API v3, clave `YOUTUBE_API_KEY`): de ahí sale
-                        TODO lo que suena en el modo música. Solo videos que
-                        dejan incrustarse, de duración de canción y sin
-                        restricción de edad. Solo librería estándar.
   translator.py       ← Modo TRADUCTOR: MECH de intérprete entre dos
                         personas. Solo el ESTADO (activo, par de idiomas,
                         guarda anti-eco); quien habla y pide la traducción
@@ -268,11 +259,6 @@ frontend/
                         Inmersivo del panel y su rótulo. Lienzo pequeño
                         (720 px) estirado, a propósito: se ve suave y la Pi
                         casi no trabaja. Se para en cuanto entra algo.
-  music.js            ← Modo música en la PANTALLA de proyección (se sirve
-                        en /static/music.js): pone el video con el
-                        reproductor oficial de YouTube y avisa al servidor de
-                        cuándo empieza y cuándo termina. Trae su CSS dentro,
-                        como trivia.js.
   trivia.js           ← La PANTALLA del juego, estilo Kahoot (se sirve en
                         /static/trivia.js). Pintor tonto: muestra el
                         estado que manda el servidor. Trae su CSS dentro.
@@ -351,10 +337,10 @@ pi/                   ← TRES accesos de ESCRITORIO en la Raspberry Pi,
                         con el código local). Banderas: `--sin-actualizar`
                         (salta el pull) y `--sin-panel`.
   proyector-mech.sh   ← "Proyectar MECH": Chromium kiosko en /projector CON
-                        el flag de autoplay (sin él los videos van MUDOS y
-                        el modo música no suena). Si ya hay un Chromium
-                        abierto SIN ese flag, lo dice y se ofrece a cerrarlo
-                        y abrirlo bien (ver «El permiso de sonido»).
+                        el flag de autoplay (sin él los videos van MUDOS).
+                        Si ya hay un Chromium abierto SIN ese flag, lo dice
+                        y se ofrece a cerrarlo y abrirlo bien (el porqué,
+                        en «Modo MÚSICA — QUITADO»).
   apagar-mech.sh      ← "Apagar MECH": para el servidor con margen para que
                         cierre bien, y solo lo fuerza si no cierra. Cierra
                         también la proyección en kiosko (SOLO esa).
@@ -424,16 +410,6 @@ scripts/
                         orden, texto) y lo que NO debe adivinar («no sé»,
                         una palabra que vale para dos opciones). 50/50.
                         Correrlo al tocar parse_answer().
-  probar_musica.py    ← El MODO MÚSICA entero: las frases en los diez
-                        idiomas (que nada de lo que MECH dice con el
-                        micrófono a punto de abrirse sea una orden), una
-                        sesión completa por idioma en el bucle de voz real,
-                        y los casos raros (cortar, no encontrar, sin
-                        pantalla, sin clave, eco), y la pantalla que no deja
-                        sonar, que tarda o que se calla. `--red` busca canciones de
-                        verdad en YouTube (necesita `YOUTUBE_API_KEY`).
-                        Correrlo al tocar las frases `music_*` de lang.py,
-                        las listas VOICE_MUSIC_* o el flujo.
   probar_idiomas.py   ← Los DIEZ idiomas sin micrófono: que cada frase
                         despierte en SU idioma, que las órdenes no se pisen
                         entre idiomas (ni con lo que se dice en el stand), el
@@ -503,7 +479,7 @@ python -m backend.server
 # Visor de proyección en la misma Pi (Chromium kiosko)
 chromium --kiosk --autoplay-policy=no-user-gesture-required          http://localhost:8000/projector
 # El flag de autoplay es OBLIGATORIO para que suene el audio de los videos del
-# slot de marketing y el modo música; sin él el navegador los deja MUDOS.
+# slot de marketing; sin él el navegador los deja MUDOS.
 # ⚠️ Solo cuenta si es el PRIMER Chromium que se abre: con otro ya abierto,
 # la ventana nueva se mete en ese y el flag se ignora.
 # En Bookworm el binario también está como chromium-browser; ambos funcionan.
@@ -1221,239 +1197,50 @@ comporta al revés que las demás en cuatro cosas.
 - Para añadir OTRO slot así: una entrada con `promo: True` y su `segments`
   (máximo de espacios), y una lista de frases en `config` para dispararlo.
 
-### Modo MÚSICA — «modo música MECH» (8 oct 2026)
+### Modo MÚSICA — QUITADO (10 oct 2026)
 
-Pedido del equipo: «como Alexa». Decirle **«modo música MECH»** o **«activa
-modo música»**; pregunta qué canción y de qué artista «para garantizar que
-sea la correcta», la reproduce, y al terminar pregunta si quiere otra o
-hacer otra cosa; que se pueda cortar con «oye MECH»; y en los diez idiomas.
+El equipo pidió quitarlo, tal cual: **«quita el modo música, no sé por qué no
+funcionó. No se reproduce nada»**. Se había hecho el 8 oct («modo música
+MECH» → pregunta canción y artista → pone su video de YouTube en la
+proyección) y se le arreglaron dos cosas el 9 oct (la lectura de la clave y
+el permiso de sonido del navegador), pero en el robot siguió sin sonar y
+**nunca se llegó a saber por qué** (no se vio la Pi fallando).
 
-```
-«modo música MECH»
-MECH: «¿Qué canción quieres escuchar, y de qué artista?»        (+ chime)
-«Despacito»                     (sin artista → lo pregunta UNA vez)
-MECH: «¿De qué artista es?»                                      (+ chime)
-«de Luis Fonsi»
-MECH: «Ahí va: Despacito, de Luis Fonsi.»  → suena, con su video
-MECH: «¿Seguimos con la música, o prefieres hacer algo distinto?»
-«otra canción» / «sí» → pregunta cuál · «no» → «Listo, apago la música.»
-cualquier otra orden → sale del modo y la atiende
-```
-
-**QUÉ SUENA: SOLO YouTube** (decisión del equipo, 8 oct). La canción entera,
-con su video, en la pantalla de proyección, con el reproductor oficial.
-
-> **Historial, para no repetirlo.** Primero se hizo con el catálogo de Apple
-> Music y su fragmento de 30 s (commit `2945620`), porque la canción entera
-> de Apple pide una cuenta de DESARROLLADOR de pago (~99 USD/año, distinta
-> de la suscripción) además de iniciar sesión en la pantalla. El equipo
-> probó que la Pi SÍ reproduce music.apple.com entero, pero prefirió YouTube
-> (tiene YouTube Premium) y luego pidió expresamente **«quita lo de Apple
-> Music y deja solo lo de reproducir videos de YouTube»**. `apple_music.py`
-> y el respaldo de 30 s ya no existen: **no los vuelvas a meter** salvo que
-> lo pidan.
-
-- **Clave**: `YOUTUBE_API_KEY` en el `.env` (gratis; cómo sacarla, en
-  `docs/USO.md` §4 bis y en `.env.example`). Cada canción gasta 101 de las
-  10 000 unidades diarias: ~99 canciones al día. Lo buscado se recuerda 6 h.
-  La clave solo permite búsquedas públicas: no da acceso a la cuenta de nadie.
-- ⚠️ **El TIPO de clave importa** (comprobado contra Google el 9 oct 2026):
-  tiene que ser una «Clave de API» de las de siempre, que empieza por `AIza`
-  (39 caracteres). Las nuevas de Google AI Studio (`AQ.…`, 53 caracteres —
-  así es hoy la `GOOGLE_API_KEY` de Gemini) YouTube las rechaza con un 401
-  «API keys are not supported by this API». Por eso `GOOGLE_API_KEY` ya
-  **solo** se prueba como respaldo si tiene la forma `AIza…`.
-- **La clave se lee del `.env` EN VIVO y perdonando deslices**
-  (`youtube_music._del_env`, 9 oct 2026). El equipo la pegó a mano al final
-  del `.env` y «no se conectaba». Ahora: se relee cuando el archivo cambia
-  (sin reiniciar); vale con comillas, espacios, el nombre en minúsculas,
-  `:` en vez de `=`, pegada a la línea de antes, con la línea vacía de la
-  plantilla arriba o abajo (manda la última CON valor) y hasta suelta sin
-  nombre (se usa y se avisa). Si no está, `por_que_no()` dice si la
-  pusieron en `.env.example` o en un `.env` fuera de `backend/`.
-  ⚠️ **Nada de eso imprime la clave**; mantenelo así.
-- **Al arrancar se le pregunta a YouTube si la clave sirve**
-  (`youtube_music.comprobar()`, 1 unidad, en un hilo:
-  `server._comprobar_youtube`). El panel dice «YouTube: clave comprobada…»
-  o «Modo música: así NO va a poder buscar canciones — …» con el motivo
-  traducido y qué tocar en la consola de Google (clave inexistente, tipo de
-  clave, API sin activar, restricción de API, restricción de aplicaciones,
-  sin internet, portal del wifi). El preflight (§3) hace lo mismo.
-- ⚠️ **Sin clave (o con la cuota agotada) el modo NO funciona, y no hay
-  respaldo.** Al pedirlo, MECH dice `music_unavailable` («Ahora mismo me es
-  imposible poner música») y **no entra al modo**; el panel dice por qué
-  (`youtube_music.por_que_no()`). Con la clave rechazada se deja de intentar
-  **dos minutos** (`REINTENTO_S`; antes era «hasta reiniciar», y tras
-  arreglarlo en Google MECH seguía negándose) y solo con ESA clave: una
-  clave nueva en el `.env` se prueba enseguida. Con la cuota agotada, una
-  hora. Si el fallo aparece ya dentro del modo (al buscar), dice
-  `music_error` y pregunta si seguimos.
-- **El pedido lo pone en limpio Claude** (`llm.interpret_song`, llamada
-  corta con salida estructurada, modelo `CLAUDE_MUSIC_MODEL`). Whisper
-  escribe los títulos en otro idioma «como suenan» («cheip of yu de ed
-  chiran»), y con eso YouTube encuentra cualquier cosa menos la canción.
-  **De ahí sale también el nombre que MECH dice y que se pinta**: nunca el
-  título del video («Luis Fonsi - Despacito ft. … (Official Video)»). Si
-  Claude falla, se busca con lo que se oyó tal cual. Si el visitante NO dijo
-  el artista, Claude deja el campo vacío a propósito (aunque lo sepa) y MECH
-  lo pregunta: es lo que pidió el equipo. «No sé» → busca solo por título y
-  la anuncia sin artista (`music_playing_title`). «Algo de Queen» → busca
-  por el artista.
-- **Qué videos valen** (`youtube_music.buscar`): `videoEmbeddable=true` +
-  `videoSyndicated=true` (que dejen reproducirse fuera de youtube.com),
-  categoría Música, `safeSearch=strict` salvo `MUSIC_ALLOW_EXPLICIT`, no
-  directos, no de mayores de edad (no se reproducen incrustados), no
-  bloqueados en `MUSIC_COUNTRY`, y entre 45 s y `MUSIC_MAX_SECONDS` (600).
-  Se ordenan: el oficial primero, karaokes/covers/remixes al final (salvo
-  que se pidan).
-- ⚠️ **Aun así un video puede negarse al ponerlo** (errores 101/150: su
-  dueño no lo deja fuera de YouTube). Por eso se mandan hasta TRES
-  candidatos y la pantalla (`frontend/music.js`) prueba el siguiente; cada
-  uno tiene 10 s para arrancar. Si ninguno arranca, avisa `error` con el
-  motivo y MECH lo dice. La pantalla le dice al servidor CUÁL suena
-  (`youtube:<id>`) y de eso depende cuánto se espera el final
-  (`_music_wait_seconds`: la duración de ESE video + 90 s).
-- **Suena en la PANTALLA de proyección**, no en el backend: ahí vive el
-  reproductor de YouTube. La pantalla avisa con `POST /api/music/event` y
-  `_play_track` espera. Los avisos: `loading` (señal de vida: «recibí la
-  canción, pruebo el video 2 de 3»), `playing`, `muted` / `unmuted` (ver el
-  punto siguiente), `ended` y `error`. Van **en fila** desde `music.js`
-  (`playing` y `muted` salen casi a la vez y podían llegar al revés).
-  El plazo `MUSIC_START_TIMEOUT` (25 s) cuenta **desde la última señal de
-  vida**, no desde que se mandó la canción: mientras la pantalla siga
-  avisando, se la espera, y es ELLA quien dice si pudo o no y por qué. Si
-  nadie da señales: «Ninguna pantalla contestó» (no hay proyección abierta,
-  o es una página vieja sin recargar).
-- ⚠️ **El permiso de sonido (9 oct 2026) — el fallo «se pone la tarjeta y
-  el video, pero no llega a reproducirse y vuelve a "Esperando
-  contenido"».** Reproducido en la laptop con un Edge sin ventana y la
-  política de autoplay por defecto: el navegador no deja arrancar un video
-  CON SONIDO sin un toque, YouTube dispara `onAutoplayBlocked`, el video se
-  queda en su carátula, la pantalla saltaba de candidato en candidato y a
-  los 25 s el servidor la daba por perdida. Dos arreglos, y hacen falta los
-  dos:
-  1. **En la Pi, que el permiso llegue de verdad.** El flag
-     `--autoplay-policy=no-user-gesture-required` solo cuenta en el PRIMER
-     Chromium que se abre (Chromium es un solo programa; las ventanas
-     siguientes se meten en él y sus banderas se ignoran). Y el primero era
-     el PANEL, que «Iniciar MECH» abre solo desde el 18 sep, sin el flag:
-     la proyección nunca lo tenía. Ahora `pi/panel-mech.sh` lo lleva, y
-     `pi/proyector-mech.sh` mira si hay un Chromium principal abierto sin
-     él (`pgrep` + `/proc/<pid>/cmdline`, sin los procesos `--type=`) y se
-     ofrece a cerrarlo y reabrirlo (Enter o 15 s = sí).
-  2. **En la página, que un bloqueo no tumbe la canción** (laptops, o un
-     Chromium que nadie relanzó). Con `onAutoplayBlocked`, `music.js`
-     arranca el video SIN sonido (eso el navegador siempre lo deja), enseña
-     en la tarjeta «Toca la pantalla para activar el sonido»
-     (`lang.say("music_tap_sound")`, viaja en `snap["hint"]`) y avisa
-     `muted`; el servidor lo apunta en el panel con qué hacer. Con el
-     primer toque —en la página o SOBRE el video— avisa `unmuted` y la
-     canción vuelve a empezar con sonido (el servidor recalcula hasta
-     cuándo espera el final: `_music_until`). Las canciones siguientes ya
-     suenan solas.
-  - El toque sobre el video no manda ningún clic a nuestra página (es otro
-    origen): se detecta con `navigator.userActivation.hasBeenActive`, que
-    se mira cada medio segundo. Y como ese toque le pone PAUSA al video,
-    `music.js` le quita la pausa (estado 2 → `playVideo()`).
-  - ⚠️ **No adivines el bloqueo por tiempo** («si a los N s no arrancó, es
-    que lo bloquearon»): silenciaría una canción que solo tarda en cargar o
-    que trae un anuncio delante. YouTube lo avisa; se usa eso.
-  - ⚠️ El aviso va EN la tarjeta, nunca sobre el video (condiciones de
-    YouTube).
-  - **La proyección lo comprueba también AL ABRIRSE** (`comprobarSonido()`
-    en `projector.html`: intenta reproducir una décima de silencio). Si el
+- **Ya no existe nada del modo**: `backend/music.py`,
+  `backend/youtube_music.py`, `frontend/music.js`, `scripts/probar_musica.py`,
+  `llm.interpret_song`, los métodos `*music*` de `mech_app`, los endpoints
+  `/api/music/*`, las 30 listas `VOICE_MUSIC_*` y las 14 frases `music_*`, la
+  tarjeta y los ajustes del panel, las claves `MUSIC_*`, `YOUTUBE_API_KEY` y
+  `CLAUDE_MUSIC_MODEL`. Una línea `YOUTUBE_API_KEY=…` que quede en el `.env`
+  de la Pi no hace nada (y no molesta).
+- ⚠️ **No lo vuelvas a meter salvo que lo pidan.** Si lo piden, está entero
+  en el historial: el último commit que lo tiene es `74ab082`
+  (`git show 74ab082:backend/music.py`, etc.). Antes de rescatarlo, **ver el
+  fallo en la Pi** (la línea del registro del panel): rehacerlo a ciegas
+  repetiría lo mismo. Lo que se sabía que podía fallar y no se confirmó: el
+  permiso de sonido del Chromium de la Pi, que la red del colegio bloquee
+  youtube.com, y los videos que no se dejan incrustar.
+- **NO confundir con la música de FONDO** de las obras (`background_audio.py`,
+  `Plan.background_music`, `BACKGROUND_MUSIC_VOLUME`, el hueco «música» de
+  `/library`): esa es otra función y **sigue igual**.
+- **Lo que se quedó de esos días, porque sirve para el marketing:**
+  - **El permiso de sonido de la proyección.** Chromium es UN solo programa:
+    el flag `--autoplay-policy=no-user-gesture-required` solo cuenta en el
+    PRIMER Chromium que se abre, y las ventanas siguientes se meten en él
+    ignorando sus propias banderas. El primero es el PANEL (lo abre «Iniciar
+    MECH»), así que `pi/panel-mech.sh` lleva el flag, y `pi/proyector-mech.sh`
+    mira si hay un Chromium principal abierto sin él (`pgrep` +
+    `/proc/<pid>/cmdline`, sin los procesos `--type=`) y se ofrece a cerrarlo
+    y reabrirlo (Enter o 15 s = sí). ⚠️ Ese trozo de bash **no se ha corrido
+    en la Pi** (se simuló con un `/proc` de mentira).
+  - **La proyección comprueba el sonido AL ABRIRSE** (`comprobarSonido()` en
+    `projector.html`: intenta reproducir una décima de silencio). Si el
     navegador se niega, deja puesto «Toca la pantalla para activar el
     sonido» y avisa por `POST /api/projection/sound`; el panel dice
     «Proyección abierta, con permiso de sonido» o «OJO: la proyección se
-    abrió SIN permiso de sonido». **Es la línea que hay que pedirle al
-    equipo** cuando algo no suena. Vale igual para el marketing. La página
-    la repite cada vez que el servidor vuelve (lo reinician con la
-    proyección abierta), así que sale también tras un «Iniciar MECH».
-  - `projector.html` pide `music.js?v=13`: **súbele el número al tocarlo**,
-    o el Chromium de la Pi puede seguir con el archivo viejo guardado.
-  ⚠️ Un video solo EMPIEZA con el evento WS `music` (trae `play_id` nuevo).
-  `state["music"]` llega en cada cambio de fase y solo sirve para callar:
-  si también arrancara, cada cambio de fase reiniciaría la canción.
-- **Qué se ve (9 oct 2026, pedido del equipo): el video y, AL LADO, la
-  tarjeta de la canción** — rótulo «Modo música» con barritas, título,
-  artista, barra de avance con los tiempos y «canal · YouTube» — sobre la
-  miniatura del video desenfocada. Es el diseño de la primera versión (la de
-  la carátula de Apple Music, que es el que vio el equipo), con el video
-  donde iba la carátula. La barra se alimenta del propio reproductor
-  (`getCurrentTime`/`getDuration`, cada 0,5 s).
-- ⚠️ **El reproductor va A LA VISTA y sin nada encima**, y no se descarga ni
-  se extrae el audio: es lo que piden las condiciones de YouTube. La tarjeta
-  va al lado, nunca sobre el video. No lo «mejores» escondiendo el video
-  para oír solo la música, ni con `yt-dlp`.
-- ⚠️ El código de YouTube se baja de youtube.com **desde `music.js`, la
-  primera vez que hace falta**. No va como `<script>` en el HTML: el
-  preflight §8 exige que la proyección cargue sin internet.
-- ⚠️ El CSS de `music.js` va dentro de una cadena de JavaScript entre
-  comillas invertidas: **una comilla invertida en un comentario de ese CSS
-  rompe el archivo entero** (pasó: la pantalla se quedaba sin modo música y
-  sin dar error visible).
-- **Anuncios**: el equipo tiene YouTube Premium. Con la sesión iniciada en
-  el Chromium de la Pi (el kiosko usa el perfil normal de Chromium, sin
-  `--user-data-dir`), no deberían salir. **No está confirmado** que Premium
-  valga en un reproductor incrustado: hay que mirarlo en la Pi. Si salen,
-  no hay arreglo por código.
-- **«oye MECH» la corta** con el mismo listener de las narraciones.
-  `stop_presentation()` suelta la espera y le manda a la pantalla que calle
-  YA. Después: «Entendido. ¿Seguimos…?»; y si la frase traía algo más
-  («oye MECH, pon Thriller de Michael Jackson») se trata como la respuesta.
-  ⚠️ El micrófono oye la música: es la versión fuerte del problema de
-  «MECH se transcribe a sí mismo» (más CPU en la Pi, y cortar cuesta más).
-  Palancas: Ajustes → «Volumen música» y «Umbral al narrar». El botón
-  **Parar** del panel corta sin micrófono.
-- **Al preguntar si seguimos, el orden importa**: salir → «otra canción» →
-  no → sí → (ni una ni otra) Claude decide si es una canción dicha de una o
-  si cambió de tema; si cambió, `handle_music_again` devuelve **False** y el
-  texto sigue su camino normal (nadie se queda encerrado, como en la
-  trivia). «Otra» va ANTES que el no porque en alemán «noch EIN Lied» casa
-  con «nein».
-- **Eco** — cuatro preguntas por canción con el micrófono abriéndose detrás.
-  Defensas: `MUSIC_DRAIN_SECONDS`, la guarda `music.spoken()` +
-  `sounds_like_same`, y sobre todo que **las frases están escritas para no
-  contener ninguna orden**: nada de «Claro» (es un sí), «No encontré» (es un
-  no), «sin»/«nos» (el matcher los da por «sí»/«no»: perdona una letra de
-  más), «otra canción», etc. La despedida `music_off` es la excepción y
-  **tiene que casar con «salir»** («Listo, apago la música» ↔ «apaga la
-  música»): fuera del modo esa orden se ignora en silencio, así su eco
-  muere ahí en vez de irse a Claude. Solo se ignora si la frase es CORTA
-  (`_frase_corta`): una pregunta larga que casualmente lleve esas palabras
-  sigue a Claude. ⚠️ Por eso mismo «para la música» NO está en las listas de
-  salir: «para» y «música» salen en cualquier pregunta normal.
-  `scripts/probar_musica.py` comprueba todo esto en los diez idiomas —
-  **no reescribas una frase `music_*` sin correrlo**.
-- **Estado** en [`backend/music.py`](backend/music.py) (etapas `ask` →
-  `artist` → `playing` → `again`), **flujo** en `mech_app` (`start_music`,
-  `handle_music_request`, `_music_find_and_play`, `_play_track`,
-  `handle_music_again`, `stop_music`), rama propia en
-  `server._voice_loop_worker` (antes de los comandos normales, como la
-  trivia). Entrar y salir se miran en `handle_text_command`, **salir antes
-  que entrar** («sal del modo música» lleva dentro «modo música»).
-- **Diez idiomas**: tres listas por idioma (`VOICE_MUSIC_PHRASES`,
-  `_STOP_`, `_MORE_`), todas juntas en la sección «Modo MÚSICA» de
-  `config.py` (no repartidas idioma por idioma), y 14 frases `music_*` en
-  `lang.py` (dos de ellas no se dicen, se proyectan: el rótulo «Modo
-  música» y el aviso «Toca la pantalla para activar el sonido»).
-  En ruso NO están «включи / выключи музыку» (encender/apagar, a una letra).
-- Mientras el modo está activo MECH **no saluda** por cámara, y dormirlo o
-  el paro de emergencia lo sacan del modo.
-- Panel: tarjeta **MODO MÚSICA** (vista Voz) — escribir «canción, artista»
-  y **Poner** (sin micrófono: separa «el modo falla» de «no te entendió»),
-  **Preguntar** y **Parar**. Ajustes → grupo «Modo música» (activar,
-  contenido explícito, volumen).
-- Endpoints: `POST /api/music/start` · `/play` `{text}` · `/stop` ·
-  `/event` (lo usa la pantalla).
-- Claves: `YOUTUBE_API_KEY`, `MUSIC_ENABLED`, `MUSIC_ALLOW_EXPLICIT`,
-  `MUSIC_VOLUME` (las tres últimas en vivo), `MUSIC_COUNTRY`,
-  `MUSIC_DRAIN_SECONDS`, `MUSIC_START_TIMEOUT`, `MUSIC_MAX_SECONDS`,
-  `CLAUDE_MUSIC_MODEL`, `VOICE_MUSIC{,_STOP,_MORE}_PHRASES{,_EN,…,_KO}`.
-- Línea de arranque: `Modo música: … Pone la canción entera desde YouTube…`
-  (verde) o `Modo música: NO disponible — <motivo>` (ámbar).
-- Necesita internet y la proyección abierta. En `/projector/vr` no suena, a
-  propósito (como el marketing).
+    abrió SIN permiso de sonido». La repite cada vez que el servidor vuelve.
+  - **Las «bolitas» de reposo** de la proyección (ver `projector.html` en el
+    mapa de archivos).
 
 ### Sismos recientes — el mapa del panel (8 oct 2026)
 
@@ -1968,11 +1755,12 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   MECH-4 (4 idiomas, trivia, traductor, «Hey MECH», parlante alámbrico,
   cargador el doble de rápido, diseño más moderno; **4.º lugar en WRO Las
   Américas**) y **MECH-5 = EL MODELO ACTUAL**: seis idiomas nuevos (diez en
-  total), panel de control rediseñado, modo música y modo sismos. Secciones:
+  total), panel de control rediseñado y modo sismos (el modo música figuró
+  un día y se quitó de la web el 10 oct, a la vez que del robot). Secciones:
   comparación (fig. 38), línea de tiempo, en competencia (39–41 + la tarjeta
   de Las Américas), MECH-2, MECH-3 (seis mejoras, render vs. real,
   desarmable/cargador/circuito, bitácora 26–34, diseño 3D 21–25), MECH-4 y
-  MECH-5 (`#mech5`, cuatro tarjetas). ⚠️ El modo sismos se describe como lo
+  MECH-5 (`#mech5`, tres tarjetas). ⚠️ El modo sismos se describe como lo
   que es («informa de lo que ya ocurrió: no predice»); no lo cambies a
   «alerta» ni «predicción». La figura 38 solo compara MECH-1/2/3: no hay
   imágenes de MECH-4 ni de MECH-5 todavía.
@@ -2225,33 +2013,14 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `backend/sismos.py` de verdad (datos reales, llegada en vivo, cambio de
   zona, apagar/encender, escritorio ancho, 1440 px y teléfono). **Sin probar
   en la Pi.**
-- **Modo música con YouTube (8 oct 2026)** — «modo música MECH» / «activa
-  modo música» → pregunta canción y artista → busca su video en YouTube →
-  suena ENTERA en la proyección → pregunta si seguimos. Se corta con «oye
-  MECH». En los diez idiomas. Necesita la clave `YOUTUBE_API_KEY` (sin ella,
-  MECH dice que no puede y no entra). Ver «Modo MÚSICA». Verificado sin
-  hardware: `scripts/probar_musica.py` (102 comprobaciones: frases, una
-  sesión entera por idioma en el bucle de voz real, cortar, no encontrar,
-  sin pantalla, sin clave, cuota agotada, eco, y la búsqueda con respuestas
-  de mentira de Google), y la pantalla en el navegador con un video REAL de
-  YouTube (salta el que no sirve, suena, avisa al terminar, se corta, y
-  avisa del error si ninguno sirve). **Sin probar**: nada en la Pi; **la
-  búsqueda en YouTube nunca se hizo de verdad** (no había clave: se probó
-  con respuestas copiadas del formato de Google; con la clave,
-  `probar_musica.py --red` la hace de verdad); y `llm.interpret_song` nunca
-  ha llamado a Claude de verdad.
-- **El modo música «ponía la tarjeta y el video pero no sonaba» (9 oct
-  2026)** — era el permiso de sonido del navegador: ver «El permiso de
-  sonido» en «Modo MÚSICA». Arreglado en los lanzadores de la Pi
-  (`panel-mech.sh`, `proyector-mech.sh`) y en la página (arranca sin sonido,
-  pide un toque y lo avisa en vez de rendirse). Verificado: el fallo y el
-  arreglo en un Edge sin ventana con la política por defecto (bloqueado →
-  suena sin sonido + aviso; toque en la tarjeta o sobre el video → vuelve a
-  empezar con sonido; segunda canción → suena sola; permitido → suena
-  directo), `probar_musica.py` (147 comprobaciones, 14 nuevas, que fallan
-  con el código de antes) y la parte nueva de `proyector-mech.sh` con un
-  `/proc` de mentira. **Sin probar en la Pi**: sobre todo el trozo de bash
-  que detecta el Chromium abierto (`pgrep -x` y `/proc` de verdad).
+- **Modo música: hecho el 8 oct y QUITADO el 10 oct 2026**, a pedido del
+  equipo («no sé por qué no funcionó. No se reproduce nada»). Ver «Modo
+  MÚSICA — QUITADO»: qué se borró, dónde está en el historial y lo que se
+  quedó porque le sirve al marketing (el permiso de sonido de la
+  proyección). Verificado tras quitarlo: `probar_idiomas`,
+  `probar_comandos_idioma` (el bucle de voz real), `probar_trivia` 50/50,
+  `probar_saludo`, `probar_sismos`, `probar_llegada`, el preflight, y el
+  panel y la proyección en el navegador. **Sin probar en la Pi.**
 - **Modo inglés bajo demanda (ago 2026)** — `backend/lang.py` guarda el idioma
   activo. «wake up MECH» despierta en INGLÉS (Whisper en `en`, narración de
   Claude en inglés, frases fijas y subtítulos en inglés); «ok MECH» /
@@ -2475,30 +2244,14 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     preguntar) antes que adivinar, y por eso `scripts/probar_trivia.py` mide
     las dos caras. Si aflojás el matcher para pillar un caso, corré ese
     script.
-27d. **Si MECH dice «me es imposible poner música»**, el modo no puede usar
-    YouTube: falta `YOUTUBE_API_KEY` en el `.env` de la Pi, es una clave de
-    otro tipo (tiene que empezar por `AIza`; las `AQ.…` de AI Studio no
-    valen), no tiene activada «YouTube Data API v3», o se acabó la cuota del
-    día. El motivo sale en el registro y en las líneas de arranque (la
-    segunda, «YouTube: clave comprobada…», es la que dice si SIRVE). **Antes
-    de adivinar, pedir esa línea**: el 9 oct el equipo dijo «no se conecta»
-    y desde la laptop no se podía saber cuál de esas causas era. Y si dice «algo
-    falló al reproducirla», el registro trae el motivo: «Ninguna pantalla
-    contestó» (no hay proyección abierta, o es una página vieja) o «La
-    pantalla no pudo reproducir la canción: …» (sin internet, o ninguno de
-    los tres videos se deja poner fuera de YouTube). Si pone OTRA canción,
-    probar a escribirla en la tarjeta del panel: si por ahí acierta, fue
-    Whisper o `interpret_song`.
-27f. **Si la canción (o el marketing) se VE pero NO SUENA**, es el permiso
-    de sonido del navegador, no el código ni el parlante. Sale «Toca la
-    pantalla para activar el sonido» y el panel lo dice. Un clic en la
-    proyección lo arregla al momento; en la Pi, volver a abrir «Proyectar
-    MECH» y dar Enter. ⚠️ **Chromium es UN solo programa**: el flag de
-    autoplay de «Proyectar MECH» no sirve de nada si ya había un Chromium
-    abierto sin él. Ver «El permiso de sonido».
-27e. **«oye MECH» no corta la canción**: el micrófono está oyendo la
-    música. Bajar Ajustes → «Volumen música», decirlo más cerca, o el botón
-    «Parar» del panel. No hay más magia posible sin cancelación de eco.
+27f. **Si el marketing se VE pero NO SUENA**, es el permiso de sonido del
+    navegador, no el código ni el parlante. Sale «Toca la pantalla para
+    activar el sonido» y el panel lo dice («OJO: la proyección se abrió SIN
+    permiso de sonido»). Un clic en la proyección lo arregla al momento; en
+    la Pi, volver a abrir «Proyectar MECH» y dar Enter. ⚠️ **Chromium es UN
+    solo programa**: el flag de autoplay de «Proyectar MECH» no sirve de
+    nada si ya había un Chromium abierto sin él. Ver «Modo MÚSICA —
+    QUITADO».
 27c. **Si la trivia no arranca**, mirá el arranque del server: tiene que
     salir la línea «Trivia: 3 preguntas por partida…». Si no sale, la Pi
     corre código viejo (git pull sin reiniciar) o está apagada en Ajustes.
@@ -2612,7 +2365,7 @@ reordenado.
   `body.sin-servidor` (lo ponen `ws.onclose` / `ws.onopen`). Con `?app=1` en
   la dirección (así lo abre la app de Windows) trae «Buscar de nuevo», que
   hace `history.back()` a la pantalla de búsqueda.
-- `index.html` pide ahora `styles.css?v=12` y `app.js?v=12` (y `sismos.js?v=12`).
+- `index.html` pide ahora `styles.css?v=13` y `app.js?v=13` (y `sismos.js?v=13`).
 
 ### App de Windows sin construir nada (8 oct 2026)
 
@@ -2697,7 +2450,7 @@ presentan.
   (`AUDIO_INPUT_DEVICE=Steren`) no coincidía con ninguna opción, el
   desplegable quedaba en blanco y «Guardar en .env» **borraba el micrófono**.
   Ahora se añade como opción («Steren (lo configurado ahora)»).
-- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=12`): para
+- **`?v=N` en `index.html`** (en `styles.css` y `app.js`; hoy `?v=13`): para
   que tras un `git pull` el navegador no mezcle el HTML nuevo con el CSS/JS
   viejos que tenía guardados. **Al tocar cualquiera de los dos, súbele el
   número.**

@@ -15,8 +15,7 @@
 # y las banderas de esta línea se ignoran. Por eso `panel-mech.sh` lleva el
 # mismo flag, y por eso aquí se mira si hay un Chromium abierto SIN él (uno
 # abierto a mano, o el panel de antes de actualizar): en ese caso se cierra
-# y se vuelve a abrir bien. Fue la causa de que el modo música «pusiera la
-# tarjeta y el video, pero no llegara a sonar» (oct 2026).
+# y se vuelve a abrir bien. Sin eso la proyección se queda muda (oct 2026).
 
 set -u
 
@@ -76,7 +75,7 @@ if [ -n "$SIN_PERMISO" ]; then
     echo
     echo "  OJO: ya hay un Chromium abierto, y se abrió SIN el permiso de sonido."
     echo "  La proyección se metería en ese mismo Chromium y saldría MUDA:"
-    echo "  ni el modo música ni los videos de marketing se oirían."
+    echo "  los videos de marketing no se oirían."
     echo
     echo "  Para arreglarlo hay que cerrarlo (TODAS sus ventanas) y abrirlo de"
     echo "  nuevo con el permiso."

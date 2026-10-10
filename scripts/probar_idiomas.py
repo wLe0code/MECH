@@ -513,9 +513,6 @@ def main() -> int:
         "VOICE_TRIVIA_STOP_PHRASES": vp.is_trivia_stop,
         "VOICE_YES_PHRASES": vp.is_yes,
         "VOICE_NO_PHRASES": vp.is_no,
-        "VOICE_MUSIC_PHRASES": vp.is_music,
-        "VOICE_MUSIC_STOP_PHRASES": vp.is_music_stop,
-        "VOICE_MUSIC_MORE_PHRASES": vp.is_music_more,
     }
     for code in NUEVOS:
         malas = []

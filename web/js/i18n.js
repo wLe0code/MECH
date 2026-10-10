@@ -355,7 +355,6 @@
     '🌎 4.º LUGAR · LAS AMÉRICAS': '🌎 4TH PLACE · AMERICAS',
     '+ 6 IDIOMAS': '+ 6 LANGUAGES',
     '+ PANEL NUEVO': '+ NEW PANEL',
-    '+ MÚSICA': '+ MUSIC',
     '+ SISMOS': '+ EARTHQUAKES',
     '🏆 CAMPEÓN REGIONAL': '🏆 REGIONAL CHAMPION',
     '🏆 CAMPEÓN NACIONAL': '🏆 NATIONAL CHAMPION',
@@ -367,8 +366,8 @@
       'More accessible, portable and durable: subtitles, a rechargeable lithium battery and a body that comes apart for travel.',
     'Habla cuatro idiomas, juega trivia con el público y traduce conversaciones en tiempo real.':
       'It speaks four languages, plays trivia with the audience and translates conversations in real time.',
-    'Diez idiomas, un panel de control rediseñado por completo, modo música y modo sismos.':
-      'Ten languages, a completely redesigned control panel, music mode and earthquake mode.',
+    'Diez idiomas, un panel de control rediseñado por completo y modo sismos.':
+      'Ten languages, a completely redesigned control panel and earthquake mode.',
     'EN COMPETENCIA': 'IN COMPETITION',
     'Cada modelo, puesto a prueba.': 'Every model,<br>put to the test.',
     'MECH ha competido en cuatro eventos oficiales de la WRO, y cada modelo llegó más lejos que el anterior: MECH‑2 ganó la regional de Guanacaste, MECH‑3 la final nacional de Costa Rica en la categoría Future Innovators, y MECH‑4 compitió en WRO Las Américas, donde el equipo quedó en 4.º lugar.':
@@ -473,16 +472,13 @@
     'LO QUE VIENE': 'WHAT COMES NEXT',
     'MECH‑5 · EL MODELO ACTUAL': 'MECH‑5 · THE CURRENT MODEL',
     'Diez idiomas. Y mucho más que contar.': 'Ten languages.<br>And a lot more to tell.',
-    'Las cuatro novedades del modelo más reciente.': 'The four new features of the latest model.',
+    'Las tres novedades del modelo más reciente.': 'The three new features of the latest model.',
     'Seis idiomas nuevos': 'Six new languages',
     'Alemán, italiano, japonés, ruso, mandarín y coreano se suman a los cuatro de MECH‑4: ya son diez.':
       'German, Italian, Japanese, Russian, Mandarin and Korean join the four from MECH‑4: that makes ten.',
     'Panel de control rediseñado': 'Redesigned control panel',
     'El panel desde el que se opera el robot se rehízo por completo: más claro, con más contraste y pensado como una app.':
       'The panel the robot is operated from was rebuilt from scratch: clearer, with more contrast and designed like an app.',
-    'Modo música': 'Music mode',
-    'Se le pide una canción y su artista, y MECH la pone con su video en la proyección.':
-      'Ask for a song and its artist, and MECH plays it with its video on the projection.',
     'Modo sismos': 'Earthquake mode',
     'Un mapa con los sismos recientes del mundo y de la zona, y MECH responde si le preguntan si ha temblado. Informa de lo que ya ocurrió: no predice.':
       'A map of recent earthquakes around the world and nearby, and MECH answers when asked whether there has been one. It reports what has already happened: it does not predict.',

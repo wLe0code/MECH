@@ -683,29 +683,6 @@ def is_no(text: str) -> bool:
     return matches_any(text, _frases_activas("VOICE_NO_PHRASES"))
 
 
-# ---------------------------------------------------------------------------
-# Modo música (ver backend/music.py)
-# ---------------------------------------------------------------------------
-
-def is_music(text: str) -> bool:
-    """¿Piden el modo música? («modo música MECH», «activa modo música»)"""
-    if is_music_stop(text):
-        # «sal del modo música» lleva dentro las palabras de «modo música»:
-        # salir se mira antes que entrar, como en el traductor y la trivia.
-        return False
-    return matches_any(text, _frases_activas("VOICE_MUSIC_PHRASES"))
-
-
-def is_music_stop(text: str) -> bool:
-    """¿Piden salir del modo música? («apaga la música»)"""
-    return matches_any(text, _frases_activas("VOICE_MUSIC_STOP_PHRASES"))
-
-
-def is_music_more(text: str) -> bool:
-    """¿Piden otra canción? Solo se mira cuando MECH pregunta si seguimos."""
-    return matches_any(text, _frases_activas("VOICE_MUSIC_MORE_PHRASES"))
-
-
 # Cómo suena cada letra de opción al decirla. La clave es el índice (0 = A).
 #
 # ⚠️ Todas son AMBIGUAS en español y por eso no basta con verlas en la frase:

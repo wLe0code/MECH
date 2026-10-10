@@ -31,7 +31,6 @@ import informacion_nuestra
 import lang
 import llm
 import maneuvers
-import music
 import background_audio
 import subtitles
 import translator
@@ -40,7 +39,6 @@ import voice_phrases
 import tts
 import video_library
 import voices
-import youtube_music
 from arduino_link import ArduinoLink, get_link
 from interrupt_listener import InterruptListener
 
@@ -105,20 +103,6 @@ class MechApp:
         # Se marca cuando la pantalla avisa que terminó el último video de la
         # playlist promo (POST /api/playlist/ended), o al cortarla.
         self._playlist_done = threading.Event()
-        # Modo música: la pantalla avisa cuando la canción EMPIEZA a sonar y
-        # cuando TERMINA (POST /api/music/event). Ver `_play_track`.
-        self._music_started = threading.Event()
-        self._music_done = threading.Event()
-        self._music_result: str | None = None   # "ended" | "error"
-        self._music_play_id = 0
-        # Cuál de los videos candidatos está sonando: "youtube:<id>". Lo dice
-        # la pantalla al empezar; de ahí sale cuánto se espera el final.
-        self._music_source = ""
-        # Última señal de vida de una pantalla para la canción en curso (0 =
-        # ninguna todavía) y hasta cuándo se espera su final. Los dos los
-        # mueve la pantalla con sus avisos; ver `music_event`.
-        self._music_alive = 0.0
-        self._music_until = 0.0
         # Dónde va la reproducción en la pantalla principal (/projector), para
         # que el visor VR del teléfono se enganche en el mismo segundo en vez
         # de empezar el video desde cero. Lo reporta el propio <video>.
@@ -173,8 +157,6 @@ class MechApp:
             # queda unos segundos en pantalla cuando la partida ya terminó.
             # Para saber si se está jugando, `trivia.is_active()`.
             "trivia": trivia.snapshot(),
-            # Modo música: {stage, active, track, ...}. Ver backend/music.py.
-            "music": music.snapshot(),
             # Estado de la visión (lo actualiza backend/vision.py).
             "vision": {
                 "enabled": False,
@@ -826,439 +808,32 @@ class MechApp:
     # ------------------------------------------------------------------
 
     # ------------------------------------------------------------------
-    # Posición de reproducción (para sincronizar el visor VR)
+    # Sonido de la proyección (¿el navegador la deja sonar sin un toque?)
     # ------------------------------------------------------------------
-
-    # ------------------------------------------------------------------
-    # Modo MÚSICA («modo música MECH») — ver backend/music.py
-    # ------------------------------------------------------------------
-
-    def _emit_music(self) -> None:
-        """Manda al panel y a la pantalla en qué punto está el modo.
-
-        Va por evento WS **y** por `state`, como la trivia. La pantalla solo
-        EMPIEZA una canción con el evento (trae un `play_id` nuevo); con el
-        `state`, que llega a cada rato, solo se entera de si tiene que parar.
-        """
-        snap = music.snapshot()
-        snap["lang"] = lang.current()
-        # Los rótulos de la pantalla, en el idioma del despertar.
-        snap["label"] = lang.say("music_label")
-        snap["note"] = "YouTube"            # se llama igual en los diez idiomas
-        # Solo se ve si el navegador arrancó el video sin sonido.
-        snap["hint"] = lang.say("music_tap_sound")
-        snap["volume"] = max(0.0, min(1.0, float(config.MUSIC_VOLUME)))
-        snap["play_id"] = self._music_play_id
-        self.state["music"] = snap
-        self.emit("music", **snap)
-
-    def _say_music(self, texto: str, listen: bool = True) -> None:
-        """Dice algo del modo música y deja el micrófono listo.
-
-        Guarda lo dicho para la guarda anti-eco: el micrófono se abre justo
-        después y el parlante (Bluetooth) arrastra buffer.
-        """
-        music.remember_spoken(texto)
-        self.state["last_ai_response"] = texto
-        self.emit("ai_response", text=texto)
-        tts.speak(texto, blocking=True)
-        time.sleep(config.MUSIC_DRAIN_SECONDS)
-        if listen:
-            self.chime_pending = True
-
-    def _music_echo(self, text: str) -> bool:
-        """¿Lo que oyó es su propia voz saliendo del parlante?"""
-        if any(voice_phrases.sounds_like_same(text, d) for d in music.spoken()):
-            self.log(f"Ignoro mi propio eco: {text!r}", "info")
-            return True
-        return False
-
-    def start_music(self) -> None:
-        """Entra al modo música y pregunta qué canción (y de quién)."""
-        if not youtube_music.disponible():
-            # Sin YouTube no hay nada que poner: se dice, y NO se entra al
-            # modo (no tiene sentido preguntar por una canción que no sonará).
-            self.log(
-                "Modo música no disponible: "
-                + (youtube_music.por_que_no() or "YouTube no responde") + ".", "warn")
-            with self._talking_alone():
-                tts.speak(lang.say("music_unavailable"), blocking=True)
-                time.sleep(config.MUSIC_DRAIN_SECONDS)
-            self.chime_pending = True
-            return
-        music.ask()
-        self.log("Modo música: pregunto qué canción quiere.", "ok")
-        self._emit_music()
-        with self._talking_alone():
-            self._say_music(lang.say("music_ask"))
-
-    def stop_music(self, announce: bool = True) -> None:
-        """Sale del modo música. Si había una canción sonando, la corta."""
-        if not music.is_active():
-            return
-        music.reset()
-        self._music_done.set()      # suelta a `_play_track` si estaba esperando
-        self._music_started.set()
-        self.log("Modo música apagado.", "info")
-        self._emit_music()
-        if announce:
-            with self._talking_alone():
-                # ⚠️ Esta frase casa a propósito con la orden de salir: su eco
-                # se reconoce en `handle_text_command` y muere en silencio.
-                tts.speak(lang.say("music_off"), blocking=True)
-                time.sleep(config.MUSIC_DRAIN_SECONDS)
-
-    def _music_ask_more(self) -> None:
-        """Ya dijo que quiere otra: pregunta cuál."""
-        music.ask()
-        self._emit_music()
-        with self._talking_alone():
-            self._say_music(lang.say("music_ask_more"))
-
-    def _music_offer_more(self, antes: str = "") -> None:
-        """Pregunta si seguimos con la música o hacemos otra cosa.
-
-        `antes` es lo que se dice delante («Esa canción se me escapa.»,
-        «Entendido.»). Va en la MISMA frase para no abrir el micrófono entre
-        las dos.
-        """
-        music.offer_more()
-        self._emit_music()
-        texto = (antes + " " + lang.say("music_again")).strip()
-        with self._talking_alone():
-            self._say_music(texto)
-
-    def handle_music_request(self, text: str) -> None:
-        """Lo que contestó a «¿qué canción?» (o a «¿de qué artista?»).
-
-        El pedido lo pone en limpio Claude (`llm.interpret_song`): Whisper
-        escribe los títulos en otro idioma como suenan, y con eso YouTube
-        encuentra cualquier cosa menos la canción. Si falta el artista, se pregunta UNA vez: es lo
-        que garantiza que la canción sea la que quería.
-        """
-        text = (text or "").strip()
-        if text and self._music_echo(text):
-            text = ""
-        if not text:
-            self._music_release_phase()
-            return
-        self.state["last_transcript"] = text
-        self.emit("transcript", text=text)
-        self.log(f"Pedido de música: {text!r}", "info")
-        self.set_voice_phase("thinking")
-        esperaba_artista = music.is_awaiting_artist()
-        titulo = music.pending_title()
-        if esperaba_artista and voice_phrases.is_dont_know(text):
-            # «No sé de quién es»: se busca solo por el título.
-            self._music_find_and_play(titulo, "")
-            return
-        frase = text
-        if esperaba_artista:
-            frase = f"Canción que pidió: {titulo}. Después dijo el artista: {text}"
-        try:
-            pedido = llm.interpret_song(frase)
-        except Exception as e:
-            # Sin Claude se busca con lo que se oyó, tal cual. Peor que nada
-            # no es: los títulos en el idioma del visitante suelen salir bien.
-            self.log(f"No pude interpretar el pedido ({e}); busco tal cual.", "warn")
-            pedido = {"is_song_request": True,
-                      "title": titulo or text, "artist": text if titulo else ""}
-            esperaba_artista = True   # no preguntar más: buscar ya
-        if not self._music_use_request(pedido, esperaba_artista, titulo):
-            # No era un pedido de música. A la segunda seguida se deja de
-            # insistir: se pregunta si seguimos, que admite un «no».
-            if music.miss() >= 2:
-                self._music_offer_more(lang.say("music_not_found"))
-            else:
-                self._emit_music()
-                with self._talking_alone():
-                    self._say_music(lang.say("music_not_understood"))
-
-    def _music_use_request(self, pedido: dict | None, tiene_artista: bool = False,
-                           titulo_antes: str = "") -> bool:
-        """Actúa según el pedido ya interpretado. False = no era de música."""
-        if not pedido or not pedido.get("is_song_request"):
-            return False
-        titulo = pedido.get("title") or titulo_antes
-        artista = pedido.get("artist") or ""
-        if not (titulo or artista):
-            return False
-        if titulo and not artista and not tiene_artista:
-            music.ask_artist(titulo)
-            self.log(f"Canción: «{titulo}». Pregunto de qué artista.", "info")
-            self._emit_music()
-            with self._talking_alone():
-                self._say_music(lang.say("music_artist"))
-            return True
-        self._music_find_and_play(titulo, artista)
-        return True
-
-    def _music_find_and_play(self, titulo: str, artista: str) -> None:
-        """Busca el video de la canción en YouTube y lo pone. Luego, lo que toque."""
-        try:
-            videos = youtube_music.buscar(titulo, artista)
-        except Exception as e:
-            # Clave que no sirve, cuota agotada o sin internet: el motivo va
-            # al panel tal cual lo explica `youtube_music`.
-            self.log(f"No pude buscar en YouTube: {e}", "err")
-            self._music_offer_more(lang.say("music_error"))
-            return
-        if not videos:
-            self.log(
-                f"YouTube no tiene un video que se pueda poner de «{titulo or artista}»"
-                + (f" de «{artista}»" if titulo and artista else "") + ".", "warn")
-            self._music_offer_more(lang.say("music_not_found"))
-            return
-        # El nombre que se dice y se pinta es el que entendió Claude (limpio),
-        # no el título del video («Luis Fonsi - Despacito ft. … (Official)»).
-        # Si solo se dijo un artista («algo de Queen»), ese es el nombre.
-        cancion = {
-            "title": titulo or artista,
-            "artist": artista if titulo else "",
-            "seconds": videos[0]["seconds"],
-            "youtube": videos,
-        }
-        with self._presentation():      # mientras suena, MECH no saluda
-            final = self._play_track(cancion)
-        if final == "stopped":
-            # La pararon desde el panel, con el paro o durmiéndolo. Nadie va a
-            # hablar después, así que la fase se suelta AQUÍ: si se quedara en
-            # "speaking", el bucle de voz no volvería a abrir el micrófono.
-            self._music_release_phase()
-            return
-        if final == "interrupted":
-            # «oye MECH»: para la música y pregunta. Si la frase traía algo
-            # más («oye MECH, pon otra de Queen»), eso es el pedido nuevo.
-            tts.clear_stop()
-            resto = self.take_pending_command()
-            if resto:
-                if not self.handle_music_again(resto):
-                    self.handle_text_command(resto)
-                return
-            time.sleep(0.4)     # que el parlante suelte el final de la canción
-            self._music_offer_more(lang.say("music_ack"))
-        elif final == "error":
-            self._music_offer_more(lang.say("music_error"))
-        else:
-            self._music_offer_more()
-
-    def _music_wait_seconds(self, track: dict) -> float:
-        """Cuánto esperar el final: lo que dura el video que dijo la pantalla."""
-        vid = (self._music_source or "").split(":", 1)[-1]
-        dura = next((v.get("seconds") or 0 for v in track.get("youtube") or []
-                     if v.get("id") == vid), 0)
-        # Margen ancho: lo que tarda en cargar, y anuncios si la sesión del
-        # navegador no es Premium.
-        return min(config.MUSIC_MAX_SECONDS, dura or config.MUSIC_MAX_SECONDS) + 90
-
-    def _music_release_phase(self) -> None:
-        """Deja la fase de voz como toca cuando MECH se queda callado."""
-        if not self.state.get("voice_awake", True):
-            self.set_voice_phase("dormant")
-        elif self.state["voice_loop_active"]:
-            self.set_voice_phase("waiting")
-        else:
-            self.set_voice_phase("off")
-
-    def _play_track(self, track: dict) -> str:
-        """Pone UNA canción y espera a que termine.
-
-        Devuelve cómo acabó: "ended", "error", "interrupted" o "stopped".
-
-        Suena en la PANTALLA de proyección, no aquí (ver backend/music.py):
-        se le manda la ficha por WebSocket y ella avisa de cómo va (ver
-        `music_event`). Si pasan `MUSIC_START_TIMEOUT` s sin que ninguna
-        pantalla dé señales de vida, es que no hay proyección abierta y se
-        da por fallida en vez de esperar la canción entera. Mientras una
-        pantalla siga avisando («pruebo el video 2 de 3»), se la espera: es
-        ella la que dice si pudo o no, y por qué.
-        """
-        self.mic_release.set()          # el micrófono es del «oye MECH»
-        tts.clear_stop()
-        self._narration_interrupted = False
-        self.pending_command = None
-        if track.get("artist"):
-            anuncio = lang.say("music_playing", title=track["title"], artist=track["artist"])
-        else:
-            anuncio = lang.say("music_playing_title", title=track["title"])
-        self.state["last_ai_response"] = anuncio
-        self.emit("ai_response", text=anuncio)
-        self.set_voice_phase("speaking")
-        tts.speak(anuncio, blocking=True)
-
-        self._music_play_id += 1
-        self._music_result = None
-        self._music_source = ""
-        self._music_alive = 0.0
-        self._music_until = 0.0
-        self._music_started.clear()
-        self._music_done.clear()
-        music.play(track)
-        self.log(
-            f"Pongo: {track['title']}"
-            + (f" — {track['artist']}" if track.get("artist") else "")
-            + " (YouTube).", "ok")
-        if not self._subscribers:
-            self.log(
-                "OJO: no hay ninguna pantalla conectada (/projector). La "
-                "música suena ahí: abrí la proyección.", "warn")
-        self.arduino.set_mode("SPEAK")
-        self._emit_music()              # aquí la pantalla empieza a sonar
-        # Se corta con «oye MECH», como una narración. El micrófono oye la
-        # música, así que hay que decirlo claro y cerca del micrófono.
-        if self.interrupts.start():
-            self.log("Podés decir «oye MECH» para cortar la canción.", "info")
-        try:
-            # 1) A que EMPIECE. El plazo cuenta desde la última señal de vida
-            #    de una pantalla, no desde que se mandó la canción.
-            mandada = time.time()
-            while not self._music_started.is_set():
-                falta = max(mandada, self._music_alive) + config.MUSIC_START_TIMEOUT - time.time()
-                if falta <= 0:
-                    break
-                self._music_started.wait(timeout=min(falta, 0.5))
-            if self._music_result is None and not self._music_done.is_set():
-                if not self._music_started.is_set():
-                    if self._music_alive:
-                        self.log(
-                            "La proyección recibió la canción pero dejó de dar "
-                            "señales sin decir si pudo ponerla. Recargala (o "
-                            "cerrala y volvé a abrirla con «Proyectar MECH»).",
-                            "warn")
-                    else:
-                        self.log(
-                            "Ninguna pantalla contestó: la canción suena en la "
-                            "PROYECCIÓN y no hay ninguna abierta (o es una "
-                            "página vieja: recargala). Abrila con «Proyectar "
-                            "MECH».", "warn")
-                    self._music_result = "error"
-                else:
-                    # 2) A que TERMINE. `_music_until` lo puede correr la
-                    #    pantalla (si alguien activa el sonido, la canción
-                    #    vuelve a empezar).
-                    self._music_until = time.time() + self._music_wait_seconds(track)
-                    while not self._music_done.is_set():
-                        falta = self._music_until - time.time()
-                        if falta <= 0:
-                            self.log("La pantalla no avisó del final de la canción.", "warn")
-                            self._music_result = "ended"
-                            break
-                        self._music_done.wait(timeout=min(falta, 0.5))
-        finally:
-            self.interrupts.stop()
-            self.arduino.set_mode("IDLE")
-            self.mic_release.clear()
-        if not music.is_playing():
-            return "stopped"            # `stop_music` o el paro lo sacaron del modo
-        if self._narration_interrupted:
-            return "interrupted"
-        return "error" if self._music_result == "error" else "ended"
-
-    def music_event(self, play_id: int, event: str, detail: str = "") -> bool:
-        """La pantalla avisa de cómo va la canción (POST /api/music/event)."""
-        if play_id != self._music_play_id or not music.is_playing():
-            return False                # es de una canción anterior
-        self._music_alive = time.time()     # hay una pantalla, y está en ello
-        if event == "loading":
-            pass                            # solo la señal de vida
-        elif event == "muted":
-            # El video arrancó, pero el navegador no lo dejó SONAR (pide un
-            # toque). Se ve, la pantalla enseña el aviso, y aquí se explica.
-            self.log(
-                "La canción se VE pero NO SUENA: el navegador de la proyección "
-                "no deja sonar sin un toque. Tocá esa pantalla una vez (un clic "
-                "o una tecla) y vuelve a empezar con sonido. Para que no pase "
-                "más en la Pi: cerrá TODAS las ventanas de Chromium y abrí la "
-                "proyección con el icono «Proyectar MECH».", "warn")
-        elif event == "unmuted":
-            # Alguien tocó: la canción vuelve a empezar, ahora con sonido, así
-            # que su final se espera desde ahora.
-            self.log("Sonido activado en la proyección: la canción empieza de nuevo.", "ok")
-            self._music_until = time.time() + self._music_wait_seconds(music.track() or {})
-        elif event == "playing":
-            self._music_source = detail or ""
-            candidatos = [v.get("id") for v in (music.track() or {}).get("youtube") or []]
-            vid = self._music_source.split(":", 1)[-1]
-            if candidatos and vid in candidatos[1:]:
-                # El primero no se dejó poner fuera de YouTube: es otra
-                # versión de la misma canción (suele ser la de la letra).
-                self.log("El primer video no se dejó reproducir aquí: suena "
-                         "otra versión de la canción.", "info")
-            self._music_started.set()
-        elif event == "ended":
-            self._music_result = "ended"
-            self._music_started.set()
-            self._music_done.set()
-        elif event == "error":
-            self.log(f"La pantalla no pudo reproducir la canción: {detail or '?'}", "warn")
-            self._music_result = "error"
-            self._music_started.set()
-            self._music_done.set()
-        else:
-            return False
-        return True
 
     def projection_sound(self, allowed: bool, how: str = "") -> None:
         """La proyección dice si su navegador deja SONAR sin un toque.
 
         Lo comprueba al abrirse (POST /api/projection/sound). Sin ese permiso
-        el modo música y los videos de marketing salen mudos: mejor saberlo
-        al abrir la pantalla que a media canción.
+        los videos de marketing salen mudos: mejor saberlo al abrir la
+        pantalla que a media proyección.
         """
         if allowed and "toque" in (how or ""):
             self.log("Proyección: sonido activado con un toque en la pantalla.", "ok")
         elif allowed:
-            self.log("Proyección abierta, con permiso de sonido (el modo música "
-                     "y marketing se van a oír).", "ok")
+            self.log("Proyección abierta, con permiso de sonido (los videos de "
+                     "marketing se van a oír).", "ok")
         else:
             self.log(
-                "OJO: la proyección se abrió SIN permiso de sonido: el modo "
-                "música y los videos de marketing saldrían MUDOS. Tocá esa "
+                "OJO: la proyección se abrió SIN permiso de sonido: los videos "
+                "de marketing saldrían MUDOS. Tocá esa "
                 "pantalla una vez (un clic o una tecla). En la Pi, para que no "
                 "haga falta: cerrá TODAS las ventanas de Chromium y abrila con "
                 "el icono «Proyectar MECH».", "warn")
 
-    def handle_music_again(self, text: str) -> bool:
-        """Lo que contestó a «¿seguimos con la música?».
-
-        Devuelve True si se quedó dentro del modo. **False = «esto no era
-        para mí»**: pidió otra cosa, así que se sale del modo sin anunciarlo
-        y quien llama lo atiende como un comando normal (mismo criterio que
-        el ofrecimiento de la trivia: nadie se queda encerrado).
-        """
-        if self._music_echo(text):
-            self._music_release_phase()
-            return True
-        if voice_phrases.is_music_stop(text):
-            self.stop_music()
-            return True
-        # «Otra canción» se mira ANTES que el no: en alemán «noch EIN Lied»
-        # casa con «nein» (a una letra).
-        if voice_phrases.is_music_more(text):
-            self._music_ask_more()
-            return True
-        if voice_phrases.is_no(text):
-            self.stop_music()
-            return True
-        if voice_phrases.is_yes(text):
-            self._music_ask_more()
-            return True
-        # Ni sí ni no. Puede ser la canción dicha de una («pon Thriller, de
-        # Michael Jackson») u otra cosa del todo («cuéntame de Don Quijote»).
-        self.state["last_transcript"] = text
-        self.emit("transcript", text=text)
-        self.set_voice_phase("thinking")
-        try:
-            pedido = llm.interpret_song(text)
-        except Exception as e:
-            self.log(f"No pude interpretar la respuesta: {e}", "warn")
-            pedido = None
-        if self._music_use_request(pedido):
-            return True
-        music.reset()
-        self._emit_music()
-        self.log("Cambió de tema: salgo del modo música.", "info")
-        return False
+    # ------------------------------------------------------------------
+    # Posición de reproducción (para sincronizar el visor VR)
+    # ------------------------------------------------------------------
 
     def report_playback(
         self, url: str | None, position: float,
@@ -1356,14 +931,6 @@ class MechApp:
         # a que la pantalla avise que terminó: lo soltamos aquí para que no
         # se quede colgado hasta el tope de tiempo.
         self._playlist_done.set()
-        # Lo mismo con la canción del modo música: se suelta la espera y se le
-        # dice a la pantalla que calle YA (la pregunta que viene no puede
-        # sonar encima de la música).
-        if music.is_playing():
-            self._music_started.set()
-            self._music_done.set()
-            self.emit("music", active=True, stage="again", track=None,
-                      play_id=self._music_play_id)
         try:
             self.arduino.stop_motors()
         except Exception:
@@ -1456,7 +1023,6 @@ class MechApp:
         # decir la frase de reposo justo aquí abajo).
         self.stop_translator(announce=False)
         self.stop_trivia(announce=False)
-        self.stop_music(announce=False)
         self.log(
             "MECH en reposo. Di 'ok MECH' (o 'wake up MECH' para inglés).",
             "info",
@@ -1529,7 +1095,7 @@ class MechApp:
           2. Solo EN REPOSO (`GREETING_ONLY_DORMANT`, default true). Despierto
              está atendiendo a alguien.
         """
-        if (self._presenting > 0 or trivia.is_active() or music.is_active()
+        if (self._presenting > 0 or trivia.is_active()
                 or self.state.get("voice_phase") in self._BUSY_PHASES):
             return "MECH está presentando o hablando con alguien ahora mismo"
         if config.GREETING_ONLY_DORMANT and self.state.get("voice_awake", True):
@@ -1722,11 +1288,6 @@ class MechApp:
         try:
             trivia.reset()
             self._clear_trivia_screen()
-        except Exception:
-            pass
-        # Modo música: fuera, y que la pantalla calle.
-        try:
-            self.stop_music(announce=False)
         except Exception:
             pass
         # Proyección
@@ -2237,12 +1798,6 @@ class MechApp:
             return True
         return False
 
-    @staticmethod
-    def _frase_corta(text: str) -> bool:
-        """¿Es una frase suelta (una orden) y no una pregunta larga?"""
-        plano = voice_phrases.normalize(text)
-        return len(plano.split()) <= 8 and len(plano) <= 48
-
     def handle_text_command(self, text: str) -> None:
         """Procesa un comando de texto (de voz o frontend)."""
         if not text.strip():
@@ -2280,35 +1835,6 @@ class MechApp:
             if voice_phrases.is_translate(text):
                 src, dst = voice_phrases.extract_language_pair(text)
                 self.start_translator(src, dst)
-                return
-        # Modo música. Salir se mira ANTES que entrar («sal del modo música»
-        # lleva dentro «modo música»), igual que en el traductor.
-        if config.MUSIC_ENABLED:
-            if voice_phrases.is_music_stop(text):
-                if music.is_active():
-                    self.stop_music()
-                    return
-                if self._frase_corta(text):
-                    # Nada que apagar. Se queda CALLADO a propósito: lo más
-                    # probable es su propio eco («Listo, apago la música» casa
-                    # con la orden), y si contestara se volvería a oír.
-                    self.log("«Apaga la música»: no había nada sonando.", "info")
-                    if self.state["voice_loop_active"]:
-                        self.set_voice_phase(
-                            "waiting" if self.state.get("voice_awake", True) else "dormant"
-                        )
-                    return
-                # Una frase larga que casualmente lleva esas palabras es una
-                # pregunta normal: sigue su camino.
-            elif music.is_asking():
-                # Texto escrito en el panel con el modo esperando una canción.
-                self.handle_music_request(text)
-                return
-            elif music.is_offering_more():
-                if self.handle_music_again(text):
-                    return
-            elif voice_phrases.is_music(text):
-                self.start_music()
                 return
         # Trivia. Igual que el traductor, salir se mira ANTES que entrar.
         if config.TRIVIA_ENABLED:

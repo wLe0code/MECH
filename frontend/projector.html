@@ -7,8 +7,8 @@
      trae: los subtítulos y la trivia salían con cuadritos). Solo se cargan
      los trozos que hacen falta; en español, ninguno. -->
 <link rel="stylesheet" href="/vendor/mech-fonts-cjk.css">
-<!-- Sora y Space Mono, también en local: la pantalla de reposo y la tarjeta
-     de la canción usan la misma letra que el panel. -->
+<!-- Sora y Space Mono, también en local: la pantalla de reposo usa la misma
+     letra que el panel. -->
 <link rel="stylesheet" href="/vendor/mech-fonts.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -90,7 +90,6 @@
 
 <script src="/static/subtitles.js"></script>
 <script src="/static/trivia.js"></script>
-<script src="/static/music.js?v=13"></script>
 <script>
 /* Pantalla de proyección fullscreen.
  *
@@ -118,13 +117,6 @@ const juego = window.MechTrivia
   ? MechTrivia.create(document.body)
   : { apply() {}, clear() {} };
 
-/* Modo música: la canción que MECH pone suena AQUÍ (el video y, al lado, la
-   tarjeta de la canción). Esta página avisa al servidor de cuándo empieza y
-   cuándo termina. Ver frontend/music.js y backend/music.py. */
-const musica = window.MechMusic
-  ? MechMusic.create(document.body)
-  : { apply() {}, clear() {}, sonido() {} };
-
 /* ─── Reposo: las «bolitas» cuando no hay nada que proyectar ──────────
  *
  * Pedido del equipo (oct 2026): que la proyección no se quede en negro. Es
@@ -136,8 +128,8 @@ const musica = window.MechMusic
  *   estira: así salen las bolitas suaves y grandes que se ven en el panel, y
  *   la Raspberry Pi casi no trabaja (pintar 1920×1080 en cada fotograma sí
  *   se notaría).
- * - Solo se anima mientras se ve: en cuanto entra un video, una imagen, la
- *   trivia o una canción, el bucle se para.
+ * - Solo se anima mientras se ve: en cuanto entra un video, una imagen o la
+ *   trivia, el bucle se para.
  */
 (function () {
   const lienzo = document.getElementById('reposo');
@@ -179,9 +171,9 @@ const musica = window.MechMusic
     }
   }
 
-  // «Libre» = el escenario vacío y ni la trivia ni la música en pantalla.
+  // «Libre» = el escenario vacío y la trivia fuera de la pantalla.
   function libre() {
-    return !stage.firstElementChild && !document.querySelector('.mt-wrap.on, .mm-wrap.on');
+    return !stage.firstElementChild && !document.querySelector('.mt-wrap.on');
   }
 
   function revisar() {
@@ -192,8 +184,8 @@ const musica = window.MechMusic
   }
 
   // El escenario avisa al instante (entra o sale un video o una imagen). La
-  // trivia y la música se pintan ENCIMA y son opacas: para ellas basta con
-  // mirar cada segundo, solo para no animar lo que no se ve.
+  // trivia se pinta ENCIMA y es opaca: para ella basta con mirar cada
+  // segundo, solo para no animar lo que no se ve.
   new MutationObserver(revisar).observe(stage, { childList: true });
   setInterval(revisar, 1000);
   addEventListener('resize', medir);
@@ -400,9 +392,9 @@ function hideAudioHint() {
  * Los navegadores no dejan arrancar nada CON SONIDO hasta que alguien toca la
  * página, salvo que se abran con --autoplay-policy=no-user-gesture-required
  * (lo llevan los iconos «Iniciar MECH» y «Proyectar MECH» de la Pi). Sin ese
- * permiso, el modo música y los videos de marketing salen MUDOS.
+ * permiso, los videos de marketing salen MUDOS.
  *
- * Antes eso se descubría a media canción. Ahora se comprueba AL ABRIR la
+ * Antes eso se descubría a media proyección. Ahora se comprueba AL ABRIR la
  * página, intentando reproducir una décima de segundo de silencio: si el
  * navegador se niega, se pone el aviso «Toca la pantalla…» desde el primer
  * momento y se le dice al servidor, que lo apunta en el panel. Un solo toque
@@ -453,7 +445,7 @@ function comprobarSonido() {
 }
 
 /* Alguien tocó la pantalla (o una tecla): desde ahora el navegador deja
-   sonar. Si había una canción puesta sin sonido, se le da. */
+   sonar. */
 function tocaron() {
   if (sinSonido) {
     sinSonido = false;
@@ -461,7 +453,6 @@ function tocaron() {
     hideAudioHint();
     avisarSonido(true, 'con un toque');
   }
-  musica.sonido();
 }
 
 function detectVideo(url) {
@@ -471,7 +462,6 @@ function detectVideo(url) {
 function applyState(s) {
   subs.set(s.current_subtitle, s.subtitle_lang);
   juego.apply(s.trivia);
-  musica.apply(s.music, false);   // el estado solo sabe PARAR la canción
   // La playlist promo (marketing) manda sobre todo lo demás.
   if (s.current_playlist) {
     // Si ya la estamos reproduciendo, no la reiniciamos (esto se llama en
@@ -518,9 +508,6 @@ function connect() {
     } else if (msg.type === 'trivia') {
       // Pregunta, resultado o marcador del juego (ver backend/trivia.py).
       juego.apply(msg);
-    } else if (msg.type === 'music') {
-      // Modo música: empezar la canción (o callarla).
-      musica.apply(msg, true);
     } else if (msg.type === 'subtitle') {
       // El guion del segmento que MECH está narrando (o null al terminar).
       subs.set(msg.text, msg.lang);
@@ -549,12 +536,6 @@ document.body.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', tocaron);
-// Un toque DENTRO del video de YouTube también vale para el navegador, pero
-// de ese no llega ningún clic a esta página: se mira de vez en cuando.
-setInterval(() => {
-  if (sinSonido && navigator.userActivation && navigator.userActivation.hasBeenActive) tocaron();
-}, 1000);
-
 comprobarSonido();
 connect();
 </script>

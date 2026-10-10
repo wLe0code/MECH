@@ -5,8 +5,8 @@ de tocar nada. Contexto de fondo (arquitectura/hardware/decisiones): **CLAUDE.md
 en la raíz — este handoff no lo reemplaza, lo complementa con el estado *vivo*.
 CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
 
-**Última actualización: 10 oct 2026 (la página web al día: párrafo «10 oct»
-más abajo). Antes, 9 oct 2026, segunda sesión (el fallo del modo
+**Última actualización: 10 oct 2026 (el MODO MÚSICA se QUITÓ: nota en rojo
+más abajo; y la página web al día: párrafo «10 oct»). Antes, 9 oct 2026, segunda sesión (el fallo del modo
 música que «no llegaba a sonar»: §2.septdecies). Lo del 8 oct, en el párrafo
 «Sesión del 8 oct» y §2.decies; lo del 6 oct, en §2.nonies.** Lo del 5 oct
 (§2.quinquies) se subió el 6 oct en dos commits encima de `62f3ebb`: «Panel
@@ -83,7 +83,39 @@ sonido y pida un toque en vez de rendirse). **Subido a GitHub el 9 oct**
 (lo pidió en el mismo mensaje: «al finalizar, haz el push»). ⚠️ **Sin
 probar en la Pi**: es lo primero que hay que preguntar.
 
-**10 oct — la PÁGINA WEB al día (`web/`), subido a GitHub.** Pedido, tal
+> 🔴 **10 oct, lo último — EL MODO MÚSICA SE QUITÓ. Subido a GitHub.**
+> Pedido, tal cual: **«Quita el modo música, no sé por qué no funcionó. No
+> se reproduce nada»**. Tras el arreglo del 9 oct (§2.septdecies) en el
+> robot siguió sin sonar, y **nunca se vio el fallo en la Pi ni se supo la
+> causa**. Se borró entero: backend (`music.py`, `youtube_music.py`,
+> `llm.interpret_song`, lo de `mech_app` y `server`, las listas y frases),
+> panel (tarjeta y ajustes), proyección (`music.js`), pruebas
+> (`probar_musica.py`), guía de uso y también la **web** (MECH-5 queda con
+> tres novedades: seis idiomas, panel rediseñado y modo sismos). Detalle en
+> CLAUDE.md, «Modo MÚSICA — QUITADO».
+> - ⚠️ **Todo lo que este handoff dice del modo música de aquí para abajo es
+>   HISTORIA** (§2.terdecies a §2.septdecies, la lista «Qué preguntarle al
+>   equipo al volver» y los pasos de §4): ya no hay nada que probar ni que
+>   preguntar del modo. **No lo vuelvas a meter salvo que lo pidan**; está
+>   entero en el historial (último commit que lo tiene: `74ab082`).
+> - **Se quedó** lo que le sirve al marketing: el permiso de sonido de la
+>   proyección (el flag en `pi/panel-mech.sh`, la detección de
+>   `pi/proyector-mech.sh`, `comprobarSonido()` y `/api/projection/sound`) y
+>   las «bolitas» de reposo. Sigue **sin probar en la Pi** el trozo de bash
+>   de `proyector-mech.sh` que detecta un Chromium abierto sin el permiso.
+> - La **música de FONDO** de las obras (Malpaís) es otra cosa y no se tocó.
+> - La clave de YouTube ya no se usa; si queda en el `.env` no molesta.
+> - `index.html` pide ahora `?v=13`.
+> - Verificado en la laptop: todo compila, `probar_idiomas`,
+>   `probar_comandos_idioma` (el bucle de voz real), `probar_trivia` 50/50,
+>   `probar_saludo`, `probar_sismos`, `probar_llegada`, el preflight, y el
+>   panel (vista Voz y «Guardar y aplicar») y la proyección en el navegador
+>   con un servidor de mentira. **Sin probar en la Pi**: preguntar si tras
+>   «Iniciar MECH» todo lo demás sigue igual.
+
+**10 oct — la PÁGINA WEB al día (`web/`), subido a GitHub.** (⚠️ El modo
+música que se nombra aquí se quitó de la web ese mismo día: nota de arriba.)
+Pedido, tal
 cual: «pon que el modelo actual es el MECH-5, que tiene 6 idiomas nuevos, el
 rediseño completo del panel de control, el modo música y el modo sismos.
 Además pon que en WRO Las Américas quedamos de 4to lugar con MECH-4».
