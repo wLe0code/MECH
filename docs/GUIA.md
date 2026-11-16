@@ -345,8 +345,9 @@ link = get_link()
 link.arm('R', 30); time.sleep(1); link.arm('R', 150); time.sleep(1); link.arm('R', 90)
 "
 
-# 5.5 Claude (sin audio) — un solo turno desde texto:
-python3 -m backend.main --once "Cuéntame sobre Romeo y Julieta"
+# 5.5 Claude (sin audio): arranca el servidor y escribe en la caja de
+#     texto del panel (vista Voz) «Cuéntame sobre Don Quijote».
+python3 -m backend.server
 ```
 
 Si los 5 pasan, el bucle completo va a funcionar.
@@ -371,8 +372,8 @@ chromium-browser --kiosk --autoplay-policy=no-user-gesture-required             
 ```
 
 ```
-# Desde Windows: edita windows\config.txt con la IP de la Pi
-# y doble click en windows\MECH Control.bat
+# Desde Windows: doble clic UNA vez en windows\Instalar MECH.bat y después
+# abre el icono «MECH» del Escritorio: busca al robot solo.
 ```
 
 El panel da control sobre voz, proyectores, Arduino, y un botón de **PARO DE EMERGENCIA** siempre visible (también con barra espaciadora).
@@ -391,28 +392,6 @@ Un card por obra, un botón por segmento, arrastra el `.mp4`. Mientras una obra 
 tenga todos sus segmentos subidos, MECH cae automáticamente a generar imágenes con
 NanoBanana para esa obra (no se rompe nada). Detalles y convención de archivos en
 [`backend/video_library/README.md`](../backend/video_library/README.md).
-
-### Modo standalone — sin frontend
-
-Para depurar la cadena STT → Claude → TTS aislada:
-
-```bash
-# Terminal 1 — visor tkinter (alternativa al proyector kiosko)
-python -m backend.projector
-
-# Terminal 2 — bucle de voz sin servidor
-python -m backend.main
-```
-
-El robot:
-1. Dice un saludo y se queda en modo IDLE.
-2. Cuando detecta voz (VAD), graba hasta silencio.
-3. Transcribe → pide plan a Claude → ejecuta segmentos (imagen + gesto + narración).
-4. Vuelve a IDLE.
-
-**Para apagar:** Ctrl+C en la terminal del backend.
-
-> ⚠️ **No corras `server.py` y `main.py` a la vez** — pelearían por el Arduino y el micrófono.
 
 ## 7. Flujo de una interacción típica
 
@@ -473,7 +452,7 @@ Usuario: *"Cuéntame sobre Romeo y Julieta."*
 | VAD no detecta voz | Micrófono no es el default | `pavucontrol`, fija el micrófono USB como default. |
 | Whisper transcribe inglés | `WHISPER_LANGUAGE` no es `es` | Revisa `.env`. |
 | TTS no suena | Parlante no es el default | `aplay -l` y `~/.asoundrc`. |
-| Las imágenes no se proyectan | El visor `projector.py` no está corriendo | Lánzalo en otra terminal. |
+| Las imágenes no se proyectan | La página `/projector` no está abierta | Abre «Proyectar MECH» en la Pi (o `/projector` en el navegador). |
 | Arduino se resetea cada vez | Normal — al abrir el serial Arduino se resetea. El backend espera 2s. |
 | Motores no responden, servos sí | Falta fuente externa para motores | Conecta VIN del L298N a fuente 7–12V, GND común con Arduino. |
 | El robot tira muy fuerte | Velocidad PWM alta | Baja `AUTO_FORWARD_SPEED` en el .ino. |

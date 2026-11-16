@@ -3,7 +3,7 @@
 Las imágenes se proyectan en el espacio inmersivo (Romeo y Julieta, Shrek,
 etc). Una imagen por escena; el guion de Claude decide qué escenas pedir.
 
-Las guardamos en disco (IMAGE_OUTPUT_DIR) para que projector.py las muestre.
+Las guardamos en disco (IMAGE_OUTPUT_DIR); el servidor las sirve a /projector.
 """
 
 from __future__ import annotations

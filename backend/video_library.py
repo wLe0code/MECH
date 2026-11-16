@@ -696,11 +696,6 @@ def remove_original(slug: str, segment: int) -> None:
             p.unlink()
 
 
-def segment_path(slug: str, segment: int) -> Path:
-    """Ruta por defecto (.mp4) — para guardar cuando no se sabe la extensión."""
-    return config.VIDEO_LIBRARY_DIR / slug / segment_filename(segment)
-
-
 def segment_url(slug: str, segment: int) -> str | None:
     """URL relativa del segmento existente (o None si no hay archivo)."""
     p = segment_file(slug, segment)

@@ -18,8 +18,9 @@
   Edge (o Chrome) en modo aplicación, sin barra de direcciones ni pestañas,
   apuntando a este archivo. No hace falta Python ni construir ningún .exe.
 
-  Es UN solo archivo y no carga nada de fuera (ni fuentes ni imágenes): tiene
-  que abrirse igual sin internet y con el robot apagado.
+  No carga nada de fuera (ni fuentes ni imágenes de internet): tiene que
+  abrirse igual sin internet y con el robot apagado. Lo único que lleva al
+  lado es el logo oficial, `logo-mech.png` (lo genera scripts/mklogo.py).
 
   Para probarla sin robot (lo usa la vista previa de desarrollo):
       index.html?candidatos=http://localhost:8765&barrido=0
@@ -54,7 +55,7 @@
   @keyframes entra { from { opacity: 0; transform: translateY(14px); } }
 
   /* El radar: el aro de MECH con ondas que salen mientras busca. */
-  .radar { position: relative; width: 132px; height: 132px; margin: 0 auto 26px; display: grid; place-items: center; }
+  .radar { position: relative; width: 132px; height: 132px; margin: 0 auto 12px; display: grid; place-items: center; }
   .radar .onda {
     position: absolute; inset: 0; border-radius: 50%;
     border: 2px solid rgba(var(--tono-rgb), 0.5);
@@ -73,7 +74,8 @@
   /* Encontrado o no encontrado: las ondas paran. */
   body.ok .onda, body.no .onda { animation: none; opacity: 0; }
 
-  .marca { font-size: 15px; font-weight: 700; font-style: italic; letter-spacing: 3px; color: var(--dim); margin-bottom: 10px; }
+  /* El logo oficial de MECH (blanco lavanda, fondo transparente). */
+  .marca { display: block; width: 168px; height: auto; margin: 0 auto 18px; user-select: none; -webkit-user-drag: none; }
   h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 8px; }
   #detalle { color: var(--muted); font-size: 15px; line-height: 1.6; min-height: 24px; }
   #detalle b { color: var(--text); font-weight: 600; }
@@ -138,7 +140,7 @@
     <span class="onda"></span><span class="onda"></span><span class="onda"></span>
     <span class="aro"></span>
   </div>
-  <div class="marca">MECH</div>
+  <img class="marca" src="logo-mech.png" width="168" height="59" alt="MECH">
   <h1 id="titulo">Buscando a MECH…</h1>
   <p id="detalle" role="status" aria-live="polite">Un momento.</p>
 

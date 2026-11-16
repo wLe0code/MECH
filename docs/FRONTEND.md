@@ -34,11 +34,11 @@ Esta guía complementa [`GUIA.md`](GUIA.md) — cubre cómo correr el panel de c
 - `backend/server.py` — el principal. FastAPI sirve todo (panel, proyector, REST, WS) y corre el bucle de voz.
 - Un Chromium en modo kiosko mostrando `http://localhost:8000/projector` para alimentar el proyector físico.
 
-**En Windows:** un Edge en modo `--app` o PWA apuntando a `http://<IP-pi>:8000`.
+**En Windows:** la app «MECH» (`windows/Instalar MECH.bat`), que busca al robot y abre su panel en una ventana propia.
 
 ## Correr el servidor en la Pi
 
-Sustituye al `python -m backend.main` de la guía original. **No corras ambos a la vez** — pelearían por el Arduino y el micrófono.
+Es la única forma de correr MECH: sirve el panel, la proyección y el bucle de voz a la vez.
 
 ```bash
 cd ~/MECH
@@ -232,8 +232,8 @@ Para distintos escenarios:
 
 | Escenario | Cómo |
 |---|---|
-| **Demo completa con público** | Servidor + proyector kiosko + Windows con `MECH Control.bat` para que el operador supervise. Bucle de voz ON. |
-| **Pruebas headless** | `python -m backend.main` (sin servidor). Solo voz local. Sin frontend. Útil para depurar la cadena STT→Claude→TTS sin web. |
+| **Demo completa con público** | Servidor + proyector kiosko + la app «MECH» en Windows para que el operador supervise. Bucle de voz ON. |
+| **Probar Claude sin micrófono** | Servidor con bucle de voz OFF y escribir en la caja de texto del panel (vista Voz). Es la misma cadena Claude → voz → proyección, sin STT. |
 | **Demo sin voz (manual)** | Servidor con bucle de voz OFF. Operador usa botones del panel (texto + comandos rápidos). Útil si el micrófono falla. |
 | **Solo proyector** | Servidor + proyector kiosko + subir archivos vía panel. No usa Claude ni voz. Para mostrar contenido estático del stand. |
 | **Paro de emergencia remoto** | Cualquier dispositivo en la red con la URL puede dispararlo (no hay auth — restringe la red wifi). |

@@ -94,12 +94,12 @@ También podés usar el número de índice directamente: `AUDIO_INPUT_DEVICE=3`.
 Con el venv activo y el `.env` ya editado:
 
 ```bash
-python -m backend.main
+python -m backend.server
 ```
 
-Esperá a que diga "Escuchando…" y hablale: "MECH, contame Romeo y
-Julieta". Si en consola aparece la transcripción del STT y después
-Claude responde, el mic está integrado correctamente.
+Abrí el panel (`http://localhost:8000`), encendé el bucle de voz y decí
+«ok MECH» y después «cuéntame sobre Don Quijote». Si en el panel aparece la
+transcripción y después Claude responde, el mic está integrado correctamente.
 
 > Si el STT transcribe pero salen palabras raras o cortadas, probá
 > subir `WHISPER_MODEL=small` en `.env` (más preciso, más lento) o
@@ -186,7 +186,7 @@ usá el número de índice del Steren explícitamente.
 - [ ] `arecord -l` muestra el Steren como card USB.
 - [ ] Grabación de prueba `prueba_mic.wav` se escucha limpia.
 - [ ] `.env` tiene `AUDIO_INPUT_DEVICE` apuntando al Steren.
-- [ ] `python -m backend.main` transcribe la voz correctamente.
+- [ ] Con `python -m backend.server`, el panel muestra la transcripción correcta.
 - [ ] `v4l2-ctl --list-devices` muestra la C930e en `/dev/video0`.
 - [ ] `prueba_cam.jpg` salió nítida.
 - [ ] El mic de la C930e NO es el dispositivo de captura activo.

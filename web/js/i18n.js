@@ -486,6 +486,106 @@
       'The team will keep looking for new features based on what users report or what it considers important.',
     'Proponer una idea': 'Suggest an idea',
 
+    /* ── Evolución · commits clave (GitHub) ───────────────────────── */
+    'EN GITHUB · EL CÓDIGO':
+      'ON GITHUB · THE CODE',
+    'La evolución, commit a commit.':
+      'The evolution,<br>commit by commit.',
+    'El software de MECH es abierto y vive en GitHub. De los más de 160 commits del repositorio, estos son los que marcaron su evolución; cada código lleva al cambio exacto.':
+      'MECH’s software is open and lives on GitHub. Out of the more than 160 commits in the repository, these are the ones that shaped its evolution; each code links to the exact change.',
+    'Ver el repositorio ↗':
+      'See the repository ↗',
+    'Todo el historial ↗':
+      'Full history ↗',
+    'Ver los commits que marcaron su evolución':
+      'See the commits that shaped its evolution',
+    'ABRIL 2026':
+      'APRIL 2026',
+    'Nace el repositorio':
+      'The repository is born',
+    'El primer commit: el proyecto empieza a guardarse en GitHub.':
+      'The first commit: the project starts living on GitHub.',
+    'MAYO 2026':
+      'MAY 2026',
+    'El primer MECH en código':
+      'The first MECH in code',
+    'Orquestador en Python, panel de control web y firmware de Arduino en un solo paso: la base sobre la que se construyó todo lo demás.':
+      'Python orchestrator, web control panel and Arduino firmware in a single step: the foundation everything else was built on.',
+    'Biblioteca de videos':
+      'Video library',
+    'Las obras se narran con videos preparados antes del evento, en vez de generarlos en vivo. Si falta un video, MECH genera imágenes y sigue.':
+      'Works are narrated over videos prepared before the event instead of generating them live. If a video is missing, MECH generates images and carries on.',
+    'JUNIO 2026':
+      'JUNE 2026',
+    'Ruedas y brazos':
+      'Wheels and arms',
+    'Firmware para cuatro motores con ruedas omnidireccionales y dos servos para los brazos.':
+      'Firmware for four motors with omnidirectional wheels and two servos for the arms.',
+    '«ok MECH»':
+      '“ok MECH”',
+    'Control por palabra clave: en reposo solo reacciona a su frase de despertar, sin gastar nada mientras espera.':
+      'Wake-word control: while resting it only reacts to its wake phrase, spending nothing while it waits.',
+    'Oye entre el ruido y ve al público':
+      'Hears through the noise and sees the audience',
+    'Detección de voz que distingue a quien habla del ruido del stand, visión de visitantes con la cámara y gestos con movimiento suave.':
+      'Voice detection that tells the speaker apart from stand noise, visitor detection with the camera, and smooth gestures.',
+    'JULIO 2026':
+      'JULY 2026',
+    'Datos verificados':
+      'Verified facts',
+    'Cada obra lleva datos comprobados para que la inteligencia artificial no invente fechas ni biografías.':
+      'Each work carries checked facts so the artificial intelligence does not make up dates or biographies.',
+    'Realidad virtual':
+      'Virtual reality',
+    'La proyección también se ve en estéreo dentro de unos lentes Google Cardboard, desde el teléfono.':
+      'The projection can also be watched in stereo inside Google Cardboard glasses, from a phone.',
+    'Saluda y vuelve a su sitio':
+      'Greets and goes back to its spot',
+    'Saluda a quien se acerca y, antes de cada historia, regresa solo al punto donde está calibrada la proyección.':
+      'It greets whoever approaches and, before each story, returns by itself to the spot where the projection is calibrated.',
+    'AGOSTO 2026':
+      'AUGUST 2026',
+    'Inglés y subtítulos':
+      'English and subtitles',
+    '«Wake up MECH» lo despierta en inglés, y el guion aparece como subtítulo debajo de la proyección.':
+      '“Wake up MECH” wakes it up in English, and the script appears as subtitles under the projection.',
+    '«Oye MECH»':
+      '“Hey MECH”',
+    'La presentación se puede cortar en cualquier momento para cambiar de tema.':
+      'The presentation can be stopped at any moment to change the subject.',
+    'SETIEMBRE 2026':
+      'SEPTEMBER 2026',
+    'Media vuelta':
+      'Half turn',
+    '«Mira hacia afuera» lo pone de cara al público y «regresa a proyectar» lo devuelve a su posición.':
+      '“Look outward” turns it to face the audience and “go back to projecting” returns it to its position.',
+    'Cuatro idiomas y traductor':
+      'Four languages and a translator',
+    'Francés y portugués se suman al español y al inglés, y nace el modo traductor para que dos personas se entiendan.':
+      'French and Portuguese join Spanish and English, and translator mode is born so two people can understand each other.',
+    'Sin terminal':
+      'No terminal needed',
+    'Iconos en el escritorio de la Raspberry Pi para iniciar, proyectar y apagar a MECH con un doble clic.':
+      'Icons on the Raspberry Pi desktop to start, project and shut down MECH with a double click.',
+    'Trivia estilo Kahoot':
+      'Kahoot-style trivia',
+    'Al terminar una historia, MECH proyecta preguntas sobre lo que contó y el público responde hablando.':
+      'After a story, MECH projects questions about what it told and the audience answers out loud.',
+    'OCTUBRE 2026':
+      'OCTOBER 2026',
+    'Diez idiomas':
+      'Ten languages',
+    'Alemán, italiano, japonés, ruso, mandarín y coreano: cada comando funciona en el idioma con que se despierta a MECH.':
+      'German, Italian, Japanese, Russian, Mandarin and Korean: every command works in the language MECH was woken up in.',
+    'Un panel que parece una app':
+      'A panel that feels like an app',
+    'El panel de control se rediseña por completo, y llega una app para Windows que se instala con un doble clic.':
+      'The control panel is fully redesigned, and a Windows app arrives that installs with a double click.',
+    'Mapa de sismos':
+      'Earthquake map',
+    'Los sismos recientes del mundo y de la zona, en un mapa animado dentro del panel.':
+      'Recent earthquakes around the world and nearby, on an animated map inside the panel.',
+
     /* ── Aplicaciones ──────────────────────────────────────────────── */
     'APLICACIONES': 'APPLICATIONS',
     'La misma tecnología, infinidad de usos.': 'The same technology,<br><span class="grad">endless uses.</span>',

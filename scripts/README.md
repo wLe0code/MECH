@@ -55,3 +55,16 @@ En la competencia **no se puede depender del wifi del recinto**. Antes los
 iconos venían de un CDN y las fuentes de Google Fonts: sin internet, varios
 botones del panel (los que son solo icono) se quedaban **en blanco**.
 Comprobalo con `python -m backend.preflight`.
+
+## `mklogo.py`
+
+Los iconos de MECH con el **logo oficial** de `branding/` (que no modifica):
+`frontend/icon.svg` (panel, PWA y los tres accesos del escritorio de la Pi),
+`windows/mech.ico` (app de Windows) y `windows/app/logo-mech.png` (la
+pantalla que busca al robot). Necesita Pillow y fontTools, solo en la
+máquina de desarrollo:
+
+```bash
+pip install pillow fonttools
+python scripts/mklogo.py
+```

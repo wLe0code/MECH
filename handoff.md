@@ -3,246 +3,110 @@
 Documento de traspaso entre sesiones de Claude Code. **Léelo completo** antes
 de tocar nada. Contexto de fondo (arquitectura/hardware/decisiones): **CLAUDE.md**
 en la raíz — este handoff no lo reemplaza, lo complementa con el estado *vivo*.
-CLAUDE.md está muy actualizado; si hay conflicto, gana CLAUDE.md.
+Si hay conflicto, gana CLAUDE.md.
 
-**Última actualización: 10 oct 2026 (el MODO MÚSICA se QUITÓ: nota en rojo
-más abajo; y la página web al día: párrafo «10 oct»). Antes, 9 oct 2026, segunda sesión (el fallo del modo
-música que «no llegaba a sonar»: §2.septdecies). Lo del 8 oct, en el párrafo
-«Sesión del 8 oct» y §2.decies; lo del 6 oct, en §2.nonies.** Lo del 5 oct
-(§2.quinquies) se subió el 6 oct en dos commits encima de `62f3ebb`: «Panel
-con estética nueva…» y «Cinco idiomas más…». ⚠️ **Subido, pero SIN probar en
-la Pi.** Después, el mismo 6 oct (§2.sexies): **saludo en español** y **cada
-comando solo en el idioma del despertar**, en el commit `981ee72` encima de
-`90b86d3`, **ya en GitHub** (el push tardó: se quedó esperando a que el
-usuario iniciara sesión en la ventana del Git Credential Manager; si un
-push «se cuelga» en esta máquina, es eso). Y encima, también el 6 oct y
-también subido: el **coreano como décimo idioma + la revisión de la trivia
-y demás funciones en el idioma del despertar** (§2.octies). El equipo iba a
-probarlo en la Pi justo después: **preguntar cómo fue**. Hay además un
-`git stash` con un seguro del saludo que **NO se subió, a propósito**
-(§2.septies).
+**Última actualización: 16 nov 2026 — «the flattening».** Lo más reciente,
+arriba; la historia (lo de sep y oct) sigue más abajo, sección por sección.
 
-**Tercera sesión del 6 oct (§2.nonies):** el equipo SÍ probó el coreano en
-la Pi y volvió con un fallo (el chat del panel salía con cuadritos) y tres
-pedidos. Hecho: el panel menos saturado y con menús animados, y las letras
-de coreano/japonés/chino incluidas en el repo. **El modo música NO se
-programó**: pidieron solo la explicación y las preguntas, y **falta que
-contesten** («después vemos lo del modo música»). Lo del panel y las letras
-se **subió a GitHub el mismo 6 oct** (commit `c1b4c4d`, «Panel con menús
-animados…», encima de `1844329`).
+> ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** Una sesión
+> trabajó media tarde sobre una copia 2 commits atrasada. Si dice «behind»,
+> primero `git pull` y volver a leer.
 
-**Sesión del 8 oct (§2.decies):** el equipo **probó lo del 6 oct en la Pi**:
-«al parecer funciona todo, incluso lo del coreano». Pidió dos cosas más y
-están hechas: el **rediseño «de app»** del panel (tema oscuro con mucho más
-contraste) y una **app de Windows que se instala con doble clic**, sin
-Python. **Subido a GitHub el mismo 8 oct** (commit «Panel rediseñado como
-una app…», encima de `c1b4c4d`), **sin probar en la Pi ni con el robot**:
-preguntar cómo se ve y si la app encontró al robot. El modo música sigue
-esperando sus respuestas.
+## 16 nov 2026 — limpieza, logo y commits en la web (SIN subir)
 
-**Segunda sesión del 8 oct (§2.undecies):** el equipo reportó que MECH **a
-veces saluda sin nadie delante**. Arreglado (la cara tiene que mantenerse
-~1 s, perilla «Confirmar cara») y simulado. También volvió a preguntar
-por la **plataforma de sismos**: se le contó lo investigado el 5 oct y
-contestó que por ahora quiere **un mapa dentro del panel** con los sismos
-recientes. **Hecho** (§2.duodecies). Las dos cosas se **subieron a GitHub
-el mismo 8 oct** («dale, súbelo»), en un solo commit encima de `4f792cd`,
-**sin probar en la Pi**: preguntar cómo fue. Sobre la «función de
-seguridad»: el equipo dijo que **es el propio mapa y que eso ya lo tienen
-cubierto** — no hay nada más pendiente de sismos (§2.quater, punto 0).
+Pedido del equipo, en un mensaje: leer este handoff, hacer una optimización
+«al estilo de *The Flattening* de Minecraft» (quitar archivos y código que ya
+no hacen falta o están desactualizados, como los demos; **`branding/` no se
+toca**), arreglar el logo de la app de inicio («está todo mal puesto») y
+poner en la web los commits más importantes de la evolución de MECH.
 
-**Tercera cosa del 8 oct (§2.terdecies y §2.quaterdecies): el MODO MÚSICA
-está hecho, en los diez idiomas, y suena SOLO desde YouTube.** Cómo se llegó:
-primero se hizo y se subió con fragmentos de 30 s de Apple Music (commit
-`2945620`); el equipo prefirió YouTube («creo que prefiero que usemos
-YouTube Premium») y al final pidió, tal cual: **«quita lo de Apple Music y
-deja solo lo de reproducir videos de YouTube, ya te subo la API key»**.
-Hecho: `backend/apple_music.py` ya no existe y no hay respaldo de 30 s.
+1. **Se borró** (todo sigue en el historial; último commit con todo: `5df6fa5`):
+   - `Demos/` (la copia vieja del panel sin servidor).
+   - `backend/main.py` + `backend/projector.py` (modo sin servidor con visor
+     tkinter). Estaba desactualizado: sin despertar, sin idiomas, sin trivia,
+     con un saludo que nombraba solo 5 obras. **Ahora solo existe
+     `python -m backend.server`**; para probar Claude sin micrófono, la caja
+     de texto del panel con el bucle de voz apagado. Docs al día (README,
+     GUIA, FRONTEND, PRUEBAS_HARDWARE, USO).
+   - `backend/robokit_link.py` y `ROBOKIT_PIN_*` (config y `.env.example`).
+   - La app antigua de Windows: `mech_panel.py`, `construir_exe.ps1`,
+     `MECH-Panel.iss`, `hacer_icono.py`, los tres `.bat` viejos y
+     `config.txt` (estaba marcado *skip-worktree* en esta copia). También las
+     carpetas locales `windows/.venv-build`, `build` y `dist` (~60 MB, no
+     estaban en git) y el worktree viejo `.claude/worktrees/AIR` con su rama
+     local `claude/stupefied-engelbart-d16131` (ya estaba fusionada). Las
+     ramas remotas **no** se tocaron.
+   - Funciones que nadie llamaba: `voice_phrases.is_wake/is_sleep/
+     is_wake_en/fr/pt/is_sleep_en`, `background_audio.is_playing`,
+     `lang.is_english`, `trivia.misses`, `video_library.segment_path`,
+     `voices.available_voices`. (Se buscaron con un script; en el JS del
+     panel no apareció ninguna función sin usar.)
+2. **Logo**: el icono de la app de Windows recortaba el centro del logo y
+   cortaba la «M» y la «H». Nuevo `scripts/mklogo.py` que, desde
+   `branding/MECH true black.png` (sin modificarlo), genera
+   `windows/mech.ico` (logo entero de 48 a 256 px, solo la «M» con su marco
+   de 16 a 32), `windows/app/logo-mech.png` (ahora sale en la pantalla que
+   busca al robot) y `frontend/icon.svg`, que era el aro rojo antiguo y es
+   el icono del panel y de los tres accesos de la Pi. El SVG lleva las letras
+   como trazos (Sora ExtraBold), así se ve igual en la Pi sin la fuente.
+   Comparado lado a lado con `branding/logo-mech.jpg`.
+3. **Web**: `evolucion.html#commits`, «La evolución, commit a commit»: 18
+   commits elegidos (9 abr → 8 oct 2026) con enlace a GitHub (el repo es
+   público), agrupados por mes, en español e inglés; enlace desde «El
+   código» de `robot.html`. Detalle en CLAUDE.md.
 
-**Sesión del 9 oct (§2.quindecies y §2.sexdecies): «pongo un video de
-YouTube y no se conecta, aunque agregué la API key a mano al final del
-`.env`».** No se pudo ver el fallo en la Pi (no respondía desde la laptop),
-pero se cerraron todas las formas de fallar al pegar la clave y, con la
-clave del equipo, **la búsqueda de YouTube se hizo por primera vez de verdad
-y funciona**. En el mismo mensaje pidieron tres cosas más, hechas: **MECH
-contesta sobre sismos** con los datos del mapa, la **tarjeta de la canción**
-en la proyección y las **«bolitas»** cuando no se proyecta nada. **Subido a
-GitHub el 9 oct** («súbelo a github»), **sin probar en la Pi**: preguntar
-cómo fue. Si el modo música sigue sin sonar allí, pedir la línea del panel
-que empieza por «YouTube» o «Modo música».
+Verificado en la laptop: todo compila, `probar_trivia` 50/50,
+`probar_saludo`, `probar_llegada`, `probar_sismos`, `probar_idiomas` y
+`probar_comandos_idioma` (TODO BIEN); el preflight solo falla en lo que esta
+laptop no tiene (fastapi, Whisper, audio, pyserial) y confirma los 42 iconos;
+la pantalla de búsqueda y los iconos vistos en Edge; la web vista a 1024 px y
+a 375 px sin desbordes, y ninguna frase nueva se queda en español al pasar a
+inglés. **Sin probar en la Pi** (el icono nuevo de los accesos solo se ve
+tras `git pull` + volver a correr `pi/instalar-accesos.sh`) y **sin subir a
+GitHub**: preguntar antes.
 
-**Segunda sesión del 9 oct (§2.septdecies): arreglado el fallo «se pone
-bien la tarjeta y el video, pero el video no logra reproducirse y vuelve a
-"Esperando contenido"».** Era el **permiso de sonido del navegador**: la
-proyección se abría dentro de un Chromium que ya estaba abierto (el panel,
-que «Iniciar MECH» abre solo) y que no tenía el permiso, así que YouTube no
-podía arrancar el video con sonido. Se reprodujo en la laptop y se arregló
-en dos sitios: los lanzadores de la Pi (para que el permiso llegue) y la
-página (para que, si un navegador lo bloquea, la canción arranque sin
-sonido y pida un toque en vez de rendirse). **Subido a GitHub el 9 oct**
-(lo pidió en el mismo mensaje: «al finalizar, haz el push»). ⚠️ **Sin
-probar en la Pi**: es lo primero que hay que preguntar.
+**Qué preguntarle al equipo al volver:**
+1. ¿Se sube a GitHub? (Si Vercel está conectado, la web se publica sola.)
+2. En la laptop, volver a correr `windows\Instalar MECH.bat` para que llegue
+   el icono nuevo. ¿Se ve bien en el Escritorio y en la barra de tareas?
+3. Lo que seguía pendiente de antes (§2.quater y §4): casi todo lo de oct
+   está **sin probar en la Pi**.
 
-> 🔴 **10 oct, lo último — EL MODO MÚSICA SE QUITÓ. Subido a GitHub.**
-> Pedido, tal cual: **«Quita el modo música, no sé por qué no funcionó. No
-> se reproduce nada»**. Tras el arreglo del 9 oct (§2.septdecies) en el
-> robot siguió sin sonar, y **nunca se vio el fallo en la Pi ni se supo la
-> causa**. Se borró entero: backend (`music.py`, `youtube_music.py`,
-> `llm.interpret_song`, lo de `mech_app` y `server`, las listas y frases),
-> panel (tarjeta y ajustes), proyección (`music.js`), pruebas
-> (`probar_musica.py`), guía de uso y también la **web** (MECH-5 queda con
-> tres novedades: seis idiomas, panel rediseñado y modo sismos). Detalle en
-> CLAUDE.md, «Modo MÚSICA — QUITADO».
-> - ⚠️ **Todo lo que este handoff dice del modo música de aquí para abajo es
->   HISTORIA** (§2.terdecies a §2.septdecies, la lista «Qué preguntarle al
->   equipo al volver» y los pasos de §4): ya no hay nada que probar ni que
->   preguntar del modo. **No lo vuelvas a meter salvo que lo pidan**; está
->   entero en el historial (último commit que lo tiene: `74ab082`).
-> - **Se quedó** lo que le sirve al marketing: el permiso de sonido de la
->   proyección (el flag en `pi/panel-mech.sh`, la detección de
->   `pi/proyector-mech.sh`, `comprobarSonido()` y `/api/projection/sound`) y
->   las «bolitas» de reposo. Sigue **sin probar en la Pi** el trozo de bash
->   de `proyector-mech.sh` que detecta un Chromium abierto sin el permiso.
-> - La **música de FONDO** de las obras (Malpaís) es otra cosa y no se tocó.
-> - La clave de YouTube ya no se usa; si queda en el `.env` no molesta.
-> - `index.html` pide ahora `?v=13`.
-> - Verificado en la laptop: todo compila, `probar_idiomas`,
->   `probar_comandos_idioma` (el bucle de voz real), `probar_trivia` 50/50,
->   `probar_saludo`, `probar_sismos`, `probar_llegada`, el preflight, y el
->   panel (vista Voz y «Guardar y aplicar») y la proyección en el navegador
->   con un servidor de mentira. **Sin probar en la Pi**: preguntar si tras
->   «Iniciar MECH» todo lo demás sigue igual.
+> 🔴 **10 oct — EL MODO MÚSICA SE QUITÓ** («no sé por qué no funcionó. No se
+> reproduce nada»). Nunca se vio el fallo en la Pi. Está entero en el
+> historial (último commit que lo tiene: `74ab082`). El 16 nov se borró de
+> este handoff su historia (§2.terdecies a §2.quindecies y su paso de §4);
+> lo que se quedó porque le sirve al marketing (el permiso de sonido de la
+> proyección, §2.septdecies) y la música de FONDO de las obras siguen igual.
+> **No lo vuelvas a meter salvo que lo pidan.**
 
-**10 oct — la PÁGINA WEB al día (`web/`), subido a GitHub.** (⚠️ El modo
-música que se nombra aquí se quitó de la web ese mismo día: nota de arriba.)
-Pedido, tal
-cual: «pon que el modelo actual es el MECH-5, que tiene 6 idiomas nuevos, el
-rediseño completo del panel de control, el modo música y el modo sismos.
-Además pon que en WRO Las Américas quedamos de 4to lugar con MECH-4».
-Hecho en `web/evolucion.html` (las cinco generaciones figuran como
-lanzadas; MECH-5 es «el modelo actual» con sus cuatro novedades; MECH-4
-lleva el 4.º lugar), `web/index.html` (tarjeta «4.º lugar en WRO Las
-Américas» debajo de los tres títulos, sin contarla como título),
-`web/css/styles.css` (`.trophy-intl`, `.intl`) y `web/js/i18n.js` (todo lo
-nuevo tiene su inglés). Detalle en CLAUDE.md («Salón de trofeos» y
-«`evolucion.html`»). Verificado en el navegador: escritorio (1280), ventana
-de 626 px y teléfono (375), sin desbordes ni errores de consola, y **ninguna
-frase nueva se queda en español al pasar a inglés**. Si Vercel está
-conectado al repo, se publica sola al subir (**no se comprobó**: preguntar
-si ya se ve en la dirección pública). ⚠️ Lo que NO se puso porque el equipo no lo dio: foto, sede, fecha
-y categoría de WRO Las Américas, e imágenes de MECH-4 y MECH-5 (la figura 38
-solo compara los tres primeros). Si las tienen, pedirlas. El «parlante
-alámbrico» de MECH-4 sigue ahí (§2.quater, punto 1: sin respuesta).
+**10 oct — la página web al día**: MECH-5 es el modelo actual (seis idiomas
+nuevos, panel rediseñado, modo sismos) y la tarjeta «4.º lugar en WRO Las
+Américas» con MECH-4. No se puso lo que el equipo no dio: foto, sede, fecha y
+categoría de Las Américas, ni imágenes de MECH-4/MECH-5.
 
-> **Qué preguntarle al equipo al volver** (pasos en §4, punto «El permiso
-> de sonido»):
-> 1. ¿Suena ya la canción? ¿Tuvieron que tocar la pantalla?
-> 2. Al abrir «Proyectar MECH», ¿salió el aviso «OJO: ya hay un Chromium
->    abierto…»? ¿Qué pasó al dar Enter? (Ese trozo de bash es lo ÚNICO que
->    no se pudo correr de verdad: se simuló con un `/proc` de mentira.)
-> 3. La línea del registro del panel al abrir la proyección: «Proyección
->    abierta, con permiso de sonido» o «OJO: la proyección se abrió SIN
->    permiso de sonido». Con esa línea se sabe todo.
-> 4. Si la canción sigue sin sonar, la línea que empiece por «La canción se
->    VE pero NO SUENA», «Ninguna pantalla contestó» o «La pantalla no pudo
->    reproducir la canción: …».
->
-> **Dato nuevo y útil:** desde ESTA laptop (usuario `CientificoAlajuela44`,
-> la del Python de Spyder) la Pi **sí responde**, por Tailscale:
-> `curl http://mech:8000/api/state`. Así se vio que el fallo era real
-> (`last_ai_response`: «Algo falló al reproducirla…», `play_id: 2`). ⚠️ El
-> servidor NO guarda el registro: `/api/state` no trae las líneas del panel
-> (solo salen en vivo por el WebSocket). No se entró por SSH ni se le mandó
-> nada al robot: solo se leyó el estado.
-
-> ⚠️ **Tres cosas del modo música** (escritas el 8 oct y ya resueltas el
-> 9 oct —la clave llegó y la búsqueda funciona, §2.quindecies—; se dejan
-> como historial)**:**
-> 1. **La versión solo-YouTube YA ESTÁ en GitHub** («súbelo a github», 8
->    oct; commit «Modo música solo con YouTube…», encima de `2945620`). La
->    Pi la recibe al abrir «Iniciar MECH» (hace `git pull`). **Sin probar en
->    la Pi**: preguntar cómo fue.
-> 2. **La clave de YouTube**: el equipo dijo «ya te subo la API key» y la
->    sesión terminó antes de que llegara. **Preguntar si ya la tiene.** Va en
->    `backend/.env` (en la Pi para usarlo; en la laptop solo para probar),
->    línea `YOUTUBE_API_KEY=…`. ⚠️ **Nunca a git, ni repetirla en el chat, ni
->    en este archivo.** Mejor que la pegue el equipo en el `.env` que
->    escribirla en el chat. En la laptop se dejó creado `backend/.env` con
->    la línea `YOUTUBE_API_KEY=` **vacía** para que la pegue ahí (está en
->    `.gitignore`; si esa línea sigue vacía, todavía no la ha puesto).
-> 3. **Con la clave, lo primero es la búsqueda de verdad**, que nunca se ha
->    hecho: `scripts/probar_musica.py --red` (cómo correrlo aquí, en
->    §2.terdecies). Si falla, el mensaje dice el motivo que da Google.
-
-> ⚠️ **Antes de leer nada más: `git fetch` y `git status`.** La sesión del
-> 6 oct empezó leyendo este handoff en una copia local que estaba **2
-> commits atrasada** (todavía decía «cuatro idiomas») y trabajó media sesión
-> sobre código viejo hasta que el equipo avisó. Si `git status` dice
-> «behind», primero `git pull` y volver a leer.
+**Dato útil:** desde la laptop `CientificoAlajuela44` la Pi responde por
+Tailscale: `curl http://mech:8000/api/state` (solo lectura; el registro del
+panel no se guarda, solo sale en vivo por el WebSocket).
 
 ---
 
 ## 0. En un minuto
 
 1. **El código es el del commit `c0e0310` («trasluce mech») + lo que el
-   equipo pidió después** (§2.bis). El 23 sep se REVIRTIÓ todo lo que había
-   entre medias — ver §2.ter antes de proponer nada «nuevo» que en realidad
-   ya se quitó.
-2. **Probado en la Pi y funcionando (23 sep):** la reversión, el saludo de
-   3 rotaciones y la relatividad en la biblioteca.
-3. **Hecho pero SIN probar en el robot** (§4, es lo primero que toca):
-   controles del panel (sobre todo LATERAL), trivia estilo Kahoot, recorte
-   automático de los videos de la relatividad, y el arreglo de «regresa a
-   proyectar» (Movilidad **v4**).
-4. **Preguntas sin contestar del equipo** (§2.quater), entre ellas qué
-   hacer con el **modo de alerta de sismos** (investigado, sin implementar).
-5. **Otra sesión de Claude trabaja en `web/` en paralelo.** `git fetch`
-   antes de subir y commitear por rutas (§2).
-6. **5 oct, subido el 6 oct y sin probar en la Pi** (§2.quinquies): cinco
-   idiomas más (alemán, italiano, japonés, ruso, mandarín) y la estética
-   nueva del panel (fondo grafito, acento cian; mismos controles).
-7. **6 oct, subido y sin probar en la Pi** (§2.sexies): el saludo
-   por cámara sale en **español**, y los comandos solo valen en el idioma
-   con el que se despertó a MECH («hey MECH» ya no corta a un MECH despierto
-   en español, ni «oye MECH» a uno despierto en inglés).
-8. **6 oct, subido y sin probar en la Pi** (§2.octies): el **coreano** como
-   décimo idioma y la trivia revisada en cada idioma. El brazo «en bucle»
-   que reportó el equipo ya está resuelto, según ellos (§2.septies).
-9. **6 oct, tercera sesión, sin probar en la Pi** (§2.nonies): el panel con
-   los diez idiomas en UN botón con menú y los menús animados; las letras de
-   coreano, japonés y chino dentro del repo (el chat salía con cuadritos en
-   la Pi). Y el **modo música**, que está **solo explicado**: hay seis
-   preguntas esperando respuesta del equipo antes de programar nada.
-   ✅ **Probado en la Pi por el equipo el 8 oct: funciona**, coreano incluido.
-10. **8 oct, sin probar en la Pi ni con el robot** (§2.decies): el panel
-    rediseñado «como una app» y la app de Windows sin construir
-    (`windows\Instalar MECH.bat`).
-11. **8 oct, segunda sesión, subido y sin probar en la Pi**
-    (§2.undecies): MECH ya no saluda por un fotograma suelto; la cara tiene
-    que mantenerse (Ajustes → «Confirmar cara», 1 s).
-13. **8 oct, sin probar en la Pi** (§2.terdecies, §2.quaterdecies): **modo
-    música** («modo música MECH»): pone el **video de YouTube** de la
-    canción, entero. **Subido el 8 oct.** Falta la **clave**
-    `YOUTUBE_API_KEY` (sin ella MECH dice que no puede poner música).
-12. **8 oct, segunda sesión, subido y sin probar en la Pi**
-    (§2.duodecies): vista nueva **«Sismos»** en el panel, con un mapa
-    animado de los sismos recientes (EMSC + USGS). Informa, no predice.
-14. **9 oct, subido y sin probar en la Pi** (§2.quindecies): la clave de
-    YouTube se lee en vivo y perdonando deslices, y el panel dice al
-    arrancar si YouTube la acepta. La clave tiene que empezar por `AIza`.
-    Con la clave del equipo la búsqueda real **funciona** (en la laptop).
-15. **9 oct, subido y sin probar en la Pi** (§2.sexdecies): MECH contesta
-    sobre sismos («¿ha temblado hoy?»), la proyección enseña la tarjeta de
-    la canción junto al video, y en reposo salen las bolitas del panel.
-    ✅ El equipo SÍ vio la tarjeta y las bolitas (lo dice su reporte del
-    fallo: «se pone bien la tarjeta y el video», «vuelve a la pantalla de
-    esperando contenido»). No dijo en qué pantalla: la de la Pi o una
-    laptop.
-16. **9 oct, 2.ª sesión, subido y sin probar en la Pi** (§2.septdecies): el
-    modo música ya no depende de que el navegador deje sonar a la primera.
-    En la Pi, «Iniciar MECH» y «Proyectar MECH» abren Chromium con el
-    permiso; si un navegador lo bloquea igual, la canción arranca sin
-    sonido, la tarjeta pide un toque y el panel lo explica.
+   equipo pidió después.** El 23 sep se REVIRTIÓ todo lo que había entre
+   medias (§2.ter) y el 16 nov se limpió lo que sobraba (arriba).
+2. **Probado en la Pi y funcionando:** la reversión, el saludo de 3
+   rotaciones y la relatividad (23 sep); el panel con menús y la letra
+   coreana (el equipo, 8 oct: «al parecer funciona todo»).
+3. **Hecho pero SIN probar en el robot** (§4): controles del panel (sobre
+   todo LATERAL), trivia estilo Kahoot, recorte de los videos de la
+   relatividad, «regresa a proyectar» (Movilidad **v4**), los diez idiomas y
+   los comandos por idioma, el saludo en español, el panel rediseñado, la
+   app de Windows, el saludo que exige una cara ~1 s, el mapa de sismos, que
+   MECH conteste sobre sismos, las bolitas de reposo y el permiso de sonido
+   de la proyección.
+4. **Preguntas sin contestar del equipo**: §2.quater.
 
 ---
 
@@ -262,8 +126,9 @@ imágenes de Gemini, Arduino para motores y servos).
   el 6 oct, ko — coreano, §2.octies; lo
   decide la frase con que lo despiertan), hace de traductor por turnos y,
   desde el 25 sep, ofrece una **trivia** al terminar una obra.
-- El equipo ya es **campeón nacional WRO 2026 Future Innovators**. En la web
-  la generación actual se llama MECH-3; en el código y la voz es «MECH».
+- El equipo es **campeón nacional WRO 2026 Future Innovators** (con MECH-3)
+  y quedó **4.º en WRO Las Américas** (con MECH-4). En la web la generación
+  actual es MECH-5; en el código y la voz es «MECH».
 
 ---
 
@@ -272,9 +137,7 @@ imágenes de Gemini, Arduino para motores y servos).
 - **Rama:** `main` = `origin/main` (comprobado el 6 oct, tras subir los dos
   commits del 5 oct). Todo pusheado salvo este handoff si se acaba de editar.
 - Remoto: `https://github.com/wLe0code/MECH.git`
-- Sin trackear y **NO se commitean**: `.agents/`, `skills-lock.json`. Tampoco
-  `windows/config.txt` (tiene la IP local del usuario) ni
-  `windows/dist/MECH Panel.exe` (se construye, no va a git).
+- Sin trackear y **NO se commitean**: `.agents/`, `skills-lock.json`.
 - Dev en **Windows 11** (OneDrive sincroniza el repo); el robot corre en
   **Raspberry Pi 5** (hostname `mech`, ej. `http://mech:8000`). El Arduino se
   flashea desde el laptop.
@@ -297,7 +160,9 @@ imágenes de Gemini, Arduino para motores y servos).
     idioma con sus comandos y sin los ajenos, el idioma fijo estando
     despierto, el saludo, y el bucle de voz real con micrófono/Whisper/voz
     de mentira (tiene que decir «TODO BIEN»).
-  - ⚠️ **En esta laptop el único Python es el de Spyder, 3.8.10**
+  - **En la laptop del 16 nov** (usuario `almon`) hay Python 3.13 con
+    Pillow, `node` y Edge: las pruebas de `scripts/` corren tal cual.
+  - ⚠️ **En la laptop `CientificoAlajuela44` el único Python es el de Spyder, 3.8.10**
     (`%LOCALAPPDATA%\Programs\Spyder\Python\python.exe`; `python` a secas es
     el alias de la Microsoft Store y no corre nada). No tiene `dotenv` ni
     `fastapi`, y `voice_phrases.py` usa `str.removesuffix` (3.9+; en la Pi
@@ -906,232 +771,6 @@ recientes — el mapa del panel»).
   moverse» aunque el código funcione (pasó: el vuelo a la zona parecía no
   ocurrir). Contar fotogramas con `requestAnimationFrame` antes de creerlo.
 
-### 2.terdecies Modo música (8 oct) — el modo en sí
-
-Pedido, tal cual: «ese modo música sea como en Alexa: "modo música MECH" o
-"activa modo música", luego pregunta qué canción quiere escuchar el usuario
-y de qué artista para garantizar que sea la correcta, la reproduce y cuando
-termina pregunta si quiere escuchar otra canción o si quiere hacer otra
-cosa; también que durante el modo música MECH pueda seguir siendo
-interrumpido por "oye MECH"; que esté adaptado a los 10 idiomas». De dónde
-sale la música cambió tres veces el mismo día (§2.quaterdecies); **el flujo
-no cambió**. Detalle técnico en CLAUDE.md, «Modo MÚSICA».
-
-**Las piezas**: `backend/music.py` (estado: `ask` → `artist` → `playing` →
-`again`), `backend/youtube_music.py` (búsqueda), `llm.interpret_song`
-(Claude pone el pedido en limpio), los métodos `*music*` de `mech_app.py`,
-la rama del bucle de voz y los endpoints `/api/music/*` en `server.py`, 30
-listas de frases en `config.py` (3 × 10 idiomas, todas juntas en la sección
-«Modo MÚSICA»), 13 frases × 10 idiomas en `lang.py`,
-`voice_phrases.is_music*`, `frontend/music.js` (la pantalla: reproductor de
-YouTube), `projector.html` (tres líneas), tarjeta y ajustes en el panel,
-`scripts/probar_musica.py`.
-
-De paso: `scripts/probar_idiomas.py` tenía una comprobación rota desde el
-6 oct (buscaba los botones de idioma en `index.html`; desde el rediseño los
-pinta `app.js`). Ahora mira la tabla `LANGS`. Y se registraron las listas de
-música en `probar_idiomas.py` y `probar_comandos_idioma.py`.
-
-**Cómo se corren las pruebas en esta laptop** (el único Python es el de
-Spyder, 3.8; ver §2): con un envoltorio `correr38.py` que simula `dotenv` y
-carga `voice_phrases` con el `removesuffix` escrito a la antigua. Estaba en
-el scratchpad de la sesión; **si ya no existe, son 40 líneas y hay que
-rehacerlo**. Se usa así (Git Bash):
-
-    PY="$LOCALAPPDATA/Programs/Spyder/Python/python.exe"
-    PYTHONIOENCODING=utf-8 "$PY" <scratchpad>/correr38.py scripts/probar_musica.py
-    PYTHONIOENCODING=utf-8 "$PY" <scratchpad>/correr38.py scripts/probar_musica.py --red
-
-`--red` hace la búsqueda REAL en YouTube: necesita `YOUTUBE_API_KEY` en el
-entorno o en `backend/.env`. En la Pi (Python 3.13) los scripts corren
-directos, sin envoltorio.
-
-Un defecto VIEJO que se vio de paso y NO se tocó: en alemán, el «no»
-(`nein`) casa con cualquier frase que lleve «ein» (a una letra). «Ja, ein
-Quiz bitte» al ofrecimiento de la trivia se toma como un NO. En el modo
-música se esquivó mirando «otra canción» antes que el no. Arreglarlo de
-verdad es tocar el matcher o la lista: preguntarle al equipo si le importa.
-
-### 2.quaterdecies El modo música suena SOLO desde YouTube (8 oct)
-
-**Cómo se llegó aquí** (para no repetir la discusión):
-
-1. El equipo pidió Apple Music y contestó «es una cuenta de apple de pago».
-   Su suscripción no alcanza: la canción entera de Apple pide además una
-   cuenta de **desarrollador** (~99 USD/año, hay que ser mayor de edad).
-   Se hizo con el fragmento oficial de 30 s y **se subió** (`2945620`).
-2. Preguntó por alternativas y contó que tiene **YouTube Premium** (viene
-   con su Gemini Pro). Antes quiso probar Apple en la Pi: music.apple.com
-   «pasó de los 40 segundos y pone una foto como del álbum». O sea, **la Pi
-   SÍ reproduce el audio protegido de Apple**; lo único que faltaba era la
-   cuenta de desarrollador.
-3. Aun así: **«creo que prefiero que usemos YouTube Premium»**. Se añadió
-   YouTube para la canción entera, con Apple de respaldo.
-4. Preguntó para qué hace falta la «YouTube Data API v3» y si cuesta (se le
-   explicó: es solo el BUSCADOR —de «Despacito, Luis Fonsi» al número del
-   video—, gratis, ~99 canciones al día, no toca su cuenta ni su Premium).
-5. Y cerró: **«quita lo de Apple Music y deja solo lo de reproducir videos
-   de YouTube, ya te subo la API key»**.
-
-⚠️ **No vuelvas a meter Apple ni un respaldo de 30 s** salvo que lo pidan.
-
-**Qué cambió en la última pasada (solo-YouTube), subida el 8 oct:**
-
-- Borrado `backend/apple_music.py`. Nuevo `backend/youtube_music.py`.
-- `mech_app.py`: `start_music()` comprueba `youtube_music.disponible()`; si
-  no (sin clave, clave mala, cuota agotada) dice `music_unavailable` y **no
-  entra al modo**. `_music_find_and_play` busca solo en YouTube. El nombre
-  que MECH dice y pinta es el que puso en limpio Claude, no el del video.
-- `lang.py`: frases nuevas `music_unavailable` y `music_playing_title` (la
-  canción sin artista: «no sé de quién es»); se quitó `music_preview_note`.
-- `config.py`: fuera `MUSIC_YOUTUBE_ENABLED`. `server.py`: línea de arranque
-  nueva y fuera esa clave de las «en vivo». `preflight.py`: una línea.
-- `frontend/music.js` reescrito (solo el reproductor de YouTube: prueba
-  hasta tres videos; si ninguno arranca, avisa del error). Panel: fuera el
-  interruptor «Usar YouTube»; `index.html` pide `?v=12`.
-- `scripts/probar_musica.py` reescrito. Documentación: `CLAUDE.md`,
-  `docs/USO.md` (§4 bis), `docs/FRONTEND.md`, `backend/.env.example`.
-
-Se subió **por rutas** (como siempre: otra sesión trabaja en `web/`), en un
-solo commit. Lo que NO se sube nunca: `backend/.env` (ahí va la clave),
-`.agents/`, `skills-lock.json`, `windows/config.txt`, `.claude/launch.json`.
-
-**Lo que tiene que hacer el equipo** (Claude no puede hacerlo por ellos: no
-inicia sesión ni escribe contraseñas):
-
-1. **La clave**: console.cloud.google.com (cualquier cuenta de Google) →
-   crear proyecto → «APIs y servicios» → habilitar **YouTube Data API v3**
-   → «Credenciales» → «Crear credenciales» → **Clave de API** → línea
-   `YOUTUBE_API_KEY=…` en `backend/.env` **de la Pi** → reiniciar.
-2. **Sin anuncios**: en el Chromium de la Pi, entrar a youtube.com e
-   iniciar sesión con la cuenta Premium.
-3. Que la Pi tenga el código nuevo: abrir «Iniciar MECH» con internet.
-
-**Verificado en la laptop:**
-
-- `probar_musica.py`: **102 comprobaciones, todo bien**. Las frases en los
-  diez idiomas con el reconocedor real; una sesión completa por idioma por
-  el bucle de voz REAL; cortar con «oye MECH» sola y con pedido pegado;
-  canción inexistente; sin internet; sin pantalla; pantalla que no arranca
-  el video; no entender dos veces; cambiar de tema; decir la canción de
-  una; «no sé» de quién es; parar desde el panel; dormirlo; **sin clave y
-  con la cuota agotada** (no entra al modo); el eco de las preguntas y de
-  la despedida en los diez idiomas; y `youtube_music.buscar` contra
-  respuestas escritas a mano con el formato de Google (filtros, orden,
-  errores de clave y de cuota).
-- `probar_idiomas.py`, `probar_comandos_idioma.py`, `probar_trivia.py`
-  (50/50), `probar_sismos.py`, `probar_llegada.py`: todo bien.
-- La pantalla (`/projector`) en el navegador con un video REAL de YouTube:
-  el primer candidato (inventado) da error y salta al segundo, suena, avisa
-  `playing youtube:<id>` y `ended`; sin ningún candidato bueno avisa
-  `error` en ~1 s; se calla al cortarla; un `state` no la reinicia.
-
-**NO verificado** (lo primero que hay que mirar; pasos en §4):
-
-- **La búsqueda en YouTube nunca se hizo de verdad** (no había clave). Es
-  lo primero que puede fallar. Con la clave: `probar_musica.py --red`.
-- Que `GOOGLE_API_KEY` (la de Gemini) sirva para YouTube si no se pone
-  `YOUTUBE_API_KEY`. Lo más probable es que no (las claves de AI Studio
-  suelen venir limitadas a Gemini); el registro lo dirá a la primera
-  canción.
-- **`llm.interpret_song` nunca llamó a Claude de verdad** (sin clave en la
-  laptop). Copia el patrón de `make_quiz`, pero es una pieza con riesgo.
-- Cómo transcribe Whisper `base` un título de canción, sobre todo en otro
-  idioma. Si falla mucho: `WHISPER_MODEL=small`.
-- **Que Premium quite los anuncios en el reproductor incrustado.** No se
-  encontró confirmación oficial. Si salen con la sesión iniciada, no hay
-  arreglo por código (se podría probar a permitir las cookies de terceros
-  en el Chromium de la Pi).
-- Qué tan a menudo el video OFICIAL se niega a incrustarse (entonces sale
-  otra versión, por ejemplo la que lleva la letra; si ninguna de las tres
-  arranca, MECH dice que algo falló).
-- **Cortar con «oye MECH» con música sonando**: el micrófono oye la
-  canción. Mirar «Oí mientras narraba: …» en el panel y la CPU de la Pi.
-- El volumen del video frente a la voz de MECH.
-- Las frases en los nueve idiomas que no son español, dichas por una
-  persona (solo se probó el texto).
-
-Vista previa en la laptop: configuración `panel-sismos` de
-`.claude/launch.json` (puerto 8766; ver §2.duodecies). Para simular que el
-servidor manda una canción a la proyección: `POST /__push` con un evento
-`{"type":"music","stage":"playing","play_id":N,"track":{"title":…,
-"artist":…,"youtube":[{"id":"<11 letras>","seconds":…}]},"volume":0.9}`.
-
-### 2.quindecies «No se conecta» con la clave ya puesta (9 oct)
-
-Reporte, tal cual: «cada vez que intento poner un video de yt, aunque haya
-agregado la api key manualmente al final del .env, no se conecta».
-
-**Lo que se sabe de cierto:**
-
-- La sesión corrió en **otra laptop** (usuario `almon`, Python **3.14** en
-  `%LOCALAPPDATA%\Python\bin\python.exe`, con `node`; no es la de Spyder de
-  §2). Su `backend/.env` es de junio y **no tiene línea de YouTube**: la
-  clave la pusieron en otro sitio (lo lógico, la Pi). No hay `git stash`
-  aquí: el «seguro del brazo» de §2.septies vive en la otra laptop.
-- La Pi **no respondía** desde aquí (`mech`, `mech.local`): no se vio su
-  registro. **No se sabe todavía cuál fue la causa real.**
-- **Comprobado contra Google de verdad**: la `GOOGLE_API_KEY` de Gemini es
-  hoy una clave nueva de AI Studio (`AQ.…`, 53 caracteres) y **YouTube la
-  rechaza** con `401 API keys are not supported by this API. Expected OAuth2
-  access token…`. Con el código de antes, si `YOUTUBE_API_KEY` no se leía
-  (mal escrita, sin reiniciar…), MECH probaba con la de Gemini: entraba al
-  modo, preguntaba canción y artista, fallaba con ese mensaje en inglés y
-  **se quedaba bloqueado hasta reiniciar**. Y lo mismo pasa si la clave de
-  YouTube se creó en AI Studio en vez de en la consola de Google Cloud.
-
-**Lo que se cambió** (detalle en CLAUDE.md, «Modo MÚSICA»):
-
-- `backend/youtube_music.py`: la clave se lee del `.env` **en vivo** y
-  perdonando deslices (comillas, espacios, minúsculas, `:`, pegada a la
-  línea anterior, línea vacía de la plantilla arriba o abajo, suelta sin
-  nombre, añadida con `>>` de PowerShell); dice si está en `.env.example` o
-  en un `.env` fuera de `backend/`; la de Gemini solo se prueba si es
-  `AIza…`; mensajes nuevos con qué tocar (tipo de clave, restricciones de
-  API y de aplicaciones, sin internet, portal del wifi); el bloqueo dura 2
-  min y es de ESA clave (antes: hasta reiniciar); `comprobar()` nuevo.
-- `backend/server.py`: al arrancar, un hilo le pregunta a YouTube si la
-  clave sirve → línea «YouTube: clave comprobada…» o «Modo música: así NO
-  va a poder buscar canciones — …».
-- `backend/preflight.py` (§3): la misma comprobación.
-- `scripts/probar_musica.py`: 31 comprobaciones nuevas (cada forma de pegar
-  la clave y cada respuesta de Google); `--red` lee la clave como MECH y
-  primero comprueba que sirve.
-- `backend/.env.example`, `docs/USO.md` (§4 bis y §8), `CLAUDE.md`.
-
-**Verificado en la laptop** (entorno aparte con numpy y python-dotenv; el
-Python 3.14 de aquí no trae nada): `probar_musica.py` TODO BIEN (con lo
-nuevo), `probar_idiomas`, `probar_comandos_idioma`, `probar_trivia` 50/50,
-`probar_saludo`, `probar_sismos`, `probar_llegada`. Y el módulo real contra
-Google: sin clave → «falta YOUTUBE_API_KEY…» sin gastar red; clave `AQ.…` →
-el mensaje del tipo de clave; clave inventada `AIza…` → «no existe o caducó».
-**NO verificado:** una búsqueda que SALGA BIEN (sigue sin haber una clave
-buena a mano), `server.py` arrancando de verdad (solo se compiló) y nada en
-la Pi.
-
-**Lo que pasó después, en la misma sesión:** el equipo pegó la clave en el
-chat (se le había pedido que no). Es del tipo bueno (`AIza…`). Se guardó en
-`backend/.env` de ESTA laptop (ignorado por git; **no está en ningún
-archivo del repo, ni debe estarlo, ni se repite aquí**) y con ella
-`probar_musica.py --red` salió entero: «la clave sirve para YouTube» y las
-cuatro canciones encontradas (Despacito, Bohemian Rhapsody, Shape of You y
-«Como un pájaro» de Malpaís). O sea: **la clave y el proyecto de Google
-están bien**; lo que fallaba en la Pi era cómo se leía (o que se probó con
-la de Gemini y quedó bloqueado hasta reiniciar), o la pantalla. Se le
-recomendó limitar la clave a «YouTube Data API v3» en la consola de Google,
-porque quedó escrita en el chat.
-
-**Cómo seguir:**
-
-1. Ya está subido: la Pi lo recibe al abrir «Iniciar MECH» con internet.
-2. Pedir la línea del panel. Si dice «clave comprobada» y sigue sin sonar,
-   el problema ya no es la clave sino la PANTALLA: pedir la línea «La
-   pantalla no pudo reproducir la canción: …» (red del colegio que bloquea
-   youtube.com, proyección abierta sin el icono «Proyectar MECH», o los
-   tres videos sin permiso de incrustarse).
-3. ⚠️ **Nunca pedir la clave por el chat.** Para saber de qué tipo es basta
-   con que digan cómo EMPIEZA (`AIza` o `AQ.`).
-
 ### 2.sexdecies Sismos para MECH, tarjeta de la canción y reposo (9 oct)
 
 Tres pedidos en la misma sesión. Detalle en CLAUDE.md («MECH contesta sobre
@@ -1304,16 +943,6 @@ la receta es corta):
 ### 2.quater Preguntas abiertas con el equipo
 
 Ninguna bloquea nada, pero conviene cerrarlas en la próxima sesión:
-
-00. **Modo música**: ✅ decidido — **solo YouTube** (§2.quaterdecies).
-    Quedan tres cosas del equipo: la **clave** `YOUTUBE_API_KEY` («ya te
-    subo la API key»: no llegó antes de cerrar la sesión), decir si **se
-    sube a GitHub** la versión solo-YouTube, y **probarlo en la Pi** (§4).
-    Alternativas que se le explicaron y NO eligió, por si pregunta otra
-    vez: canciones propias guardadas en la Pi (sin internet, lo más fiable
-    en una competencia), AirPlay desde un iPhone (`shairport-sync`),
-    Spotify Connect (pide Spotify Premium) y Apple Music entero (la Pi
-    puede reproducirlo; faltaría la cuenta de desarrollador de 99 USD/año).
 
 0. **Alerta de sismos** (§2.quinquies, punto 3): ¿se implementa? ¿con qué
    fuente? ¿para dónde (Costa Rica, Puerto Rico, California)? El 8 oct el
@@ -2184,47 +1813,6 @@ Es lo del fallo «el video no logra reproducirse». En la Pi:
 6. Desde una **laptop**: panel → menú «Proyección». Ahí siempre hace falta
    un clic la primera vez; el aviso tiene que salir ya en la pantalla de
    reposo y quitarse al tocar.
-
-### 00000000) Modo música con YouTube (§2.terdecies y §2.quaterdecies; sin probar)
-
-Antes: el código nuevo en la Pi («Iniciar MECH» con internet), la clave
-`YOUTUBE_API_KEY` en el `.env` de la Pi, la sesión de YouTube Premium
-iniciada en su Chromium, internet y la **proyección abierta** (icono
-«Proyectar MECH»). En el arranque tiene que salir, en verde,
-`Modo música: … Pone la canción entera desde YouTube…`. Si sale en ámbar
-`Modo música: NO disponible — …`, dice el motivo ahí mismo.
-
-0. **En la laptop, con la clave** (antes de ir a la Pi):
-   `probar_musica.py --red` (§2.terdecies). Tiene que encontrar videos para
-   las canciones de prueba. Si Google contesta un error, copiarlo tal cual.
-1. **Sin micrófono primero** (separa el modo del audio): panel → Voz →
-   tarjeta MODO MÚSICA → «Despacito, de Luis Fonsi» → **Poner**. MECH dice
-   «Ahí va: Despacito, de Luis Fonsi», en la proyección se ve el VIDEO con
-   un pie «Modo música · Despacito · Luis Fonsi · YouTube» y suena entero.
-   - «Me es imposible poner música»: falta la clave o Google la rechazó
-     (copiar la línea ámbar del registro).
-   - «Algo falló al reproducirla»: copiar la línea del registro (dice el
-     motivo que dio la pantalla).
-   - Un error de Claude al BUSCAR: es `llm.interpret_song`, que nunca se
-     probó con la API real. Copiar el error exacto.
-2. **¿Salen anuncios?** Si sí, comprobar que el Chromium de la Pi tiene la
-   sesión de Premium (entrar a youtube.com y mirar el avatar).
-3. Tres o cuatro canciones conocidas: ¿sale el video oficial u otra
-   versión? ¿Alguna falla del todo?
-4. **Por voz**: «ok MECH» → «modo música MECH» → «Despacito» → pregunta el
-   artista → «Luis Fonsi» → suena → «otra canción» → otra → «no».
-5. **Cortarla**: a media canción, «oye MECH». Tiene que callar y preguntar.
-   Si no hace caso: bajar Ajustes → «Volumen música» y repetir. Anotar qué
-   sale en «Oí mientras narraba: …».
-6. Dejar una canción ENTERA: al terminar, MECH tiene que preguntar si
-   seguimos. Si se queda callado mucho rato, anotar cuánto.
-7. Una canción en inglés pedida en español («Shape of You, de Ed Sheeran»):
-   ver en el registro qué oyó Whisper y qué buscó.
-8. En otro idioma: «wake up MECH» → «music mode MECH» → todo en inglés,
-   incluido el pie de la pantalla («Music mode»).
-9. Que no se quede sordo: «Parar» desde el panel a media canción y luego
-   darle otra orden cualquiera por voz.
-10. Volumen: si la música tapa a MECH o al revés, Ajustes → «Volumen música».
 
 ### 0000000) Mapa de sismos (§2.duodecies; subido el 8 oct, sin probar)
 

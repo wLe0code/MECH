@@ -4,48 +4,40 @@ Proyecto de WRO 2026 | Futuros Innovadores (Robots and Culture) enfocado en inme
 ## Estructura del proyecto
 
 ```
-backend/                  Python — corre en Raspberry Pi 5
-  server.py               Servidor FastAPI + WebSocket (entry point principal)
-  main.py                 Modo standalone sin servidor (testing)
-  mech_app.py             Estado compartido + event bus
+backend/                  Python — corre en la Raspberry Pi 5
+  server.py               Servidor FastAPI + WebSocket + bucle de voz (el ÚNICO punto de entrada)
+  mech_app.py             Estado compartido + event bus (narrar, trivia, traductor, saludo…)
   stt.py                  Speech-to-Text local (faster-whisper)
-  llm.py                  Claude API (Opus 4.7) — devuelve plan estructurado
+  llm.py                  Claude API — devuelve un plan estructurado
   tts.py                  ElevenLabs (voz)
-  image_gen.py            NanoBanana / Gemini 2.5 Flash Image (fallback de visual)
+  lang.py                 Los diez idiomas (el despertar decide cuál)
+  image_gen.py            Gemini (respaldo cuando una obra no tiene videos)
+  video_library.py        Biblioteca de videos pre-renderizados
   arduino_link.py         Serial al Arduino
-  gestures.py             Mapea gestos abstractos → comandos del Arduino
-  projector.py            Visor tkinter alternativo (modo standalone)
-  video_library.py        Manifest de videos pre-renderizados (Opción B)
-  video_library/          Los .mp4 por obra (gitignored): <slug>/seg01.mp4...
+  gestures.py, maneuvers.py  Brazos y movimiento (saludo, giro de 180°…)
+  vision.py               Cámara: detectar visitantes
+  sismos.py               Sismos recientes para el panel
+  preflight.py            Chequeo antes del evento
   config.py               Lee .env
-  requirements.txt
-  .env.example
+  requirements.txt, .env.example
 
-frontend/                 Panel de control web para supervisión con caracter de emergencia (servido por backend/server.py)
-  index.html              Panel principal
-  app.js                  Lógica (WebSocket + REST)
-  styles.css
-  projector.html          Página fullscreen para el proyector
-  library.html            UI para subir videos pre-renderizados (/library)
-  manifest.json           PWA — instalable como app
-  sw.js                   Service worker
-  icon.svg
+frontend/                 Panel de control web (servido por backend/server.py)
+  index.html, app.js, styles.css   Panel
+  projector.html          Página de proyección (Chromium kiosko)
+  cardboard.html          Proyección estéreo para Google Cardboard (/projector/vr)
+  library.html            Subir los videos de cada obra (/library)
+  vendor/                 Iconos, fuentes y mapa en local (sin internet)
 
-arduino/                  Control de sistemas móviles: movilidad terrestre y de servomotores (brazos y cabeza)
-  mech_controller/
-    mech_controller.ino   Firmware: motores omni, servos
-
-windows/                  Operación desde Windows
-  MECH Control.bat        Doble click → abre panel en Edge --app
-  MECH Kiosko.bat         Doble click → pantalla completa kiosko
-  MECH Proyector.bat      Doble click → página de proyector kiosko
-  config.txt              URL del servidor (editar con la IP de la Pi)
-  README.md               Guía detallada
-
+arduino/mech_controller/  Firmware del Arduino Uno: ruedas mecanum y servos de los brazos
+pi/                       Iconos de escritorio de la Pi (Iniciar / Proyectar / Apagar MECH)
+windows/                  App «MECH» para la laptop (Instalar MECH.bat)
+scripts/                  Pruebas sin hardware y generadores de iconos/fuentes/mapa
+web/                      Sitio de presentación (Vercel)
+branding/                 Logo, diagramas y material del stand
 docs/
   USO.md                  Guía del operador del stand (qué decirle, qué tocar)
   GUIA.md                 Guía de montaje y hardware
-  FRONTEND.md             Guía del servidor + panel + control desde Windows
+  FRONTEND.md             Servidor + panel + control desde Windows
 ```
 
 ## Inicio rápido
@@ -68,7 +60,7 @@ Para **montarlo**: [`docs/GUIA.md`](docs/GUIA.md) (hardware) y [`docs/FRONTEND.m
    ```
 5. En la misma Pi, abre el proyector en kiosko:
    ```bash
-   chromium-browser --kiosk http://localhost:8000/projector
+   chromium --kiosk --autoplay-policy=no-user-gesture-required http://localhost:8000/projector
    ```
-6. Desde Windows: edita `windows/config.txt` con la IP de la Pi y doble click en `windows/MECH Control.bat`.
+6. Desde Windows: doble clic una vez en `windows/Instalar MECH.bat` y abre el icono «MECH» del Escritorio (busca al robot solo).
 

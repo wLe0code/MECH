@@ -80,10 +80,6 @@ def current() -> str:
     return _current
 
 
-def is_english() -> bool:
-    return _current == "en"
-
-
 def enabled_languages() -> tuple[str, ...]:
     """Idiomas realmente disponibles ahora mismo (según el `.env`).
 

@@ -1,7 +1,7 @@
 """Estado compartido y event bus de MECH.
 
-El servidor (server.py) y el bucle de voz (main.py) tocan los mismos
-componentes (Arduino, proyectores, Claude, TTS). Para que ambos vean
+El servidor (server.py), su bucle de voz y el panel tocan los mismos
+componentes (Arduino, proyectores, Claude, TTS). Para que todos vean
 los mismos cambios y emitan logs hacia el frontend, todo pasa por aquí.
 
 Diseño:

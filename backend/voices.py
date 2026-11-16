@@ -191,16 +191,6 @@ def resolve(name: str | None, _seen: set[str] | None = None) -> str:
     return config.ELEVENLABS_VOICE_ID
 
 
-def available_voices() -> list[dict]:
-    """Voces realmente disponibles (con voice_id, o resolubles vía fallback)."""
-    out: list[dict] = []
-    for slug, meta in VOICES.items():
-        resolved = resolve(slug)
-        usable = slug == "narrator" or resolved != config.ELEVENLABS_VOICE_ID or bool(meta["voice_id"])
-        out.append({"slug": slug, **meta, "usable": usable})
-    return out
-
-
 def system_prompt_section() -> str:
     """Sección del system prompt: qué voces puede pedir Claude y cómo.
 

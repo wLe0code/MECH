@@ -17,8 +17,8 @@ Este archivo es tu primer punto de referencia al abrir una sesión nueva en este
 > la detección de "8 s sin datos", la carpeta `tests/` y `LEEME-ARREGLOS.md`).
 > **No los vuelvas a meter salvo que el equipo lo pida
 > explícitamente** — siguen en el historial de git si hacen falta.
-> Lo ÚNICO que se conservó de esa época: la app **`MECH Panel.exe`**
-> (`windows/`, solo control remoto, no toca el audio). Encima de la
+> Lo ÚNICO que se conservó de esa época fue la app **`MECH Panel.exe`**
+> (quitada en nov 2026: la reemplazó `windows/Instalar MECH.bat`). Encima de la
 > reversión se hizo: el saludo nuevo (3 rotaciones del brazo derecho hacia
 > adelante, solo en reposo; en inglés hasta oct 2026, **ahora en español** —
 > ver «Saludo» en Estado actual) y la
@@ -26,6 +26,21 @@ Este archivo es tu primer punto de referencia al abrir una sesión nueva en este
 > **reescrita desde cero** con lo que SÍ hay ahora, los controles de
 > movimiento del panel corregidos, el botón de la biblioteca en la app y los
 > guiones de CRISPR.
+
+> 🧹 **LIMPIEZA (16 nov 2026, «the flattening»)** — pedido del equipo: quitar
+> lo que ya no se usa. Se borraron: `Demos/`, `backend/main.py` (modo sin
+> servidor, desactualizado: sin despertar, idiomas ni trivia) y su visor
+> tkinter `backend/projector.py`, `backend/robokit_link.py` y las claves
+> `ROBOKIT_PIN_*` (el RoboKit se descartó en jul 2026), la app antigua
+> `MECH Panel.exe` (`mech_panel.py`, `construir_exe.ps1`, `MECH-Panel.iss`),
+> los lanzadores `MECH Control/Kiosko/Proyector.bat` con su `config.txt`,
+> `windows/hacer_icono.py` y una docena de funciones que nadie llamaba.
+> **Solo hay UNA forma de correr MECH: `python -m backend.server`.** Para
+> probar Claude sin micrófono: el bucle de voz apagado y la caja de texto
+> del panel. Todo sigue en el historial (último commit con todo: `5df6fa5`).
+> No lo vuelvas a meter salvo que lo pidan. El mismo día: iconos con el
+> logo oficial (`scripts/mklogo.py`) y la sección de commits clave de la web
+> (`web/evolucion.html#commits`).
 
 ---
 
@@ -181,9 +196,6 @@ Subir con `arduino:avr:uno`. Servos alimentados con 5–6V externos (protoboard)
 ```
 backend/
   server.py           ← ENTRY POINT principal. FastAPI + WebSocket.
-  main.py             ← Modo standalone sin servidor (testing puro).
-                        NO correr junto con server.py.
-                        NO proyecta videos de biblioteca (solo imágenes).
   mech_app.py         ← Singleton de estado + event bus.
                         Aquí vive emergency_stop() y execute_plan().
                         _render_segment_visual() decide video vs imagen.
@@ -236,8 +248,6 @@ backend/
                         hacia dónde mira en state["facing"].
   vision.py           ← C930e + MediaPipe: presencia, posición y distancia
                         del usuario; seguir/acercarse; gate de proyección.
-  projector.py        ← Visor tkinter ALTERNATIVO (solo para main.py standalone).
-                        En operación normal se usa el visor browser-based.
   config.py           ← Lee .env.
   requirements.txt
   .env.example
@@ -279,7 +289,10 @@ frontend/
                         pre-renderizados (Opción B).
   manifest.json       ← PWA instalable.
   sw.js               ← Service worker.
-  icon.svg
+  icon.svg            ← Logo oficial (lo genera scripts/mklogo.py). También
+                        es el icono de los accesos de la Pi y la imagen con
+                        que la app de Windows reconoce al robot: no cambiar
+                        la ruta.
 
 arduino/mech_controller/
   mech_controller.ino ← Firmware. Modos: AUTO/IDLE/LISTEN/SPEAK/STOP.
@@ -365,29 +378,11 @@ windows/              ← Control desde laptop Windows
                         directo a Edge/Chrome en modo --app. SIN TILDES a
                         propósito (PowerShell 5 lee los .ps1 como ANSI).
   app/index.html      ← La pantalla que BUSCA AL ROBOT y entra a su panel
-                        (http://<robot>:8000/?app=1). Un solo archivo, sin
-                        nada externo. El panel se sigue cargando del robot.
-  mech_panel.py       ← **La app antigua** (sep 2026): hay que construirla
-                        y en la laptop del equipo no hay Python. ENCUENTRA LA PI
-                        SOLA (mech.local, mech, la última dirección, y si no
-                        barre la red buscando el puerto 8000 + /api/state) y
-                        abre el panel con Edge/Chrome en modo --app. Solo
-                        librería estándar, a propósito: así el .exe pesa
-                        10 MB y se construye en un minuto. Es SOLO control
-                        remoto: no toca nada del audio ni del robot. Botones:
-                        panel, proyección, kiosko y **biblioteca de videos**
-                        (`/library` en el navegador de siempre, pestaña
-                        normal, para arrastrar los mp4).
-  construir_exe.ps1   ← Construye "MECH Panel.exe" con PyInstaller en un
-                        venv aparte (desde el Python de diario se colarían
-                        numpy/opencv y el .exe pasaría a cientos de MB).
-  MECH-Panel.iss      ← Instalador Inno Setup (menú inicio + desinstalador,
-                        sin pedir permisos de administrador). Opcional.
-  hacer_icono.py      ← Genera mech.ico desde branding/logo-mech.jpg.
-  MECH Control.bat    ← Doble click → Edge --app, ventana sin barras.
-  MECH Kiosko.bat     ← Pantalla completa kiosko.
-  MECH Proyector.bat  ← Página de proyector en kiosko.
-  config.txt          ← URL del servidor (solo lo usan los .bat).
+                        (http://<robot>:8000/?app=1). Sin nada de internet.
+                        El panel se sigue cargando del robot.
+  app/logo-mech.png   ← El logo oficial para esa pantalla (scripts/mklogo.py).
+  mech.ico            ← Icono de la app: logo entero en los tamaños grandes,
+                        solo la «M» en 16-32 px (scripts/mklogo.py).
   README.md
 
 docs/
@@ -442,21 +437,22 @@ scripts/
                         cuántas veces llega arriba el brazo (tienen que ser
                         3), que el izquierdo no se mueva y que nunca baje de
                         90. Sin hardware. Correrlo al tocar ARM_WAVE_*.
-
-Demos/                ← Versión standalone solo HTML+JS+CSS para probar
-                        la UI sin backend (file://).
+  mklogo.py           ← Los iconos con el LOGO OFICIAL: frontend/icon.svg
+                        (panel/PWA y los 3 accesos de la Pi; letras como
+                        trazos, no depende de fuentes), windows/mech.ico y
+                        windows/app/logo-mech.png. Lee branding/ sin tocarlo.
+                        Necesita Pillow + fontTools (solo en la laptop).
 ```
 
 ---
 
-## Reglas de operación (modos mutuamente excluyentes)
+## Reglas de operación
 
-Dos formas de correr el backend, **nunca a la vez** (pelearían por Arduino + micrófono):
-
-1. **`python -m backend.server`** → modo normal. Sirve frontend + WS + bucle de voz (controlable desde el panel).
-2. **`python -m backend.main`** → modo headless de testing. Solo voz + STT + Claude + TTS. Sin web.
-
-Para producción, **siempre server.py**.
+Una sola forma de correr el backend: **`python -m backend.server`**. Sirve
+frontend + WS + bucle de voz (controlable desde el panel). Para probar la
+cadena Claude → voz → proyección sin micrófono: bucle de voz apagado y la caja
+de texto del panel (o `POST /api/voice/text`). El modo sin servidor
+(`backend/main.py`) se quitó en nov 2026: estaba desactualizado.
 
 ---
 
@@ -483,9 +479,6 @@ chromium --kiosk --autoplay-policy=no-user-gesture-required          http://loca
 # ⚠️ Solo cuenta si es el PRIMER Chromium que se abre: con otro ya abierto,
 # la ventana nueva se mete en ese y el flag se ignora.
 # En Bookworm el binario también está como chromium-browser; ambos funcionan.
-
-# Testing headless (sin web, sin panel — solo voz → Claude → TTS)
-python -m backend.main
 
 # Subir firmware al Arduino (desde Arduino IDE o arduino-cli)
 arduino-cli compile --fqbn arduino:avr:uno arduino/mech_controller
@@ -1338,8 +1331,7 @@ MISMOS datos del mapa, en el idioma del despertar.
   de inventar. Con más de 15 min sin conexión avisa de que puede faltar lo
   último.
 - Interruptor: `SISMOS_ANSWERS_ENABLED` (default true, en `_LIVE_KEYS`; sin
-  control en el panel). En `python -m backend.main` no hay hilo de sismos y
-  no se pasa nada.
+  control en el panel).
 - `scripts/probar_sismos.py` mide el resumen y que viaja en la petición.
   **Sin probar con Claude de verdad**: cómo lo cuenta solo se oye en la Pi.
 
@@ -1545,8 +1537,8 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `voice_id` por personaje, campo `voice` en el `Segment`, `tts.speak()` acepta
   `voice_id`. Rellenar los `voice_id` en `voices.py` para activarlas (ej. voz
   del Hidalgo para Don Quijote). Fallback a la voz default si está vacío.
-- Launchers Windows.
-- **App de Windows `MECH Panel.exe` (sep 2026)** — lanzador de escritorio que
+- **App de Windows `MECH Panel.exe` (sep 2026) — QUITADA en nov 2026** (la
+  reemplazó `Instalar MECH.bat`; está en el historial). Era un lanzador que
   **encuentra la Pi sola** (mech.local, mech, la última dirección, y si no
   barre la red buscando `/api/state`) y abre el panel en ventana de
   aplicación. Solo control remoto. Solo librería estándar → .exe de 10 MB
@@ -1764,6 +1756,17 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   que es («informa de lo que ya ocurrió: no predice»); no lo cambies a
   «alerta» ni «predicción». La figura 38 solo compara MECH-1/2/3: no hay
   imágenes de MECH-4 ni de MECH-5 todavía.
+  **Commits clave en GitHub (16 nov 2026, pedido del equipo)** —
+  `evolucion.html#commits`, después de MECH‑5: «La evolución, commit a
+  commit», una vía vertical con 18 commits elegidos del historial (de
+  «Initial commit», 9 abr 2026, al mapa de sismos, 8 oct), agrupados por
+  mes, cada uno con su enlace a `github.com/wLe0code/MECH/commit/<hash>`
+  (el repo es público). Llevan la etiqueta de generación SOLO cuando la
+  propia web ya atribuye esa función a un modelo (VR → MECH‑2, subtítulos
+  → MECH‑3, «Hey MECH»/idiomas/traductor/trivia → MECH‑4, diez idiomas/
+  panel/sismos → MECH‑5). Estilos `.commits`/`.cm-*` en `styles.css`;
+  `robot.html` («El código») enlaza ahí. Para añadir uno: copiar un
+  `<li class="cm">` y meter el inglés de su título y texto en `i18n.js`.
   **Interruptor de idioma ES/EN** (`web/js/i18n.js`): el sitio se escribe en
   español y el inglés vive en un diccionario `{texto español: HTML inglés}`.
   El botón va en la barra de navegación (inyectado por JS, así aparece en las
@@ -2117,10 +2120,8 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
 4. **`temperature`/`top_p`/`top_k`/`budget_tokens` no van con Claude Opus 4.7.** Devuelven 400. El código actual ya está alineado (usa `thinking: {type: "adaptive"}`).
 5. **Modelo Claude**: siempre `claude-opus-4-7` (alias correcto; no añadir sufijo de fecha).
 6. **Microcontrolador = Arduino Uno R3** (ATmega328P). El RoboKit RS de Roborobo se descartó: no acepta control en vivo desde la Pi (corre programas Rogic cerrados, sin recibir serial). El Arduino se controla por USB con `arduino_link.py`. Subir firmware con `arduino:avr:uno`.
-7. **`python -m backend.projector`** (tkinter) y el visor browser-based en `/projector` son alternativas. Para producción usar el browser.
 8. **El paquete Chromium en Raspberry Pi OS Bookworm es `chromium`**, no `chromium-browser` (aunque el binario sigue existiendo bajo ambos nombres).
 9. **La red wifi del evento puede tener client isolation** (común en colegios/eventos). Si Windows no ve la Pi por IP aunque estén en la misma red, ese es el problema. Hotspot del celular como respaldo.
-10. **Modo standalone (`python -m backend.main`) NO muestra videos pre-renderizados.** El visor tkinter solo sabe de imágenes. Para ver videos hace falta `python -m backend.server` + `/projector` en navegador. `main.py` loguea el slug/segmento del video y sigue con la narración/gesto.
 11. **Slug del video_library debe coincidir con el subdirectorio.** Si añades una obra al manifest pero la carpeta se llama distinto, `available_works()` la reporta como incompleta y no aparece a Claude.
 11b. **Datos erróneos en la narración = alucinación del modelo.** Si MECH dice un dato falso de una obra (fecha, biografía, profesión), NO es un bug de código: el modelo lo inventó porque no se lo dimos. Solución: añade el dato correcto al campo `facts: [...]` de esa obra en `video_library.py`. Esos "Datos verificados" se inyectan al system prompt con una regla anti-invención. Sonnet alucina más que Opus en esto; por eso los `facts` importan más si se usa Sonnet. (Ej. ya corregido: Fidel Gamboa de Malpaís murió en 2011 y fue músico, no médico.)
 12. **Sample rate del micrófono ≠ el que usa Whisper.** Muchos mics USB baratos (Steren MIC-9010 / "WXMH mini") NO abren a 16000 Hz y dan `Invalid sample rate [PaErrorCode -9997]`. Por eso `AUDIO_SAMPLE_RATE=48000` (captura). **faster-whisper exige arrays a 16000 Hz y NO resamplea solo**: `stt.py` captura a 48000 (para VAD) y **resamplea a 16000** (`WHISPER_SAMPLE_RATE`) antes de transcribir. Si se pasa audio a otra tasa, Whisper lo "oye" 3× más rápido, transcribe basura y **alucina** el contenido del `initial_prompt`. Por eso ese prompt ya NO lista títulos de obras.
@@ -2257,15 +2258,6 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
     corre código viejo (git pull sin reiniciar) o está apagada en Ajustes.
     Y si MECH ofrece jugar pero no entiende el «sí», revisá
     `VOICE_YES_PHRASES` en el `.env` de la Pi (tapa el default, como todas).
-28. **El .exe de Windows se construye en un venv aparte.** Desde el Python de
-    diario, PyInstaller mete lo que encuentre (numpy, opencv...) y el .exe
-    pasa de 10 MB a cientos. Por eso `mech_panel.py` no usa nada fuera de la
-    librería estándar: es lo que hace que eso se pueda garantizar.
-29. **El Python de la Microsoft Store virtualiza `%APPDATA%`.** Correr
-    `python windows\mech_panel.py` con ese intérprete guarda la dirección en
-    `...LocalCache\Roaming\MECH\` y el .exe la busca en la real. No rompe
-    nada (cada uno es coherente), pero explica que "se olvide" la dirección
-    al pasar del script al .exe.
 
 ---
 
@@ -2295,8 +2287,7 @@ el fondo no sea ese color violeta, algo más chiva». Se rehízo
   micrófono **ya no es rojo fijo**: desde el 8 oct toma el color de la fase.
 - `library.html` hereda la misma paleta. **No se tocaron** la proyección, la
   trivia (va en morado a propósito: es el estilo Kahoot que pidió el equipo)
-  ni la app de Windows (`windows/mech_panel.py` tiene sus propios colores y
-  habría que reconstruir el .exe).
+  ni la proyección.
 
 Tres reglas de movimiento que salen de esa skill — **no las rompas al añadir
 un control**:
@@ -2401,8 +2392,9 @@ está construido ni se puede** (no hay Python instalable a mano).
   como ANSI.
 - Si cambia `windows/app/index.html`, hay que volver a correr el instalador
   en cada laptop (se usa la copia de `%APPDATA%`).
-- `mech_panel.py` y lo del `.exe` no se tocaron (siguen con su paleta
-  vieja).
+- `mech_panel.py` y el `.exe` se quitaron en nov 2026 (ver el aviso de
+  arriba). Desde entonces la pantalla de búsqueda lleva el logo oficial
+  (`app/logo-mech.png`) y el icono se regenera con `scripts/mklogo.py`.
 
 ### Menús animados y los diez idiomas en uno (6 oct 2026)
 

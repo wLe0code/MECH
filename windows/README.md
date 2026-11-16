@@ -1,13 +1,17 @@
 # MECH — Control desde Windows
 
-Formas de tener el panel de control de MECH en tu equipo Windows, de más a menos recomendada:
+Formas de tener el panel de control de MECH en una laptop Windows:
 
-| Modo | Cómo se ve | Setup | Recomendado para |
-|---|---|---|---|
-| **App «MECH»** ⭐ (`Instalar MECH.bat`) | Icono en el Escritorio; ventana propia; **encuentra al robot sola** | Doble clic, **sin instalar nada** | **Todo el mundo** |
-| **App `MECH Panel.exe`** | Ventana con cuatro botones; encuentra la Pi sola | Hay que **construirla** (hace falta Python) | Quien ya la tenga construida |
-| **Launcher .bat** | Ventana sin barras (parece app) | Doble click + editar la IP a mano | Respaldo |
-| **PWA instalada** | Acceso directo en menú inicio + ícono | 30 s desde Edge | Respaldo |
+| Modo | Cómo se ve | Setup |
+|---|---|---|
+| **App «MECH»** ⭐ (`Instalar MECH.bat`) | Icono en el Escritorio; ventana propia; **encuentra al robot sola** | Doble clic, **sin instalar nada** |
+| **PWA instalada** | Acceso directo en el menú Inicio | 30 s desde Edge (respaldo) |
+
+> Hasta oct 2026 también estaban `MECH Panel.exe` (había que construirlo con
+> Python) y los lanzadores `MECH Control/Kiosko/Proyector.bat` (había que
+> escribir la IP a mano en `config.txt`). Se quitaron en nov 2026: la app
+> «MECH» hace lo mismo sin construir ni configurar nada. Siguen en el
+> historial de git (último commit que los tiene: `5df6fa5`).
 
 ## La app «MECH» (recomendado, oct 2026)
 
@@ -55,113 +59,27 @@ trae **«Buscar de nuevo»**.
 - Para probarla sin robot: abrir
   `app/index.html?candidatos=http://localhost:8765&barrido=0`.
 
-Lo que NO hace, a diferencia de `MECH Panel.exe`: no puede averiguar en qué
+Lo que NO hace: no puede averiguar en qué
 red está la laptop (una página no tiene permiso), así que no barre la red
 actual a ciegas; barre la de la última vez y, si se le pide, las habituales.
 
-## 0. La app antigua: `MECH Panel.exe`
+### El icono
 
-> Sigue funcionando, pero hay que **construirla** en una máquina con Python.
-> Para repartir entre el equipo es más fácil `Instalar MECH.bat`.
+`mech.ico` sale del logo oficial (`branding/MECH true black.png`) con
+`python scripts/mklogo.py`: el logo entero centrado en los tamaños grandes y
+solo la «M» con su marco en los pequeños (16-32 px), donde la palabra completa
+no se lee. El mismo script genera `app/logo-mech.png` (la pantalla de
+búsqueda) y `frontend/icon.svg` (panel y escritorio de la Pi). Tras
+regenerarlo hay que volver a correr `Instalar MECH.bat` en cada laptop.
 
-### Usarla
-
-Doble click y ya. Al abrir busca la Pi sola; cuando el punto se pone **verde**
-los cuatro botones se habilitan:
-
-| Botón | Qué abre |
-|---|---|
-| **ABRIR EL PANEL** | El panel de control, en ventana de aplicación (sin barra de direcciones ni pestañas). |
-| **Abrir la proyección** | La página `/projector`, por si proyectas desde el Windows en vez de desde la Pi. |
-| **Panel a pantalla completa** | El panel en modo kiosko. Se sale con `Alt + F4`. |
-| **Biblioteca de videos (en el navegador)** | La página `/library`, en tu navegador de siempre (pestaña normal, con la dirección a la vista). Ahí se suben los videos de cada obra arrastrándolos. |
-
-Si no la encuentra (redes con *client isolation*, muy común en colegios y
-eventos: la laptop no ve a la Pi aunque estén en la misma wifi — el hotspot
-del celular es el respaldo), escribe la dirección a mano en el campo y pulsa
-**Probar**. Acepta cualquier forma: `192.168.1.42`, `mech`, `mech.local:8000`,
-`http://192.168.1.42:8000`. La recuerda para la próxima.
-
-La dirección se guarda en `%APPDATA%\MECH\config.json`.
-
-### Construir el .exe
-
-Hace falta **una** máquina con Python para construirlo; el .exe que sale no
-necesita Python en ninguna otra.
-
-```powershell
-powershell -ExecutionPolicy Bypass -File windows\construir_exe.ps1
-```
-
-Deja `windows\dist\MECH Panel.exe` (~10 MB). Ese archivo es lo que se le pasa
-a quien sea: se copia y funciona, no instala nada.
-
-La primera vez que se abre, **Windows SmartScreen dirá «editor desconocido»**
-(el .exe no está firmado — firmarlo cuesta dinero y no aporta nada aquí):
-*Más información* → *Ejecutar de todas formas*. Solo pasa una vez por equipo.
-
-### Instalador (opcional)
-
-Para la laptop fija del stand, donde no conviene depender de en qué carpeta
-quedó el .exe:
-
-1. Instala [Inno Setup](https://jrsoftware.org/isdl.php) (gratis).
-2. Construye el .exe con el comando de arriba.
-3. Doble click en [`MECH-Panel.iss`](MECH-Panel.iss) → **Compile**.
-
-Sale `windows\instalador\MECH-Panel-Setup.exe`: menú inicio, acceso directo
-opcional en el escritorio y desinstalador. **No pide permisos de
-administrador** (se instala solo para el usuario actual).
-
-### Por qué está hecha así
-
-`windows/mech_panel.py` **no usa nada fuera de la librería estándar de
-Python**. Es lo que permite que el .exe pese 10 MB y se construya en un
-minuto. Las alternativas (Tauri, Electron, pywebview) meten un navegador
-entero dentro del ejecutable para acabar mostrando la misma página que Edge ya
-sabe mostrar. Aquí Edge/Chrome ponen la ventana (modo `--app`) y el .exe solo
-se encarga de lo que faltaba: encontrar la Pi y recordar la dirección.
-
-⚠️ Si corres `python windows\mech_panel.py` directamente **con el Python de la
-Microsoft Store**, Windows le virtualiza `%APPDATA%` y guarda la dirección en
-otro sitio que el .exe. No es un problema real (cada uno es coherente consigo
-mismo), pero explica que la app "se olvide" de la dirección al pasar del
-script al .exe.
-
-## 1. Preparar la conexión
-
-Antes de cualquiera de los modos, asegúrate de que:
-
-1. La Raspberry Pi está corriendo el servidor (`python -m backend.server`).
-2. Tu equipo Windows está en la **misma red wifi** que la Pi.
-3. Conoces la **IP de la Pi**: en la Pi corre `hostname -I`, copia el primer número (ej. `192.168.1.42`).
-
-Edita [`config.txt`](config.txt) en esta carpeta y pon:
-
-```
-http://<IP-de-la-Pi>:8000
-```
-
-Ejemplo: `http://192.168.1.42:8000`
-
-## 2. Launchers (.bat)
-
-Doble click en uno de estos archivos:
-
-- **`MECH Control.bat`** — Modo aplicación. Abre Edge sin barra de URL ni pestañas. Funciona como ventana redimensionable. Cierre normal con la X.
-- **`MECH Kiosko.bat`** — Pantalla completa. No hay forma fácil de salir (usa `Alt+F4`). Úsalo para una tablet o pantalla dedicada que solo controla el robot.
-- **`MECH Proyector.bat`** — Abre la **página del proyector** (`/projector`), no el panel. Útil solo si vas a conectar un proyector a un equipo Windows; normalmente esto se hace en la Pi.
-
-**Cómo funciona internamente:** los .bat detectan si tienes Edge o Chrome instalado y los lanzan con `--app` (modo aplicación) o `--kiosk` (pantalla completa). No instalan nada.
-
-## 3. Modo PWA (recomendado para uso permanente)
+## Respaldo: instalar el panel como PWA
 
 Microsoft Edge puede "instalar" el panel como si fuera una aplicación de Windows con ícono en el menú inicio y entrada en "Aplicaciones".
 
 **Pasos:**
 
 1. Abre Edge (o Chrome).
-2. Ve a `http://<IP-de-la-Pi>:8000` (tu URL del config.txt).
+2. Ve a `http://<IP-de-la-Pi>:8000` (o `http://mech.local:8000`).
 3. Espera a que cargue el panel.
 4. Click en el botón **"Instalar app"** que aparece a la derecha de la barra de direcciones (ícono de monitor con flecha). Si no aparece:
    - En Edge: menú `…` → **Aplicaciones** → **Instalar este sitio como aplicación**.
@@ -175,7 +93,7 @@ Microsoft Edge puede "instalar" el panel como si fuera una aplicación de Window
 - Service Worker muestra una página offline si la Pi se desconecta (en lugar del error genérico del navegador).
 - Atajos del manifest (paro de emergencia) accesibles con click derecho en el ícono de la barra de tareas.
 
-## 4. Atajos del panel
+## Atajos del panel
 
 Una vez dentro del panel, sirven estos:
 
@@ -187,25 +105,12 @@ Una vez dentro del panel, sirven estos:
 | **2** | Vista de proyección stand |
 | **3** | Vista de espacio inmersivo |
 
-## 5. Solución de problemas
+## Solución de problemas
 
 | Problema | Solución |
 |---|---|
 | "No encontre Edge ni Chrome" | Instala Microsoft Edge (viene con Windows 10/11 actualizado) o Chrome. |
-| El panel dice "Sin servidor" | Verifica que el servidor corre en la Pi (`python -m backend.server`) y que la IP del `config.txt` es correcta. Prueba abrir esa URL en cualquier navegador desde el Windows. |
+| El panel dice "Sin servidor" | Verifica que el servidor corre en la Pi (`python -m backend.server`) y que la dirección es correcta. Prueba abrir esa URL en cualquier navegador desde el Windows. |
 | "Reconectando…" sin parar | Firewall de Windows bloqueando WebSocket. Acepta el permiso de red privada o desactiva temporalmente. |
 | La página carga pero el PARO no responde | Botones REST: el servidor debe estar activo. Mira los logs del panel a la derecha — si no aparecen logs nuevos al pulsar emergencia, el servidor no recibe. Revisa la consola Python en la Pi. |
 | Quiero salir del modo kiosko | `Alt + F4` cierra Edge. Si está bloqueado, `Ctrl + Alt + Supr` → Administrador de tareas → cierra `msedge.exe`. |
-
-## 6. Historial: por qué antes no había .exe
-
-Hasta sep 2026 el panel se abría solo con los `.bat` y la PWA, y este README
-explicaba que un .exe nativo no compensaba: Tauri pedía instalar Rust + Visual
-Studio Build Tools (~1 GB) y Electron empaquetaba Chromium entero (~150 MB).
-
-Eso **sigue siendo cierto para esas dos opciones**. Lo que cambió es el
-enfoque: en vez de meter un navegador dentro del ejecutable, el .exe solo
-resuelve lo que los `.bat` no podían (encontrar la Pi, recordar la dirección) y
-deja la ventana en manos de Edge. Con eso, un ejecutable de 10 MB sin
-dependencias hace el trabajo — y los `.bat` siguen ahí para quien no quiera
-construir nada.

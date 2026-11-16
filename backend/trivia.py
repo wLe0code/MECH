@@ -205,10 +205,6 @@ def miss() -> int:
     return _misses
 
 
-def misses() -> int:
-    return _misses
-
-
 def advance() -> bool:
     """Pasa a la siguiente pregunta. False si la partida terminó."""
     global _index, _stage, _chosen, _result, _misses

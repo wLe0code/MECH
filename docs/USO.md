@@ -50,8 +50,7 @@ dos se abren en otra ventana. Abajo del todo, **Atajos y frases**.
 Si se pierde la conexión con el robot sale un aviso abajo («Sin conexión con
 MECH») con el botón **Buscar de nuevo**, que vuelve a la pantalla de búsqueda.
 
-Para quitarla: `Quitar MECH.bat`, en la misma carpeta. Más detalles (y la
-versión antigua, `MECH Panel.exe`) en
+Para quitarla: `Quitar MECH.bat`, en la misma carpeta. Más detalles en
 [`../windows/README.md`](../windows/README.md).
 
 ---

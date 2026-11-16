@@ -196,7 +196,7 @@ check(texto.lower().count("tsunami") == 1 and "No tienes avisos de tsunami" in t
 check(len(texto) < 2600, "es corto (%d letras): viaja en cada pregunta" % len(texto))
 check("OJO" not in texto and "OJO" in S.para_claude(ahora=time.time() + 3600),
       "si lleva rato sin conexion, avisa de que puede faltar lo ultimo")
-check(sismos.para_claude() == "", "sin el hilo de sismos (modo main.py) no se pasa nada")
+check(sismos.para_claude() == "", "sin el hilo de sismos no se pasa nada")
 sismos._sismos = S
 check(sismos.para_claude() == S.para_claude(), "con el servidor en marcha, se pasa ese resumen")
 config.SISMOS_ANSWERS_ENABLED = False

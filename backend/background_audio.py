@@ -71,7 +71,3 @@ def stop() -> None:
             proc.kill()
         except Exception:
             pass
-
-
-def is_playing() -> bool:
-    return _proc is not None and _proc.poll() is None

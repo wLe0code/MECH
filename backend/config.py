@@ -202,14 +202,6 @@ DRIVE_INVERT_FORWARD = os.environ.get("DRIVE_INVERT_FORWARD", "true").strip().lo
     "1", "true", "yes", "on", "si", "sí",
 )
 
-# RoboKit RS — movimiento por "bus de pines".
-# La Pi pone estos pines GPIO (BCM) en alto/bajo; el RoboKit corre un programa
-# Rogic que los lee y se mueve. Un pin activo a la vez = un comando.
-# GND de la Pi -> GND del RoboKit (tierra común, obligatorio).
-ROBOKIT_PIN_FWD = int(os.environ.get("ROBOKIT_PIN_FWD", "17"))    # adelante  -> RoboKit pin 2
-ROBOKIT_PIN_LEFT = int(os.environ.get("ROBOKIT_PIN_LEFT", "27"))  # girar izq -> RoboKit pin 3
-ROBOKIT_PIN_RIGHT = int(os.environ.get("ROBOKIT_PIN_RIGHT", "22"))  # girar der -> RoboKit pin 4
-
 # STT
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base")
 WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "es")

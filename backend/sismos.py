@@ -593,8 +593,8 @@ _sismos: Sismos | None = None
 def para_claude() -> str:
     """Lo que MECH sabe de sismos, para Claude. "" si no hay nada que pasar.
 
-    "" cuando está apagado en la configuración o cuando no corre el hilo de
-    sismos (el modo `python -m backend.main`, sin servidor).
+    "" cuando está apagado en la configuración o cuando todavía no corre el
+    hilo de sismos.
     """
     if not config.SISMOS_ANSWERS_ENABLED or _sismos is None:
         return ""

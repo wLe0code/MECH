@@ -983,36 +983,6 @@ def sounds_like_same(a: str, b: str) -> bool:
     return corto in largo and len(corto) >= 0.6 * len(largo) and len(corto) >= minimo
 
 
-def is_sleep(text: str) -> bool:
-    """Frase de reposo en español."""
-    return matches_any(text, config.VOICE_SLEEP_PHRASES)
-
-
-def is_wake(text: str) -> bool:
-    """Frase de despertar en español ("ok MECH", "despierta MECH")."""
-    return matches_any(text, config.VOICE_WAKE_PHRASES)
-
-
-def is_sleep_en(text: str) -> bool:
-    """Frase de reposo en inglés ("stop listening", "go to sleep")."""
-    return matches_any(text, config.VOICE_SLEEP_PHRASES_EN)
-
-
-def is_wake_en(text: str) -> bool:
-    """Frase de despertar en INGLÉS ("wake up MECH")."""
-    return matches_any(text, config.VOICE_WAKE_PHRASES_EN)
-
-
-def is_wake_fr(text: str) -> bool:
-    """Frase de despertar en FRANCÉS ("bonjour MECH", "réveille MECH")."""
-    return matches_any(text, config.VOICE_WAKE_PHRASES_FR)
-
-
-def is_wake_pt(text: str) -> bool:
-    """Frase de despertar en PORTUGUÉS ("bom dia MECH", "acorda MECH")."""
-    return matches_any(text, config.VOICE_WAKE_PHRASES_PT)
-
-
 # Idioma -> (interruptor en config, lista de frases de despertar). El orden
 # importa: los idiomas EXTRA se comprueban ANTES que el español, porque el
 # español tiene frases muy cortas ("despierta" a secas) y podría quedarse con
