@@ -12,7 +12,55 @@ arriba; la historia (lo de sep y oct) sigue más abajo, sección por sección.
 > trabajó media tarde sobre una copia 2 commits atrasada. Si dice «behind»,
 > primero `git pull` y volver a leer.
 
-## 16 nov 2026 — limpieza, logo y commits en la web (SIN subir)
+## 17 nov 2026 (tarde) — web «futurista» y MECH-3 animado (subido)
+
+Dos pedidos más, encima de lo de abajo: (1) el robot dibujado de la web era
+MECH-1/2 → ahora es MECH-3, un SVG animado (`web/assets/mech3-animado.svg`)
+en el hero de la portada y en `robot.html`; (2) la web pasa a negro y azul
+como el panel nuevo, con animaciones ordenadas («CAPA FUTURISTA» al final
+de `web/css/styles.css` + barra de progreso y foco del cursor en
+`main.js`). Detalle en CLAUDE.md («Estética futurista»). Verificado con el
+servidor `web-estatica`: las 8 páginas sin desbordes a 1280 y 375 px, sin
+errores, botones cian legibles, inglés de las etiquetas nuevas.
+Después, a pedido: la cabecera de `robot.html` describe ya a MECH-3 (antes
+«cuerpo cilíndrico de 52 × 66 cm», que era MECH-1; la lista de
+«Construcción» con el PVC se dejó porque cuenta cómo se hizo MECH-1) y la
+**autonomía es de unas 6 horas, no 8** (corregido en las 4 menciones de la
+web y en inglés). Revisado a 360, 375 y 414 px. **Subido a GitHub** el
+17 nov («ya lo puedes subir»), junto con todo lo de este día.
+
+## 17 nov 2026 — la web organizada por modelo (subido)
+
+Lo de abajo (16 nov) **sí está en GitHub**: es el commit `a240fa0` «The
+Flattening 1.0».
+
+Pedido del equipo: organizar los commits de la web por versión de MECH y
+poner los datos de cada modelo (fecha, competencia, categoría, resultado).
+Los datos están en CLAUDE.md («Datos de cada modelo»). Hecho en
+`web/evolucion.html`, `web/index.html`, `web/css/styles.css` y
+`web/js/i18n.js`:
+- Línea de tiempo «Seis generaciones»: TitoBot (predecesor) + MECH-1 a
+  MECH-5 + MECH-6 en desarrollo, cada uno con fecha, competencia y resultado.
+- «Commit a commit» por modelo, **sin fechas ni hashes** (pedido expreso).
+- «Oye MECH» e inglés pasan a MECH-3; fuera el «parlante alámbrico»; el
+  cargador de MECH-4 queda como «compatible con el doble de potencia».
+- Salón de trofeos: la plata de MECH-5 junto al 4.º internacional, y la
+  fecha y categoría de TitoBot.
+- «WRO Las Américas» → «WRO Open Championship de las Américas» y «Future
+  Innovators» → «Futuros Innovadores» en español.
+
+Verificado en el navegador integrado (servidor `web-estatica` de
+`.claude/launch.json`, con el Python de Spyder): 1280 px, tableta y 375 px
+sin desbordes, en inglés no queda nada en español, sin errores de consola.
+Después llegaron las fotos (comparación nueva de MECH-1 a MECH-5, los
+stands del Open Championship y de STEAM Luvá, y MECH-4 y MECH-5 de cuerpo
+entero) y el equipo pidió renumerar las figuras 38–49 en su orden: 38
+MECH-4, 39 MECH-5, 40 comparación, 41–45 competencias, 46 cargador, 47
+desarmado, 48 equipo, 49 trofeos. Tabla en CLAUDE.md («Figuras 38–49»). La foto de
+MECH-5 venía en HEIC: se convirtió con el decodificador de Windows
+(extensión HEIF) y Pillow. **Falta:** subirlo (preguntar antes).
+
+## 16 nov 2026 — limpieza, logo y commits en la web
 
 Pedido del equipo, en un mensaje: leer este handoff, hacer una optimización
 «al estilo de *The Flattening* de Minecraft» (quitar archivos y código que ya

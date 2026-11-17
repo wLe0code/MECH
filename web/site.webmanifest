@@ -4,8 +4,8 @@
   "description": "Espacios inmersivos que despiertan el interés en las áreas que sostienen a la sociedad. WRO 2026, Costa Rica.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0e0e12",
-  "theme_color": "#0e0e12",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
   "lang": "es",
   "icons": [
     { "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }

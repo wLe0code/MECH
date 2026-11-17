@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>El robot — MECH</title>
 <meta name="description" content="Cómo funciona el robot MECH: voz local, IA, proyección y movimiento. Hardware por capas, construcción en coroplast y PVC, y el código que lo orquesta.">
-<meta name="theme-color" content="#0e0e12">
+<meta name="theme-color" content="#0a0c10">
 <meta name="color-scheme" content="dark">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="apple-touch-icon" href="/assets/favicon.svg">
@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=2">
 </head>
 <body>
 <a class="skip" href="#main">Saltar al contenido</a>
@@ -43,8 +43,9 @@
     </div>
     <h1>Un expositor humanoide<br>construido desde cero.</h1>
     <p class="lead">
-      Proyecta, escucha, piensa, narra y se mueve. Cuerpo cilíndrico de
-      <b>52 × 66 cm</b>, cabeza proyectora y una franja de píxeles como firma visual.
+      Proyecta, escucha, piensa, narra y se mueve. Desde MECH‑3: <b>cuerpo
+      rectangular que se desarma para viajar</b>, cabeza proyectora con cara
+      expresiva, pañuelo rojo y la franja de Costa Rica.
     </p>
   </div>
 </header>
@@ -57,14 +58,14 @@
         <p class="section-kicker reveal">EN NÚMEROS</p>
         <h2 class="reveal">La ficha técnica.</h2>
         <div class="grid g2 stagger" style="margin-top:26px; gap:14px">
-          <div class="stat reveal"><b class="grad">8 h</b><span>de autonomía — un día escolar completo</span></div>
+          <div class="stat reveal"><b class="grad">~6 h</b><span>de autonomía aproximada con una carga</span></div>
           <div class="stat reveal"><b>1</b><span>consulta de IA por historia completa</span></div>
           <div class="stat reveal"><b>100%</b><span>de la voz a texto procesada localmente</span></div>
           <div class="stat reveal"><b>360°</b><span>movimiento con ruedas omnidireccionales</span></div>
         </div>
       </div>
-      <div class="reveal" style="display:flex; justify-content:center">
-        <img src="assets/render-mech.png" alt="Render del robot MECH" style="max-height:460px; width:auto" loading="lazy">
+      <div class="reveal robot-stage">
+        <img src="assets/mech3-animado.svg" alt="Ilustración animada de MECH-3: cabeza con ojo grande y guiño, pañuelo rojo y la franja de Costa Rica" width="1000" height="1660" loading="lazy">
       </div>
     </div>
   </div>
@@ -321,7 +322,7 @@
   <p class="footer-bottom">COLEGIO CIENTÍFICO DE ALAJUELA · COSTA RICA 🇨🇷 · WRO 2026 — ROBOTS AND CULTURE · <span class="year"></span></p>
 </footer>
 
-<script src="js/main.js"></script>
-<script src="js/i18n.js"></script>
+<script src="js/main.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
 </body>
 </html>

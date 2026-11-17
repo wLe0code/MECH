@@ -327,8 +327,8 @@ web/                  ← Sitio de PRESENTACIÓN del proyecto (NO es el panel).
                         unidocentes, neurociencia de la atención + referencias.
   robot.html          ← 03 · Cómo funciona, hardware por capas, construcción,
                         mecanismo, código, retos y bitácora de fotos.
-  evolucion.html      ← 04 · MECH-1 → MECH-2 → MECH-3 (campeón nacional) →
-                        MECH-4 (4.º en WRO Las Américas) → MECH-5 (actual).
+  evolucion.html      ← 04 · TitoBot (predecesor) → MECH-1 … MECH-5 (actual)
+                        → MECH-6 (en desarrollo), y los commits por modelo.
   aplicaciones.html   ← 05 · Áreas de uso + modelo de negocio (costos/ingresos).
   contacto.html       ← 06 · Contacto + patrocinadores (rejilla + marquesina).
   404.html            ← Página de error (Vercel la sirve sola).
@@ -1679,13 +1679,40 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   FUENTE DE CONTENIDO: `Documentación/MECH/MECH Nacional/MECH-3 Final.pdf`
   (IEEE, sep 2026) + `branding/Business Model Canvas MECH.pdf`. Novedades que
   trajo ese documento y que YA están en la web: **MECH-3 en desarrollo** y
-  MECH-4 planeado (antes el último era MECH-2); batería de **8 h**; toda la
+  MECH-4 planeado (antes el último era MECH-2); batería de **unas 6 h** (el equipo lo corrigió el 17 nov 2026: antes la web decía 8 h); toda la
   **crisis educativa de Costa Rica** (PIB 5,3%→4,9%, PISA 2022, 96% en mates
   insuficiente, 63%→¼ en lectura); **escuelas unidocentes** (35% de las
   públicas, mitad con <10 alumnos, inglés 89% vs 26%, 1 de cada 3 deserta) y el
   caso Flor de Islita; estudios nuevos (DCMS 60% vs 73%, Karolinska/Todorov
   sobre novedad y dopamina); el partner **360 Health & Value**; y el modelo de
   negocio (costo $756,91 · venta $1000 · servicio $50).
+  **Estética «futurista» (17 nov 2026, pedido del equipo)** — «más
+  futurista, en tonos negros y azulados como el panel nuevo, con
+  animaciones llamativas pero ordenadas y formales». La web usa ahora la
+  MISMA paleta que `frontend/styles.css`: fondo `#0a0c10`, superficies azul
+  grafito, acento **cian `--accent` (#22d3ee) + azul `--accent-2`
+  (#3b9eff)**, y texto oscuro (`--accent-ink`) encima del cian. El rojo ya
+  no es el acento general: solo marca (la «M», el pañuelo) y tintes de
+  tarjeta. ⚠️ `--purple`/`--purple-mid` se conservan por los estilos en
+  línea del HTML, pero **ahora son azules**. Todo lo nuevo va junto al final
+  de `web/css/styles.css` («CAPA FUTURISTA»): rejilla y resplandor fijos de
+  fondo (`body::before`), barra de progreso de lectura (`.scroll-progress`,
+  la crea `main.js`), pestaña activa subrayada en cian, línea que se traza
+  delante de cada `.section-kicker`, barrido de escáner en `.page-head` (una
+  vez), foco que sigue al cursor en tarjetas (`.fx-spot`, solo con ratón) y
+  el **hero de la portada partido en dos** con el robot y un HUD (anillos,
+  barrido de radar y las etiquetas VOZ / PROYECCIÓN / MOVIMIENTO, en el
+  `SEL` de `i18n.js` como `.hud-tag`). Todo se apaga con «reducir
+  movimiento». Los logos de patrocinadores siguen sobre fondo claro.
+  **El MECH animado es MECH-3** (`web/assets/mech3-animado.svg`): SVG con las
+  formas del render 2D del stand (`branding/scripts/render_2d_mech3.py`) y
+  sus animaciones dentro (flota, parpadea, la lente brilla, la luz de la
+  webcam late, el pañuelo se mece), así funciona como `<img>`. Va en el hero
+  de `index.html` y en «La ficha técnica» de `robot.html`, en lugar del
+  `render-mech.png` cilíndrico de MECH-1/2 (que sigue en `web/assets/`).
+  ⚠️ Los enlaces a `styles.css`, `main.js` e `i18n.js` llevan `?v=2` en las
+  8 páginas: `vercel.json` los cachea 1 h y sin eso un visitante vería el
+  HTML nuevo con el CSS/JS viejo. **Súbele el número al tocarlos.**
   **Barra de patrocinadores**: marquesina infinita en CSS (dos filas
   duplicadas + `translateX(-50%)`, 38 s lineal), **fondo CLARO a propósito**
   porque los logos son de tinta oscura. Los logos se generan con
@@ -1719,54 +1746,90 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   escrito nuevo (en inglés) añade las figuras **26–45**; salen del `.docx`
   (más resolución que el PDF) con el mismo `prep_figuras.py` (`MAPA_DOCX`,
   mapeo `imageNN.jpeg → figura` verificado a mano). La numeración cambió: el
-  retrato del equipo pasó de figura 26 a **44** (`fig44-miembros.jpg`) y la
-  26 es ahora MECH-2 desarmado. En `robot.html` los pies siguen al documento
+  retrato del equipo pasó de figura 26 a 44 y la 26 es ahora MECH-2
+  desarmado. ⚠️ **Del 38 en adelante la numeración ya NO es la del
+  documento** (17 nov 2026, ver «Figuras 38–49» más abajo): el retrato es
+  hoy la **48** (`fig48-miembros.jpg`). En `robot.html` los pies siguen al documento
   (Fig. 1 arquitectura, **Fig. 2 caso de uso**; los flujos van como
   «DIAGRAMA ·», porque no están en el documento).
   ⚠️ `vercel.json` sirve `/assets` como `immutable` (1 año): si una figura
   cambia de contenido, **nombre nuevo**, nunca pisar el archivo.
-  **Salón de trofeos** (`index.html#trofeos`, pedido del equipo) — SOLO
-  estos tres títulos, todos primer lugar: **campeones nacionales WRO 2026
-  Future Innovators** (con MECH-3), **campeones regionales de Guanacaste
-  WRO 2026 Future Innovators** (con MECH-2) y **campeones del Torneo STEAM
-  Luvá – Electrotec** (con **TitoBot**, otro robot del equipo, no MECH).
-  La regional de Alajuela (MECH-1, 7.º lugar según el documento) aparece en
-  Evolución como «debut», **sin el puesto** — a propósito; no lo pongas sin
-  preguntar. Distintivo «CAMPEONES NACIONALES · WRO FUTURE INNOVATORS» en
-  el hero que enlaza al salón.
-  **Debajo de los tres títulos va el resultado internacional (10 oct 2026,
-  pedido del equipo): «4.º lugar en WRO Las Américas», con MECH-4.** No es
-  un título, así que no cuenta entre los tres («Tres torneos. Tres títulos.»
-  sigue igual): es una tarjeta aparte, a lo ancho y en verde
-  (`.trophy-intl` en `web/css/styles.css`). La misma tarjeta sale en
-  `evolucion.html#competencias`. ⚠️ El equipo solo dijo «quedamos de 4to
-  lugar con MECH-4 en WRO Las Américas»: **no hay foto, ni sede, ni fecha,
-  ni categoría**. No las inventes; si las dan, se añaden.
-  **`evolucion.html` = cinco generaciones, las cinco LANZADAS (10 oct
-  2026)**: MECH-1, MECH-2 (campeón regional), MECH-3 (campeón nacional),
-  MECH-4 (4 idiomas, trivia, traductor, «Hey MECH», parlante alámbrico,
-  cargador el doble de rápido, diseño más moderno; **4.º lugar en WRO Las
-  Américas**) y **MECH-5 = EL MODELO ACTUAL**: seis idiomas nuevos (diez en
-  total), panel de control rediseñado y modo sismos (el modo música figuró
-  un día y se quitó de la web el 10 oct, a la vez que del robot). Secciones:
-  comparación (fig. 38), línea de tiempo, en competencia (39–41 + la tarjeta
-  de Las Américas), MECH-2, MECH-3 (seis mejoras, render vs. real,
-  desarmable/cargador/circuito, bitácora 26–34, diseño 3D 21–25), MECH-4 y
-  MECH-5 (`#mech5`, tres tarjetas). ⚠️ El modo sismos se describe como lo
-  que es («informa de lo que ya ocurrió: no predice»); no lo cambies a
-  «alerta» ni «predicción». La figura 38 solo compara MECH-1/2/3: no hay
-  imágenes de MECH-4 ni de MECH-5 todavía.
-  **Commits clave en GitHub (16 nov 2026, pedido del equipo)** —
-  `evolucion.html#commits`, después de MECH‑5: «La evolución, commit a
-  commit», una vía vertical con 18 commits elegidos del historial (de
-  «Initial commit», 9 abr 2026, al mapa de sismos, 8 oct), agrupados por
-  mes, cada uno con su enlace a `github.com/wLe0code/MECH/commit/<hash>`
-  (el repo es público). Llevan la etiqueta de generación SOLO cuando la
-  propia web ya atribuye esa función a un modelo (VR → MECH‑2, subtítulos
-  → MECH‑3, «Hey MECH»/idiomas/traductor/trivia → MECH‑4, diez idiomas/
-  panel/sismos → MECH‑5). Estilos `.commits`/`.cm-*` en `styles.css`;
-  `robot.html` («El código») enlaza ahí. Para añadir uno: copiar un
-  `<li class="cm">` y meter el inglés de su título y texto en `i18n.js`.
+  **Datos de cada modelo (dados por el equipo el 17 nov 2026) — la fuente
+  para todo lo de competencias.** Todas las WRO en la categoría **Futuros
+  Innovadores** (en inglés, Future Innovators); STEAM Luvá en **Robótica
+  con Prototipos**, igual que Infomatrix 2027.
+
+  | Modelo | Salió | Competencia | Resultado |
+  |---|---|---|---|
+  | TitoBot (predecesor, no es MECH) | — | Torneo STEAM Luvá, 4 oct 2025 (cat. Electrotec) | 1.er lugar |
+  | MECH-1 | 10 jun 2026 | WRO Regional de Alajuela | 7.º lugar |
+  | MECH-2 | 25 jul 2026 | WRO Regional de Guanacaste | 1.er lugar |
+  | MECH-3 | 5 sep 2026 | WRO Nacional de Costa Rica | 1.er lugar |
+  | MECH-4 | 26 sep 2026 | WRO Open Championship de las Américas | 4.º lugar |
+  | MECH-5 | 10 oct 2026 | Torneo STEAM Luvá | medalla de plata |
+  | MECH-6 | en desarrollo | Infomatrix Iberoamérica, México, 2027 | — |
+
+  ⚠️ **No hay MECH-7** (el equipo lo dijo por error y lo corrigió). El
+  nombre de la competencia de MECH-4 va **completo** («WRO Open
+  Championship de las Américas»), nunca «WRO Las Américas». **Hardware:**
+  de MECH-3 a MECH-6 el interno es el mismo; solo cambios estéticos, y en
+  MECH-4 un cargador compatible con el doble de potencia. **Nada de
+  «parlante alámbrico»**: nunca se usó. «Oye MECH» e inglés son de MECH-3
+  (commits del 27-29 ago), no de MECH-4.
+  **Salón de trofeos** (`index.html#trofeos`) — tres títulos, todos primer
+  lugar: campeones nacionales (MECH-3), regionales de Guanacaste (MECH-2) y
+  del Torneo STEAM Luvá – Electrotec (TitoBot, 4 oct 2025). Debajo, a lo
+  ancho y en otro tono, lo que NO es primer lugar: el **4.º internacional**
+  (`.trophy-intl`, verde) y la **plata de MECH-5** (`.trophy-silver`,
+  plateado, color `--silver`). Las dos tarjetas salen también en
+  `evolucion.html#competencias`. Distintivo «CAMPEONES NACIONALES · WRO
+  FUTUROS INNOVADORES» en el hero.
+  **`evolucion.html` = «Seis generaciones»**: la línea de tiempo lleva a
+  TitoBot a lo ancho (`.tl-pre`) y las seis generaciones en 3 + 3 (2 + 2 + 2
+  en tableta), cada una con su `tl-meta` (fecha · competencia · categoría)
+  y su resultado. MECH-5 sigue siendo «ACTUAL»; MECH-6 va con borde
+  discontinuo («EN DESARROLLO»). Secciones: comparación (fig. 40), línea de
+  tiempo, en competencia (41–45 + las dos tarjetas), MECH-2, MECH-3 (ocho
+  mejoras; tarjetas 36 · 46 · 47), MECH-4 (cinco + fig. 38), MECH-5
+  (`#mech5`, tres + fig. 39) + «Lo que viene · MECH-6», y los commits.
+  ⚠️ El modo sismos se describe como lo que es («informa de lo que ya
+  ocurrió: no predice»).
+  **Figuras 38–49 (17 nov 2026, orden que pidió el equipo)** — llegaron
+  fotos nuevas y el equipo pidió renumerar para que sigan a MECH-3 (37):
+
+  | Fig. | Archivo | Dónde |
+  |---|---|---|
+  | 38 | `fig38-mech4-completo` | MECH-4 |
+  | 39 | `fig39-mech5-completo` | MECH-5 |
+  | 40 | `fig40-evolucion-mech1-5` | comparación, arriba de Evolución |
+  | 41–43 | `fig41-regional-alajuela`, `fig42-regional-guanacaste`, `fig43-final-nacional` | En competencia |
+  | 44 | `fig44-open-championship` | En competencia (stand de MECH-4) |
+  | 45 | `fig45-steam-luva` | En competencia (stand de MECH-5) |
+  | 46 | `fig46-cargador` | tarjetas de MECH-3 |
+  | 47 | `fig47-mech3-desarmado` | tarjetas de MECH-3 |
+  | 48 | `fig48-miembros` | `empresa.html` |
+  | 49 | `fig49-premios` | salón de trofeos (`index.html`) |
+
+  La comparación vieja (MECH-1/2/3, antes fig. 38) se borró de `web/`; ojo:
+  `branding/scripts/prep_figuras.py` sigue con los nombres viejos y la
+  volvería a generar si se corre. Fotos de robot entero: `.shot-robot` +
+  `object-position` en línea (para que entren el sombrero y los pies);
+  stands: `.shot-wide`; MECH-4/5: tarjetas + foto en `.evo-split`.
+  **MECH-4 = el del sombrero de Costa Rica; MECH-5 = sin sombrero.** No hay
+  foto de MECH-6 (aún no existe).
+  **Commits clave en GitHub, POR MODELO (17 nov 2026, pedido del equipo)** —
+  `evolucion.html#commits`: «La evolución, commit a commit». Una parada
+  grande por modelo (`.cm-ver`: número, fecha de salida, competencia,
+  resultado) y debajo sus commits (`.cm`): cada modelo se queda con los
+  commits desde el lanzamiento anterior hasta el suyo, incluido. TitoBot
+  no tiene (es anterior al repo). 7 por modelo y 1 en MECH-6.
+  ⚠️ **A pedido del equipo, los commits NO muestran fecha ni código/hash**:
+  solo un título y un texto nuestros y un botón «Ver en GitHub ↗» con el
+  enlace al commit. No vuelvas a poner el día ni el hash. Estilos
+  `.commits`/`.cm-*` en `styles.css`; `.cm-link` está en el `SEL` de
+  `i18n.js` para que el botón se traduzca. Para añadir uno: copiar un
+  `<li class="cm">` dentro del bloque de su modelo y meter el inglés de su
+  título y texto en `i18n.js`.
   **Interruptor de idioma ES/EN** (`web/js/i18n.js`): el sitio se escribe en
   español y el inglés vive en un diccionario `{texto español: HTML inglés}`.
   El botón va en la barra de navegación (inyectado por JS, así aparece en las

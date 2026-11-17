@@ -86,6 +86,36 @@
     typed.textContent = '«ok MECH»';
   }
 
+  /* ─── Barra de progreso de lectura (arriba del todo) ──────────────── */
+  const barra = document.createElement('div');
+  barra.className = 'scroll-progress';
+  barra.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(barra);
+  let pendiente = false;
+  const pintarBarra = () => {
+    pendiente = false;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    barra.style.transform = 'scaleX(' + (total > 0 ? Math.min(1, window.scrollY / total) : 0) + ')';
+  };
+  window.addEventListener('scroll', () => {
+    if (!pendiente) { pendiente = true; requestAnimationFrame(pintarBarra); }
+  }, { passive: true });
+  window.addEventListener('resize', pintarBarra);
+  pintarBarra();
+
+  /* ─── Foco que sigue al cursor en tarjetas (solo con ratón) ───────── */
+  if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const conFoco = '.card, .tl, .cm-body, .trophy, .pager a, .stat, .shot, .strip figure';
+    document.querySelectorAll(conFoco).forEach((el) => el.classList.add('fx-spot'));
+    document.addEventListener('pointermove', (e) => {
+      const el = e.target.closest && e.target.closest('.fx-spot');
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    }, { passive: true });
+  }
+
   /* ─── Año en el pie ───────────────────────────────────────────────── */
   document.querySelectorAll('.year').forEach((el) => {
     el.textContent = new Date().getFullYear();

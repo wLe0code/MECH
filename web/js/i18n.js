@@ -46,30 +46,41 @@
     'Conocer el robot': 'Meet the robot',
     'Por qué existe': 'Why it exists',
     'CON EL APOYO DE': 'SUPPORTED BY',
-    'CAMPEONES NACIONALES · WRO FUTURE INNOVATORS': 'NATIONAL CHAMPIONS · WRO FUTURE INNOVATORS',
+    'VOZ': 'VOICE',
+    'PROYECCIÓN': 'PROJECTION',
+    'MOVIMIENTO': 'MOVEMENT',
+    'CAMPEONES NACIONALES · WRO FUTUROS INNOVADORES': 'NATIONAL CHAMPIONS · WRO FUTURE INNOVATORS',
     'SALÓN DE TROFEOS': 'TROPHY ROOM',
     'Tres torneos. Tres títulos.': 'Three tournaments.<br>Three titles.',
-    'Cada prototipo se ha puesto a prueba frente a jurados y otros equipos. Estos son los tres títulos que ha ganado el equipo y, debajo, su resultado internacional: 4.º lugar en WRO Las Américas.':
-      'Every prototype has been put to the test in front of judges and other teams. These are the three titles the team has won and, below them, its international result: <b>4th place at WRO Americas</b>.',
+    'Cada prototipo se ha puesto a prueba frente a jurados y otros equipos. Estos son los tres títulos que ha ganado el equipo y, debajo, su resultado internacional, el 4.º lugar en el WRO Open Championship de las Américas, y la plata en el Torneo STEAM Luvá.':
+      'Every prototype has been put to the test in front of judges and other teams. These are the three titles the team has won and, below them, its international result, <b>4th place at the WRO Open Championship of the Americas</b>, and the <b>silver medal at the STEAM Luvá Tournament</b>.',
     'CUARTO LUGAR · INTERNACIONAL': 'FOURTH PLACE · INTERNATIONAL',
-    '4.º lugar en WRO Las Américas': '4th place at WRO Americas',
-    'El equipo compitió con MECH‑4 en WRO Las Américas y terminó en cuarto lugar.':
-      'The team competed with MECH‑4 at WRO Americas and finished in fourth place.',
-    'WRO LAS AMÉRICAS': 'WRO AMERICAS',
+    '4.º lugar en el WRO Open Championship de las Américas': '4th place at the WRO Open Championship of the Americas',
+    'El equipo compitió con MECH‑4 en la categoría Futuros Innovadores y terminó en cuarto lugar.':
+      'The team competed with MECH‑4 in the Future Innovators category and finished in fourth place.',
+    'WRO OPEN CHAMPIONSHIP': 'WRO OPEN CHAMPIONSHIP',
     'CON MECH‑4': 'WITH MECH‑4',
+    'MEDALLA DE PLATA': 'SILVER MEDAL',
+    'Plata en el Torneo STEAM Luvá': 'Silver at the STEAM Luvá Tournament',
+    'El equipo compitió con MECH‑5 en la categoría Robótica con Prototipos y ganó la medalla de plata.':
+      'The team competed with MECH‑5 in the Robotics with Prototypes category and won the silver medal.',
+    'ROBÓTICA CON PROTOTIPOS': 'ROBOTICS WITH PROTOTYPES',
+    'CON MECH‑5': 'WITH MECH‑5',
     'Ver cada modelo en competencia': 'See each model in competition',
-    'FIGURA 45 · PREMIOS GANADOS POR EL EQUIPO MECH': 'FIGURE 45 · AWARDS WON BY THE MECH TEAM',
+    'FIGURA 49 · PREMIOS GANADOS POR EL EQUIPO MECH': 'FIGURE 49 · AWARDS WON BY THE MECH TEAM',
     'PRIMER LUGAR · NACIONAL': 'FIRST PLACE · NATIONAL',
     'PRIMER LUGAR · REGIONAL': 'FIRST PLACE · REGIONAL',
     'PRIMER LUGAR': 'FIRST PLACE',
     'Campeones nacionales': 'National champions',
     'Campeones regionales': 'Regional champions',
     'Campeones': 'Champions',
-    'Final Nacional de la WRO 2026 en Costa Rica, categoría Future Innovators.':
+    'Final Nacional de la WRO 2026 en Costa Rica, categoría Futuros Innovadores.':
       'Costa Rica’s WRO 2026 National Final, Future Innovators category.',
-    'Regional de Guanacaste de la WRO 2026, categoría Future Innovators.':
+    'Regional de Guanacaste de la WRO 2026, categoría Futuros Innovadores.':
       'WRO 2026 Guanacaste Regional, Future Innovators category.',
-    'Torneo STEAM Luvá — Electrotec.': 'STEAM Luvá Tournament — Electrotec.',
+    'FUTUROS INNOVADORES': 'FUTURE INNOVATORS',
+    'Torneo STEAM Luvá del 4 de octubre de 2025, categoría Electrotec, con TitoBot, el predecesor de MECH.':
+      'STEAM Luvá Tournament on 4 October 2025, Electrotec category, with TitoBot, MECH’s predecessor.',
     'CON MECH‑3': 'WITH MECH‑3',
     'CON MECH‑2': 'WITH MECH‑2',
     'CON TITOBOT': 'WITH TITOBOT',
@@ -90,8 +101,8 @@
       'Indifference, Costa Rica’s education crisis and the science of attention.',
     'Cómo funciona, de qué está hecho y cómo se construyó desde cero.':
       'How it works, what it is made of and how it was built from scratch.',
-    'De MECH‑1 a MECH‑5: qué aprendimos y qué mejora cada generación.':
-      'From MECH‑1 to MECH‑5: what we learned and what each generation improves.',
+    'De TitoBot a MECH‑6: qué aprendimos y qué mejora cada generación.':
+      'From TitoBot to MECH‑6: what we learned and what each generation improves.',
     'Museos, aulas, farmacéuticas y empresas — con su modelo de negocio.':
       'Museums, classrooms, pharma and business — with the business model.',
     'Hablemos. Y conoce a quienes hacen posible el proyecto.':
@@ -154,7 +165,7 @@
     'El puente entre la estructura y el cerebro del robot. Desarrolló los sistemas de movimiento, energía, comunicación, sonido y visión, elementos clave para el correcto funcionamiento y la sincronización del prototipo.':
       'The <b>bridge between the structure and the brain</b> of the robot. He developed the movement, power, communication, sound and vision systems — key elements for the prototype to work and stay in sync.',
     'MECH · ALAJUELA, COSTA RICA': 'MECH · ALAJUELA, COSTA RICA',
-    'FIGURA 44 · MIEMBROS DE MECH': 'FIGURE 44 · MEMBERS OF MECH',
+    'FIGURA 48 · MIEMBROS DE MECH': 'FIGURE 48 · MEMBERS OF MECH',
 
     /* ── Problema ──────────────────────────────────────────────────── */
     'EL PROBLEMA': 'THE PROBLEM',
@@ -229,11 +240,11 @@
     /* ── Robot ─────────────────────────────────────────────────────── */
     'EL ROBOT': 'THE ROBOT',
     'Un expositor humanoide construido desde cero.': 'A humanoid presenter<br>built from scratch.',
-    'Proyecta, escucha, piensa, narra y se mueve. Cuerpo cilíndrico de 52 × 66 cm, cabeza proyectora y una franja de píxeles como firma visual.':
-      'It projects, listens, thinks, narrates and moves. A <b>52 × 66 cm</b> cylindrical body, a projector head and a pixel stripe as its visual signature.',
+    'Proyecta, escucha, piensa, narra y se mueve. Desde MECH‑3: cuerpo rectangular que se desarma para viajar, cabeza proyectora con cara expresiva, pañuelo rojo y la franja de Costa Rica.':
+      'It projects, listens, thinks, narrates and moves. Since MECH‑3: a <b>rectangular body that comes apart for travel</b>, a projector head with an expressive face, a red bandana and the Costa Rican stripe.',
     'EN NÚMEROS': 'BY THE NUMBERS',
     'La ficha técnica.': 'The spec sheet.',
-    'de autonomía — un día escolar completo': 'of battery life — a full school day',
+    'de autonomía aproximada con una carga': 'of approximate battery life on one charge',
     'consulta de IA por historia completa': 'AI request per full story',
     'de la voz a texto procesada localmente': 'of speech-to-text processed locally',
     'movimiento con ruedas omnidireccionales': 'movement with omnidirectional wheels',
@@ -340,10 +351,14 @@
 
     /* ── Evolución ─────────────────────────────────────────────────── */
     'LA EVOLUCIÓN': 'THE EVOLUTION',
-    'Cinco generaciones. Una misma misión.': 'Five generations.<br>One same mission.',
-    'Cinco modelos lanzados, y cada uno aprende del anterior: MECH‑3 es campeón nacional, MECH‑4 quedó en 4.º lugar en WRO Las Américas y MECH‑5 es el modelo actual.':
-      'Five models launched, each one learning from the last: <b>MECH‑3</b> is a national champion, <b>MECH‑4</b> placed 4th at WRO Americas and <b>MECH‑5</b> is the current model.',
-    'FIGURA 38 · COMPARACIÓN VISUAL DE LA EVOLUCIÓN': 'FIGURE 38 · VISUAL COMPARISON OF THE EVOLUTION',
+    'Seis generaciones. Una misma misión.': 'Six generations.<br>One same mission.',
+    'Cinco modelos lanzados y uno en desarrollo, y cada uno aprende del anterior: MECH‑3 es campeón nacional, MECH‑4 quedó en 4.º lugar en el WRO Open Championship de las Américas, MECH‑5 ganó plata en el Torneo STEAM Luvá y MECH‑6 se prepara para Infomatrix Iberoamérica 2027.':
+      'Five models launched and one in development, each one learning from the last: <b>MECH‑3</b> is a national champion, <b>MECH‑4</b> placed 4th at the WRO Open Championship of the Americas, <b>MECH‑5</b> won silver at the STEAM Luvá Tournament and <b>MECH‑6</b> is getting ready for Infomatrix Ibero-America 2027.',
+    'FIGURA 40 · COMPARACIÓN VISUAL DE LA EVOLUCIÓN': 'FIGURE 40 · VISUAL COMPARISON OF THE EVOLUTION',
+    'FIGURA 44 MECH‑4, 4.º lugar en el WRO Open Championship de las Américas': '<span class="mono">FIGURE 44</span> MECH‑4, 4th place at the WRO Open Championship of the Americas',
+    'FIGURA 45 MECH‑5, medalla de plata en el Torneo STEAM Luvá': '<span class="mono">FIGURE 45</span> MECH‑5, silver medal at the STEAM Luvá Tournament',
+    'FIGURA 38 MECH‑4 completo': '<span class="mono">FIGURE 38</span> MECH‑4 complete',
+    'FIGURA 39 MECH‑5 completo': '<span class="mono">FIGURE 39</span> MECH‑5 complete',
     'LANZADO': 'LAUNCHED',
     'LANZADO · ACTUAL': 'LAUNCHED · CURRENT',
     'BASE DEL PROYECTO': 'PROJECT FOUNDATION',
@@ -352,7 +367,25 @@
     '+ PORTABILIDAD': '+ PORTABILITY',
     '+ IDIOMAS': '+ LANGUAGES',
     '+ TRADUCTOR': '+ TRANSLATOR',
-    '🌎 4.º LUGAR · LAS AMÉRICAS': '🌎 4TH PLACE · AMERICAS',
+    '🌎 4.º LUGAR · INTERNACIONAL': '🌎 4TH PLACE · INTERNATIONAL',
+    '🥈 MEDALLA DE PLATA': '🥈 SILVER MEDAL',
+    '🏆 1.ER LUGAR': '🏆 1ST PLACE',
+    '7.º LUGAR': '7TH PLACE',
+    '+ INGLÉS': '+ ENGLISH',
+    'EN DESARROLLO': 'IN DEVELOPMENT',
+    'EL PREDECESOR': 'THE PREDECESSOR',
+    'RUMBO A MÉXICO': 'BOUND FOR MEXICO',
+    'El robot con el que empezó todo: antes de MECH, el equipo ganó la categoría Electrotec del Torneo STEAM Luvá.':
+      'The robot where it all began: before MECH, the team won the Electrotec category at the STEAM Luvá Tournament.',
+    '4 de octubre de 2025 · Torneo STEAM Luvá · Electrotec': '4 October 2025 · STEAM Luvá Tournament · Electrotec',
+    '10 de junio de 2026 · WRO Regional de Alajuela · Futuros Innovadores': '10 June 2026 · WRO Alajuela Regional · Future Innovators',
+    '25 de julio de 2026 · WRO Regional de Guanacaste · Futuros Innovadores': '25 July 2026 · WRO Guanacaste Regional · Future Innovators',
+    '5 de septiembre de 2026 · WRO Nacional de Costa Rica · Futuros Innovadores': '5 September 2026 · WRO Costa Rica National · Future Innovators',
+    '26 de septiembre de 2026 · WRO Open Championship de las Américas · Futuros Innovadores': '26 September 2026 · WRO Open Championship of the Americas · Future Innovators',
+    '10 de octubre de 2026 · Torneo STEAM Luvá · Robótica con Prototipos': '10 October 2026 · STEAM Luvá Tournament · Robotics with Prototypes',
+    '2027 · Infomatrix Iberoamérica, México · Robótica con Prototipos': '2027 · Infomatrix Ibero-America, Mexico · Robotics with Prototypes',
+    'La siguiente generación, en desarrollo para competir en Infomatrix Iberoamérica.':
+      'The next generation, in development to compete at Infomatrix Ibero-America.',
     '+ 6 IDIOMAS': '+ 6 LANGUAGES',
     '+ PANEL NUEVO': '+ NEW PANEL',
     '+ SISMOS': '+ EARTHQUAKES',
@@ -360,21 +393,21 @@
     '🏆 CAMPEÓN NACIONAL': '🏆 NATIONAL CHAMPION',
     'El modelo de lanzamiento: voz, proyección, movimiento y narración con IA. Estableció toda la base — estructura de aluminio y coroplast, orquestador en Python y firmware en Arduino.':
       'The launch model: voice, projection, movement and AI narration. It set the whole foundation — aluminium and coroplast structure, Python orchestrator and Arduino firmware.',
-    'Lentes de realidad virtual, batería propia de 8 horas y un diseño nuevo: mucho más versátil y llamativo.':
-      'A virtual reality headset, its own 8-hour battery and a new design: far more versatile and eye-catching.',
-    'Más accesible, portátil y resistente: subtítulos, batería de litio recargable y un cuerpo que se desarma para viajar.':
-      'More accessible, portable and durable: subtitles, a rechargeable lithium battery and a body that comes apart for travel.',
-    'Habla cuatro idiomas, juega trivia con el público y traduce conversaciones en tiempo real.':
-      'It speaks four languages, plays trivia with the audience and translates conversations in real time.',
+    'Lentes de realidad virtual, batería propia de unas 6 horas y un diseño nuevo: mucho más versátil y llamativo.':
+      'A virtual reality headset, its own battery of about 6 hours and a new design: far more versatile and eye-catching.',
+    'Más accesible, portátil y resistente: subtítulos, un segundo idioma (inglés), el comando «oye MECH» para interrumpirlo, batería de litio recargable y un cuerpo que se desarma para viajar.':
+      'More accessible, portable and durable: subtitles, a second language (English), the “hey MECH” command to interrupt it, a rechargeable lithium battery and a body that comes apart for travel.',
+    'Suma francés y portugués (ya son cuatro idiomas), juega trivia con el público y traduce conversaciones en tiempo real.':
+      'It adds French and Portuguese (four languages now), plays trivia with the audience and translates conversations in real time.',
     'Diez idiomas, un panel de control rediseñado por completo y modo sismos.':
       'Ten languages, a completely redesigned control panel and earthquake mode.',
     'EN COMPETENCIA': 'IN COMPETITION',
     'Cada modelo, puesto a prueba.': 'Every model,<br>put to the test.',
-    'MECH ha competido en cuatro eventos oficiales de la WRO, y cada modelo llegó más lejos que el anterior: MECH‑2 ganó la regional de Guanacaste, MECH‑3 la final nacional de Costa Rica en la categoría Future Innovators, y MECH‑4 compitió en WRO Las Américas, donde el equipo quedó en 4.º lugar.':
-      'MECH has competed in four official WRO events, and each model went further than the last: MECH‑2 won the Guanacaste regional, MECH‑3 won the <b>Costa Rica national final</b> in the Future Innovators category, and MECH‑4 competed at <b>WRO Americas</b>, where the team finished in 4th place.',
-    'FIGURA 39 MECH‑1 debuta en la regional WRO de Alajuela': '<span class="mono">FIGURE 39</span> MECH‑1 debuts at the Alajuela WRO regional',
-    'FIGURA 40 MECH‑2, campeón de la regional WRO de Guanacaste': '<span class="mono">FIGURE 40</span> MECH‑2, champion of the Guanacaste WRO regional',
-    'FIGURA 41 MECH‑3, campeón de la final nacional WRO': '<span class="mono">FIGURE 41</span> MECH‑3, champion of the WRO national final',
+    'MECH ha competido en cuatro eventos oficiales de la WRO, todos en la categoría Futuros Innovadores, y cada modelo llegó más lejos que el anterior: MECH‑1 debutó en la regional de Alajuela (7.º lugar), MECH‑2 ganó la regional de Guanacaste, MECH‑3 la final nacional de Costa Rica y MECH‑4 quedó en 4.º lugar en el WRO Open Championship de las Américas. Después, MECH‑5 ganó plata en el Torneo STEAM Luvá, en Robótica con Prototipos.':
+      'MECH has competed in four official WRO events, all in the Future Innovators category, and each model went further than the last: MECH‑1 debuted at the Alajuela regional (7th place), MECH‑2 won the Guanacaste regional, MECH‑3 won the <b>Costa Rica national final</b> and MECH‑4 placed 4th at the <b>WRO Open Championship of the Americas</b>. Then MECH‑5 won silver at the STEAM Luvá Tournament, in Robotics with Prototypes.',
+    'FIGURA 41 MECH‑1 debuta en la regional WRO de Alajuela': '<span class="mono">FIGURE 41</span> MECH‑1 debuts at the Alajuela WRO regional',
+    'FIGURA 42 MECH‑2, campeón de la regional WRO de Guanacaste': '<span class="mono">FIGURE 42</span> MECH‑2, champion of the Guanacaste WRO regional',
+    'FIGURA 43 MECH‑3, campeón de la final nacional WRO': '<span class="mono">FIGURE 43</span> MECH‑3, champion of the WRO national final',
     'Ver el salón de trofeos': 'See the trophy room',
     'MECH‑2 · QUÉ CAMBIÓ': 'MECH‑2 · WHAT CHANGED',
     'Del prototipo funcional al robot autónomo.': 'From working prototype<br>to autonomous robot.',
@@ -385,8 +418,8 @@
     'Una apariencia más atractiva para el público general, adaptada a los sistemas y sensores mejorados.':
       'A more appealing look for the general public, adapted to the upgraded systems and sensors.',
     'Batería propia': 'Its own battery',
-    'Energía suficiente para sostener todos los sistemas con una autonomía de 8 horas: un día completo.':
-      'Enough energy to power every system with <b>8 hours</b> of battery life: a full day.',
+    'Energía suficiente para sostener todos los sistemas con una autonomía de aproximadamente 6 horas.':
+      'Enough energy to power every system with about <b>6 hours</b> of battery life.',
     'Mejor orquestador': 'Better orchestrator',
     'Mayor compatibilidad con las funciones de audio, para evitar errores en la respuesta o en el guion.':
       'Greater compatibility with the audio functions, to avoid errors in the response or the script.',
@@ -398,10 +431,14 @@
     'FIGURA 20 MECH‑2 completo': '<span class="mono">FIGURE 20</span> MECH‑2 complete',
     'MECH‑3 · EL CAMPEÓN NACIONAL': 'MECH‑3 · THE NATIONAL CHAMPION',
     'Más accesible. Más resistente. Más portátil.': 'More accessible.<br>More durable. More portable.',
-    'Los seis aspectos que lo convierten en una versión más eficiente que sus predecesores — y el modelo con el que el equipo ganó la final nacional.':
-      'The six aspects that make it a more efficient version than its predecessors — and the model the team won the national final with.',
+    'Los ocho aspectos que lo convierten en una versión más eficiente que sus predecesores — y el modelo con el que el equipo ganó la final nacional.':
+      'The eight aspects that make it a more efficient version than its predecessors — and the model the team won the national final with.',
     'Modo subtítulos — para personas con dificultad auditiva, o que simplemente lo prefieran.':
       '<b>Subtitle mode</b> — for people with hearing difficulties, or who simply prefer it.',
+    'Segundo idioma — «wake up MECH» lo despierta en inglés.':
+      '<b>A second language</b> — “wake up MECH” wakes it up in English.',
+    'Comando «oye MECH» — pausa la presentación en cualquier momento para cambiar de tema.':
+      '<b>The “hey MECH” command</b> — it pauses the presentation at any moment to change the subject.',
     'Mayor portabilidad — para que el usuario pueda transportarlo con más libertad.':
       '<b>Greater portability</b> — so the user can move it around more freely.',
     'Diseño más compacto — acomoda mejor los componentes y su apariencia atrae más al público joven.':
@@ -415,8 +452,8 @@
     'FIGURA 35 Render 3D de MECH‑3': '<span class="mono">FIGURE 35</span> 3D render of MECH‑3',
     'FIGURA 37 MECH‑3 completo': '<span class="mono">FIGURE 37</span> MECH‑3 complete',
     'FIGURA 36': 'FIGURE 36',
-    'FIGURA 42': 'FIGURE 42',
-    'FIGURA 43': 'FIGURE 43',
+    'FIGURA 46': 'FIGURE 46',
+    'FIGURA 47': 'FIGURE 47',
     'Se desarma para viajar': 'Comes apart for travel',
     'El tercer modelo se separa en piezas para transportarlo con facilidad de un evento a otro.':
       'The third model breaks down into pieces so it can easily travel from one event to the next.',
@@ -444,35 +481,30 @@
     'FIGURA 23 · PARTE SUPERIOR': 'FIGURE 23 · UPPER SECTION',
     'FIGURA 24 · ESTRUCTURA INTERNA': 'FIGURE 24 · INTERNAL STRUCTURE',
     'FIGURA 25 · SOPORTE DE CABEZA': 'FIGURE 25 · HEAD MOUNT',
-    'MECH‑4 · 4.º LUGAR EN WRO LAS AMÉRICAS': 'MECH‑4 · 4TH PLACE AT WRO AMERICAS',
+    'MECH‑4 · 4.º LUGAR EN EL WRO OPEN CHAMPIONSHIP DE LAS AMÉRICAS': 'MECH‑4 · 4TH PLACE AT THE WRO OPEN CHAMPIONSHIP OF THE AMERICAS',
     'Habla cuatro idiomas. Y juega contigo.': 'It speaks four languages.<br>And plays with you.',
-    'Las siete mejoras del modelo con el que el equipo compitió en WRO Las Américas.':
-      'The seven improvements in the model the team competed with at WRO Americas.',
+    'Las cinco mejoras del modelo con el que el equipo compitió en el WRO Open Championship de las Américas. El hardware interno es el mismo de MECH‑3.':
+      'The five improvements in the model the team competed with at the WRO Open Championship of the Americas. The internal hardware is the same as MECH‑3.',
     'Cuatro idiomas': 'Four languages',
-    'Español, inglés, francés y portugués: el robot ya puede usarse en otras regiones del mundo.':
-      'Spanish, English, French and Portuguese: the robot can now be used in other regions of the world.',
+    'Francés y portugués se suman al español y al inglés de MECH‑3: el robot ya puede usarse en otras regiones del mundo.':
+      'French and Portuguese join MECH‑3’s Spanish and English: the robot can now be used in other regions of the world.',
     'Modo trivia': 'Trivia mode',
     'Hace preguntas sobre lo que acaba de contar, para un aprendizaje dinámico, interactivo y eficiente.':
       'It asks questions about what it has just presented, for dynamic, interactive and efficient learning.',
     'Traductor en tiempo real': 'Real-time translator',
     'Permite conversar a dos personas que hablan idiomas distintos.':
       'It lets two people who speak different languages hold a conversation.',
-    'Comando «Hey MECH»': 'The “Hey MECH” command',
-    'Pausa la presentación en cualquier momento para cambiar el tema de conversación.':
-      'It pauses the presentation at any moment to change the topic of conversation.',
-    'Parlante alámbrico': 'Wired speaker',
-    'Para que el robot dependa al 100% de una sola fuente de energía.':
-      'So the robot runs 100% on a single power source.',
     'Carga en la mitad del tiempo': 'Charges in half the time',
-    'Un cargador nuevo que completa la carga el doble de rápido y mejora la vida de la batería.':
-      'A new charger that delivers a full charge twice as fast and improves battery life.',
+    'Un cargador compatible con el doble de potencia, que completa la carga el doble de rápido.':
+      'A compatible charger with twice the power, which completes a full charge twice as fast.',
     'Diseño más moderno': 'A more modern design',
     'Ligeros cambios de diseño que realzan su aspecto moderno.':
       'Slight design changes that enhance its modern look.',
-    'LO QUE VIENE': 'WHAT COMES NEXT',
+    'LO QUE VIENE · MECH‑6': 'WHAT COMES NEXT · MECH‑6',
     'MECH‑5 · EL MODELO ACTUAL': 'MECH‑5 · THE CURRENT MODEL',
     'Diez idiomas. Y mucho más que contar.': 'Ten languages.<br>And a lot more to tell.',
-    'Las tres novedades del modelo más reciente.': 'The three new features of the latest model.',
+    'Las tres novedades del modelo con el que el equipo ganó plata en el Torneo STEAM Luvá. El hardware interno es el mismo de MECH‑3, con cambios estéticos.':
+      'The three new features of the model the team won silver with at the STEAM Luvá Tournament. The internal hardware is the same as MECH‑3, with aesthetic changes.',
     'Seis idiomas nuevos': 'Six new languages',
     'Alemán, italiano, japonés, ruso, mandarín y coreano se suman a los cuatro de MECH‑4: ya son diez.':
       'German, Italian, Japanese, Russian, Mandarin and Korean join the four from MECH‑4: that makes ten.',
@@ -482,31 +514,44 @@
     'Modo sismos': 'Earthquake mode',
     'Un mapa con los sismos recientes del mundo y de la zona, y MECH responde si le preguntan si ha temblado. Informa de lo que ya ocurrió: no predice.':
       'A map of recent earthquakes around the world and nearby, and MECH answers when asked whether there has been one. It reports what has already happened: it does not predict.',
-    'El equipo seguirá buscando nuevas funciones según lo que reporten los usuarios o lo que considere importante.':
-      'The team will keep looking for new features based on what users report or what it considers important.',
+    'MECH‑6 ya está en desarrollo para competir en Infomatrix Iberoamérica 2027, en México, en la categoría Robótica con Prototipos. El equipo seguirá buscando nuevas funciones según lo que reporten los usuarios o lo que considere importante.':
+      'MECH‑6 is already in development to compete at Infomatrix Ibero-America 2027, in Mexico, in the Robotics with Prototypes category. The team will keep looking for new features based on what users report or what it considers important.',
     'Proponer una idea': 'Suggest an idea',
 
-    /* ── Evolución · commits clave (GitHub) ───────────────────────── */
+    /* ── Evolución · commits clave (GitHub), por modelo ───────────── */
     'EN GITHUB · EL CÓDIGO':
       'ON GITHUB · THE CODE',
     'La evolución, commit a commit.':
       'The evolution,<br>commit by commit.',
-    'El software de MECH es abierto y vive en GitHub. De los más de 160 commits del repositorio, estos son los que marcaron su evolución; cada código lleva al cambio exacto.':
-      'MECH’s software is open and lives on GitHub. Out of the more than 160 commits in the repository, these are the ones that shaped its evolution; each code links to the exact change.',
+    'El software de MECH es abierto y vive en GitHub. De los más de 160 commits del repositorio, estos son los que marcaron su evolución, ordenados por el modelo al que pertenecen; cada uno lleva al cambio exacto.':
+      'MECH’s software is open and lives on GitHub. Out of the more than 160 commits in the repository, these are the ones that shaped its evolution, grouped by the model they belong to; each one links to the exact change.',
     'Ver el repositorio ↗':
       'See the repository ↗',
     'Todo el historial ↗':
       'Full history ↗',
     'Ver los commits que marcaron su evolución':
       'See the commits that shaped its evolution',
-    'ABRIL 2026':
-      'APRIL 2026',
+    'Ver en GitHub ↗':
+      'View on GitHub ↗',
+    'El predecesor de MECH es anterior al repositorio: no tiene commits.':
+      'MECH’s predecessor came before the repository: it has no commits.',
+    'Salió el 10 de junio de 2026 · WRO Regional de Alajuela · Futuros Innovadores':
+      'Launched 10 June 2026 · WRO Alajuela Regional · Future Innovators',
+    'Salió el 25 de julio de 2026 · WRO Regional de Guanacaste · Futuros Innovadores':
+      'Launched 25 July 2026 · WRO Guanacaste Regional · Future Innovators',
+    'Salió el 5 de septiembre de 2026 · WRO Nacional de Costa Rica · Futuros Innovadores':
+      'Launched 5 September 2026 · WRO Costa Rica National · Future Innovators',
+    'Salió el 26 de septiembre de 2026 · WRO Open Championship de las Américas · Futuros Innovadores':
+      'Launched 26 September 2026 · WRO Open Championship of the Americas · Future Innovators',
+    'Salió el 10 de octubre de 2026 · Torneo STEAM Luvá · Robótica con Prototipos':
+      'Launched 10 October 2026 · STEAM Luvá Tournament · Robotics with Prototypes',
+    'En desarrollo · Infomatrix Iberoamérica 2027, México · Robótica con Prototipos':
+      'In development · Infomatrix Ibero-America 2027, Mexico · Robotics with Prototypes',
+    // MECH-1
     'Nace el repositorio':
       'The repository is born',
     'El primer commit: el proyecto empieza a guardarse en GitHub.':
       'The first commit: the project starts living on GitHub.',
-    'MAYO 2026':
-      'MAY 2026',
     'El primer MECH en código':
       'The first MECH in code',
     'Orquestador en Python, panel de control web y firmware de Arduino en un solo paso: la base sobre la que se construyó todo lo demás.':
@@ -515,8 +560,14 @@
       'Video library',
     'Las obras se narran con videos preparados antes del evento, en vez de generarlos en vivo. Si falta un video, MECH genera imágenes y sigue.':
       'Works are narrated over videos prepared before the event instead of generating them live. If a video is missing, MECH generates images and carries on.',
-    'JUNIO 2026':
-      'JUNE 2026',
+    'Voz por Bluetooth':
+      'Voice over Bluetooth',
+    'La voz de MECH sale por un parlante Bluetooth.':
+      'MECH’s voice plays through a Bluetooth speaker.',
+    'Micrófono inalámbrico':
+      'Wireless microphone',
+    'Un micrófono inalámbrico de solapa para escuchar al público; la cámara queda solo para video.':
+      'A wireless lapel microphone to hear the audience; the camera is left for video only.',
     'Ruedas y brazos':
       'Wheels and arms',
     'Firmware para cuatro motores con ruedas omnidireccionales y dos servos para los brazos.':
@@ -525,16 +576,23 @@
       '“ok MECH”',
     'Control por palabra clave: en reposo solo reacciona a su frase de despertar, sin gastar nada mientras espera.':
       'Wake-word control: while resting it only reacts to its wake phrase, spending nothing while it waits.',
+    // MECH-2
     'Oye entre el ruido y ve al público':
       'Hears through the noise and sees the audience',
     'Detección de voz que distingue a quien habla del ruido del stand, visión de visitantes con la cámara y gestos con movimiento suave.':
       'Voice detection that tells the speaker apart from stand noise, visitor detection with the camera, and smooth gestures.',
-    'JULIO 2026':
-      'JULY 2026',
+    'El primer sitio web':
+      'The first website',
+    'Una página para presentar el proyecto: qué es MECH, cómo funciona y quién lo hace.':
+      'A page to present the project: what MECH is, how it works and who makes it.',
     'Datos verificados':
       'Verified facts',
     'Cada obra lleva datos comprobados para que la inteligencia artificial no invente fechas ni biografías.':
       'Each work carries checked facts so the artificial intelligence does not make up dates or biographies.',
+    'Movimiento a la medida':
+      'Movement made to fit',
+    'La forma de mover las ruedas se ajustó, prueba a prueba, a cómo están montadas en el robot.':
+      'The way the wheels move was tuned, test by test, to how they are mounted on the robot.',
     'Realidad virtual':
       'Virtual reality',
     'La proyección también se ve en estéreo dentro de unos lentes Google Cardboard, desde el teléfono.':
@@ -543,22 +601,40 @@
       'Greets and goes back to its spot',
     'Saluda a quien se acerca y, antes de cada historia, regresa solo al punto donde está calibrada la proyección.':
       'It greets whoever approaches and, before each story, returns by itself to the spot where the projection is calibrated.',
-    'AGOSTO 2026':
-      'AUGUST 2026',
+    'Proyector nuevo e interruptor general':
+      'New projector and main switch',
+    'Un proyector que funciona a 5 V y un interruptor general para cortar la energía sin desconectar nada.':
+      'A projector that runs on 5 V and a main switch to cut the power without unplugging anything.',
+    // MECH-3
     'Inglés y subtítulos':
       'English and subtitles',
     '«Wake up MECH» lo despierta en inglés, y el guion aparece como subtítulo debajo de la proyección.':
       '“Wake up MECH” wakes it up in English, and the script appears as subtitles under the projection.',
+    'Subtítulos al ritmo de la voz':
+      'Subtitles in time with the voice',
+    'Cada línea aparece justo cuando MECH la dice, también en sus pausas.':
+      'Each line appears right when MECH says it, pauses included.',
     '«Oye MECH»':
       '“Hey MECH”',
     'La presentación se puede cortar en cualquier momento para cambiar de tema.':
       'The presentation can be stopped at any moment to change the subject.',
-    'SETIEMBRE 2026':
-      'SEPTEMBER 2026',
     'Media vuelta':
       'Half turn',
     '«Mira hacia afuera» lo pone de cara al público y «regresa a proyectar» lo devuelve a su posición.':
       '“Look outward” turns it to face the audience and “go back to projecting” returns it to its position.',
+    'Videos de marketing':
+      'Marketing videos',
+    'Proyecta videos promocionales enteros, con su propio sonido y sin narrar encima.':
+      'It projects full promotional videos, with their own sound and no narration on top.',
+    'Isaac Newton':
+      'Isaac Newton',
+    'Una obra nueva en la biblioteca: la vida y las ideas de Isaac Newton, en cinco escenas.':
+      'A new work in the library: the life and ideas of Isaac Newton, in five scenes.',
+    'Listo para el evento':
+      'Ready for the event',
+    'Un chequeo previo que revisa todo antes de abrir el stand, y un panel que funciona sin internet.':
+      'A pre-event check that reviews everything before the stand opens, and a panel that works without internet.',
+    // MECH-4
     'Cuatro idiomas y traductor':
       'Four languages and a translator',
     'Francés y portugués se suman al español y al inglés, y nace el modo traductor para que dos personas se entiendan.':
@@ -567,16 +643,43 @@
       'No terminal needed',
     'Iconos en el escritorio de la Raspberry Pi para iniciar, proyectar y apagar a MECH con un doble clic.':
       'Icons on the Raspberry Pi desktop to start, project and shut down MECH with a double click.',
+    'La teoría de la relatividad':
+      'The theory of relativity',
+    'Una obra nueva, con las fórmulas de Lorentz en pantalla.':
+      'A new work, with the Lorentz formulas on screen.',
+    'Más estable':
+      'More stable',
+    'Se volvió a la versión que mejor funcionaba, y el saludo quedó en tres movimientos del brazo.':
+      'The code went back to the version that worked best, and the greeting settled on three arm movements.',
     'Trivia estilo Kahoot':
       'Kahoot-style trivia',
     'Al terminar una historia, MECH proyecta preguntas sobre lo que contó y el público responde hablando.':
       'After a story, MECH projects questions about what it told and the audience answers out loud.',
-    'OCTUBRE 2026':
-      'OCTOBER 2026',
-    'Diez idiomas':
-      'Ten languages',
-    'Alemán, italiano, japonés, ruso, mandarín y coreano: cada comando funciona en el idioma con que se despierta a MECH.':
-      'German, Italian, Japanese, Russian, Mandarin and Korean: every command works in the language MECH was woken up in.',
+    'CRISPR y Cas9':
+      'CRISPR and Cas9',
+    'Una obra nueva sobre la herramienta que permite editar genes, en cinco escenas.':
+      'A new work about the tool that makes it possible to edit genes, in five scenes.',
+    'Sabe hacia dónde mira':
+      'It knows which way it faces',
+    '«Regresa a proyectar» funciona aunque lo hayan girado a mano desde el panel.':
+      '“Go back to projecting” works even if it was turned by hand from the panel.',
+    // MECH-5
+    'Cinco idiomas más':
+      'Five more languages',
+    'Alemán, italiano, japonés, ruso y mandarín se suman a los cuatro de MECH‑4.':
+      'German, Italian, Japanese, Russian and Mandarin join the four from MECH‑4.',
+    'Cada comando en su idioma':
+      'Every command in its language',
+    'Los comandos funcionan en el idioma con que se despierta a MECH, y el saludo vuelve al español.':
+      'Commands work in the language MECH was woken up in, and the greeting goes back to Spanish.',
+    'Coreano, el décimo idioma':
+      'Korean, the tenth language',
+    'Con el coreano ya son diez, y la trivia se juega entera en el idioma elegido.':
+      'With Korean there are ten, and the trivia is played entirely in the chosen language.',
+    'Letras de todo el mundo':
+      'Scripts from around the world',
+    'El panel y la proyección muestran coreano, japonés y chino en cualquier pantalla, sin instalar nada.':
+      'The panel and the projection show Korean, Japanese and Chinese on any screen, with nothing to install.',
     'Un panel que parece una app':
       'A panel that feels like an app',
     'El panel de control se rediseña por completo, y llega una app para Windows que se instala con un doble clic.':
@@ -585,6 +688,15 @@
       'Earthquake map',
     'Los sismos recientes del mundo y de la zona, en un mapa animado dentro del panel.':
       'Recent earthquakes around the world and nearby, on an animated map inside the panel.',
+    'Responde sobre sismos':
+      'Answers about earthquakes',
+    'Se le puede preguntar si ha temblado, y cuando no está proyectando muestra una animación en reposo.':
+      'You can ask it whether there has been an earthquake, and when it is not projecting it shows an idle animation.',
+    // MECH-6
+    '«The Flattening»':
+      '“The Flattening”',
+    'Una gran limpieza del código: se quitó lo que ya no se usaba, y el logo oficial llegó a los iconos.':
+      'A big code clean-up: what was no longer used was removed, and the official logo reached the icons.',
 
     /* ── Aplicaciones ──────────────────────────────────────────────── */
     'APLICACIONES': 'APPLICATIONS',
@@ -594,8 +706,8 @@
     'DÓNDE ENCAJA': 'WHERE IT FITS',
     'Un robot, muchos mundos.': 'One robot, many worlds.',
     'Educación': 'Education',
-    'Apoyo para docentes y escuelas unidocentes: ayuda a distribuir la información y a que el alumnado la comprenda. Su batería de 8 horas cubre un día escolar completo. También sirve en casa para reforzar lo aprendido en clase.':
-      'Support for teachers and <b>single-teacher schools</b>: it helps deliver information and helps students understand it. Its <b>8-hour battery</b> covers a full school day. It also works at home to reinforce what was learned in class.',
+    'Apoyo para docentes y escuelas unidocentes: ayuda a distribuir la información y a que el alumnado la comprenda. Su batería de unas 6 horas cubre la mayor parte de la jornada escolar. También sirve en casa para reforzar lo aprendido en clase.':
+      'Support for teachers and <b>single-teacher schools</b>: it helps deliver information and helps students understand it. Its <b>battery of about 6 hours</b> covers most of the school day. It also works at home to reinforce what was learned in class.',
     'Cultura y museos': 'Culture and museums',
     'Genera mayor atracción hacia el visitante y produce enriquecimiento sociocultural, sobre todo en la población joven — la que está 13% por debajo en participación cultural.':
       'It draws visitors in and produces sociocultural enrichment, especially among young people — the group that is <b>13% behind</b> in cultural participation.',
@@ -719,12 +831,12 @@
     '.tl-status,.tl-tags span,.work-tags span,.sponsors-label,.stat span,' +
     '.stat b,.btn,.profile-kicker,.profile-role,.card-icon,.chip,.pipe-tag,' +
     '.sponsor-tile span,.versus-tag,.team-role,.skip,caption,.stat-src,' +
-    '.award-txt,.trophy-rank,.card-fig';
+    '.award-txt,.trophy-rank,.card-fig,.cm-link,.hud-tag';
   // no se traducen (marcas, nombres propios, siglas)
   const SKIP = new Set(['MECH', 'Arduino', 'Backend', 'Frontend', 'Multisensory',
     'Engineering', 'Cyberphysical', 'Humanized', 'M', 'E', 'C', 'H', 'VR',
     'Py', 'JS', 'Doc', 'IG', 'wromech@gmail.com', 'Logitech C920', 'JBL Charge 5',
-    'MECH‑1', 'MECH‑2', 'MECH‑3', 'MECH‑4', 'MECH‑5']);
+    'MECH‑1', 'MECH‑2', 'MECH‑3', 'MECH‑4', 'MECH‑5', 'MECH‑6', 'TitoBot']);
 
   const norm = (s) => s
     .replace(/ /g, ' ')
