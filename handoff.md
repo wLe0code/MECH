@@ -12,6 +12,33 @@ arriba; la historia (lo de sep y oct) sigue más abajo, sección por sección.
 > trabajó media tarde sobre una copia 2 commits atrasada. Si dice «behind»,
 > primero `git pull` y volver a leer.
 
+## 18 nov 2026 — el «MECH bugueado» de verdad (subido)
+
+El equipo: «antes de la fase 3 arregla bien el MECH bugueado porque sigue
+apareciendo». Era el **guía de «Siguiente →»** en el TELÉFONO: su
+posición dependía de `position: relative` que solo ponía `.fx-spot`, y esa
+clase solo existe con ratón. Sin ratón se iba ~700 px arriba, encima de
+textos (en las 6 páginas con pager). El arreglo del 17 nov (carril del pie
+y Contacto) era real pero no era este. Ahora `.pager a.next` lleva su
+propio `position: relative`; CSS a `?v=9`. Verificado en modo teléfono de
+verdad (táctil, sin ratón) a 375 y 360 px: guía dentro de su tarjeta en las
+6 páginas y ninguna mascota sobre texto visible. Va junto con la fase 2
+(abajo). Subido junto con ella el 18 nov («sí, súbelo»).
+
+## 17 nov 2026 (noche, 4) — web en alemán e italiano (subido)
+
+Fase 2 de los idiomas: `web/js/i18n/de.js` e `it.js` (564 frases cada
+uno, mismas claves y etiquetas que el inglés) y sus líneas en `IDIOMAS`.
+En alemán, «Einsatzmöglichkeiten» se cortaba en el título de Aplicaciones
+en el teléfono: los títulos en alemán dividen con guion. CSS/JS a `?v=7`
+(CSS `?v=8`). Verificado: 8 páginas en DE e IT a 1280, 390 y 360 px sin
+cortes ni desbordes, menú con 6 idiomas y la nube en los dos. El script que
+arma los archivos (`armar_idiomas.py`) y las traducciones en texto viven en
+el scratchpad de la sesión, no en el repo: para la fase 3 basta con
+añadir `ru/ja/zh/ko.js` con las mismas claves que `en.js`. ⚠️ Sin revisar
+por nativos. Subido el 18 nov. Siguiente: fase 3 (ruso,
+japonés, chino y coreano, con fuente propia para esas letras).
+
 ## 17 nov 2026 (noche, 3) — web en francés y portugués + mascota que tapaba textos (subido)
 
 Pedido: la web en los 10 idiomas de MECH, **por partes** (eligió el

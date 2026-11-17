@@ -19,6 +19,8 @@
     { code: 'en', name: 'English' },
     { code: 'fr', name: 'Français' },
     { code: 'pt', name: 'Português' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'it', name: 'Italiano' },
   ];
   const VERSION = '1';
   const base = (document.currentScript && document.currentScript.src) || location.href;

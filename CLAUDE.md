@@ -1728,7 +1728,15 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   texto** (el equipo lo reportó como «un MECH bugueado que tapa textos»: el
   paseo colgaba por fuera del pie y tapaba el final de la sección de arriba,
   y el de Contacto pisaba el título). Si mueves una, mide que no pise nada
-  a 1440, 1024, 820 y 375 px.
+  a 1440, 1024, 820 y 375 px. ⚠️ **Y mídelo también SIN RATÓN** (vista
+  previa en modo teléfono, que emula pantalla táctil): el reporte siguió
+  porque el guía de «Siguiente →» se colocaba respecto a `.pager a`, que
+  solo tenía `position: relative` gracias a `.fx-spot` — y esa clase solo
+  la pone `main.js` con ratón. En el teléfono el guía se iba ~700 px más
+  arriba, encima de los textos. Una iframe de 375 px dentro de un navegador
+  de escritorio NO lo reproduce (sigue «teniendo ratón»). Ahora
+  `.pager a.next` lleva su propio `position: relative`. Regla: nada que se
+  coloque en absoluto puede depender de una clase que pone JavaScript.
   Con «reducir movimiento» no pasea ni cambia de pose.
   **El de la portada es interactivo** (17 nov 2026, pedido del equipo:
   «solo ese, los otros están súper bien»): es un `<button
@@ -1869,8 +1877,10 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   desplegable** en la barra (inyectado por JS en las 8 páginas; en el
   teléfono, la lista va dentro del menú, en dos columnas).
   **Plan del equipo: los 10 idiomas de MECH, POR PARTES** (pedido del
-  17 nov). Fase 1 hecha: español, inglés, **francés y portugués**. Faltan
-  alemán e italiano (fase 2) y ruso, japonés, chino y coreano (fase 3: esos
+  17 nov). Fase 1 hecha: español, inglés, **francés y portugués**. Fase 2
+  hecha: **alemán e italiano** (en alemán los títulos dividen con guion las
+  palabras largas, `:lang(de) h1…`, porque «Einsatzmöglichkeiten» no cabía
+  en el teléfono). Falta la fase 3: ruso, japonés, chino y coreano (esos
   necesitan además una fuente con sus letras, porque Sora no las trae —
   cargarla solo al elegirlos — y revisar cada página, porque ocupan otro
   ancho). Para añadir uno: su archivo con las MISMAS 564 claves que `en.js`

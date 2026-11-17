@@ -339,6 +339,9 @@ a { color: inherit; }
   font-size: clamp(32px, 5.4vw, 56px); font-weight: 800;
   letter-spacing: -.025em; line-height: 1.06; margin: 10px 0 16px;
 }
+/* el alemán tiene palabras larguísimas («Einsatzmöglichkeiten») que en el
+   teléfono no caben en un título: se dividen con guion, solo en alemán */
+:lang(de) h1, :lang(de) h2, :lang(de) h3 { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
 .page-head .lead { margin: 0; max-width: 680px; }
 .page-eyebrow {
   display: flex; align-items: center; gap: 16px; margin-bottom: 6px;
@@ -1154,7 +1157,10 @@ body::before {
 .mascota-mini { width: 64px; }
 
 /* Guía en «Siguiente →» del final de cada página */
-.pager a.next { padding-left: 108px; }
+/* ⚠️ position: relative AQUÍ, no fiarse de .fx-spot: esa clase solo la
+   pone main.js con ratón, y en el teléfono el guía se iba a otra parte de
+   la página y tapaba textos (el «MECH bugueado» que reportó el equipo). */
+.pager a.next { position: relative; padding-left: 108px; }
 .mascota-guia { position: absolute; left: 24px; bottom: 4px; width: 58px; }
 
 /* Saludo en la cabecera de Contacto: debajo de la fila del número y la
