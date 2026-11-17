@@ -157,9 +157,22 @@
     const mHero = botonMech.querySelector('.mascota');
     const nube = document.querySelector('.bocadillo');
     const pistaToca = document.querySelector('.toca-pista');
-    const enIngles = () => document.documentElement.lang === 'en';
-    // la etiqueta para lectores de pantalla sigue al idioma de la página
-    const etiqueta = () => botonMech.setAttribute('aria-label', enIngles() ? 'Say hi to MECH' : 'Saludar a MECH');
+    // lo que dice (y la etiqueta para lectores de pantalla) en los diez
+    // idiomas de MECH; sigue al idioma de la página (<html lang>)
+    const FRASES = {
+      es: ['¡Hola, soy MECH!', 'Saludar a MECH'],
+      en: ['Hi, I’m MECH!', 'Say hi to MECH'],
+      fr: ['Salut, je suis MECH !', 'Saluer MECH'],
+      pt: ['Olá, eu sou o MECH!', 'Cumprimentar o MECH'],
+      de: ['Hallo, ich bin MECH!', 'MECH begrüßen'],
+      it: ['Ciao, sono MECH!', 'Saluta MECH'],
+      ja: ['こんにちは、MECHです！', 'MECHにあいさつする'],
+      ru: ['Привет, я MECH!', 'Поздороваться с MECH'],
+      zh: ['你好，我是MECH！', '和MECH打招呼'],
+      ko: ['안녕하세요, 저는 MECH예요!', 'MECH에게 인사하기'],
+    };
+    const frase = (i) => (FRASES[document.documentElement.lang] || FRASES.es)[i];
+    const etiqueta = () => botonMech.setAttribute('aria-label', frase(1));
     etiqueta();
     new MutationObserver(etiqueta).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
     let tNube = 0, tPose = 0;
@@ -170,7 +183,7 @@
       void mHero.offsetWidth;
       mHero.dataset.pose = 'saluda';
       if (nube) {
-        nube.textContent = enIngles() ? 'Hi, I’m MECH!' : '¡Hola, soy MECH!';
+        nube.textContent = frase(0);
         nube.classList.remove('visible');
         void nube.offsetWidth;
         nube.classList.add('visible');

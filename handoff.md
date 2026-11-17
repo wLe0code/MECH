@@ -12,6 +12,24 @@ arriba; la historia (lo de sep y oct) sigue más abajo, sección por sección.
 > trabajó media tarde sobre una copia 2 commits atrasada. Si dice «behind»,
 > primero `git pull` y volver a leer.
 
+## 17 nov 2026 (noche, 3) — web en francés y portugués + mascota que tapaba textos (subido)
+
+Pedido: la web en los 10 idiomas de MECH, **por partes** (eligió el
+equipo). **Fase 1 hecha**: menú desplegable de idiomas + francés y
+portugués (564 frases cada uno, mismas claves que el inglés, que también
+salió de `i18n.js` a `js/i18n/en.js`). Detalle y pasos para las fases 2
+(alemán, italiano) y 3 (ruso, japonés, chino, coreano) en CLAUDE.md
+(«Idiomas de la web»). ⚠️ Traducciones sin revisar por nativos.
+A media tarea el equipo avisó: «hay un MECH bugueado que tapa textos y sale
+donde no debería». Era el **paseo del pie**: colgaba por encima del pie y
+tapaba el final de la sección de arriba (p. ej. «Contactar al equipo» en el
+teléfono). Ahora camina por un carril propio dentro del pie. También el de
+**Contacto** pisaba la etiqueta y el título: bajó y se esconde por debajo
+de 900 px. Medido: ninguna mascota sobre texto visible en las 8 páginas a
+1440/1024/820/375 px. De paso: en francés el rol
+«CONCEPTION·FIRMWARE·ORCHESTRATION» desbordaba el teléfono (arreglado).
+CSS/JS a `?v=6`. Subido a GitHub el 17 nov («sí, súbelo»).
+
 ## 17 nov 2026 (noche, 2) — el MECH de la portada saluda al tocarlo (subido)
 
 Pedido: que el MECH grande del inicio salude y diga «Hola, soy MECH» en una

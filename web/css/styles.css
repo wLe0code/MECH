@@ -137,22 +137,48 @@ a { color: inherit; }
   .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.05); }
   .nav-cta:hover { border-color: var(--accent); color: var(--accent) !important; }
 }
-/* Interruptor de idioma ES / EN */
-.lang-switch {
-  display: inline-flex; align-items: center; gap: 2px; margin-left: 10px;
-  padding: 3px; border-radius: 10px;
-  border: 1px solid var(--border); background: rgba(255,255,255,.04);
-}
-.lang-btn {
+/* Menú de idiomas (lo crea i18n.js): un botón con el código del idioma
+   y una lista desplegable con el nombre de cada idioma en su lengua */
+.lang-switch { position: relative; margin-left: 10px; }
+.lang-actual {
+  display: inline-flex; align-items: center; gap: 7px;
   font-family: var(--mono); font-size: 11.5px; font-weight: 700; letter-spacing: 1px;
-  color: var(--dim); background: none; border: 0; cursor: pointer;
-  padding: 5px 9px; border-radius: 7px;
-  transition: color .2s ease, background .25s var(--ease-out), transform .14s var(--ease-out);
+  color: var(--text); background: rgba(255,255,255,.04); cursor: pointer;
+  border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px;
+  transition: border-color .2s ease, background .2s ease, transform .14s var(--ease-out);
 }
-.lang-btn:active { transform: scale(.94); }
-.lang-btn.on { color: var(--text); background: rgba(255,255,255,.10); }
+.lang-actual svg { width: 15px; height: 15px; color: var(--accent); }
+.lang-actual:active { transform: scale(.96); }
+.lang-flecha {
+  width: 6px; height: 6px; margin: -3px 1px 0 2px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg); transition: transform .25s var(--ease-out);
+}
+.lang-switch.abierto .lang-actual { border-color: rgba(var(--accent-rgb), .55); }
+.lang-switch.abierto .lang-flecha { transform: translateY(3px) rotate(-135deg); }
+.lang-lista {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 120;
+  min-width: 190px; padding: 6px; display: grid; gap: 2px;
+  background: rgba(16,21,28,.97); border: 1px solid var(--border-strong);
+  border-radius: 14px; box-shadow: 0 24px 50px -18px rgba(0,0,0,.9);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  transform-origin: top right; animation: lang-abre .22s var(--ease-out);
+}
+.lang-lista[hidden] { display: none; }
+@keyframes lang-abre { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
+.lang-op {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  width: 100%; padding: 9px 11px; border: 0; border-radius: 9px; cursor: pointer;
+  background: none; color: var(--muted); font: 600 14px var(--sans); text-align: left;
+  transition: background .15s ease, color .15s ease;
+}
+.lang-op .lang-cod { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1px; color: var(--dim); }
+.lang-op[aria-checked="true"] { color: var(--text); background: rgba(var(--accent-rgb), .10); }
+.lang-op[aria-checked="true"] .lang-cod { color: var(--accent); }
+.lang-op:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (hover: hover) and (pointer: fine) {
-  .lang-btn:not(.on):hover { color: var(--muted); }
+  .lang-actual:hover { border-color: var(--border-strong); background: rgba(255,255,255,.07); }
+  .lang-op:hover { background: rgba(255,255,255,.06); color: var(--text); }
 }
 
 .nav-burger {
@@ -729,6 +755,10 @@ blockquote.pull cite {
   letter-spacing: 3px; color: var(--muted); margin-bottom: 22px;
 }
 .profile .profile-role span { color: var(--tint, var(--accent)); font-style: normal; margin: 0 4px; }
+/* deja cortar la línea DESPUÉS de cada «·»: en francés el rol
+   «CONCEPTION·FIRMWARE·ORCHESTRATION» no cabía en el teléfono */
+.profile .profile-role span::after { content: '\200B'; }
+.profile > * { min-width: 0; }
 .profile .profile-bio { font-size: 15.5px; color: var(--muted); font-weight: 300; max-width: 430px; }
 .profile .profile-bio b { color: var(--text); font-weight: 600; }
 
@@ -868,8 +898,13 @@ details.box img { border-radius: 12px; }
   .nav-links a { padding: 12px 16px; }
   .nav-cta { margin: 6px 0 0; text-align: center; }
   /* en el desplegable el interruptor ocupa toda la fila */
-  .lang-switch { margin: 8px 0 2px; justify-content: stretch; }
-  .lang-btn { flex: 1; padding: 9px 0; font-size: 12.5px; }
+  .lang-switch { margin: 8px 0 2px; }
+  .lang-actual { width: 100%; justify-content: center; padding: 10px; font-size: 12.5px; }
+  /* dentro del menú del teléfono la lista va en su sitio, en dos columnas */
+  .lang-lista {
+    position: static; margin-top: 6px; min-width: 0;
+    grid-template-columns: 1fr 1fr; box-shadow: none; animation: none;
+  }
 
   .section { padding: 62px 0; }
   .g2, .g3, .g4, .stats, .timeline, .sponsor-grid, .pager { grid-template-columns: 1fr; }
@@ -1103,12 +1138,18 @@ body::before {
 .mascota svg { transition: transform .3s var(--ease-out); }
 .mascota[data-dir="izq"] svg { transform: scaleX(-1); }
 
-/* Paseo por el borde de arriba del pie de página (las 8 páginas) */
+/* Paseo por un carril propio arriba del pie de página (las 8 páginas).
+   ⚠️ Va DENTRO del pie, no encima: colgado por fuera tapaba el final de
+   la sección de arriba (botones, textos). El pie le deja el sitio. */
 .footer { position: relative; }
 .mascota-paseo {
-  position: absolute; left: 24px; right: 24px; bottom: 100%; height: 96px;
+  position: absolute; left: 24px; right: 24px; top: 16px; height: 96px;
   pointer-events: none;
+  border-bottom: 1px solid rgba(var(--accent-rgb), .12);
 }
+.footer:has(.mascota-paseo) .footer-inner { padding-top: 136px; }
+/* la 404 no tiene columnas en el pie: el espacio va en la línea final */
+.footer:has(.mascota-paseo):not(:has(.footer-inner)) .footer-bottom { padding-top: 124px; }
 .paseo-pista { position: absolute; left: 0; bottom: 0; will-change: transform; }
 .mascota-mini { width: 64px; }
 
@@ -1116,10 +1157,11 @@ body::before {
 .pager a.next { padding-left: 108px; }
 .mascota-guia { position: absolute; left: 24px; bottom: 4px; width: 58px; }
 
-/* Saludo en la cabecera de Contacto */
-.mascota-cabecera { position: absolute; right: 24px; top: -6px; width: 150px; }
-@media (max-width: 900px) { .mascota-cabecera { width: 110px; } }
-@media (max-width: 600px) { .mascota-cabecera { display: none; } }
+/* Saludo en la cabecera de Contacto: debajo de la fila del número y la
+   etiqueta, a la derecha del texto (que mide como mucho 680 px). Donde ya
+   no cabe al lado, se esconde: encima del texto no puede ir. */
+.mascota-cabecera { position: absolute; right: 24px; top: 84px; width: 140px; }
+@media (max-width: 900px) { .mascota-cabecera { display: none; } }
 
 /* 404: busca la página perdida */
 .mascota-404 { width: 140px; margin: 0 auto 6px; }

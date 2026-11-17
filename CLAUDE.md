@@ -1720,10 +1720,15 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `m3-flota`, `m3-cabeza`, `m3-brazo-d` (el que saluda, a la izquierda de
   quien mira, como el robot real) y `m3-brazo-i` (el que señala).
   Dónde sale: hero de la portada y «El robot» (`anfitrion`), cabecera de
-  Contacto (`anfitrion`, oculta en < 600 px), 404 (`busca`), el guía de
-  «Siguiente →» en las 6 páginas con pager (`senala`) y **el paseo por el
-  borde del pie de página en las 8 páginas** (`.mascota-paseo`: camina a
-  un punto al azar, se para, saluda o busca, y sigue; solo mientras se ve).
+  Contacto (`anfitrion`, a la derecha del texto y oculta en < 900 px), 404
+  (`busca`), el guía de «Siguiente →» en las 6 páginas con pager (`senala`)
+  y **el paseo en un carril propio arriba del pie, en las 8 páginas**
+  (`.mascota-paseo`: camina a un punto al azar, se para, saluda o busca, y
+  sigue; solo mientras se ve). ⚠️ **Ninguna mascota puede ir encima de un
+  texto** (el equipo lo reportó como «un MECH bugueado que tapa textos»: el
+  paseo colgaba por fuera del pie y tapaba el final de la sección de arriba,
+  y el de Contacto pisaba el título). Si mueves una, mide que no pise nada
+  a 1440, 1024, 820 y 375 px.
   Con «reducir movimiento» no pasea ni cambia de pose.
   **El de la portada es interactivo** (17 nov 2026, pedido del equipo:
   «solo ese, los otros están súper bien»): es un `<button
@@ -1736,7 +1741,7 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   doble clic (`file://`) no se puede bajar el SVG: queda el `<img>` en
   reposo, a propósito. ⚠️ `/assets` se cachea UN AÑO: si cambias el dibujo,
   **nombre nuevo** (por eso pasó de `mech3-animado` a `mech3-mascota`).
-  ⚠️ Los enlaces a `styles.css`, `main.js` e `i18n.js` llevan `?v=3` en las
+  ⚠️ Los enlaces a `styles.css`, `main.js` e `i18n.js` llevan `?v=6` en las
   8 páginas: `vercel.json` los cachea 1 h y sin eso un visitante vería el
   HTML nuevo con el CSS/JS viejo. **Súbele el número al tocarlos.**
   **Barra de patrocinadores**: marquesina infinita en CSS (dos filas
@@ -1856,12 +1861,32 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   `i18n.js` para que el botón se traduzca. Para añadir uno: copiar un
   `<li class="cm">` dentro del bloque de su modelo y meter el inglés de su
   título y texto en `i18n.js`.
-  **Interruptor de idioma ES/EN** (`web/js/i18n.js`): el sitio se escribe en
-  español y el inglés vive en un diccionario `{texto español: HTML inglés}`.
-  El botón va en la barra de navegación (inyectado por JS, así aparece en las
-  8 páginas) y la elección se guarda en `localStorage`; también cambia
-  `<html lang>` y el `<title>`. Al añadir texto nuevo hay que meter su pareja
-  en el diccionario; si falta, esa frase se queda en español (no rompe).
+  **Idiomas de la web (`web/js/i18n.js` + `web/js/i18n/<código>.js`)** — el
+  sitio se escribe en español; cada idioma es un archivo aparte
+  (`window.MECH_I18N[código] = { titles, dict }`, `dict` = `{texto español:
+  HTML traducido}`) que **solo se descarga al elegirlo**. Hasta el 17 nov era
+  un interruptor ES/EN con el inglés dentro de `i18n.js`; ahora es un **menú
+  desplegable** en la barra (inyectado por JS en las 8 páginas; en el
+  teléfono, la lista va dentro del menú, en dos columnas).
+  **Plan del equipo: los 10 idiomas de MECH, POR PARTES** (pedido del
+  17 nov). Fase 1 hecha: español, inglés, **francés y portugués**. Faltan
+  alemán e italiano (fase 2) y ruso, japonés, chino y coreano (fase 3: esos
+  necesitan además una fuente con sus letras, porque Sora no las trae —
+  cargarla solo al elegirlos — y revisar cada página, porque ocupan otro
+  ancho). Para añadir uno: su archivo con las MISMAS 564 claves que `en.js`
+  + una línea en `IDIOMAS` de `i18n.js` + sus frases en `FRASES` de
+  `main.js` (la nube de la mascota; esas ya están en los 10).
+  Las traducciones se hicieron emparejando por número con un script, sin
+  reescribir las claves a mano (una letra distinta en la clave = esa frase
+  sin traducir), y el script comprueba que cada traducción tenga las mismas
+  etiquetas HTML que el inglés. ⚠️ **Las escribió Claude: nadie nativo las
+  ha revisado.** Antes de usarlas en otro país, que las lea un hablante.
+  En la primera visita, si el navegador está en un idioma que la web tiene,
+  se abre en ese; luego manda lo elegido en el menú (`localStorage`
+  `mech-lang`). Cambia también `<html lang>` y el `<title>`.
+  ⚠️ Al cambiar un archivo de `js/i18n/`, súbele `VERSION` en `i18n.js`.
+  Al añadir texto nuevo a la web hay que meter su pareja en TODOS los
+  archivos de idioma; si falta, esa frase se queda en español (no rompe).
   ⚠️ La clave se calcula quitando etiquetas **por un espacio** (si no, un
   `<br>` pega las palabras: "interésen"), decodificando entidades (`&amp;` →
   `&`) y volviendo a pegar la puntuación (`<b>x</b>.` dejaría " ."). Si una
