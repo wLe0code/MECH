@@ -966,9 +966,8 @@ body::before {
 }
 
 /* 7. Hero de la portada: texto a la izquierda, MECH-3 con su HUD a la derecha */
-.hero { text-align: left; }
 .hero-split {
-  max-width: var(--maxw); width: 100%;
+  max-width: var(--maxw); width: 100%; text-align: left;
   display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
   gap: 28px; align-items: center;
 }
@@ -1032,11 +1031,10 @@ body::before {
   border: 1px dashed rgba(var(--accent-rgb), .25);
   background: radial-gradient(circle, rgba(var(--accent-rgb), .10), transparent 65%);
 }
-.robot-stage img { position: relative; max-height: 480px; width: auto; height: auto; }
+.robot-stage .mascota { position: relative; width: min(310px, 72%); }
 
 @media (max-width: 900px) {
-  .hero { text-align: center; }
-  .hero-split { grid-template-columns: 1fr; gap: 10px; }
+  .hero-split { grid-template-columns: 1fr; gap: 10px; text-align: center; }
   .hero-copy .hero-wordmark { margin: 22px auto; }
   .hero-copy .lead { margin: 0 auto 30px; }
   .hero-copy .ctas { justify-content: center; }
@@ -1048,4 +1046,85 @@ body::before {
   .page-head::after { display: none; }
   .btn-primary::after { display: none; }
   .section-kicker::before { transition: none; transform: scaleX(1); }
+}
+
+/* ═══ LA MASCOTA: MECH-3 animado (nov 2026) ═════════════════════════
+   Pedido del equipo: «que sea como la mascota y que salga andando por más
+   lugares, caminando, saludando…». Cada `.mascota` lleva un <img> de
+   respaldo; main.js lo cambia por el SVG dentro de la página para poder
+   moverle los brazos y la cabeza según `data-pose`:
+     anfitrion  saluda cada pocos segundos (portada, «El robot», contacto)
+     saluda     un saludo y baja el brazo (el paseo del pie de página)
+     camina     da pasos y balancea los brazos
+     senala     señala hacia la derecha («Siguiente →»)
+     busca      mira a los lados rascándose la cabeza (404)
+   Las piezas del SVG: m3-flota, m3-cabeza, m3-brazo-d (el que saluda,
+   a la izquierda de quien mira) y m3-brazo-i (el que señala). */
+.mascota { display: block; }
+.mascota img, .mascota svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* en las mascotas pequeñas el halo azul sobra */
+.mascota-mini .m3-halo, .mascota-guia .m3-halo { display: none; }
+
+/* anfitrión: un saludo de tres vaivenes y descanso, en bucle */
+.mascota[data-pose="anfitrion"] .m3-brazo-d { animation: m3-anfitrion 9s var(--ease-in-out) infinite; }
+@keyframes m3-anfitrion {
+  0%, 54%, 100% { transform: rotate(0deg); }
+  8% { transform: rotate(150deg); }
+  16% { transform: rotate(126deg); }
+  24% { transform: rotate(156deg); }
+  32% { transform: rotate(126deg); }
+  40% { transform: rotate(150deg); }
+}
+/* saluda: lo mismo, una sola vez (dura lo que la pausa del paseo) */
+.mascota[data-pose="saluda"] .m3-brazo-d { animation: m3-saluda 3.4s var(--ease-in-out) 1 both; }
+@keyframes m3-saluda {
+  0%, 100% { transform: rotate(0deg); }
+  16% { transform: rotate(150deg); }
+  32% { transform: rotate(126deg); }
+  48% { transform: rotate(156deg); }
+  64% { transform: rotate(126deg); }
+  80% { transform: rotate(150deg); }
+}
+/* camina: pasitos y brazos que se balancean al revés uno del otro */
+.mascota[data-pose="camina"] .m3-flota { animation: m3-paso .42s ease-in-out infinite alternate; }
+.mascota[data-pose="camina"] .m3-brazo-d { animation: m3-balanceo .84s ease-in-out infinite alternate; }
+.mascota[data-pose="camina"] .m3-brazo-i { animation: m3-balanceo .84s ease-in-out infinite alternate-reverse; }
+@keyframes m3-paso { from { transform: translateY(0); } to { transform: translateY(-40px); } }
+@keyframes m3-balanceo { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+/* señala: el brazo izquierdo del robot apunta a la derecha */
+.mascota[data-pose="senala"] .m3-brazo-i { animation: m3-senala 1.6s ease-in-out infinite alternate; }
+@keyframes m3-senala { from { transform: rotate(-88deg); } to { transform: rotate(-102deg); } }
+/* busca: gira la cabeza a los lados y se rasca */
+.mascota[data-pose="busca"] .m3-cabeza { animation: m3-mira 3.2s ease-in-out infinite; }
+.mascota[data-pose="busca"] .m3-brazo-d { animation: m3-rasca .5s ease-in-out infinite alternate; }
+@keyframes m3-mira { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+@keyframes m3-rasca { from { transform: rotate(158deg); } to { transform: rotate(168deg); } }
+/* hacia dónde camina (main.js pone data-dir) */
+.mascota svg { transition: transform .3s var(--ease-out); }
+.mascota[data-dir="izq"] svg { transform: scaleX(-1); }
+
+/* Paseo por el borde de arriba del pie de página (las 8 páginas) */
+.footer { position: relative; }
+.mascota-paseo {
+  position: absolute; left: 24px; right: 24px; bottom: 100%; height: 96px;
+  pointer-events: none;
+}
+.paseo-pista { position: absolute; left: 0; bottom: 0; will-change: transform; }
+.mascota-mini { width: 64px; }
+
+/* Guía en «Siguiente →» del final de cada página */
+.pager a.next { padding-left: 108px; }
+.mascota-guia { position: absolute; left: 24px; bottom: 4px; width: 58px; }
+
+/* Saludo en la cabecera de Contacto */
+.mascota-cabecera { position: absolute; right: 24px; top: -6px; width: 150px; }
+@media (max-width: 900px) { .mascota-cabecera { width: 110px; } }
+@media (max-width: 600px) { .mascota-cabecera { display: none; } }
+
+/* 404: busca la página perdida */
+.mascota-404 { width: 140px; margin: 0 auto 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mascota .m3-flota, .mascota .m3-brazo-d, .mascota .m3-brazo-i, .mascota .m3-cabeza { animation: none !important; }
+  .mascota svg { transition: none; }
 }

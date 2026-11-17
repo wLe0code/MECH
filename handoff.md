@@ -12,6 +12,20 @@ arriba; la historia (lo de sep y oct) sigue más abajo, sección por sección.
 > trabajó media tarde sobre una copia 2 commits atrasada. Si dice «behind»,
 > primero `git pull` y volver a leer.
 
+## 17 nov 2026 (noche) — MECH-3 como mascota, con brazos (subido)
+
+Pedido: «agrega el MECH animado en más lugares, como la mascota, caminando,
+saludando… y ponle los brazos». Hecho: brazos (bloques blancos con mano de
+mitón), **pañuelo costarricense medio grande en el brazo** (corrección del
+equipo a media tarea: «como en las fotos reales»), y la mascota en la
+portada, «El robot», Contacto, la 404, el «Siguiente →» de cada página y
+paseando por el pie de las 8 páginas. Archivo nuevo
+`web/assets/mech3-mascota.svg` (el viejo `mech3-animado.svg` ya no existe;
+nombre nuevo por la caché de un año de `/assets`). Detalle en CLAUDE.md
+(«La MASCOTA»). Verificado con `web-estatica`: las 8 páginas a 1280 y
+375 px sin desbordes, sin errores ni ids repetidos, cada pose con su
+animación y el paseo moviéndose. Subido a GitHub el 17 nov («sí, súbelo»).
+
 ## 17 nov 2026 (tarde) — web «futurista» y MECH-3 animado (subido)
 
 Dos pedidos más, encima de lo de abajo: (1) el robot dibujado de la web era

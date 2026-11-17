@@ -1704,13 +1704,31 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   barrido de radar y las etiquetas VOZ / PROYECCIÓN / MOVIMIENTO, en el
   `SEL` de `i18n.js` como `.hud-tag`). Todo se apaga con «reducir
   movimiento». Los logos de patrocinadores siguen sobre fondo claro.
-  **El MECH animado es MECH-3** (`web/assets/mech3-animado.svg`): SVG con las
-  formas del render 2D del stand (`branding/scripts/render_2d_mech3.py`) y
-  sus animaciones dentro (flota, parpadea, la lente brilla, la luz de la
-  webcam late, el pañuelo se mece), así funciona como `<img>`. Va en el hero
-  de `index.html` y en «La ficha técnica» de `robot.html`, en lugar del
-  `render-mech.png` cilíndrico de MECH-1/2 (que sigue en `web/assets/`).
-  ⚠️ Los enlaces a `styles.css`, `main.js` e `i18n.js` llevan `?v=2` en las
+  **La MASCOTA: MECH-3 animado** (`web/assets/mech3-mascota.svg`; hasta el
+  17 nov se llamaba `mech3-animado.svg`, sin brazos). SVG con las formas del
+  render 2D del stand (`branding/scripts/render_2d_mech3.py`) + los brazos
+  del render 3D (bloques blancos con mano de mitón) + el **pañuelo
+  costarricense medio grande atado en el brazo derecho** (el equipo lo pidió
+  así: «como en las fotos reales»). Trae dentro su animación de reposo
+  (flota, parpadea, la lente brilla, la luz de la webcam late, pañuelo y
+  brazos se mecen), así funciona también como `<img>`.
+  Cada `.mascota` del HTML lleva un `<img>` de respaldo; `main.js` baja el
+  SVG una vez, lo mete DENTRO de la página (ids con sufijo por mascota, si
+  no todas usarían los degradados de la primera) y la web le pone la pose
+  con `data-pose` (`styles.css`, «LA MASCOTA»): `anfitrion` (saluda cada
+  9 s), `saluda` (una vez), `camina`, `senala` y `busca`. Piezas del SVG:
+  `m3-flota`, `m3-cabeza`, `m3-brazo-d` (el que saluda, a la izquierda de
+  quien mira, como el robot real) y `m3-brazo-i` (el que señala).
+  Dónde sale: hero de la portada y «El robot» (`anfitrion`), cabecera de
+  Contacto (`anfitrion`, oculta en < 600 px), 404 (`busca`), el guía de
+  «Siguiente →» en las 6 páginas con pager (`senala`) y **el paseo por el
+  borde del pie de página en las 8 páginas** (`.mascota-paseo`: camina a
+  un punto al azar, se para, saluda o busca, y sigue; solo mientras se ve).
+  Con «reducir movimiento» no pasea ni cambia de pose. Abriendo el HTML con
+  doble clic (`file://`) no se puede bajar el SVG: queda el `<img>` en
+  reposo, a propósito. ⚠️ `/assets` se cachea UN AÑO: si cambias el dibujo,
+  **nombre nuevo** (por eso pasó de `mech3-animado` a `mech3-mascota`).
+  ⚠️ Los enlaces a `styles.css`, `main.js` e `i18n.js` llevan `?v=3` en las
   8 páginas: `vercel.json` los cachea 1 h y sin eso un visitante vería el
   HTML nuevo con el CSS/JS viejo. **Súbele el número al tocarlos.**
   **Barra de patrocinadores**: marquesina infinita en CSS (dos filas
