@@ -1724,7 +1724,15 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   «Siguiente →» en las 6 páginas con pager (`senala`) y **el paseo por el
   borde del pie de página en las 8 páginas** (`.mascota-paseo`: camina a
   un punto al azar, se para, saluda o busca, y sigue; solo mientras se ve).
-  Con «reducir movimiento» no pasea ni cambia de pose. Abriendo el HTML con
+  Con «reducir movimiento» no pasea ni cambia de pose.
+  **El de la portada es interactivo** (17 nov 2026, pedido del equipo:
+  «solo ese, los otros están súper bien»): es un `<button
+  class="mascota-boton">`; al tocarlo (ratón, dedo o teclado) pone la pose
+  `saluda` y una nube `.bocadillo` dice «¡Hola, soy MECH!» / «Hi, I'm
+  MECH!» según el idioma de la página, 3,4 s; a los 9 s vuelve a
+  `anfitrion`. Una pista «TÓCAME» debajo desaparece tras el primer toque.
+  La etiqueta del botón para lectores de pantalla también sigue al idioma
+  (`main.js`, «MECH de la portada»). Abriendo el HTML con
   doble clic (`file://`) no se puede bajar el SVG: queda el `<img>` en
   reposo, a propósito. ⚠️ `/assets` se cachea UN AÑO: si cambias el dibujo,
   **nombre nuevo** (por eso pasó de `mech3-animado` a `mech3-mascota`).

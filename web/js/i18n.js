@@ -49,6 +49,7 @@
     'VOZ': 'VOICE',
     'PROYECCIÓN': 'PROJECTION',
     'MOVIMIENTO': 'MOVEMENT',
+    'TÓCAME': 'TAP ME',
     'CAMPEONES NACIONALES · WRO FUTUROS INNOVADORES': 'NATIONAL CHAMPIONS · WRO FUTURE INNOVATORS',
     'SALÓN DE TROFEOS': 'TROPHY ROOM',
     'Tres torneos. Tres títulos.': 'Three tournaments.<br>Three titles.',

@@ -148,6 +148,40 @@
       .catch(() => {});
   }
 
+  /* ─── MECH de la portada: al tocarlo saluda y dice hola ───────────── */
+  // Solo el grande del hero (.mascota-boton). Funciona con el ratón, con
+  // el dedo y con el teclado (es un <button>). Con el <img> de respaldo no
+  // mueve el brazo, pero la nube sale igual.
+  const botonMech = document.querySelector('.mascota-boton');
+  if (botonMech) {
+    const mHero = botonMech.querySelector('.mascota');
+    const nube = document.querySelector('.bocadillo');
+    const pistaToca = document.querySelector('.toca-pista');
+    const enIngles = () => document.documentElement.lang === 'en';
+    // la etiqueta para lectores de pantalla sigue al idioma de la página
+    const etiqueta = () => botonMech.setAttribute('aria-label', enIngles() ? 'Say hi to MECH' : 'Saludar a MECH');
+    etiqueta();
+    new MutationObserver(etiqueta).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+    let tNube = 0, tPose = 0;
+    botonMech.addEventListener('click', () => {
+      if (pistaToca) pistaToca.classList.add('usada');
+      // vuelve a empezar el saludo aunque estuviera a medias
+      mHero.dataset.pose = 'idle';
+      void mHero.offsetWidth;
+      mHero.dataset.pose = 'saluda';
+      if (nube) {
+        nube.textContent = enIngles() ? 'Hi, I’m MECH!' : '¡Hola, soy MECH!';
+        nube.classList.remove('visible');
+        void nube.offsetWidth;
+        nube.classList.add('visible');
+      }
+      clearTimeout(tNube); clearTimeout(tPose);
+      tNube = setTimeout(() => nube && nube.classList.remove('visible'), 3400);
+      // después de su saludo descansa un rato y vuelve a saludar solo
+      tPose = setTimeout(() => { mHero.dataset.pose = 'anfitrion'; }, 9000);
+    });
+  }
+
   /* ─── Paseo por el pie de página: camina, se para, saluda… ────────── */
   function iniciarPaseos() {
     if (reducir) return;

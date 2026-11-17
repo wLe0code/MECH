@@ -1128,3 +1128,55 @@ body::before {
   .mascota .m3-flota, .mascota .m3-brazo-d, .mascota .m3-brazo-i, .mascota .m3-cabeza { animation: none !important; }
   .mascota svg { transition: none; }
 }
+
+/* ═══ MECH DE LA PORTADA: interactivo (nov 2026) ═════════════════════
+   Pedido del equipo: «que el MECH grande del inicio salude y diga "Hola,
+   soy MECH" en una nube cuando lo tocan (cursor o dedo)». SOLO ese: las
+   demás mascotas no responden. El robot es un <button> (también con el
+   teclado); main.js pone la pose «saluda» y escribe la nube. */
+.mascota-boton {
+  display: block; padding: 0; border: 0; background: none; color: inherit;
+  cursor: pointer; border-radius: 24px; -webkit-tap-highlight-color: transparent;
+  transition: transform .14s var(--ease-out);
+}
+.mascota-boton .mascota { transition: transform .35s var(--ease-out); }
+.mascota-boton:active { transform: scale(.97); }
+.mascota-boton:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+@media (hover: hover) and (pointer: fine) {
+  .mascota-boton:hover .mascota { transform: translateY(-6px); }
+}
+
+/* la nube de texto: sale de arriba a la derecha de la cabeza */
+.bocadillo {
+  position: absolute; z-index: 4; right: 2%; top: 3%; max-width: 52%;
+  padding: 10px 15px; border-radius: 14px;
+  font-weight: 700; font-size: clamp(13px, 1.45vw, 17px); line-height: 1.3;
+  color: var(--text); background: rgba(16,21,28,.94);
+  border: 1px solid rgba(var(--accent-rgb), .6);
+  box-shadow: 0 12px 30px -12px rgba(var(--accent-rgb), .6);
+  opacity: 0; transform: translateY(8px) scale(.85); transform-origin: 18% 100%;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .4s var(--ease-out);
+}
+.bocadillo:empty { display: none; }
+.bocadillo.visible { opacity: 1; transform: none; }
+/* colita que apunta a MECH */
+.bocadillo::after {
+  content: ''; position: absolute; left: 16%; bottom: -8px; width: 14px; height: 14px;
+  background: rgb(16,21,28);
+  border-right: 1px solid rgba(var(--accent-rgb), .6);
+  border-bottom: 1px solid rgba(var(--accent-rgb), .6);
+  transform: rotate(45deg);
+}
+
+/* pista «TÓCAME» debajo del robot; se va después del primer toque */
+.hud-tag.toca-pista {
+  left: 50%; bottom: 0; transform: translateX(-50%);
+  transition: opacity .4s ease;
+}
+.hud-tag.toca-pista.usada { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bocadillo { transform: none; transition: opacity .2s ease; }
+  .mascota-boton .mascota { transition: none; }
+}

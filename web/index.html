@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3">
+<link rel="stylesheet" href="css/styles.css?v=4">
 </head>
 <body>
 <a class="skip" href="#main">Saltar al contenido</a>
@@ -79,16 +79,21 @@
     <p class="hero-slogan reveal d4">« si es inmersivo, es MECH »</p>
    </div>
    <!-- MECH-3 animado con un «HUD» alrededor: anillos que giran despacio,
-        un barrido de radar y las tres capacidades. Todo decorativo. -->
-   <div class="hero-visual reveal d2" aria-hidden="true">
-    <div class="hud-ring hud-r1"></div>
-    <div class="hud-ring hud-r2"></div>
-    <div class="hud-sweep"></div>
-    <div class="hud-base"></div>
-    <div class="mascota hero-robot" data-pose="anfitrion"><img src="assets/mech3-mascota.svg" alt="" width="1188" height="1660"></div>
-    <span class="hud-tag t1">VOZ</span>
-    <span class="hud-tag t2">PROYECCIÓN</span>
-    <span class="hud-tag t3">MOVIMIENTO</span>
+        un barrido de radar y las tres capacidades (decorativo). El robot es
+        un botón: al tocarlo saluda y dice «¡Hola, soy MECH!» (main.js). -->
+   <div class="hero-visual reveal d2">
+    <div class="hud-ring hud-r1" aria-hidden="true"></div>
+    <div class="hud-ring hud-r2" aria-hidden="true"></div>
+    <div class="hud-sweep" aria-hidden="true"></div>
+    <div class="hud-base" aria-hidden="true"></div>
+    <button type="button" class="mascota-boton hero-robot" aria-label="Saludar a MECH">
+      <span class="mascota" data-pose="anfitrion"><img src="assets/mech3-mascota.svg" alt="" width="1188" height="1660"></span>
+    </button>
+    <span class="bocadillo" role="status" aria-live="polite"></span>
+    <span class="hud-tag t1" aria-hidden="true">VOZ</span>
+    <span class="hud-tag t2" aria-hidden="true">PROYECCIÓN</span>
+    <span class="hud-tag t3" aria-hidden="true">MOVIMIENTO</span>
+    <span class="hud-tag toca-pista" aria-hidden="true">TÓCAME</span>
    </div>
   </div>
 </header>
@@ -318,7 +323,7 @@
   <p class="footer-bottom">COLEGIO CIENTÍFICO DE ALAJUELA · COSTA RICA 🇨🇷 · WRO 2026 — ROBOTS AND CULTURE · <span class="year"></span></p>
 </footer>
 
-<script src="js/main.js?v=3"></script>
-<script src="js/i18n.js?v=3"></script>
+<script src="js/main.js?v=4"></script>
+<script src="js/i18n.js?v=4"></script>
 </body>
 </html>

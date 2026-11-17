@@ -12,6 +12,14 @@ arriba; la historia (lo de sep y oct) sigue más abajo, sección por sección.
 > trabajó media tarde sobre una copia 2 commits atrasada. Si dice «behind»,
 > primero `git pull` y volver a leer.
 
+## 17 nov 2026 (noche, 2) — el MECH de la portada saluda al tocarlo (subido)
+
+Pedido: que el MECH grande del inicio salude y diga «Hola, soy MECH» en una
+nube al tocarlo (cursor o dedo), y solo ese. Hecho en `index.html`,
+`styles.css` (bloque «MECH DE LA PORTADA»), `main.js` e `i18n.js`
+(«TÓCAME» → «TAP ME»); CSS/JS a `?v=4`. Probado con un clic real, en
+inglés, con el teclado y a 375 px. Subido a GitHub el 17 nov («sí, súbelo»).
+
 ## 17 nov 2026 (noche) — MECH-3 como mascota, con brazos (subido)
 
 Pedido: «agrega el MECH animado en más lugares, como la mascota, caminando,
