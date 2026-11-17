@@ -158,7 +158,8 @@ a { color: inherit; }
 .lang-switch.abierto .lang-flecha { transform: translateY(3px) rotate(-135deg); }
 .lang-lista {
   position: absolute; right: 0; top: calc(100% + 8px); z-index: 120;
-  min-width: 190px; padding: 6px; display: grid; gap: 2px;
+  min-width: 340px; padding: 6px; display: grid; gap: 2px;
+  grid-template-columns: 1fr 1fr;  /* diez idiomas: dos columnas de cinco */
   background: rgba(16,21,28,.97); border: 1px solid var(--border-strong);
   border-radius: 14px; box-shadow: 0 24px 50px -18px rgba(0,0,0,.9);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -342,6 +343,25 @@ a { color: inherit; }
 /* el alemán tiene palabras larguísimas («Einsatzmöglichkeiten») que en el
    teléfono no caben en un título: se dividen con guion, solo en alemán */
 :lang(de) h1, :lang(de) h2, :lang(de) h3 { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
+
+/* ═══ IDIOMAS CON OTRAS LETRAS (ruso, japonés, chino, coreano) ═══════
+   Sora y Space Mono no tienen esas letras: la Noto Sans de cada idioma
+   (la baja i18n.js al elegirlo) va DETRÁS, así lo latino sigue en Sora.
+   Va en html:lang() porque las variables se resuelven donde se usan. */
+html:lang(ru) { --sans: 'Sora', 'Noto Sans', system-ui, sans-serif; --mono: 'Space Mono', 'Noto Sans', ui-monospace, monospace; }
+html:lang(ja) { --sans: 'Sora', 'Noto Sans JP', system-ui, sans-serif; --mono: 'Space Mono', 'Noto Sans JP', ui-monospace, monospace; }
+html:lang(zh) { --sans: 'Sora', 'Noto Sans SC', system-ui, sans-serif; --mono: 'Space Mono', 'Noto Sans SC', ui-monospace, monospace; }
+html:lang(ko) { --sans: 'Sora', 'Noto Sans KR', system-ui, sans-serif; --mono: 'Space Mono', 'Noto Sans KR', ui-monospace, monospace; }
+/* el coreano lleva espacios: que no corte una palabra por la mitad */
+:lang(ko) body { word-break: keep-all; overflow-wrap: break-word; }
+/* japonés y chino: sin comas ni puntos al principio de una línea */
+:lang(ja) body, :lang(zh) body { line-break: strict; }
+/* las letras chinas, japonesas y coreanas no tienen cursiva de verdad (el
+   navegador las inclina feo) y con tanto espaciado se leen sueltas */
+:lang(ja) :is(em, i, cite, .profile-role), :lang(zh) :is(em, i, cite, .profile-role),
+:lang(ko) :is(em, i, cite, .profile-role) { font-style: normal; }
+:lang(ja) h1, :lang(zh) h1, :lang(ko) h1,
+:lang(ja) h2, :lang(zh) h2, :lang(ko) h2 { letter-spacing: 0; line-height: 1.25; }
 .page-head .lead { margin: 0; max-width: 680px; }
 .page-eyebrow {
   display: flex; align-items: center; gap: 16px; margin-bottom: 6px;

@@ -21,8 +21,32 @@
     { code: 'pt', name: 'Português' },
     { code: 'de', name: 'Deutsch' },
     { code: 'it', name: 'Italiano' },
+    { code: 'ru', name: 'Русский' },
+    { code: 'ja', name: '日本語' },
+    { code: 'zh', name: '中文' },
+    { code: 'ko', name: '한국어' },
   ];
-  const VERSION = '1';
+  const VERSION = '2';
+
+  // Sora y Space Mono solo traen letras latinas. Para estos cuatro idiomas
+  // se baja una Noto Sans con sus letras, SOLO cuando alguien los elige
+  // (Google la sirve en trozos: el navegador baja solo los que usa).
+  // El CSS la pone DETRÁS de Sora (ver «IDIOMAS CON OTRAS LETRAS»), así
+  // las letras latinas y los números siguen saliendo en Sora.
+  const FUENTES = {
+    ru: 'Noto+Sans:wght@400;600;700;800',
+    ja: 'Noto+Sans+JP:wght@400;600;700;800',
+    zh: 'Noto+Sans+SC:wght@400;600;700;800',
+    ko: 'Noto+Sans+KR:wght@400;600;700;800',
+  };
+  function fuente(code) {
+    if (!FUENTES[code] || document.getElementById('mech-font-' + code)) return;
+    const l = document.createElement('link');
+    l.id = 'mech-font-' + code;
+    l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=' + FUENTES[code] + '&display=swap';
+    document.head.appendChild(l);
+  }
   const base = (document.currentScript && document.currentScript.src) || location.href;
 
   const SEL = 'h1,h2,h3,h4,p,li,cite,figcaption,summary,th,td,blockquote,' +
@@ -108,6 +132,7 @@
   function apply(lang) {
     if (!IDIOMAS.some((i) => i.code === lang)) lang = 'es';
     const n = ++ultimo;
+    fuente(lang);
     cargar(lang)
       .then((datos) => { if (n === ultimo) traducir(lang, datos); })
       .catch(() => { if (n === ultimo) traducir('es', null); });

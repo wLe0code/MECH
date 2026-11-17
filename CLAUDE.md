@@ -1880,10 +1880,18 @@ Cinemática mecanum en `driveOmni()` del .ino. NO cambiar la fórmula sin pedir 
   17 nov). Fase 1 hecha: español, inglés, **francés y portugués**. Fase 2
   hecha: **alemán e italiano** (en alemán los títulos dividen con guion las
   palabras largas, `:lang(de) h1…`, porque «Einsatzmöglichkeiten» no cabía
-  en el teléfono). Falta la fase 3: ruso, japonés, chino y coreano (esos
-  necesitan además una fuente con sus letras, porque Sora no las trae —
-  cargarla solo al elegirlos — y revisar cada página, porque ocupan otro
-  ancho). Para añadir uno: su archivo con las MISMAS 564 claves que `en.js`
+  en el teléfono). Fase 3 hecha (18 nov): **ruso, japonés, chino
+  (simplificado) y coreano** — los 10 idiomas de MECH. El menú va en dos
+  columnas de cinco también en el escritorio. Sora y Space Mono no traen
+  esas letras: `FUENTES` de `i18n.js` baja la Noto Sans de cada uno
+  (Google Fonts, en trozos) **solo al elegirlo**, y el CSS («IDIOMAS CON
+  OTRAS LETRAS», en `html:lang(...)`) la pone DETRÁS de Sora, así lo latino
+  y los números siguen en Sora. En japonés, chino y coreano no hay cursiva
+  (sale inclinada falsa) y los títulos van sin espaciado negativo; el
+  coreano lleva `word-break: keep-all` (no parte palabras) y el japonés y
+  el chino `line-break: strict`. Si se añade otro idioma con otra escritura
+  (árabe, hindi…), otra entrada en `FUENTES` y otra línea `html:lang()`.
+  Para añadir uno: su archivo con las MISMAS 564 claves que `en.js`
   + una línea en `IDIOMAS` de `i18n.js` + sus frases en `FRASES` de
   `main.js` (la nube de la mascota; esas ya están en los 10).
   Las traducciones se hicieron emparejando por número con un script, sin

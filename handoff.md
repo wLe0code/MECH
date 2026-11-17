@@ -12,6 +12,24 @@ arriba; la historia (lo de sep y oct) sigue más abajo, sección por sección.
 > trabajó media tarde sobre una copia 2 commits atrasada. Si dice «behind»,
 > primero `git pull` y volver a leer.
 
+## 18 nov 2026 — web en ruso, japonés, chino y coreano (subido)
+
+Fase 3 y última de los idiomas: `web/js/i18n/ru.js`, `ja.js`, `zh.js`
+(chino simplificado) y `ko.js`, 564 frases cada uno, armadas con el mismo
+script (mismas etiquetas HTML que el inglés). Ya están los **10 idiomas de
+MECH** en el menú, que ahora va en dos columnas de cinco también en el
+escritorio. Fuentes: la Noto Sans de cada idioma se baja de Google Fonts
+**solo al elegirlo** (`FUENTES` en `i18n.js`) y va detrás de Sora (CSS
+«IDIOMAS CON OTRAS LETRAS»). Japonés en registro cortés (です/ます),
+coreano en 합니다/해요 formal, ruso neutro. `i18n.js?v=8` (VERSION 2),
+`styles.css?v=10`. Verificado en el navegador: las 8 páginas × los 4
+idiomas a 360/390 y 1280 px sin ningún texto fuera de la pantalla; el menú
+con los 10 en el teléfono; la letra correcta cargada (Noto Sans JP, etc.);
+título de la pestaña y nube de la mascota traducidos. Lo que queda en
+español en todos los idiomas son nombres propios, patrocinadores y las
+referencias bibliográficas (igual que en inglés). ⚠️ Las traducciones son
+de Claude: que las revise un hablante nativo antes de usarlas fuera.
+
 ## 18 nov 2026 — el «MECH bugueado» de verdad (subido)
 
 El equipo: «antes de la fase 3 arregla bien el MECH bugueado porque sigue
